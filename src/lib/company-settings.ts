@@ -195,7 +195,6 @@ export function getCurrencySymbol(currency: string): string {
   
   return symbols[currency] || currency;
 }
-}
 
 /**
  * Clears the settings cache
