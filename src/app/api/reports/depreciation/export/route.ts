@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const dataParam = searchParams.get('data');
+    const companyId = searchParams.get('company_id');
+    
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'company_id is required' },
+        { status: 400 }
+      );
+    }
     
     if (!dataParam) {
       return NextResponse.json(
@@ -31,7 +39,15 @@ export async function GET(request: NextRequest) {
     }
 
     const data = JSON.parse(dataParam);
-    const companySettings = await getCompanySettings();
+    const companySettings = await getCompanySettings(companyId);
+    
+    if (!companySettings) {
+      return NextResponse.json(
+        { error: 'Company not found' },
+        { status: 404 }
+      );
+    }
+    
     const origin = request.nextUrl.origin;
 
     const printHTML = `
@@ -160,8 +176,8 @@ export async function GET(request: NextRequest) {
             <img src="${origin}/assets/logo.png" alt="${companySettings.name} Logo" class="logo" onerror="this.style.display='none'" />
             <div class="company-info">
               <h1>${companySettings.name}</h1>
-              <div class="address">${companySettings.address_line1}${companySettings.address_line2 ? ', ' + companySettings.address_line2 : ''}, ${companySettings.city}, ${companySettings.state} ${companySettings.zip_code}</div>
-              <div class="address">Phone: ${companySettings.phone}</div>
+              <div class="address">${companySettings.address ? companySettings.address + ', ' : ''}${companySettings.city ? companySettings.city + ', ' : ''}${companySettings.country || ''}</div>
+              <div class="address">${companySettings.phone ? 'Phone: ' + companySettings.phone : ''}</div>
             </div>
           </div>
           

@@ -84,17 +84,16 @@ export default function NewJournalEntryPage() {
           .from('accounts')
           .select('id, code, name, account_type')
           .eq('company_id', company.id)
-        .from('accounts')
-        .select('id, code, name, account_type')
-        .eq('is_active', true)
-        .order('code');
+          .eq('is_active', true)
+          .order('code');
       
-      if (data && !error) {
-        setAccounts(data);
-      }
-    };
-    fetchAccounts();
-  }, []);
+        if (data && !error) {
+          setAccounts(data);
+        }
+      };
+      fetchAccounts();
+    }
+  }, [company, supabase]);
 
   const addLineItem = () => {
     const newLineItem: LineItem = {

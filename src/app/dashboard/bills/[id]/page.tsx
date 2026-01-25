@@ -16,6 +16,7 @@ import {
 import { supabase } from '@/lib/supabase/client';
 import { printBill } from '@/lib/pdf/bill';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 
 interface BillLine {
   id: string;
@@ -68,6 +69,7 @@ interface Bill {
 export default function BillDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [bill, setBill] = useState<Bill | null>(null);
   const [lines, setLines] = useState<BillLine[]>([]);
   const [payments, setPayments] = useState<BillPayment[]>([]);
@@ -159,11 +161,23 @@ export default function BillDetailPage() {
   };
 
   const handlePrint = () => {
-    if (bill && lines) {
+    if (bill && lines && company) {
       printBill({
         bill,
         vendor: bill.vendors || {},
         lines,
+        company: {
+          name: company.name,
+          logo_url: company.logo_url,
+          email: company.email,
+          phone: company.phone,
+          address: company.address,
+          city: null,
+          country: null,
+          tax_id: company.tax_id,
+          registration_number: company.registration_number,
+          website: null,
+        },
       });
     }
   };

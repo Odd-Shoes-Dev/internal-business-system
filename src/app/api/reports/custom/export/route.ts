@@ -73,6 +73,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'csv';
     const configParam = searchParams.get('config');
+    const companyId = searchParams.get('company_id');
+    
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'company_id is required' },
+        { status: 400 }
+      );
+    }
     
     if (!configParam) {
       return NextResponse.json(
@@ -84,7 +92,14 @@ export async function GET(request: NextRequest) {
     const config: CustomReportConfig = JSON.parse(configParam);
 
     // Fetch company settings
-    const companySettings = await getCompanySettings();
+    const companySettings = await getCompanySettings(companyId);
+    
+    if (!companySettings) {
+      return NextResponse.json(
+        { error: 'Company not found' },
+        { status: 404 }
+      );
+    }
 
     // Re-generate the report data (in a real app, this would use the same logic as the main API)
     const response = await fetch(`${request.nextUrl.origin}/api/reports/custom`, {
