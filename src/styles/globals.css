@@ -1,0 +1,354 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --breco-navy: #1e3a5f;
+  --breco-navy-light: #2a4a73;
+  --breco-navy-dark: #152a45;
+  --breco-gold: #d4a853;
+  --breco-teal: #0d9488;
+  --breco-safari: #8b7355;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-breco-navy text-white hover:bg-breco-navy-dark focus:ring-breco-navy;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500;
+  }
+
+  .btn-accent {
+    @apply btn bg-breco-teal text-white hover:bg-breco-teal-dark focus:ring-breco-teal;
+  }
+
+  .btn-gold {
+    @apply btn bg-breco-gold text-white hover:bg-breco-gold-dark focus:ring-breco-gold;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .input {
+    @apply block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy disabled:bg-gray-100 disabled:cursor-not-allowed;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-200;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .card-footer {
+    @apply px-6 py-4 bg-gray-50 border-t border-gray-200;
+  }
+
+  .table-container {
+    @apply overflow-x-auto;
+  }
+
+  .table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+
+  .table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-sm text-gray-900 whitespace-nowrap;
+  }
+
+  .table tbody tr {
+    @apply hover:bg-gray-50 transition-colors;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-green-100 text-green-800;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-100 text-yellow-800;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-800;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+
+  .badge-gray {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+
+  .badge-navy {
+    @apply badge bg-breco-navy text-white;
+  }
+
+  .badge-gold {
+    @apply badge bg-breco-gold text-white;
+  }
+
+  .stat-card {
+    @apply card p-6;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-500 mt-1;
+  }
+
+  .stat-change {
+    @apply flex items-center text-sm mt-2;
+  }
+
+  .stat-change-positive {
+    @apply text-green-600;
+  }
+
+  .stat-change-negative {
+    @apply text-red-600;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors;
+  }
+
+  .sidebar-link-active {
+    @apply sidebar-link bg-breco-navy text-white;
+  }
+
+  .sidebar-link-inactive {
+    @apply sidebar-link text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+  }
+
+  .dropdown {
+    @apply absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50;
+  }
+
+  .dropdown-item {
+    @apply block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center;
+  }
+
+  .modal {
+    @apply bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto;
+  }
+
+  .modal-lg {
+    @apply max-w-2xl;
+  }
+
+  .modal-xl {
+    @apply max-w-4xl;
+  }
+
+  .form-group {
+    @apply space-y-1;
+  }
+
+  .form-error {
+    @apply text-sm text-red-600 mt-1;
+  }
+
+  .form-hint {
+    @apply text-sm text-gray-500 mt-1;
+  }
+
+  /* Amount formatting */
+  .amount-positive {
+    @apply text-green-600;
+  }
+
+  .amount-negative {
+    @apply text-red-600;
+  }
+
+  .amount-debit {
+    @apply text-gray-900;
+  }
+
+  .amount-credit {
+    @apply text-gray-900;
+  }
+
+  /* Status colors */
+  .status-draft {
+    @apply badge-gray;
+  }
+
+  .status-sent, .status-approved {
+    @apply badge-info;
+  }
+
+  .status-partial {
+    @apply badge-warning;
+  }
+
+  .status-paid {
+    @apply badge-success;
+  }
+
+  .status-overdue {
+    @apply badge-danger;
+  }
+
+  .status-void, .status-cancelled {
+    @apply badge bg-gray-200 text-gray-600;
+  }
+
+  /* Booking status colors */
+  .status-inquiry {
+    @apply badge bg-purple-100 text-purple-800;
+  }
+
+  .status-confirmed {
+    @apply badge bg-breco-navy text-white;
+  }
+
+  .status-deposit-paid {
+    @apply badge bg-breco-gold text-white;
+  }
+
+  .status-in-progress {
+    @apply badge bg-breco-teal text-white;
+  }
+
+  .status-completed {
+    @apply badge-success;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-breco-gradient;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded hover:bg-gray-400;
+  }
+}
+
+/* Custom scrollbar for the whole app */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    page-break-before: always;
+  }
+
+  body {
+    background: white;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+  }
+}
