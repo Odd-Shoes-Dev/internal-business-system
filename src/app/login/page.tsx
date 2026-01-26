@@ -51,9 +51,9 @@ export default function LoginPage() {
             <Image
               src="/assets/logo.png"
               alt="BlueOx"
-              width={270}
-              height={108}
-              className="mx-auto -mb-4"
+              width={135}
+              height={54}
+              className="mx-auto"
             />
           </Link>
           <p className="text-breco-navy font-semibold text-lg mt-6">
@@ -157,9 +157,14 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-gray-600 text-sm mt-8">
-          &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
-        </p>
+        <div className="text-center mt-8">
+          <p className="text-gray-600 text-sm mb-1">
+            Powered by <span className="font-semibold text-breco-navy">BlueOx</span>
+          </p>
+          <p className="text-gray-500 text-xs">
+            &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   );

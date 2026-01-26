@@ -88,7 +88,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -96,15 +96,15 @@ export default function SignUpPage() {
             <Image
               src="/assets/logo.png"
               alt="BlueOx"
-              width={180}
-              height={72}
+              width={90}
+              height={36}
               className="mx-auto"
             />
           </Link>
         </div>
 
         {/* Sign Up Card */}
-        <div className="card shadow-xl border border-emerald-100">
+        <div className="card shadow-xl border border-blue-100">
           <div className="card-header">
             <h1 className="text-xl font-semibold text-gray-900">Create Account</h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -239,6 +239,16 @@ export default function SignUpPage() {
           <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm">
             ← Back to home
           </Link>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-gray-600 text-sm mb-1">
+            Powered by <span className="font-semibold text-breco-navy">BlueOx</span>
+          </p>
+          <p className="text-gray-500 text-xs">
+            &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
+          </p>
         </div>
       </div>
     </div>
