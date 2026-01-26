@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Business Management Platform',
-  description: 'Multi-tenant business management platform for tour operators, cafes, retail, and more',
+  description: 'Complete Business Management Platform for tour operators, cafes, retail, and more',
   icons: {
     icon: [
       { url: '/assets/logo_no_text.jpg', sizes: '32x32', type: 'image/jpeg' },

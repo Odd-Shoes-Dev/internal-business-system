@@ -3,7 +3,7 @@
   "short_name": "BizMgmt",
   "version": "1.0.0",
   "build": "2024.12.001",
-  "description": "Multi-tenant Business Management System - Tours, Finance, Operations, Inventory",
+  "description": "Complete Business Management Platform - Tours, Finance, Operations, Inventory",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
