@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   UserGroupIcon,
@@ -12,6 +13,7 @@ import {
 
 export default function NewCustomerPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,11 +50,20 @@ export default function NewCustomerPage() {
     setIsSubmitting(true);
     setError(null);
 
+    if (!company) {
+      setError('No company selected');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          company_id: company.id,
+        }),
       });
 
       if (!response.ok) {

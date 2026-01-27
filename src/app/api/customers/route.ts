@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('customers')
       .insert({
+        company_id,
         customer_number: numberData,
         name: body.name,
         company_name: body.company_name || null,

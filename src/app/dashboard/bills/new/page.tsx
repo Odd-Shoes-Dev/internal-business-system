@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
@@ -37,6 +38,7 @@ interface LineItem {
 
 export default function NewBillPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -66,10 +68,12 @@ export default function NewBillPage() {
   const [previousCurrency, setPreviousCurrency] = useState('USD');
 
   useEffect(() => {
-    fetchVendors();
-    fetchProducts();
-    fetchExchangeRates();
-  }, []);
+    if (company) {
+      fetchVendors();
+      fetchProducts();
+      fetchExchangeRates();
+    }
+  }, [company]);
 
   const fetchExchangeRates = async () => {
     try {
@@ -105,8 +109,10 @@ export default function NewBillPage() {
   };
 
   const fetchVendors = async () => {
+    if (!company) return;
+    
     try {
-      const response = await fetch('/api/vendors');
+      const response = await fetch(`/api/vendors?company_id=${company.id}&active=true`);
       const result = await response.json();
       setVendors(result.data || []);
     } catch (error) {
@@ -213,11 +219,16 @@ export default function NewBillPage() {
         throw new Error('Please add at least one line item with description, quantity, and price');
       }
 
+      if (!company) {
+        throw new Error('No company selected');
+      }
+
       const response = await fetch('/api/bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          company_id: company.id,
           line_items: validLineItems,
           subtotal,
           total,

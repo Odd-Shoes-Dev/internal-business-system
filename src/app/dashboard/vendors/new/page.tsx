@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   TruckIcon,
@@ -10,6 +11,7 @@ import {
 
 export default function NewVendorPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +44,17 @@ export default function NewVendorPage() {
     setIsSubmitting(true);
     setError(null);
 
+    if (!company) {
+      setError('No company selected');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // Prepare data, converting empty strings to null for UUID fields
       const submitData = {
         ...formData,
+        company_id: company.id,
         default_expense_account_id: formData.default_expense_account_id || null,
       };
 

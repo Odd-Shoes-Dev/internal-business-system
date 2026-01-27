@@ -307,9 +307,9 @@ export default function Home() {
                   <span>24/7 emergency hotline</span>
                 </li>
               </ul>
-              <Link href="/signup" className="btn-secondary w-full">
+              <a href="mailto:admin@blueoxjobs.eu?subject=Enterprise Plan Inquiry - BlueOx Business Platform" className="btn-secondary w-full text-center">
                 Contact Sales
-              </Link>
+              </a>
               <p className="text-xs text-gray-500 mt-3">$499 one-time setup fee</p>
             </div>
           </div>
@@ -393,6 +393,20 @@ export default function Home() {
             <p className="text-gray-600 text-sm mb-2">
               Built and powered by <span className="font-semibold text-breco-navy">BlueOx</span>
             </p>
+            <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-600 mb-3">
+              <a href="mailto:admin@blueoxjobs.eu" className="hover:text-breco-navy transition-colors">
+                📧 admin@blueoxjobs.eu
+              </a>
+              <a href="https://wa.me/48666250547" target="_blank" rel="noopener noreferrer" className="hover:text-breco-navy transition-colors">
+                💬 +48 666 250 547
+              </a>
+              <a href="https://wa.me/256726315664" target="_blank" rel="noopener noreferrer" className="hover:text-breco-navy transition-colors">
+                💬 +256 726 315 664
+              </a>
+              <a href="tel:+256783728865" className="hover:text-breco-navy transition-colors">
+                📞 +256 783 728 865
+              </a>
+            </div>
             <p className="text-gray-500 text-xs">
               &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
             </p>

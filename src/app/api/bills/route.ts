@@ -66,6 +66,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const body = await request.json();
+    
+    const { company_id } = body;
+
+    if (!company_id) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
 
     if (!body.vendor_id || !body.bill_date || !body.due_date) {
       return NextResponse.json(
@@ -77,6 +83,18 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user has access to this company
+    const { data: membership } = await supabase
+      .from('user_companies')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('company_id', company_id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Generate bill number
@@ -133,6 +151,7 @@ export async function POST(request: NextRequest) {
     const { data: bill, error: billError } = await supabase
       .from('bills')
       .insert({
+        company_id,
         bill_number: billNumber,
         vendor_id: body.vendor_id,
         bill_date: body.bill_date,

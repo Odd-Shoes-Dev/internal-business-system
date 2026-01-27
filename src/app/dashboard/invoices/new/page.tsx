@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
 import { formatCurrency as currencyFormatter, convertCurrency } from '@/lib/currency';
 import { useForm, useFieldArray } from 'react-hook-form';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -39,6 +40,7 @@ interface InvoiceFormData {
 export default function NewInvoicePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -203,11 +205,17 @@ export default function NewInvoicePage() {
       return;
     }
 
+    if (!company) {
+      toast.error('No company selected');
+      return;
+    }
+
     setLoading(true);
     try {
       // Use the API route to create invoice with proper document type handling
       const payload = {
         ...data,
+        company_id: company.id,
         ...(bookingId && { booking_id: bookingId }), // Include booking_id if present
       };
 

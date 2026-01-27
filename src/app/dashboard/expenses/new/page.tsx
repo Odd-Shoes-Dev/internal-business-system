@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   CreditCardIcon,
@@ -25,6 +26,7 @@ interface Account {
 
 export default function NewExpensePage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -48,13 +50,17 @@ export default function NewExpensePage() {
 
   const [attachments, setAttachments] = useState<File[]>([]);
   useEffect(() => {
-    fetchVendors();
-    fetchExpenseAccounts();
-  }, []);
+    if (company) {
+      fetchVendors();
+      fetchExpenseAccounts();
+    }
+  }, [company]);
 
   const fetchVendors = async () => {
+    if (!company) return;
+    
     try {
-      const response = await fetch('/api/vendors?active=true');
+      const response = await fetch(`/api/vendors?company_id=${company.id}&active=true`);
       const result = await response.json();
       setVendors(result.data || []);
     } catch (error) {
@@ -64,8 +70,10 @@ export default function NewExpensePage() {
   };
 
   const fetchExpenseAccounts = async () => {
+    if (!company) return;
+    
     try {
-      const response = await fetch('/api/accounts?type=expense&active=true');
+      const response = await fetch(`/api/accounts?company_id=${company.id}&type=expense&active=true`);
       const result = await response.json();
       setExpenseAccounts(result.data || []);
       // Set default expense account if available
@@ -142,7 +150,12 @@ export default function NewExpensePage() {
       }
 
       // Prepare the payload
+      if (!company) {
+        throw new Error('No company selected');
+      }
+
       const payload = {
+        company_id: company.id,
         expense_date: formData.expense_date,
         amount: formData.amount,
         expense_account_id: formData.expense_account_id,

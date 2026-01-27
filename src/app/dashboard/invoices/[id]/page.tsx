@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner } from '@/components/ui';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
@@ -72,6 +73,7 @@ interface Payment {
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [relatedBooking, setRelatedBooking] = useState<any | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -429,14 +431,13 @@ export default function InvoiceDetailPage() {
           <!-- Header -->
           <div class="header">
             <div class="company-section">
-              <img src="/assets/logo.jpg" alt="Breco Safaris Logo" class="logo" />
+              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name} Logo" class="logo" />` : ''}
               <div class="company-info">
-                <h1>Breco Safaris Ltd</h1>
-                <p class="address">Kampala Road Plot 14 Eagen House, Russel Street</p>
-                <p class="address">P.O.Box 144011, Kampala, Uganda</p>
-                <p class="address">Tel: +256 782 884 933 | +256 772 891 729 | +256 775 766 578</p>
-                <p class="address">Email: brecosafaris@gmail.com | Website: www.brecosafaris.com</p>
-                <p class="address">URA TIN: 1014756280 | URSB Reg. No: 80020001634842</p>
+                <h1>${company?.name || 'Company Name'}</h1>
+                ${company?.address ? `<p class="address">${company.address}</p>` : ''}
+                ${company?.phone ? `<p class="address">Tel: ${company.phone}</p>` : ''}
+                ${company?.email ? `<p class="address">Email: ${company.email}</p>` : ''}
+                ${company?.tax_id || company?.registration_number ? `<p class="address">${company?.tax_id ? `TIN: ${company.tax_id}` : ''}${company?.tax_id && company?.registration_number ? ' | ' : ''}${company?.registration_number ? `Reg. No: ${company.registration_number}` : ''}</p>` : ''}
               </div>
             </div>
             <div class="invoice-header">
