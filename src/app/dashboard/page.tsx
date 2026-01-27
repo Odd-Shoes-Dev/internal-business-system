@@ -126,7 +126,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome to {company?.name || 'Your Business'}</p>
+          <p className="text-gray-500 mt-1"> Welcome to {company?.name || 'Your Business'}</p>
         </div>
         <div className="flex gap-3">
           <Link href="/dashboard/invoices/new" className="btn-primary">
