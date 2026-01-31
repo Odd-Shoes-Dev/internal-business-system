@@ -4,12 +4,33 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customer_id');
 
     let query = supabase
       .from('invoices')
-      .select('total, amount_paid, currency, invoice_date, status, document_type');
+      .select('total, amount_paid, currency, invoice_date, status, document_type')
+      .eq('company_id', companyId);
 
     if (customerId) {
       query = query.eq('customer_id', customerId);

@@ -5,17 +5,36 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    // Fetch all financial data
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
+    // Fetch all financial data - FILTERED BY COMPANY
     const [
       { data: invoices },
       { data: bills },
       { data: expenses },
       { data: bankTransactions },
     ] = await Promise.all([
-      supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date'),
-      supabase.from('bills').select('total, amount_paid, status, currency, bill_date'),
-      supabase.from('expenses').select('total, currency, expense_date'),
-      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date, bank_accounts(currency)'),
+      supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date').eq('company_id', companyId),
+      supabase.from('bills').select('total, amount_paid, status, currency, bill_date').eq('company_id', companyId),
+      supabase.from('expenses').select('total, currency, expense_date').eq('company_id', companyId),
+      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date, bank_accounts(currency)').eq('company_id', companyId),
     ]);
 
     let totalRevenue = 0;
@@ -128,11 +147,12 @@ export async function GET() {
       }
     }
 
-    // Calculate inventory value
+    // Calculate inventory value - FILTERED BY COMPANY
     let inventoryValue = 0;
     const { data: inventoryItems } = await supabase
       .from('products')
       .select('quantity_on_hand, cost_price, currency')
+      .eq('company_id', companyId)
       .eq('track_inventory', true);
 
     if (inventoryItems) {

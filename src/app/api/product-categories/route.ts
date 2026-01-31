@@ -10,9 +10,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
     const { data, error } = await supabase
       .from('product_categories')
       .select('*')
+      .eq('company_id', companyId)
       .order('name');
 
     if (error) throw error;

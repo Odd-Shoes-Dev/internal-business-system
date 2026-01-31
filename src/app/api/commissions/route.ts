@@ -5,6 +5,26 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
     const { searchParams } = new URL(request.url);
     
     const commission_type = searchParams.get('commission_type');
@@ -22,7 +42,8 @@ export async function GET(request: NextRequest) {
         invoice:invoices(id, invoice_number),
         employee:employees(id, first_name, last_name),
         vendor:vendors(id, name)
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .eq('company_id', companyId);
 
     if (commission_type) query = query.eq('commission_type', commission_type);
     if (status) query = query.eq('status', status);

@@ -5,9 +5,29 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
     const { data: allItems, error } = await supabase
       .from('products')
       .select('quantity_on_hand, cost_price, currency, reorder_point')
+      .eq('company_id', companyId)
       .eq('track_inventory', true);
 
     if (error) throw error;

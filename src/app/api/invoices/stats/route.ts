@@ -5,10 +5,30 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    // Fetch all invoices with their currencies
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
+    // Fetch all invoices with their currencies - FILTERED BY COMPANY
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select('total, amount_paid, due_date, status, currency, invoice_date');
+      .select('total, amount_paid, due_date, status, currency, invoice_date')
+      .eq('company_id', companyId);
 
     if (error) throw error;
 

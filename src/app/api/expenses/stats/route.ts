@@ -5,15 +5,35 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userCompany, error: companyError } = await supabase
+      .from('user_companies')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (companyError || !userCompany) {
+      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    }
+
+    const companyId = userCompany.company_id;
+
     // Get current month date range
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    // Get all expenses for calculations
+    // Get all expenses for calculations - FILTERED BY COMPANY
     const { data: allExpenses, error } = await supabase
       .from('expenses')
-      .select('amount, currency, expense_date, status');
+      .select('amount, currency, expense_date, status')
+      .eq('company_id', companyId);
 
     if (error) throw error;
 
