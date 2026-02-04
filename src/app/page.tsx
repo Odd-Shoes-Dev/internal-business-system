@@ -228,7 +228,7 @@ export default function Home() {
         <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-8 md:p-12">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-breco-navy mb-3">
-              Why BlueOx vs Excel or QuickBooks?
+              Why BlueOx Business Platform vs Excel or QuickBooks?
             </h2>
             <p className="text-gray-600 text-lg">Purpose-built for modern businesses, not adapted from generic tools</p>
           </div>
@@ -570,7 +570,7 @@ export default function Home() {
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-gray-600">
-            Everything you need to know about BlueOx
+            Everything you need to know about BlueOx Business Platform
           </p>
         </div>
 
@@ -578,15 +578,15 @@ export default function Home() {
           {/* FAQ 1 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
             <h3 className="font-semibold text-lg text-breco-navy mb-2">
-              Is BlueOx only for tour operators?
+              Is BlueOx Business Platform only for tour operators?
             </h3>
             <p className="text-gray-600 mb-4">
-              No! BlueOx is a complete business management platform that works for ANY business. The core includes accounting, invoicing, inventory, expenses, and customer management. Tour operators, hotels, transport companies, retail shops, and restaurants can add industry-specific modules as needed. You get powerful financial management regardless of your industry.
+              No! BlueOx Business Platform is a complete business management system that works for ANY business. The core includes accounting, invoicing, inventory, expenses, and customer management. Tour operators, hotels, transport companies, retail shops, and restaurants can add industry-specific modules as needed. You get powerful financial management regardless of your industry.
             </p>
             
             {/* Business Categories Grid */}
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-700 mb-3">Businesses using BlueOx:</p>
+              <p className="text-sm font-medium text-gray-700 mb-3">Businesses using BlueOx Business Platform:</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <SparklesIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
@@ -746,7 +746,7 @@ export default function Home() {
               </a>
             </div>
             <p className="text-gray-500 text-xs">
-              &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
+              &copy; {new Date().getFullYear()} BlueOx Business Platform. All rights reserved.
             </p>
           </div>
         </div>
