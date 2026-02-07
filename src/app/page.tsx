@@ -16,6 +16,8 @@ import {
   BoltIcon,
   SparklesIcon,
   RocketLaunchIcon,
+  FireIcon,
+  EyeIcon,
   TruckIcon,
   ShoppingBagIcon,
   HomeModernIcon,
@@ -91,9 +93,16 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+        <div className="absolute bottom-40 left-1/4 w-40 h-40 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-2xl"></div>
+      </div>
+
+      {/* Navigation - Floating Design */}
+      <nav className="bg-white/70 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -108,13 +117,13 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               <Link
                 href="/login"
-                className="text-breco-navy hover:text-breco-navy/80 px-4 py-2 text-sm font-medium transition-colors"
+                className="text-blueox-primary hover:text-blueox-primary-hover px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg hover:bg-white/50"
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
-                className="btn-primary text-sm"
+                className="bg-blueox-primary hover:bg-blueox-primary-hover text-black px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02]"
               >
                 Get Started
               </Link>
@@ -123,380 +132,685 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20">
-        <div className="text-center">
-          <div className="mb-4">
-            <span className="inline-block text-sm font-medium text-breco-navy/70 bg-white px-4 py-2 rounded-full border border-blue-100">
-              Powered by BlueOx
-            </span>
-          </div>
-          <div className="mb-6">
-            <span className="inline-block text-base font-semibold text-white bg-gradient-to-r from-breco-navy to-breco-navy/90 px-6 py-2.5 rounded-full shadow-md">
-              30-Day Free Trial • Full Access • No Credit Card Required
-            </span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-breco-navy mb-6">
-            Business Management
-            <span className="block text-3xl sm:text-4xl lg:text-5xl mt-2 text-breco-navy/80">
-              Made Simple
-            </span>
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            A comprehensive platform for financial management, operations tracking, 
-            and business analytics. Everything you need to run your business efficiently.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/signup"
-              className="btn-primary text-lg px-8 py-3"
-            >
-              Start Free Trial
-            </Link>
-            <Link
-              href="/login"
-              className="btn-secondary text-lg px-8 py-3"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-breco-navy mb-4">
-            Powerful Features
-          </h2>
-          <p className="text-lg text-gray-600">
-            Built for modern businesses with everything you need in one place
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="card bg-white border border-blue-100 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="card-body">
-                <feature.icon className="h-10 w-10 text-breco-navy mb-4" />
-                <h3 className="text-lg font-semibold text-breco-navy mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  {feature.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="card bg-gradient-to-br from-blue-50 via-white to-purple-50 border border-blue-100 shadow-xl">
-          <div className="card-body text-center py-12">
-            <h2 className="text-3xl font-bold text-breco-navy mb-2">
-              Ready to Get Started?
-            </h2>
-            <p className="text-gray-700 text-xl mb-3 font-semibold">
-              Start your 30-day free trial today
-            </p>
-            <p className="text-gray-600 text-base mb-8 max-w-2xl mx-auto">
-              Full access to all features. No credit card required. 
-              Cancel anytime during your trial period.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                href="/signup"
-                className="btn bg-breco-navy text-white hover:bg-breco-navy/90 text-lg px-8 py-3 inline-block shadow-lg hover:shadow-xl transition-shadow"
-              >
-                Start Free Trial
-              </Link>
-              <div className="text-gray-600 text-sm">
-                Questions? Contact us for a demo
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Why BlueOx Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-8 md:p-12">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-breco-navy mb-3">
-              Why BlueOx Business Platform vs Excel or QuickBooks?
-            </h2>
-            <p className="text-gray-600 text-lg">Purpose-built for modern businesses, not adapted from generic tools</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <SparklesIcon className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-lg text-breco-navy mb-2">Smart Business Features</h3>
-              <p className="text-gray-600 text-sm">
-                Invoicing, inventory, CRM, and financial reporting built-in. Add industry modules only when you need them. No complex spreadsheets or workarounds.
-              </p>
-            </div>
+      {/* Hero Section - Asymmetrical Adventure Layout */}
+      <div className="relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[80vh]">
             
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CurrencyDollarIcon className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-lg text-breco-navy mb-2">Multi-Currency Built-In</h3>
-              <p className="text-gray-600 text-sm">
-                Handle USD, EUR, GBP, UGX seamlessly with automatic conversion. No manual exchange rate calculations or currency confusion.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BoltIcon className="w-8 h-8 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-lg text-breco-navy mb-2">Automated Workflows</h3>
-              <p className="text-gray-600 text-sm">
-                From quote to invoice to payment to reporting - streamlined for how real businesses work, saving 15+ hours every week.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+            {/* Left Side - Main Content (Larger) */}
+            <div className="lg:col-span-7 space-y-8">
+              <div className="space-y-6">
+                <div className="inline-block">
+                  <span className="text-sm font-medium text-blueox-primary bg-white/80 px-4 py-2 rounded-full border border-blueox-primary/20 shadow-sm backdrop-blur-sm flex items-center gap-2">
+                    <SparklesIcon className="w-4 h-4 text-blueox-primary" />
+                    Powered by BlueOx
+                  </span>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="overflow-hidden">
+                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight">
+                      <span className="block text-blueox-primary blueox-animate-slide-up">Business</span>
+                      <span className="block text-blueox-primary-dark blueox-animate-slide-up" style={{animationDelay: '0.2s'}}>Management</span>
+                      <span className="block text-2xl sm:text-3xl lg:text-4xl font-medium text-blueox-accent blueox-animate-slide-up mt-2 flex items-center gap-3" style={{animationDelay: '0.4s'}}>
+                        Made Simple
+                        <RocketLaunchIcon className="w-8 h-8 text-blueox-accent" />
+                      </span>
+                    </h1>
+                  </div>
+                  
+                  <p className="text-xl sm:text-2xl text-gray-600 max-w-2xl leading-relaxed blueox-animate-slide-up" style={{animationDelay: '0.6s'}}>
+                    Transform your business with our comprehensive platform for 
+                    <span className="font-semibold text-blueox-primary"> financial management</span>,
+                    <span className="font-semibold text-blueox-accent"> operations tracking</span>, and
+                    <span className="font-semibold text-blueox-primary-dark"> business analytics</span>.
+                  </p>
+                </div>
 
-      {/* Pricing Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-breco-navy mb-4">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="text-lg text-gray-600 mb-6">
-            Choose the plan that fits your business needs
-          </p>
-          
-          {/* Billing Period Toggle */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="inline-flex rounded-lg bg-gray-100 p-1">
-              <button
-                onClick={() => setBillingPeriod('monthly')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
-                  billingPeriod === 'monthly'
-                    ? 'bg-white text-breco-navy shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillingPeriod('annually')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
-                  billingPeriod === 'annually'
-                    ? 'bg-white text-breco-navy shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Annually
-              </button>
+                <div className="flex flex-col sm:flex-row gap-4 blueox-animate-slide-up" style={{animationDelay: '0.8s'}}>
+                  <Link
+                    href="/signup"
+                    className="group bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] flex items-center justify-center gap-2"
+                  >
+                    Start Your Journey
+                    <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="bg-white/80 backdrop-blur-sm hover:bg-white text-blueox-primary border-2 border-blueox-primary/20 hover:border-blueox-primary/40 px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-300 hover:shadow-lg"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+
+                {/* Trial Badge */}
+                <div className="blueox-animate-slide-up" style={{animationDelay: '1s'}}>
+                  <div className="inline-block bg-white border-2 border-blueox-primary text-blueox-primary px-6 py-3 rounded-xl font-medium shadow-lg flex items-center gap-2">
+                    30-Day Free Trial • No Credit Card Required
+                    <SparklesIcon className="w-5 h-5 text-blueox-primary" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-opacity ${
-              billingPeriod === 'annually' 
-                ? 'bg-green-100 text-green-800 opacity-100' 
-                : 'bg-green-100 text-green-800 opacity-0'
-            }`}>
-              Save 10%
-            </span>
-          </div>
-        </div>
-        
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 transition-opacity duration-300 ${
-          isLoadingPrices ? 'opacity-0' : 'opacity-100'
-        }`}>
-          {/* Loading Skeleton */}
-          {isLoadingPrices && (
-            <>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="card bg-white border border-blue-100 shadow-sm">
-                  <div className="card-body text-center">
-                    <div className="h-6 bg-gray-200 rounded w-1/3 mx-auto mb-4 animate-pulse"></div>
-                    <div className="h-12 bg-gray-200 rounded w-2/3 mx-auto mb-4 animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full mb-6 animate-pulse"></div>
-                    <div className="space-y-3 mb-6">
-                      {[1, 2, 3, 4].map((j) => (
-                        <div key={j} className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
-                      ))}
+
+            {/* Right Side - Visual Elements (Smaller but Engaging) */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative blueox-animate-fade-in" style={{animationDelay: '1.2s'}}>
+                {/* Stats Cards - Floating Effect */}
+                <div className="space-y-4">
+                  <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blueox-primary rounded-xl flex items-center justify-center">
+                        <ChartBarIcon className="w-6 h-6 text-black" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blueox-primary">15+</div>
+                        <div className="text-sm text-gray-600">Hours Saved Weekly</div>
+                      </div>
                     </div>
-                    <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+                  
+                  <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] ml-8">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blueox-accent rounded-xl flex items-center justify-center">
+                        <CurrencyDollarIcon className="w-6 h-6 text-black" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blueox-primary">95%</div>
+                        <div className="text-sm text-gray-600">Faster Invoicing</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blueox-primary-dark rounded-xl flex items-center justify-center">
+                        <ShieldCheckIcon className="w-6 h-6 text-black" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blueox-primary">99.9%</div>
+                        <div className="text-sm text-gray-600">Uptime Guarantee</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </>
-          )}
-
-          {/* Actual Pricing Cards */}
-          {!isLoadingPrices && (
-            <>
-          {/* Starter Plan */}
-          <div className="card bg-white border border-blue-100 shadow-sm">
-            <div className="card-body text-center">
-              <h3 className="text-xl font-semibold text-breco-navy mb-2">Starter</h3>
-              {billingPeriod === 'monthly' ? (
-                <div className="text-4xl font-bold text-breco-navy mb-4">
-                  {formatPrice(starterPrice.monthly, starterPrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <div className="text-4xl font-bold text-breco-navy">
-                    {formatPrice(starterPrice.annually, starterPrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">{formatPrice(starterPrice.annually * 12, starterPrice.currency)} billed annually</p>
-                </div>
-              )}
-              <p className="text-gray-600 text-sm mb-6">Perfect for solo operators and small businesses</p>
-              <ul className="text-left space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Up to 5 users</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>1GB storage</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Core accounting & invoicing</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>1 industry module</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Email support (48-hour response)</span>
-                </li>
-              </ul>
-              <Link href="/signup" className="btn-secondary w-full">
-                Start Trial
-              </Link>
-              <p className="text-xs text-gray-500 mt-3">Free setup • No onboarding fee</p>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Professional Plan */}
-          <div className="card bg-white border-2 border-breco-navy shadow-lg relative overflow-visible">
-            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
-              <span className="bg-breco-navy text-white px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap">
-                Most Popular
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 blueox-animate-fade-in" style={{animationDelay: '1.5s'}}>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-sm text-blueox-primary font-medium">Discover More</span>
+            <div className="w-6 h-10 border-2 border-blueox-primary rounded-full flex justify-center">
+              <div className="w-1 h-3 bg-blueox-primary rounded-full mt-2 animate-bounce"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section - Dynamic Zigzag Flow */}
+      <div className="relative py-20 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-transparent"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          {/* Section Header - Center */}
+          <div className="text-center mb-20">
+            <div className="inline-block blueox-animate-fade-in">
+              <span className="text-sm font-medium text-blueox-accent bg-blueox-accent/10 px-4 py-2 rounded-full flex items-center gap-2">
+                <RocketLaunchIcon className="w-4 h-4 text-blueox-accent" />
+                Powerful Features
               </span>
             </div>
-            <div className="card-body text-center pt-6">
-              <h3 className="text-xl font-semibold text-breco-navy mb-2">Professional</h3>
-              {billingPeriod === 'monthly' ? (
-                <div className="text-4xl font-bold text-breco-navy mb-4">
-                  {formatPrice(professionalPrice.monthly, professionalPrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <div className="text-4xl font-bold text-breco-navy">
-                    {formatPrice(professionalPrice.annually, professionalPrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
+            <h2 className="text-4xl sm:text-5xl font-bold text-blueox-primary mt-6 mb-4 blueox-animate-slide-up" style={{animationDelay: '0.2s'}}>
+              Everything You Need 
+              <span className="block text-blueox-primary-dark">In One Platform</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto blueox-animate-slide-up" style={{animationDelay: '0.4s'}}>
+              Built for modern businesses with advanced features that grow with you
+            </p>
+          </div>
+
+          {/* Feature 1 - Start Left */}
+          <div className="mb-24">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-6 blueox-animate-slide-up" style={{animationDelay: '0.6s'}}>
+                <div className="bg-gradient-to-br from-blueox-primary/10 to-blueox-accent/10 p-8 rounded-3xl border border-blueox-primary/20">
+                  <div className="w-16 h-16 bg-blueox-primary rounded-2xl flex items-center justify-center mb-6">
+                    <ChartBarIcon className="w-8 h-8 text-black" />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{formatPrice(professionalPrice.annually * 12, professionalPrice.currency)} billed annually</p>
+                  <h3 className="text-2xl font-bold text-blueox-primary mb-4">Financial Management</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                    Save 15+ hours per week with automated bookkeeping and invoicing. 
+                    Real-time financial insights with professional reports that help you make better business decisions.
+                  </p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Automated Workflows
+                    </span>
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Real-time Reports
+                    </span>
+                  </div>
                 </div>
-              )}
-              <p className="text-gray-600 text-sm mb-6">For growing businesses and tour operators</p>
-              <ul className="text-left space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Up to 25 users</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>10GB storage</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Full accounting suite</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Up to 3 industry modules</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Priority support & live chat</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Custom branding</span>
-                </li>
-              </ul>
-              <Link href="/signup" className="btn-primary w-full">
-                Start Trial
-              </Link>
-              <p className="text-xs text-gray-500 mt-3">{formatPrice(professionalPrice.setupFee, professionalPrice.currency)} one-time setup fee</p>
+              </div>
+              <div className="lg:col-span-6 flex justify-center relative">
+                {/* Visual Arrow */}
+                <div className="absolute -left-8 top-1/2 transform -translate-y-1/2 hidden lg:block">
+                  <div className="w-12 h-0.5 bg-gradient-to-r from-blueox-primary to-blueox-accent"></div>
+                  <div className="absolute right-0 top-0 w-0 h-0 border-l-4 border-l-blueox-accent border-t-2 border-b-2 border-t-transparent border-b-transparent transform translate-y-[-50%]"></div>
+                </div>
+                <div className="bg-white p-8 rounded-3xl shadow-2xl border border-blueox-primary/10 hover:shadow-3xl transition-all duration-300 blueox-animate-fade-in" style={{animationDelay: '0.8s'}}>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Revenue Growth</span>
+                      <span className="text-blueox-success text-sm font-semibold">↗ +24%</span>
+                    </div>
+                    <div className="text-3xl font-bold text-blueox-primary">$45,280</div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gradient-to-r from-blueox-primary to-blueox-accent h-2 rounded-full w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Enterprise Plan */}
-          <div className="card bg-white border border-blue-100 shadow-sm">
-            <div className="card-body text-center">
-              <h3 className="text-xl font-semibold text-breco-navy mb-2">Enterprise</h3>
-              {billingPeriod === 'monthly' ? (
-                <div className="text-4xl font-bold text-breco-navy mb-4">
-                  {formatPrice(enterprisePrice.monthly, enterprisePrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
+          {/* Feature 2 - Transition Right */}
+          <div className="mb-24">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-6 order-2 lg:order-1 flex justify-center relative">
+                {/* Visual Arrow */}
+                <div className="absolute -right-8 top-1/2 transform -translate-y-1/2 rotate-180 hidden lg:block">
+                  <div className="w-12 h-0.5 bg-gradient-to-r from-blueox-accent to-blueox-primary-dark"></div>
+                  <div className="absolute right-0 top-0 w-0 h-0 border-l-4 border-l-blueox-primary-dark border-t-2 border-b-2 border-t-transparent border-b-transparent transform translate-y-[-50%]"></div>
                 </div>
-              ) : (
-                <div className="mb-4">
-                  <div className="text-4xl font-bold text-breco-navy">
-                    {formatPrice(enterprisePrice.annually, enterprisePrice.currency)}<span className="text-lg font-normal text-gray-600">/month</span>
+                <div className="bg-white p-8 rounded-3xl shadow-2xl border border-blueox-accent/10 hover:shadow-3xl transition-all duration-300 blueox-animate-fade-in" style={{animationDelay: '1s'}}>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-blueox-accent mb-2">4</div>
+                    <div className="text-sm text-gray-600 mb-4">Supported Currencies</div>
+                    <div className="flex gap-2 justify-center">
+                      <span className="bg-blueox-accent/10 text-blueox-accent px-2 py-1 rounded text-xs font-medium">USD</span>
+                      <span className="bg-blueox-accent/10 text-blueox-accent px-2 py-1 rounded text-xs font-medium">EUR</span>
+                      <span className="bg-blueox-accent/10 text-blueox-accent px-2 py-1 rounded text-xs font-medium">GBP</span>
+                      <span className="bg-blueox-accent/10 text-blueox-accent px-2 py-1 rounded text-xs font-medium">UGX</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{formatPrice(enterprisePrice.annually * 12, enterprisePrice.currency)} billed annually</p>
                 </div>
-              )}
-              <p className="text-gray-600 text-sm mb-6">For large operations and multi-branch businesses</p>
-              <ul className="text-left space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Unlimited users</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>100GB storage</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Up to 7 industry modules</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>White-label option</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>Dedicated account manager</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">✓</span>
-                  <span>24/7 emergency hotline</span>
-                </li>
-              </ul>
-              <a href="mailto:admin@blueoxjobs.eu?subject=Enterprise Plan Inquiry - BlueOx Business Platform" className="btn-secondary w-full text-center">
-                Contact Sales
-              </a>
-              <p className="text-xs text-gray-500 mt-3">{formatPrice(enterprisePrice.setupFee, enterprisePrice.currency)} one-time setup fee</p>
+              </div>
+              <div className="lg:col-span-6 order-1 lg:order-2 blueox-animate-slide-up" style={{animationDelay: '1.2s'}}>
+                <div className="bg-gradient-to-br from-blueox-accent/10 to-blueox-primary-dark/10 p-8 rounded-3xl border border-blueox-accent/20">
+                  <div className="w-16 h-16 bg-blueox-accent rounded-2xl flex items-center justify-center mb-6">
+                    <CurrencyDollarIcon className="w-8 h-8 text-black" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-blueox-accent mb-4">Multi-Currency Support</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                    Process payments in USD, EUR, GBP, UGX with automatic conversion. 
+                    No more manual calculations or currency confusion - everything handled seamlessly.
+                  </p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Auto Conversion
+                    </span>
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Real-time Rates
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          </>
-          )}
+
+          {/* Feature 3 - Back to Left */}
+          <div className="mb-24">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-6 blueox-animate-slide-up" style={{animationDelay: '1.4s'}}>
+                <div className="bg-gradient-to-br from-blueox-primary-dark/10 to-blueox-success/10 p-8 rounded-3xl border border-blueox-primary-dark/20">
+                  <div className="w-16 h-16 bg-blueox-primary-dark rounded-2xl flex items-center justify-center mb-6">
+                    <DocumentTextIcon className="w-8 h-8 text-black" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-blueox-primary-dark mb-4">Smart Invoicing & Billing</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                    Generate professional invoices 95% faster with automated templates, 
+                    payment tracking, and follow-up reminders. Your cash flow will thank you.
+                  </p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Auto Templates
+                    </span>
+                    <span className="bg-blueox-success/10 text-blueox-success px-3 py-1 rounded-full font-medium">
+                      ✓ Payment Tracking
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="lg:col-span-6 flex justify-center relative">
+                {/* Visual Arrow */}
+                <div className="absolute -left-8 top-1/2 transform -translate-y-1/2 hidden lg:block">
+                  <div className="w-12 h-0.5 bg-gradient-to-r from-blueox-primary-dark to-blueox-success"></div>
+                  <div className="absolute right-0 top-0 w-0 h-0 border-l-4 border-l-blueox-success border-t-2 border-b-2 border-t-transparent border-b-transparent transform translate-y-[-50%]"></div>
+                </div>
+                <div className="bg-white p-8 rounded-3xl shadow-2xl border border-blueox-success/10 hover:shadow-3xl transition-all duration-300 blueox-animate-fade-in" style={{animationDelay: '1.6s'}}>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Invoice Processing</span>
+                      <span className="bg-white border border-blueox-success text-blueox-success text-xs px-2 py-1 rounded-full">95% Faster</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-blueox-primary-dark to-blueox-success rounded-full w-full animate-pulse"></div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600">
+                      From 2 hours → 6 minutes
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Call to Action with Flow Animation */}
+          <div className="text-center mt-20 blueox-animate-fade-in" style={{animationDelay: '1.8s'}}>
+            <div className="bg-gradient-to-r from-blueox-primary via-blueox-accent to-blueox-primary-dark p-1 rounded-3xl inline-block">
+              <div className="bg-white rounded-3xl px-12 py-8">
+                <h3 className="text-3xl font-bold text-blueox-primary mb-4 flex items-center justify-center gap-3">
+                  Ready for the Adventure?
+                  <RocketLaunchIcon className="w-8 h-8 text-blueox-primary" />
+                </h3>
+                <p className="text-gray-600 text-lg mb-6">
+                  Join thousands of businesses already transforming their operations
+                </p>
+                <Link
+                  href="/signup"
+                  className="bg-gradient-to-r from-blueox-primary to-blueox-accent hover:from-blueox-primary-hover hover:to-blueox-primary-dark text-black px-8 py-4 rounded-2xl text-lg font-semibold transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] inline-flex items-center gap-2 group"
+                >
+                  Start Your Journey
+                  <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Why BlueOx Section - Floating Cards Layout */}
+      <div className="relative py-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Curved Background Element */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blueox-primary/5 via-transparent to-blueox-accent/5 rounded-[3rem]"></div>
+          
+          <div className="relative">
+            {/* Header with Adventure Theme */}
+            <div className="text-center mb-16 blueox-animate-slide-up">
+              <span className="text-sm font-medium text-blueox-primary bg-blueox-primary/10 px-4 py-2 rounded-full flex items-center gap-2">
+                <BoltIcon className="w-4 h-4 text-blueox-primary" />
+                Why Choose BlueOx?
+              </span>
+              <h2 className="text-4xl sm:text-5xl font-bold text-blueox-primary mt-6 mb-4">
+                Beyond Spreadsheets
+                <span className="block text-blueox-accent">& Generic Tools</span>
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Purpose-built for modern businesses, not adapted from outdated solutions
+              </p>
+            </div>
+
+            {/* Staggered Feature Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
+              {/* Card 1 - Higher */}
+              <div className="lg:mt-0 blueox-animate-slide-up" style={{animationDelay: '0.2s'}}>
+                <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-blueox-primary/10 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] relative">
+                  <div className="w-20 h-20 bg-white border-2 border-blueox-primary rounded-2xl flex items-center justify-center mx-auto mb-6 relative">
+                    <SparklesIcon className="w-10 h-10 text-blueox-primary" />
+                    {/* Floating indicator */}
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blueox-success rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-black">1</span>
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-blueox-primary mb-4 text-center">Smart Business Features</h3>
+                  <p className="text-gray-600 leading-relaxed text-center">
+                    Invoicing, inventory, CRM, and financial reporting built-in. Add industry modules only when you need them. No complex spreadsheets or workarounds.
+                  </p>
+                  <div className="mt-6 text-center">
+                    <span className="text-blueox-accent font-semibold text-sm">All-in-One Solution →</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2 - Lower */}
+              <div className="lg:mt-12 blueox-animate-slide-up" style={{animationDelay: '0.4s'}}>
+                <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-blueox-accent/10 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] relative">
+                  <div className="w-20 h-20 bg-blueox-primary rounded-2xl flex items-center justify-center mx-auto mb-6 relative">
+                    <CurrencyDollarIcon className="w-10 h-10 text-black" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blueox-success rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-black">2</span>
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-blueox-accent mb-4 text-center">Multi-Currency Built-In</h3>
+                  <p className="text-gray-600 leading-relaxed text-center">
+                    Handle USD, EUR, GBP, UGX seamlessly with automatic conversion. No manual exchange rate calculations or currency confusion.
+                  </p>
+                  <div className="mt-6 text-center">
+                    <span className="text-blueox-primary font-semibold text-sm">Global Business Ready →</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3 - Higher again */}
+              <div className="lg:mt-6 blueox-animate-slide-up" style={{animationDelay: '0.6s'}}>
+                <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-xl border border-blueox-primary-dark/10 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] relative">
+                  <div className="w-20 h-20 bg-blueox-primary-dark rounded-2xl flex items-center justify-center mx-auto mb-6 relative">
+                    <BoltIcon className="w-10 h-10 text-black" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blueox-success rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-black">3</span>
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-blueox-primary-dark mb-4 text-center">Automated Workflows</h3>
+                  <p className="text-gray-600 leading-relaxed text-center">
+                    From quote to invoice to payment to reporting - streamlined for how real businesses work, saving 15+ hours every week.
+                  </p>
+                  <div className="mt-6 text-center">
+                    <span className="text-blueox-success font-semibold text-sm">Save 15+ Hours Weekly →</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Center connecting element */}
+            <div className="flex justify-center mt-16 blueox-animate-fade-in" style={{animationDelay: '0.8s'}}>
+              <div className="bg-gradient-to-r from-blueox-primary to-blueox-accent p-1 rounded-2xl">
+                <div className="bg-white rounded-2xl px-8 py-4 flex items-center gap-4">
+                  <RocketLaunchIcon className="w-6 h-6 text-blueox-primary" />
+                  <span className="text-blueox-primary font-semibold">Ready to experience the difference?</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pricing Section - Adventure Layout */}
+      <div className="relative py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Pricing Header */}
+          <div className="text-center mb-16 blueox-animate-slide-up">
+            <span className="text-sm font-medium text-blueox-accent bg-blueox-accent/10 px-4 py-2 rounded-full flex items-center gap-2">
+              <CurrencyDollarIcon className="w-4 h-4 text-blueox-accent" />
+              Simple Pricing
+            </span>
+            <h2 className="text-4xl sm:text-5xl font-bold text-blueox-primary mt-6 mb-4">
+              Choose Your 
+              <span className="block text-blueox-accent">Adventure Level</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+              Transparent pricing that grows with your business journey
+            </p>
+            
+            {/* Enhanced Billing Toggle */}
+            <div className="flex items-center justify-center gap-4 blueox-animate-fade-in" style={{animationDelay: '0.2s'}}>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-1 border border-blueox-primary/20 shadow-lg">
+                <button
+                  onClick={() => setBillingPeriod('monthly')}
+                  className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    billingPeriod === 'monthly'
+                      ? 'bg-blueox-primary text-black shadow-md'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingPeriod('annually')}
+                  className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    billingPeriod === 'annually'
+                      ? 'bg-blueox-primary text-black shadow-md'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Annually
+                </button>
+              </div>
+              <span className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                billingPeriod === 'annually' 
+                  ? 'bg-blueox-success/10 text-blueox-success opacity-100 scale-100' 
+                  : 'bg-blueox-success/10 text-blueox-success opacity-0 scale-95'
+              }`}>
+                <EyeIcon className="w-4 h-4" />
+                Save 10%
+              </span>
+            </div>
+          </div>
+          
+          {/* Pricing Cards - Asymmetrical Layout */}
+          <div className={`transition-opacity duration-500 ${
+            isLoadingPrices ? 'opacity-0' : 'opacity-100'
+          }`}>
+            {/* Loading State */}
+            {isLoadingPrices && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-lg">
+                    <div className="h-6 bg-gray-200 rounded w-1/3 mx-auto mb-6 animate-pulse"></div>
+                    <div className="h-12 bg-gray-200 rounded w-2/3 mx-auto mb-6 animate-pulse"></div>
+                    <div className="space-y-3 mb-8">
+                      {[1, 2, 3, 4].map((j) => (
+                        <div key={j} className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                      ))}
+                    </div>
+                    <div className="h-12 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Actual Pricing Cards */}
+            {!isLoadingPrices && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-end">
+                
+                {/* Starter Plan - Smaller */}
+                <div className="lg:mb-8 blueox-animate-slide-up" style={{animationDelay: '0.2s'}}>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 border border-blueox-primary/20 shadow-lg hover:shadow-xl transition-all duration-300 relative">
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold text-blueox-primary mb-4">Starter</h3>
+                      {billingPeriod === 'monthly' ? (
+                        <div className="text-4xl font-bold text-blueox-primary mb-2">
+                          {formatPrice(starterPrice.monthly, starterPrice.currency)}
+                          <span className="text-lg font-normal text-gray-600">/month</span>
+                        </div>
+                      ) : (
+                        <div className="mb-2">
+                          <div className="text-4xl font-bold text-blueox-primary">
+                            {formatPrice(starterPrice.annually, starterPrice.currency)}
+                            <span className="text-lg font-normal text-gray-600">/month</span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">{formatPrice(starterPrice.annually * 12, starterPrice.currency)} billed annually</p>
+                        </div>
+                      )}
+                      <p className="text-gray-600 mb-6">Perfect for solo operators</p>
+                      
+                      <ul className="text-left space-y-3 mb-8 text-sm">
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>Up to 5 users</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>1GB storage</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>Core accounting & invoicing</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>1 industry module</span>
+                        </li>
+                      </ul>
+                      
+                      <Link href="/signup" className="w-full bg-white border-2 border-blueox-primary text-blueox-primary hover:bg-blueox-primary hover:text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 inline-block">
+                        Start Journey
+                      </Link>
+                      <p className="text-xs text-gray-500 mt-3">30-day free trial</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Professional Plan - Largest (Featured) */}
+                <div className="lg:mb-0 relative blueox-animate-slide-up" style={{animationDelay: '0.4s'}}>
+                  {/* Popular Badge */}
+                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
+                    <div className="bg-white border-2 border-blueox-primary text-blueox-primary px-6 py-2 rounded-full font-semibold text-sm shadow-lg flex items-center gap-2">
+                      <FireIcon className="w-4 h-4 text-blueox-primary" />
+                      Most Popular
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-white to-blueox-primary/5 rounded-3xl p-10 border-2 border-blueox-primary shadow-2xl relative overflow-hidden">
+                    {/* Background decoration */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blueox-accent/10 to-transparent rounded-full blur-2xl"></div>
+                    
+                    <div className="text-center relative z-10">
+                      <h3 className="text-3xl font-bold text-blueox-primary mb-4">Professional</h3>
+                      {billingPeriod === 'monthly' ? (
+                        <div className="text-5xl font-bold text-blueox-primary mb-2">
+                          {formatPrice(professionalPrice.monthly, professionalPrice.currency)}
+                          <span className="text-xl font-normal text-gray-600">/month</span>
+                        </div>
+                      ) : (
+                        <div className="mb-2">
+                          <div className="text-5xl font-bold text-blueox-primary">
+                            {formatPrice(professionalPrice.annually, professionalPrice.currency)}
+                            <span className="text-xl font-normal text-gray-600">/month</span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">{formatPrice(professionalPrice.annually * 12, professionalPrice.currency)} billed annually</p>
+                        </div>
+                      )}
+                      <ul className="text-left space-y-3 mb-8 text-lg">
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>Up to 25 users</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>10GB storage</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>Full accounting suite</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>Up to 3 industry modules</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>API Access & Integrations</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-sm">✓</span>
+                          </span>
+                          <span>Priority support & live chat</span>
+                        </li>
+                      </ul>
+                      
+                      <Link href="/signup" className="w-full bg-gradient-to-r from-blueox-primary to-blueox-accent hover:from-blueox-primary-hover hover:to-blueox-primary-dark text-black px-6 py-4 rounded-2xl font-semibold transition-all duration-300 inline-block text-center shadow-xl hover:shadow-2xl">
+                        Start Adventure
+                      </Link>
+                      <p className="text-xs text-gray-500 mt-3">Most popular choice • 30-day free trial</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enterprise Plan - Smaller */}
+                <div className="lg:mb-6 blueox-animate-slide-up" style={{animationDelay: '0.6s'}}>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 border border-blueox-primary-dark/20 shadow-lg hover:shadow-xl transition-all duration-300 relative">
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold text-blueox-primary-dark mb-4">Enterprise</h3>
+                      {billingPeriod === 'monthly' ? (
+                        <div className="text-4xl font-bold text-blueox-primary-dark mb-2">
+                          {formatPrice(enterprisePrice.monthly, enterprisePrice.currency)}
+                          <span className="text-lg font-normal text-gray-600">/month</span>
+                        </div>
+                      ) : (
+                        <div className="mb-2">
+                          <div className="text-4xl font-bold text-blueox-primary-dark">
+                            {formatPrice(enterprisePrice.annually, enterprisePrice.currency)}
+                            <span className="text-lg font-normal text-gray-600">/month</span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">{formatPrice(enterprisePrice.annually * 12, enterprisePrice.currency)} billed annually</p>
+                        </div>
+                      )}
+                      <p className="text-gray-600 mb-6">For large operations</p>
+                      
+                      <ul className="text-left space-y-3 mb-8 text-sm">
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>Unlimited users</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>100GB storage</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>Up to 7 industry modules</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>White-label option</span>
+                        </li>
+                        <li className="flex items-center">
+                          <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blueox-success text-xs">✓</span>
+                          </span>
+                          <span>24/7 dedicated support</span>
+                        </li>
+                      </ul>
+                      
+                      <a href="mailto:admin@blueoxjobs.eu?subject=Enterprise Plan Inquiry - BlueOx Business Platform" className="w-full bg-white border-2 border-blueox-primary-dark text-blueox-primary-dark hover:bg-blueox-primary-dark hover:text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 inline-block text-center">
+                        Contact Sales
+                      </a>
+                      <p className="text-xs text-gray-500 mt-3">Custom pricing available</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
 
       {/* Industry Modules Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <div className="max-w-7xl mx-auto px-4 mt-8 sm:px-6 lg:px-8 pb-20">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-breco-navy mb-4">
+          <h2 className="text-3xl font-bold text-blueox-primary mb-4">
             Industry-Specific Modules
           </h2>
           <p className="text-lg text-gray-600">
@@ -507,7 +821,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Tours & Safari Management</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Tours & Safari Management</h3>
               <p className="text-sm text-gray-600 mb-3">$39/month</p>
               <p className="text-sm text-gray-600">Tour packages, itineraries, bookings, vehicle assignment, and guide scheduling</p>
             </div>
@@ -515,7 +829,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Fleet Management</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Fleet Management</h3>
               <p className="text-sm text-gray-600 mb-3">$35/month</p>
               <p className="text-sm text-gray-600">Vehicle tracking, maintenance scheduling, fuel monitoring, and driver management</p>
             </div>
@@ -523,7 +837,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Hotel Management</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Hotel Management</h3>
               <p className="text-sm text-gray-600 mb-3">$45/month</p>
               <p className="text-sm text-gray-600">Room inventory, bookings, check-in/out, housekeeping, and occupancy reports</p>
             </div>
@@ -531,7 +845,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Cafe & Restaurant POS</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Cafe & Restaurant POS</h3>
               <p className="text-sm text-gray-600 mb-3">$49/month</p>
               <p className="text-sm text-gray-600">Point of sale, menu management, table orders, and kitchen display system</p>
             </div>
@@ -539,7 +853,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Retail & Shop Management</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Retail & Shop Management</h3>
               <p className="text-sm text-gray-600 mb-3">$35/month</p>
               <p className="text-sm text-gray-600">Product catalog, inventory, barcode scanning, and POS system</p>
             </div>
@@ -547,7 +861,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Security Services</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Security Services</h3>
               <p className="text-sm text-gray-600 mb-3">$29/month</p>
               <p className="text-sm text-gray-600">Guard scheduling, site assignment, patrol logs, and incident reporting</p>
             </div>
@@ -555,7 +869,7 @@ export default function Home() {
 
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-breco-navy mb-2">Inventory & Assets</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Inventory & Assets</h3>
               <p className="text-sm text-gray-600 mb-3">$39/month</p>
               <p className="text-sm text-gray-600">Asset tracking, depreciation, maintenance scheduling, and multi-location warehouse support</p>
             </div>
@@ -566,7 +880,7 @@ export default function Home() {
       {/* FAQ Section */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-breco-navy mb-4">
+          <h2 className="text-3xl font-bold text-blueox-primary mb-4">
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-gray-600">
@@ -577,7 +891,7 @@ export default function Home() {
         <div className="space-y-6">
           {/* FAQ 1 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               Is BlueOx Business Platform only for tour operators?
             </h3>
             <p className="text-gray-600 mb-4">
@@ -654,7 +968,7 @@ export default function Home() {
 
           {/* FAQ 2 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               What currencies do you support?
             </h3>
             <p className="text-gray-600">
@@ -664,7 +978,7 @@ export default function Home() {
 
           {/* FAQ 3 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               Is my data secure?
             </h3>
             <p className="text-gray-600">
@@ -674,17 +988,17 @@ export default function Home() {
 
           {/* FAQ 4 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               Can I try it before paying?
             </h3>
             <p className="text-gray-600">
-              Absolutely! We offer a 30-day free trial with full access to all core platform features (accounting, invoicing, inventory, expenses, CRM, reporting). Industry modules can also be tested free during the trial. No credit card required to start.
+              Absolutely! We offer a 30-day free trial with the Professional plan - full access to all core features (accounting, invoicing, inventory, expenses, CRM, reporting) plus your choice of up to 3 industry modules. No credit card required to start.
             </p>
           </div>
 
           {/* FAQ 5 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               Do I need multiple modules?
             </h3>
             <p className="text-gray-600">
@@ -694,7 +1008,7 @@ export default function Home() {
 
           {/* FAQ 6 */}
           <div className="bg-white rounded-lg shadow-sm border border-blue-100 p-6">
-            <h3 className="font-semibold text-lg text-breco-navy mb-2">
+            <h3 className="font-semibold text-lg text-blueox-primary mb-2">
               Can I cancel anytime?
             </h3>
             <p className="text-gray-600">
@@ -708,12 +1022,13 @@ export default function Home() {
           <p className="text-gray-600 mb-4">Still have questions?</p>
           <a 
             href="mailto:admin@blueoxjobs.eu?subject=BlueOx Question" 
-            className="inline-flex items-center gap-2 text-breco-navy hover:text-breco-navy/80 font-semibold"
+            className="inline-flex items-center gap-2 text-blueox-primary hover:text-blueox-primary-hover font-semibold"
           >
             <EnvelopeIcon className="w-5 h-5" />
             Contact our team
           </a>
         </div>
+      </div>
       </div>
 
       {/* Footer */}
@@ -721,26 +1036,26 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-600 text-sm mb-2">
-              Built and powered by <span className="font-semibold text-breco-navy">BlueOx</span>
+              Built and powered by <span className="font-semibold text-blueox-primary">BlueOx</span>
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-600 mb-3">
-              <a href="mailto:admin@blueoxjobs.eu" className="hover:text-breco-navy transition-colors flex items-center gap-1">
+              <a href="mailto:admin@blueoxjobs.eu" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <EnvelopeIcon className="w-4 h-4" />
                 admin@blueoxjobs.eu
               </a>
-              <a href="https://wa.me/48666250547" target="_blank" rel="noopener noreferrer" className="hover:text-breco-navy transition-colors flex items-center gap-1">
+              <a href="https://wa.me/48666250547" target="_blank" rel="noopener noreferrer" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <ChatBubbleLeftRightIcon className="w-4 h-4" />
                 +48 666 250 547
               </a>
-              <a href="https://wa.me/3197010209759" target="_blank" rel="noopener noreferrer" className="hover:text-breco-navy transition-colors flex items-center gap-1">
+              <a href="https://wa.me/3197010209759" target="_blank" rel="noopener noreferrer" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <ChatBubbleLeftRightIcon className="w-4 h-4" />
                 +31 970 102 09759
               </a>
-              <a href="https://wa.me/256726315664" target="_blank" rel="noopener noreferrer" className="hover:text-breco-navy transition-colors flex items-center gap-1">
+              <a href="https://wa.me/256726315664" target="_blank" rel="noopener noreferrer" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <ChatBubbleLeftRightIcon className="w-4 h-4" />
                 +256 726 315 664
               </a>
-              <a href="tel:+256783728865" className="hover:text-breco-navy transition-colors flex items-center gap-1">
+              <a href="tel:+256783728865" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <PhoneIcon className="w-4 h-4" />
                 +256 783 728 865
               </a>

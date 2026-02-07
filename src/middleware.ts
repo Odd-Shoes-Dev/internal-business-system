@@ -10,6 +10,23 @@ export async function middleware(req: NextRequest) {
     },
   });
 
+  // Handle CORS for API routes
+  if (req.nextUrl.pathname.startsWith('/api/integrations/')) {
+    // Add CORS headers for external API access
+    res.headers.set('Access-Control-Allow-Origin', '*');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Salon-ID, X-API-Key');
+    res.headers.set('Access-Control-Max-Age', '86400');
+
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers: res.headers });
+    }
+
+    // Skip auth for API integration routes as they use API key auth
+    return res;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -83,6 +100,45 @@ export async function middleware(req: NextRequest) {
 
   if (isAuthPath && session) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Check subscription status for protected routes
+  if (isProtectedPath && session) {
+    // Skip billing and settings pages from subscription check
+    const skipSubscriptionCheck = ['/dashboard/billing', '/dashboard/settings'].some(
+      (path) => req.nextUrl.pathname.startsWith(path)
+    );
+
+    if (!skipSubscriptionCheck) {
+      // Get user's company subscription status
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.company_id) {
+        const { data: settings } = await supabase
+          .from('company_settings')
+          .select('subscription_status, trial_end_date')
+          .eq('company_id', profile.company_id)
+          .single();
+
+        // Redirect to billing if subscription is expired
+        if (settings?.subscription_status === 'expired') {
+          return NextResponse.redirect(new URL('/dashboard/billing?status=expired', req.url));
+        }
+
+        // Check if trial has ended
+        if (settings?.subscription_status === 'trial' && settings.trial_end_date) {
+          const trialEnd = new Date(settings.trial_end_date);
+          const now = new Date();
+          if (now > trialEnd) {
+            return NextResponse.redirect(new URL('/dashboard/billing?status=trial_expired', req.url));
+          }
+        }
+      }
+    }
   }
 
   return res;

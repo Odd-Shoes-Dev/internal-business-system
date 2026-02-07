@@ -49,6 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS companies_updated_at ON companies;
 CREATE TRIGGER companies_updated_at
   BEFORE UPDATE ON companies
   FOR EACH ROW

@@ -25,48 +25,48 @@ export interface PricingTier {
 export const PRICING: Record<'starter' | 'professional' | 'enterprise', PricingTier> = {
   starter: {
     AFRICA: {
-      monthly: 45000,
-      annually: 38000,
+      monthly: 70000,
+      annually: 60000,
       setupFee: 0,
       currency: 'UGX',
       symbol: 'UGX',
       region: 'AFRICA'
     },
     ASIA: {
-      monthly: 12,
-      annually: 10,
+      monthly: 19,
+      annually: 17,
       setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'ASIA'
     },
     EU: {
-      monthly: 25,
-      annually: 22,
+      monthly: 35,
+      annually: 32,
       setupFee: 0,
       currency: 'EUR',
       symbol: '€',
       region: 'EU'
     },
     GB: {
-      monthly: 22,
-      annually: 20,
+      monthly: 32,
+      annually: 29,
       setupFee: 0,
       currency: 'GBP',
       symbol: '£',
       region: 'GB'
     },
     US: {
-      monthly: 29,
-      annually: 26,
+      monthly: 39,
+      annually: 35,
       setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'US'
     },
     DEFAULT: {
-      monthly: 19,
-      annually: 17,
+      monthly: 29,
+      annually: 26,
       setupFee: 0,
       currency: 'USD',
       symbol: '$',
@@ -75,49 +75,49 @@ export const PRICING: Record<'starter' | 'professional' | 'enterprise', PricingT
   },
   professional: {
     AFRICA: {
-      monthly: 150000,
-      annually: 135000,
-      setupFee: 150000,
+      monthly: 250000,
+      annually: 225000,
+      setupFee: 0,
       currency: 'UGX',
       symbol: 'UGX',
       region: 'AFRICA'
     },
     ASIA: {
-      monthly: 39,
-      annually: 35,
-      setupFee: 39,
+      monthly: 69,
+      annually: 62,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'ASIA'
     },
     EU: {
-      monthly: 89,
-      annually: 80,
-      setupFee: 89,
+      monthly: 129,
+      annually: 116,
+      setupFee: 0,
       currency: 'EUR',
       symbol: '€',
       region: 'EU'
     },
     GB: {
-      monthly: 79,
-      annually: 71,
-      setupFee: 79,
+      monthly: 119,
+      annually: 107,
+      setupFee: 0,
       currency: 'GBP',
       symbol: '£',
       region: 'GB'
     },
     US: {
-      monthly: 99,
-      annually: 89,
-      setupFee: 99,
+      monthly: 149,
+      annually: 134,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'US'
     },
     DEFAULT: {
-      monthly: 69,
-      annually: 62,
-      setupFee: 69,
+      monthly: 99,
+      annually: 89,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'DEFAULT'
@@ -125,49 +125,49 @@ export const PRICING: Record<'starter' | 'professional' | 'enterprise', PricingT
   },
   enterprise: {
     AFRICA: {
-      monthly: 500000,
-      annually: 450000,
-      setupFee: 750000,
+      monthly: 900000,
+      annually: 810000,
+      setupFee: 0,
       currency: 'UGX',
       symbol: 'UGX',
       region: 'AFRICA'
     },
     ASIA: {
-      monthly: 149,
-      annually: 134,
-      setupFee: 249,
+      monthly: 249,
+      annually: 224,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'ASIA'
     },
     EU: {
-      monthly: 269,
-      annually: 242,
-      setupFee: 449,
+      monthly: 449,
+      annually: 404,
+      setupFee: 0,
       currency: 'EUR',
       symbol: '€',
       region: 'EU'
     },
     GB: {
-      monthly: 239,
-      annually: 215,
-      setupFee: 399,
+      monthly: 399,
+      annually: 359,
+      setupFee: 0,
       currency: 'GBP',
       symbol: '£',
       region: 'GB'
     },
     US: {
-      monthly: 299,
-      annually: 269,
-      setupFee: 499,
+      monthly: 499,
+      annually: 449,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'US'
     },
     DEFAULT: {
-      monthly: 199,
-      annually: 179,
-      setupFee: 299,
+      monthly: 349,
+      annually: 314,
+      setupFee: 0,
       currency: 'USD',
       symbol: '$',
       region: 'DEFAULT'
@@ -286,3 +286,101 @@ export function getRegionName(region: Region): string {
 export function getAnnualTotal(monthlyPrice: number): number {
   return monthlyPrice * 12;
 }
+
+// Module pricing per region
+export const MODULE_PRICING = {
+  AFRICA: {
+    tours: 75000,
+    fleet: 65000,
+    hotels: 85000,
+    cafe: 65000,
+    security: 55000,
+    inventory: 75000,
+    currencySymbol: 'UGX',
+  },
+  ASIA: {
+    tours: 19,
+    fleet: 17,
+    hotels: 22,
+    cafe: 17,
+    security: 14,
+    inventory: 19,
+    currencySymbol: '$',
+  },
+  EU: {
+    tours: 39,
+    fleet: 35,
+    hotels: 45,
+    cafe: 35,
+    security: 29,
+    inventory: 39,
+    currencySymbol: '€',
+  },
+  GB: {
+    tours: 35,
+    fleet: 31,
+    hotels: 40,
+    cafe: 31,
+    security: 26,
+    inventory: 35,
+    currencySymbol: '£',
+  },
+  US: {
+    tours: 39,
+    fleet: 35,
+    hotels: 45,
+    cafe: 35,
+    security: 29,
+    inventory: 39,
+    currencySymbol: '$',
+  },
+  DEFAULT: {
+    tours: 39,
+    fleet: 35,
+    hotels: 45,
+    cafe: 35,
+    security: 29,
+    inventory: 39,
+    currencySymbol: '$',
+  },
+};
+
+// Helper object for easier access (compatible with old code)
+export const regionalPricing = {
+  AFRICA: {
+    starter: { monthly: { min: 60, max: 70 }, annual: 60000, currencySymbol: 'UGX' },
+    professional: { monthly: { min: 200, max: 250 }, annual: 2700000, currencySymbol: 'UGX' },
+    enterprise: { monthly: { min: 800, max: 900 }, annual: 9720000, currencySymbol: 'UGX' },
+    modules: MODULE_PRICING.AFRICA,
+  },
+  ASIA: {
+    starter: { monthly: { min: 29, max: 39 }, annual: 408, currencySymbol: '$' },
+    professional: { monthly: { min: 99, max: 149 }, annual: 1608, currencySymbol: '$' },
+    enterprise: { monthly: { min: 349, max: 499 }, annual: 5388, currencySymbol: '$' },
+    modules: MODULE_PRICING.ASIA,
+  },
+  EU: {
+    starter: { monthly: { min: 29, max: 35 }, annual: 384, currencySymbol: '€' },
+    professional: { monthly: { min: 89, max: 129 }, annual: 1392, currencySymbol: '€' },
+    enterprise: { monthly: { min: 349, max: 449 }, annual: 4848, currencySymbol: '€' },
+    modules: MODULE_PRICING.EU,
+  },
+  GB: {
+    starter: { monthly: { min: 26, max: 32 }, annual: 348, currencySymbol: '£' },
+    professional: { monthly: { min: 79, max: 119 }, annual: 1284, currencySymbol: '£' },
+    enterprise: { monthly: { min: 299, max: 399 }, annual: 4308, currencySymbol: '£' },
+    modules: MODULE_PRICING.GB,
+  },
+  US: {
+    starter: { monthly: { min: 29, max: 39 }, annual: 408, currencySymbol: '$' },
+    professional: { monthly: { min: 99, max: 149 }, annual: 1608, currencySymbol: '$' },
+    enterprise: { monthly: { min: 349, max: 499 }, annual: 5388, currencySymbol: '$' },
+    modules: MODULE_PRICING.US,
+  },
+  DEFAULT: {
+    starter: { monthly: { min: 29, max: 39 }, annual: 408, currencySymbol: '$' },
+    professional: { monthly: { min: 99, max: 149 }, annual: 1608, currencySymbol: '$' },
+    enterprise: { monthly: { min: 349, max: 499 }, annual: 5388, currencySymbol: '$' },
+    modules: MODULE_PRICING.DEFAULT,
+  },
+};

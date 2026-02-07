@@ -21,7 +21,7 @@ This folder contains template contracts and legal documents for [Your Company Na
 **Action Required:**
 - [ ] Replace `[Your Company Name]` with your actual company name
 - [ ] Fill in your business address and contact info
-- [ ] Review pricing tiers ($29/$99/$299) and adjust if needed
+- [ ] Review pricing tiers ($29-39/$99-149/$349-499) and adjust if needed
 - [ ] Add your jurisdiction (country/state) for governing law
 - [ ] Have reviewed by lawyer familiar with SaaS agreements
 - [ ] Create DocuSign or similar e-signature workflow

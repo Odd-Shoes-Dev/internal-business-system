@@ -73,11 +73,13 @@ export default function SignUpPage() {
         router.push('/login');
       } else {
         // Auto-confirmed (for development)
-        toast.success(`Welcome to BlueOx! Your company "${companyName}" has been created.`);
+        toast.success(`Welcome! Let's customize your experience.`);
         
         // Wait for session and trigger to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
-        window.location.href = '/dashboard';
+        
+        // Redirect to module selection
+        router.push('/signup/select-modules');
       }
     } catch (error: any) {
       console.error('Signup error:', error);

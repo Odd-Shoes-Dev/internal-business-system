@@ -1,49 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* BlueOx Business Platform Design System */
 :root {
-  --breco-navy: #1e3a5f;
-  --breco-navy-light: #2a4a73;
-  --breco-navy-dark: #152a45;
-  --breco-gold: #d4a853;
-  --breco-teal: #0d9488;
-  --breco-safari: #8b7355;
+  /* Primary Brand Colors - Professional Royal Blue */
+  --blueox-primary: #2C4BA0;
+  --blueox-primary-hover: #1E40AF;
+  --blueox-primary-light: #4f46e5;
+  --blueox-primary-dark: #1e3a8a;
+  
+  /* Secondary Colors */
+  --blueox-secondary: #64748b;
+  --blueox-secondary-light: #94a3b8;
+  --blueox-secondary-dark: #475569;
+  
+  /* Accent Colors */
+  --blueox-accent: #4f46e5;
+  --blueox-accent-light: #818cf8;
+  --blueox-accent-dark: #2C4BA0;
+  
+  /* Status Colors */
+  --blueox-success: #059669;
+  --blueox-warning: #d97706;
+  --blueox-error: #dc2626;
+  --blueox-info: #0891b2;
+  
+  /* Business Context Colors */
+  --blueox-revenue: #059669;
+  --blueox-expense: #dc2626;
+  --blueox-neutral: #64748b;
+  --blueox-highlight: #2C4BA0;
+  --blueox-muted: #94a3b8;
+  
+  /* Background Colors */
+  --blueox-bg-primary: #ffffff;
+  --blueox-bg-secondary: #f8fafc;
+  --blueox-bg-tertiary: #f1f5f9;
+  
+  /* Text Colors */
+  --blueox-text-primary: #0f172a;
+  --blueox-text-secondary: #334155;
+  --blueox-text-muted: #64748b;
+  --blueox-text-light: #94a3b8;
+  --blueox-text-inverse: #ffffff;
+  
+  /* Border Colors */
+  --blueox-border-light: #e2e8f0;
+  --blueox-border-medium: #cbd5e1;
+  --blueox-border-dark: #94a3b8;
+  
+  /* Legacy breco support for backward compatibility */
+  --breco-navy: var(--blueox-primary);
+  --breco-navy-light: var(--blueox-primary-light);
+  --breco-navy-dark: var(--blueox-primary-dark);
+  --breco-gold: var(--blueox-warning);
+  --breco-teal: var(--blueox-accent);
+  --breco-safari: var(--blueox-secondary);
 }
 
 @layer base {
+  /* Base HTML elements */
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--blueox-bg-secondary);
+    color: var(--blueox-text-primary);
+  }
+
+  /* Typography improvements */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+    color: var(--blueox-text-primary);
+  }
+
+  p {
+    line-height: 1.6;
+    color: var(--blueox-text-secondary);
+  }
+
+  /* Focus styles */
+  *:focus-visible {
+    outline: 2px solid var(--blueox-primary);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  /* Selection styles */
+  ::selection {
+    background-color: var(--blueox-primary);
+    color: var(--blueox-text-inverse);
+  }
+
+  /* Form elements */
+  button {
+    font-family: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+  }
+
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
   }
 }
 
 @layer components {
+  /* Button Components - BlueOx Design System */
   .btn {
     @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   .btn-primary {
-    @apply btn bg-breco-navy text-white hover:bg-breco-navy-dark focus:ring-breco-navy;
+    @apply btn text-white hover:shadow-md focus:ring-blue-500;
+    background-color: var(--blueox-primary);
+  }
+  .btn-primary:hover {
+    background-color: var(--blueox-primary-hover);
   }
 
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500;
+    @apply btn bg-white border focus:ring-blue-500;
+    color: var(--blueox-text-secondary);
+    border-color: var(--blueox-border-medium);
+  }
+  .btn-secondary:hover {
+    background-color: var(--blueox-bg-tertiary);
+    color: var(--blueox-text-primary);
   }
 
   .btn-accent {
-    @apply btn bg-breco-teal text-white hover:bg-breco-teal-dark focus:ring-breco-teal;
+    @apply btn text-white hover:shadow-md focus:ring-sky-500;
+    background-color: var(--blueox-accent);
+  }
+  .btn-accent:hover {
+    background-color: var(--blueox-accent-dark);
   }
 
-  .btn-gold {
-    @apply btn bg-breco-gold text-white hover:bg-breco-gold-dark focus:ring-breco-gold;
+  .btn-success {
+    @apply btn text-white hover:shadow-md focus:ring-emerald-500;
+    background-color: var(--blueox-success);
+  }
+
+  .btn-warning {
+    @apply btn text-white hover:shadow-md focus:ring-amber-500;
+    background-color: var(--blueox-warning);
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn text-white hover:shadow-md focus:ring-red-500;
+    background-color: var(--blueox-error);
   }
 
   .btn-ghost {
-    @apply btn bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500;
+    @apply btn bg-transparent hover:bg-gray-100 focus:ring-gray-500;
+    color: var(--blueox-text-secondary);
+  }
+
+  /* Legacy btn-gold support */
+  .btn-gold {
+    @apply btn-warning;
   }
 
   .btn-sm {
@@ -54,24 +192,41 @@
     @apply px-6 py-3 text-base;
   }
 
+  /* Input Components */
   .input {
-    @apply block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy disabled:bg-gray-100 disabled:cursor-not-allowed;
+    @apply block w-full px-3 py-2 text-sm rounded-lg shadow-sm placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed;
+    border: 1px solid var(--blueox-border-medium);
+    font-family: 'Inter', sans-serif;
+  }
+  .input:focus {
+    border-color: var(--blueox-primary);
+    ring-color: var(--blueox-primary);
   }
 
   .input-error {
-    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+    border-color: var(--blueox-error);
+  }
+  .input-error:focus {
+    ring-color: var(--blueox-error);
   }
 
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium mb-1;
+    color: var(--blueox-text-primary);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
   }
 
+  /* Card Components */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+    @apply bg-white rounded-xl shadow-sm overflow-hidden;
+    border: 1px solid var(--blueox-border-light);
+    background-color: var(--blueox-bg-primary);
   }
 
   .card-header {
-    @apply px-6 py-4 border-b border-gray-200;
+    @apply px-6 py-4;
+    border-bottom: 1px solid var(--blueox-border-light);
   }
 
   .card-body {
@@ -79,31 +234,48 @@
   }
 
   .card-footer {
-    @apply px-6 py-4 bg-gray-50 border-t border-gray-200;
+    @apply px-6 py-4;
+    background-color: var(--blueox-bg-secondary);
+    border-top: 1px solid var(--blueox-border-light);
   }
 
+  /* Table Components */
   .table-container {
     @apply overflow-x-auto;
   }
 
   .table {
-    @apply min-w-full divide-y divide-gray-200;
+    @apply min-w-full divide-y;
+    border-color: var(--blueox-border-light);
   }
 
   .table th {
-    @apply px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50;
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+    color: var(--blueox-text-muted);
+    background-color: var(--blueox-bg-secondary);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
   }
 
   .table td {
-    @apply px-4 py-3 text-sm text-gray-900 whitespace-nowrap;
+    @apply px-4 py-3 text-sm whitespace-nowrap;
+    color: var(--blueox-text-primary);
+    font-family: 'Inter', sans-serif;
   }
 
   .table tbody tr {
-    @apply hover:bg-gray-50 transition-colors;
+    @apply transition-colors;
+    border-bottom: 1px solid var(--blueox-border-light);
+  }
+  .table tbody tr:hover {
+    background-color: var(--blueox-bg-secondary);
   }
 
+  /* Badge Components */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
   }
 
   .badge-success {
@@ -127,27 +299,36 @@
   }
 
   .badge-navy {
-    @apply badge bg-breco-navy text-white;
+    @apply badge text-white;
+    background-color: var(--blueox-primary);
   }
 
   .badge-gold {
-    @apply badge bg-breco-gold text-white;
+    @apply badge text-white;
+    background-color: var(--blueox-warning);
   }
 
+  /* Stat Card Components */
   .stat-card {
     @apply card p-6;
   }
 
   .stat-value {
-    @apply text-2xl font-bold text-gray-900;
+    @apply text-2xl font-bold;
+    color: var(--blueox-text-primary);
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
   }
 
   .stat-label {
-    @apply text-sm text-gray-500 mt-1;
+    @apply text-sm mt-1;
+    color: var(--blueox-text-muted);
+    font-family: 'Inter', sans-serif;
   }
 
   .stat-change {
     @apply flex items-center text-sm mt-2;
+  }
   }
 
   .stat-change-positive {
@@ -268,7 +449,6 @@
   .status-completed {
     @apply badge-success;
   }
-}
 
 @layer utilities {
   .text-gradient {

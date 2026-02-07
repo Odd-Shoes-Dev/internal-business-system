@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { CompanyProvider } from '@/contexts/company-context';
+import TrialWarningBanner from '@/components/trial-warning-banner';
 import type { UserProfile } from '@/types/database';
 import {
   HomeIcon,
@@ -116,6 +117,8 @@ export default function DashboardLayout({
   const [user, setUser] = useState<UserProfile | null>(null);
   const [company, setCompany] = useState<any>(null);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('');
+  const [trialEndDate, setTrialEndDate] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -152,7 +155,7 @@ export default function DashboardLayout({
           
           setUser(profile);
 
-          // Fetch company information
+          // Fetch company information and subscription status
           if (profile?.company_id) {
             const { data: companyData } = await supabase
               .from('companies')
@@ -161,6 +164,18 @@ export default function DashboardLayout({
               .single();
             
             setCompany(companyData);
+
+            // Fetch subscription status
+            const { data: settings } = await supabase
+              .from('company_settings')
+              .select('subscription_status, trial_end_date')
+              .eq('company_id', profile.company_id)
+              .single();
+            
+            if (settings) {
+              setSubscriptionStatus(settings.subscription_status || '');
+              setTrialEndDate(settings.trial_end_date || undefined);
+            }
           }
 
           // Fetch enabled modules
@@ -507,7 +522,14 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-4 lg:p-6">
+          {/* Trial Warning Banner */}
+          <TrialWarningBanner 
+            subscriptionStatus={subscriptionStatus}
+            trialEndDate={trialEndDate}
+          />
+          {children}
+        </main>
       </div>
     </div>
     </CompanyProvider>

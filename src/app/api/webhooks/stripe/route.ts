@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/stripe';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
+import {
+  sendPaymentSuccessEmail,
+  sendPaymentFailedEmail,
+  formatCurrencyForEmail,
+  formatDateForEmail,
+  getRetryDate,
+} from '@/lib/email/send';
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,6 +115,29 @@ export async function POST(request: NextRequest) {
                 },
               ]);
             }
+
+            // Send payment success email
+            try {
+              const { data: company } = await supabase
+                .from('companies')
+                .select('name, email')
+                .eq('id', invoice.company_id)
+                .single();
+
+              if (company?.email) {
+                await sendPaymentSuccessEmail({
+                  to: company.email,
+                  companyName: company.name,
+                  planName: 'Invoice Payment',
+                  amount: formatCurrencyForEmail(paymentIntent.amount, paymentIntent.currency),
+                  invoiceNumber: invoice.invoice_number,
+                  billingPeriodStart: formatDateForEmail(invoice.invoice_date),
+                  billingPeriodEnd: formatDateForEmail(invoice.due_date),
+                });
+              }
+            } catch (emailError) {
+              console.error('Failed to send payment success email:', emailError);
+            }
           }
         }
         break;
@@ -121,8 +151,27 @@ export async function POST(request: NextRequest) {
           // Log the failed payment attempt
           console.log(`Payment failed for invoice ${invoiceId}: ${paymentIntent.last_payment_error?.message}`);
           
-          // You could update the invoice with a failed payment note
-          // or send a notification to the business owner
+          // Send payment failed email
+          try {
+            const { data: invoice } = await supabase
+              .from('invoices')
+              .select('*, companies!inner(name, email)')
+              .eq('id', invoiceId)
+              .single();
+
+            if (invoice?.companies?.email) {
+              await sendPaymentFailedEmail({
+                to: invoice.companies.email,
+                companyName: invoice.companies.name,
+                planName: 'Invoice Payment',
+                amount: formatCurrencyForEmail(paymentIntent.amount, paymentIntent.currency),
+                failureReason: paymentIntent.last_payment_error?.message,
+                retryDate: getRetryDate(),
+              });
+            }
+          } catch (emailError) {
+            console.error('Failed to send payment failed email:', emailError);
+          }
         }
         break;
       }

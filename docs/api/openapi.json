@@ -1,0 +1,819 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BlueOx Business Platform API",
+    "description": "Comprehensive business management platform with accounting, CRM, and industry-specific modules. Integrate your POS systems, e-commerce platforms, and business applications with our robust API.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "BlueOx API Support",
+      "email": "api-support@blueox.app",
+      "url": "https://docs.api.blueox.app"
+    },
+    "license": {
+      "name": "BlueOx API License",
+      "url": "https://blueox.app/api-license"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.blueox.app",
+      "description": "Production server"
+    },
+    {
+      "url": "https://api-staging.blueox.app",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/api/integrations/salon/webhook": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Salon Transaction Webhook",
+        "description": "Send transaction data from salon/POS systems to BlueOx for automatic accounting entry creation",
+        "operationId": "salonWebhook",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-System-ID",
+            "in": "header",
+            "required": true,
+            "description": "Unique identifier for the external system",
+            "schema": {
+              "type": "string",
+              "example": "hairstudio_001"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalonWebhookRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transaction processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/integrations/reports/financial-summary": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Financial Summary Report",
+        "description": "Retrieve financial data for external dashboards and reporting systems",
+        "operationId": "getFinancialSummary",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-System-ID",
+            "in": "header",
+            "required": true,
+            "description": "Unique identifier for the external system",
+            "schema": {
+              "type": "string",
+              "example": "dashboard_001"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Start date for the report period (YYYY-MM-DD)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-02-01"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "End date for the report period (YYYY-MM-DD)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-02-29"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Financial summary data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/integrations/api-keys": {
+      "post": {
+        "tags": ["API Keys"],
+        "summary": "Create API Key",
+        "description": "Create a new API key for external system integration (Admin only)",
+        "operationId": "createApiKey",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": true,
+            "description": "Company UUID for the integration",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "API key created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "get": {
+        "tags": ["API Keys"],
+        "summary": "List API Keys",
+        "description": "List all API integrations for a company (without exposing actual keys)",
+        "operationId": "listApiKeys",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": true,
+            "description": "Company UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of integrations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListApiKeysResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "API key for external system authentication. Format: 'Bearer bmp_your_api_key_here'"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token for authenticated user sessions"
+      }
+    },
+    "schemas": {
+      "SalonWebhookRequest": {
+        "type": "object",
+        "required": ["event", "salon_id", "data"],
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": ["salon.sale.completed", "salon.payment.received", "salon.refund.issued"],
+            "description": "Type of event being reported"
+          },
+          "salon_id": {
+            "type": "string",
+            "description": "Unique identifier for the salon/business location"
+          },
+          "data": {
+            "$ref": "#/components/schemas/SaleData"
+          }
+        },
+        "example": {
+          "event": "salon.sale.completed",
+          "salon_id": "hairstudio_001",
+          "data": {
+            "sale_id": "SALE_2026_001",
+            "customer_name": "Sarah Johnson",
+            "customer_id": "CUST_12345",
+            "amount": 85000.00,
+            "tax_amount": 12750.00,
+            "payment_method": "mobile_money",
+            "currency": "UGX",
+            "services": [
+              {
+                "service_name": "Hair Cut & Style",
+                "staff_member": "Maria Santos",
+                "amount": 45000.00,
+                "commission_amount": 9000.00
+              }
+            ],
+            "timestamp": "2026-02-06T14:30:00Z",
+            "reference_number": "REF_001"
+          }
+        }
+      },
+      "SaleData": {
+        "type": "object",
+        "required": ["sale_id", "customer_name", "amount", "payment_method", "currency", "timestamp"],
+        "properties": {
+          "sale_id": {
+            "type": "string",
+            "description": "Unique sales transaction identifier in external system"
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Customer's full name"
+          },
+          "customer_id": {
+            "type": "string", 
+            "description": "Customer ID in external system"
+          },
+          "amount": {
+            "type": "number",
+            "multipleOf": 0.01,
+            "minimum": 0,
+            "description": "Total transaction amount including tax"
+          },
+          "tax_amount": {
+            "type": "number",
+            "multipleOf": 0.01,
+            "minimum": 0,
+            "description": "Tax amount (VAT, sales tax, etc.)"
+          },
+          "payment_method": {
+            "type": "string",
+            "enum": ["cash", "card", "mobile_money", "bank_transfer"],
+            "description": "Method of payment"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceItem"
+            },
+            "description": "List of services/products sold"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Transaction timestamp in ISO 8601 format"
+          },
+          "reference_number": {
+            "type": "string",
+            "description": "Receipt or reference number"
+          }
+        }
+      },
+      "ServiceItem": {
+        "type": "object",
+        "required": ["service_name", "amount"],
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "Name of the service or product"
+          },
+          "staff_member": {
+            "type": "string",
+            "description": "Staff member who provided the service"
+          },
+          "amount": {
+            "type": "number",
+            "multipleOf": 0.01,
+            "minimum": 0,
+            "description": "Price of this service/product"
+          },
+          "commission_amount": {
+            "type": "number",
+            "multipleOf": 0.01,
+            "minimum": 0,
+            "description": "Commission amount for the staff member"
+          }
+        }
+      },
+      "WebhookSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "journal_entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the created journal entry in BlueOx"
+          },
+          "amount_recorded": {
+            "type": "number",
+            "description": "Total amount recorded in the accounting system"
+          },
+          "message": {
+            "type": "string",
+            "example": "Sale successfully recorded in accounting system"
+          }
+        }
+      },
+      "FinancialSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/FinancialSummaryData"
+          }
+        }
+      },
+      "FinancialSummaryData": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "object",
+            "properties": {
+              "start_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "end_date": {
+                "type": "string", 
+                "format": "date"
+              }
+            }
+          },
+          "revenue": {
+            "type": "object",
+            "properties": {
+              "total_revenue": {
+                "type": "number",
+                "description": "Total revenue for the period"
+              },
+              "sales_count": {
+                "type": "integer",
+                "description": "Number of sales transactions"
+              },
+              "average_sale": {
+                "type": "number",
+                "description": "Average sale amount"
+              }
+            }
+          },
+          "expenses": {
+            "type": "object",
+            "properties": {
+              "total_expenses": {
+                "type": "number",
+                "description": "Total expenses for the period"
+              },
+              "expense_count": {
+                "type": "integer",
+                "description": "Number of expense transactions"
+              }
+            }
+          },
+          "cash": {
+            "type": "object",
+            "properties": {
+              "current_balance": {
+                "type": "number",
+                "description": "Current cash and bank balance"
+              },
+              "cash_accounts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CashAccount"
+                }
+              }
+            }
+          },
+          "customers": {
+            "type": "object",
+            "properties": {
+              "total_customers": {
+                "type": "integer"
+              },
+              "new_customers": {
+                "type": "integer"
+              },
+              "active_customers": {
+                "type": "integer"
+              }
+            }
+          },
+          "profitability": {
+            "type": "object",
+            "properties": {
+              "gross_profit": {
+                "type": "number"
+              },
+              "profit_margin": {
+                "type": "number",
+                "description": "Profit margin percentage"
+              }
+            }
+          }
+        }
+      },
+      "CashAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "number"
+          }
+        }
+      },
+      "CreateApiKeyRequest": {
+        "type": "object",
+        "required": ["integration_name", "external_system_id"],
+        "properties": {
+          "integration_name": {
+            "type": "string",
+            "description": "Human-readable name for the integration"
+          },
+          "external_system_id": {
+            "type": "string",
+            "description": "Unique identifier for the external system"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["read:financial_reports", "read:customer_data", "write:transactions", "read:inventory", "write:inventory"]
+            },
+            "description": "Array of permissions to grant"
+          },
+          "allowed_events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["salon.sale.completed", "salon.payment.received", "salon.refund.issued", "salon.appointment.created", "salon.customer.updated"]
+            },
+            "description": "Array of event types this integration can send"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description of the integration"
+          }
+        }
+      },
+      "CreateApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "integration_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "api_key": {
+                "type": "string",
+                "description": "Generated API key - store securely, cannot be retrieved again"
+              },
+              "integration_name": {
+                "type": "string"
+              },
+              "external_system_id": {
+                "type": "string"
+              },
+              "permissions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "allowed_events": {
+                "type": "array", 
+                "items": {
+                  "type": "string"
+                }
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "API key created successfully. Store this key securely - it cannot be retrieved again."
+          }
+        }
+      },
+      "ListApiKeysResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "integration_name": {
+                  "type": "string"
+                },
+                "external_system_id": {
+                  "type": "string"
+                },
+                "api_key_preview": {
+                  "type": "string",
+                  "example": "bmp_*****12345",
+                  "description": "Partial API key for identification"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "allowed_events": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "is_active": {
+                  "type": "boolean"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "last_used_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "error_code": {
+            "type": "string",
+            "description": "Machine-readable error code"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional error details"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - validation errors or malformed data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Validation failed",
+              "error_code": "VALIDATION_ERROR",
+              "details": "Required field 'customer_name' is missing",
+              "timestamp": "2026-02-06T14:30:00Z"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - invalid or missing API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Invalid API key",
+              "error_code": "INVALID_API_KEY",
+              "details": "API key is invalid or expired",
+              "timestamp": "2026-02-06T14:30:00Z"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - insufficient permissions",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Insufficient permissions",
+              "error_code": "INSUFFICIENT_PERMISSIONS",
+              "details": "API key lacks 'write:transactions' permission",
+              "timestamp": "2026-02-06T14:30:00Z"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "description": "Request limit per window",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "description": "Requests remaining in window",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Reset": {
+            "description": "Unix timestamp when rate limit resets",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Rate limit exceeded",
+              "error_code": "RATE_LIMIT_EXCEEDED",
+              "details": "Maximum 100 requests per minute exceeded. Try again later.",
+              "timestamp": "2026-02-06T14:30:00Z"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Internal server error",
+              "error_code": "INTERNAL_ERROR",
+              "details": "An unexpected error occurred. Please try again later.",
+              "timestamp": "2026-02-06T14:30:00Z"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Webhooks",
+      "description": "Endpoints for receiving data from external systems"
+    },
+    {
+      "name": "Reports",
+      "description": "Financial and business data retrieval endpoints"
+    },
+    {
+      "name": "API Keys",
+      "description": "API key management and authentication"
+    }
+  ]
+}

@@ -8,12 +8,12 @@
 
 ## 📊 SUBSCRIPTION PLANS OVERVIEW
 
-### STARTER PLAN - $29/month
+### STARTER PLAN - $29-39/month
 **Perfect for:** Solo operators, small businesses just starting out
 
 **Included:**
 - 1 company account
-- Up to 5 users
+- Up to 3 users
 - 1GB storage
 - Core accounting & invoicing
 - **1 industry module** (choose one)
@@ -22,19 +22,19 @@
 - Mobile access
 - Data export (CSV/JSON)
 
-**Setup Fee:** $0 (Free onboarding)
+**Setup Fee:** $0 (No setup fees - self-service onboarding)
 
 ---
 
-### PROFESSIONAL PLAN - $99/month ⭐ RECOMMENDED
+### PROFESSIONAL PLAN - $99-149/month ⭐ RECOMMENDED
 **Perfect for:** Growing businesses, tour operators, multi-department companies
 
 **Included:**
 - 1 company account
-- Up to 25 users
+- Up to 10 users
 - 10GB storage
 - Full accounting suite
-- **Up to 3 industry modules** (choose any three)
+- **Unlimited industry modules** (choose any)
 - Custom branding on invoices/receipts
 - Priority support (24-hour response)
 - Live chat support
@@ -44,14 +44,11 @@
 - Data export (CSV/JSON/PDF)
 - API access (basic)
 
-**Setup Fee:** $99 (one-time)
-- Includes data migration assistance
-- 1-hour onboarding call
-- Setup consultation
+**Setup Fee:** $0 (No setup fees)
 
 ---
 
-### ENTERPRISE PLAN - $299/month
+### ENTERPRISE PLAN - $349-499/month
 **Perfect for:** Large operations, multi-branch businesses, franchise groups
 
 **Included:**
@@ -59,7 +56,7 @@
 - Unlimited users
 - 100GB storage
 - Full accounting suite
-- **All 7 industry modules unlocked**
+- **All industry modules unlocked**
 - White-label option (remove our branding)
 - Dedicated account manager
 - Phone + email + chat support (4-hour response)
@@ -73,11 +70,7 @@
 - Quarterly business reviews
 - Custom integrations (up to 3/year included)
 
-**Setup Fee:** $499 (one-time)
-- Includes full data migration
-- Custom onboarding plan
-- Team training (up to 4 hours)
-- Dedicated implementation specialist
+**Setup Fee:** $0 (No setup fees)
 
 ---
 
@@ -528,20 +521,20 @@
 
 ## 📊 PRICING COMPARISON TABLE
 
-| Feature | Starter $29 | Professional $99 | Enterprise $299 |
+| Feature | Starter $29-39 | Professional $99-149 | Enterprise $349-499 |
 |---------|-------------|------------------|-----------------|
-| **Users** | 5 | 25 | Unlimited |
+| **Users** | 3 | 10 | Unlimited |
 | **Storage** | 1GB | 10GB | 100GB |
-| **Modules** | 1 | 3 | All 7 |
+| **Modules** | 1 | Unlimited | All Modules |
 | **Support** | Email (48h) | Email+Chat (24h) | Phone+Email+Chat (4h) |
-| **Setup Fee** | $0 | $99 | $499 |
+| **Setup Fee** | $0 | $0 | $0 |
 | **Custom Branding** | ❌ | ✅ | ✅ |
 | **API Access** | ❌ | Basic | Full + Webhooks |
 | **Account Manager** | ❌ | ❌ | ✅ |
 | **Custom Reports** | ❌ | ❌ | ✅ |
 | **White Label** | ❌ | ❌ | ✅ |
 | **SLA** | 99.5% | 99.5% | 99.5% + 24/7 hotline |
-| **Training** | Self-service | 1-hour onboarding | 4-hour + quarterly reviews |
+| **Training** | Self-service | Self-service | Quarterly reviews |
 | **Data Export** | CSV | CSV/JSON/PDF | All formats + API |
 | **Uptime Credits** | ✅ | ✅ | ✅ Enhanced |
 
@@ -625,31 +618,28 @@
 **Needs:** Tours, Fleet, Hotels, 40 users, custom integrations
 
 **Enterprise Plan:**
-- Enterprise: $299/month
+- Enterprise: $499/month
 - All modules included
 - Unlimited users
 - Dedicated support
-- **Total: $299/month**
+- **Total: $499/month**
 
-**Plus one-time:**
-- Setup: $499
-- Custom integration (booking engine): $3,500
-- **First year total:** $3,588 + ($299 × 12) = $7,176
+**Optional Premium Services:**
+- White Glove Onboarding: $499 (one-time)
+- Custom integration: Contact sales
+- **First year total:** $499 + ($499 × 12) = $6,487
 
 ---
 
 ### Example 4: Multi-Branch Hotel Chain (5 locations)
 **Needs:** Hotel module, 15 users per location, consolidated reporting
 
-**Enterprise with Volume Discount:**
-- 5 Professional accounts @ $99 = $495/month
-- 10% volume discount = **$445.50/month**
-- Setup: $499 (one-time)
-
-**OR Enterprise Multi-Company:**
-- Enterprise: $299/month
+**Enterprise Multi-Company:**
+- Enterprise: $499/month
 - Includes multi-company support
 - Unlimited users across all branches
+- All modules included
+- **Total: $499/month**
 - **Better value: $299/month**
 
 ---
