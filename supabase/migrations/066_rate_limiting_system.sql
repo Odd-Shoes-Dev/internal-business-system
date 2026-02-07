@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS rate_limit_requests (
   user_agent TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
+ 
 -- =====================================================
 -- CREATE INDEXES FOR PERFORMANCE
 -- =====================================================
