@@ -290,8 +290,14 @@ export default function DashboardLayout({
 
   return (
     <CompanyProvider>
-      <div className="min-h-screen bg-gray-50">
-        {/* Mobile sidebar overlay */}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+          <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+          <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
+        </div>
+          {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -301,12 +307,12 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white/90 backdrop-blur-xl border-r border-blueox-primary/20 transform transition-transform duration-300 lg:translate-x-0 shadow-2xl ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-blueox-primary/20">
           <Link href="/dashboard" className="flex items-center gap-2">
             {company?.logo_url ? (
               <Image
@@ -317,16 +323,16 @@ export default function DashboardLayout({
                 className="rounded object-contain"
               />
             ) : (
-              <div className="w-9 h-9 rounded bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-black font-bold text-sm shadow-lg">
                 {company?.name?.[0]?.toUpperCase() || 'C'}
               </div>
             )}
-            <span className="font-semibold text-breco-navy truncate">
+            <span className="font-semibold text-blueox-primary-dark truncate">
               {company?.name || 'Company'}
             </span>
           </Link>
           <button
-            className="lg:hidden p-1 rounded hover:bg-gray-100"
+            className="lg:hidden p-1 rounded-xl hover:bg-blueox-primary/10 transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <XMarkIcon className="w-5 h-5" />
@@ -339,7 +345,7 @@ export default function DashboardLayout({
             .filter(group => !group.module || enabledModules.includes(group.module))
             .map((group) => (
             <div key={group.name}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">
+              <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
                 {group.name}
               </p>
               <div className="space-y-1">
@@ -368,15 +374,15 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4">
+        <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm">
           <div className="flex items-center gap-4">
             <button
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+              className="lg:hidden p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
               onClick={() => setSidebarOpen(true)}
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900 hidden sm:block">
+            <h1 className="text-lg font-semibold text-blueox-primary-dark hidden sm:block">
               {company?.name || 'Dashboard'} - Operations
             </h1>
           </div>
@@ -385,12 +391,12 @@ export default function DashboardLayout({
             {/* Notifications */}
             <div className="relative">
               <button 
-                className="p-2 rounded-lg hover:bg-gray-100 relative"
+                className="p-2 rounded-xl hover:bg-blueox-primary/10 relative transition-colors"
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
               >
-                <BellIcon className="w-5 h-5 text-gray-600" />
+                <BellIcon className="w-5 h-5 text-blueox-primary" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-breco-navy rounded-full" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-blueox-primary rounded-full" />
                 )}
               </button>
 
@@ -400,17 +406,17 @@ export default function DashboardLayout({
                     className="fixed inset-0 z-40"
                     onClick={() => setNotificationsOpen(false)}
                   />
-                  <div className="dropdown animate-fade-in w-60 sm:w-80 -right-20 sm:right-0 max-w-[calc(100vw-1rem)]">
-                    <div className="p-3 border-b border-gray-200">
+                  <div className="bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl animate-fade-in w-60 sm:w-80 -right-20 sm:right-0 max-w-[calc(100vw-1rem)]">
+                    <div className="p-3 border-b border-blueox-primary/20">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
-                        <span className="text-xs text-gray-500">{notifications.length} items</span>
+                        <h3 className="text-sm font-medium text-blueox-primary-dark">Notifications</h3>
+                        <span className="text-xs text-blueox-primary/60">{notifications.length} items</span>
                       </div>
                     </div>
                     <div className="py-1 max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          <BellIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                        <div className="p-4 text-center text-blueox-primary/60">
+                          <BellIcon className="w-8 h-8 mx-auto text-blueox-primary/40 mb-2" />
                           <p className="text-sm">No new notifications</p>
                         </div>
                       ) : (
@@ -418,7 +424,7 @@ export default function DashboardLayout({
                           <Link
                             key={notification.id}
                             href={notification.href}
-                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            className="block px-4 py-3 hover:bg-blueox-primary/5 border-b border-blueox-primary/10 last:border-b-0 transition-colors"
                             onClick={() => setNotificationsOpen(false)}
                           >
                             <div className="flex items-start gap-3">
@@ -426,10 +432,10 @@ export default function DashboardLayout({
                                 notification.type === 'overdue_invoice' ? 'bg-red-500' : 'bg-yellow-500'
                               }`} />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
+                                <p className="text-sm font-medium text-blueox-primary-dark truncate">
                                   {notification.title}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-blueox-primary/60 mt-1">
                                   {notification.message} • {notification.time}
                                 </p>
                               </div>
@@ -439,14 +445,13 @@ export default function DashboardLayout({
                       )}
                     </div>
                     {notifications.length > 0 && (
-                      <div className="p-3 border-t border-gray-200">
+                      <div className="p-3 border-t border-blueox-primary/20">
                         <button
                           onClick={() => {
                             setNotificationsOpen(false);
                             router.push('/dashboard/reports');
                           }}
-                        className="text-sm text-breco-navy hover:text-breco-navy-dark hover:underline"
-                        >
+                        className="text-sm text-blueox-primary hover:text-blueox-primary-dark hover:underline transition-colors">
                           View all reports
                         </button>
                       </div>
@@ -459,21 +464,21 @@ export default function DashboardLayout({
             {/* User menu */}
             <div className="relative">
               <button
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
+                className="flex items-center gap-2 p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
-                <div className="w-8 h-8 bg-breco-navy rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
+                <div className="w-8 h-8 bg-gradient-to-br from-blueox-primary to-blueox-accent rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-black text-sm font-medium">
                     {user?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
                   </span>
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-blueox-primary-dark">
                     {user.full_name || user.email || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role || 'User'}</p>
+                  <p className="text-xs text-blueox-primary/60 capitalize">{user.role || 'User'}</p>
                 </div>
-                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                <ChevronDownIcon className="w-4 h-4 text-blueox-primary/60" />
               </button>
 
               {userMenuOpen && (
@@ -482,33 +487,33 @@ export default function DashboardLayout({
                     className="fixed inset-0 z-40"
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="dropdown animate-fade-in">
-                    <div className="p-3 border-b border-gray-200">
-                      <p className="text-sm font-medium text-gray-900">
+                  <div className="bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl animate-fade-in absolute right-0 mt-2 w-56 z-50">
+                    <div className="p-3 border-b border-blueox-primary/20">
+                      <p className="text-sm font-medium text-blueox-primary-dark">
                         {user?.full_name || 'User'}
                       </p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
+                      <p className="text-xs text-blueox-primary/60">{user?.email}</p>
                     </div>
                     <div className="py-1">
                       <Link
                         href="/dashboard/settings/profile"
-                        className="dropdown-item"
+                        className="block px-4 py-2 text-sm text-blueox-primary-dark hover:bg-blueox-primary/10 transition-colors"
                         onClick={() => setUserMenuOpen(false)}
                       >
                         Profile Settings
                       </Link>
                       <Link
                         href="/dashboard/settings"
-                        className="dropdown-item"
+                        className="block px-4 py-2 text-sm text-blueox-primary-dark hover:bg-blueox-primary/10 transition-colors"
                         onClick={() => setUserMenuOpen(false)}
                       >
                         Company Settings
                       </Link>
                     </div>
-                    <div className="border-t border-gray-200 py-1">
+                    <div className="border-t border-blueox-primary/20 py-1">
                       <button
                         onClick={handleSignOut}
-                        className="dropdown-item w-full text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left flex items-center gap-2"
                       >
                         <ArrowRightOnRectangleIcon className="w-4 h-4" />
                         Sign Out

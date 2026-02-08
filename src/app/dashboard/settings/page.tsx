@@ -17,8 +17,11 @@ import {
   BookOpenIcon,
   ArrowTopRightOnSquareIcon,
   LockClosedIcon,
+  SparklesIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
 import type { CompanySettings } from '@/types/database';
 
 type SettingsTab = 'company' | 'financial' | 'invoicing' | 'notifications' | 'users' | 'security' | 'branding';
@@ -242,85 +245,190 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/5 rounded-full blur-xl"></div>
+          <div className="absolute bottom-20 right-16 w-24 h-24 bg-blue-400/10 rounded-full blur-lg"></div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Page Header Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl p-8 shadow-xl mb-8">
+            <ShimmerSkeleton className="h-8 w-48 mb-2" />
+            <ShimmerSkeleton className="h-5 w-96" />
+          </div>
+          
+          {/* Tabs and Content Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl shadow-xl overflow-hidden">
+            {/* Tab Navigation Skeleton */}
+            <div className="border-b border-blue-100 px-8 pt-8">
+              <div className="flex space-x-8">
+                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <div key={i} className="flex items-center space-x-2">
+                    <ShimmerSkeleton className="h-5 w-5 rounded" />
+                    <ShimmerSkeleton className="h-5 w-20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Form Content Skeleton */}
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <FormFieldSkeleton key={i} />
+                ))}
+              </div>
+              
+              {/* Action Buttons Skeleton */}
+              <div className="flex space-x-4 pt-6">
+                <ShimmerSkeleton className="h-12 w-32" />
+                <ShimmerSkeleton className="h-12 w-24" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 mt-1">Manage your company and system preferences</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blue-400/10 rounded-full blur-lg"></div>
+        <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blue-500/5 to-blue-400/5 rounded-full blur-xl"></div>
       </div>
-
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Sidebar */}
-        <div className="lg:w-64 shrink-0">
-          <nav className="space-y-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-navy-50 text-navy-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <tab.icon className="w-5 h-5" />
-                {tab.label}
-              </button>
-            ))}
-            
-            {/* External Link to Fiscal Periods */}
-            <Link
-              href="/dashboard/settings/fiscal-periods"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-600 hover:bg-gray-100"
-            >
-              <LockClosedIcon className="w-5 h-5" />
-              <span>Fiscal Periods</span>
-              <ArrowTopRightOnSquareIcon className="w-4 h-4 ml-auto" />
-            </Link>
-          </nav>
+      
+      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
+        {/* Hero Header */}
+        <div className="text-center lg:text-left">
+          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blue-200 rounded-2xl px-6 py-3 shadow-lg mb-6">
+            <CogIcon className="w-6 h-6 text-black" />
+            <span className="text-black font-semibold">System Configuration</span>
+          </div>
+          
+          <h1 className="text-3xl lg:text-4xl font-bold text-black mb-4 leading-tight">
+            Company Settings
+          </h1>
+          
+          <p className="text-lg text-black mb-8 max-w-2xl">
+            Configure your business information, financial settings, and platform preferences
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="flex-1">
-          {/* Company Settings */}
-          {activeTab === 'company' && (
-            <form onSubmit={companyForm.handleSubmit(onSaveCompany)} className="card">
-              <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Company Information</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Basic information about your company
-                </p>
+        <div className="flex flex-col xl:flex-row gap-8">
+          {/* Sidebar Navigation */}
+          <div className="xl:w-80 shrink-0">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl p-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <SparklesIcon className="w-5 h-5 text-black" />
+                <h3 className="text-lg font-bold text-black">Settings Menu</h3>
               </div>
-              <div className="card-body space-y-6">
+              
+              <nav className="space-y-2">
+                {tabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-left transition-all duration-300 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-gray-100 to-gray-200 text-black border border-gray-300 shadow-md'
+                          : 'text-black hover:bg-gray-100 hover:text-black'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-500'
+                          : 'bg-gray-100'
+                      }`}>
+                        <tab.icon className={`w-4 h-4 ${
+                          isActive ? 'text-white' : 'text-black'
+                        }`} />
+                      </div>
+                      <span className="font-semibold">{tab.label}</span>
+                    </button>
+                  );
+                })}
+                
+                {/* External Link to Fiscal Periods */}
+                <Link
+                  href="/dashboard/settings/fiscal-periods"
+                  className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-left transition-all duration-300 text-black hover:bg-gray-100 hover:text-black group"
+                >
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100">
+                    <LockClosedIcon className="w-4 h-4 text-black" />
+                  </div>
+                  <span className="font-semibold flex-1">Fiscal Periods</span>
+                  <ArrowTopRightOnSquareIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                </Link>
+              </nav>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl shadow-xl overflow-hidden">
+              {/* Company Settings */}
+              {activeTab === 'company' && (
+            <form onSubmit={companyForm.handleSubmit(onSaveCompany)}>
+              <div className="bg-gradient-to-r from-blue-500/5 to-blue-400/5 px-8 py-6 border-b border-blue-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-xl flex items-center justify-center">
+                    <BuildingOfficeIcon className="w-5 h-5 text-black" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-black">Company Information</h2>
+                    <p className="text-gray-900 mt-1">
+                      Basic information and branding for your business
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-8 space-y-8">
                 {/* Logo Upload Section */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-4">Company Logo</h3>
-                  <div className="flex items-start gap-6">
+                <div className="bg-gradient-to-r from-gray-50/50 to-blue-50/50 rounded-2xl p-6 border border-gray-200/50">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg flex items-center justify-center">
+                      <PaintBrushIcon className="w-4 h-4 text-black" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Company Logo</h3>
+                  </div>
+                  
+                  <div className="flex flex-col lg:flex-row items-start gap-8">
                     <div className="flex-shrink-0">
                       {logoPreview ? (
-                        <Image
-                          src={logoPreview}
-                          alt="Company logo"
-                          width={120}
-                          height={120}
-                          className="rounded-lg border-2 border-gray-200 object-contain bg-white"
-                        />
+                        <div className="relative group">
+                          <Image
+                            src={logoPreview}
+                            alt="Company logo"
+                            width={140}
+                            height={140}
+                            className="rounded-2xl border-2 border-gray-200 object-contain bg-white shadow-lg group-hover:shadow-xl transition-all duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">Click to change</span>
+                          </div>
+                        </div>
                       ) : (
-                        <div className="w-[120px] h-[120px] rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                          <span className="text-gray-400 text-sm">No logo</span>
+                        <div className="w-[140px] h-[140px] rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 hover:from-blue-50 hover:to-cyan-50 transition-all duration-300">
+                          <div className="text-center">
+                            <PaintBrushIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                            <span className="text-gray-900 text-sm font-medium">No logo</span>
+                          </div>
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <label className="btn-secondary cursor-pointer inline-block">
-                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                    
+                    <div className="flex-1 space-y-4">
+                      <label className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-8 py-3 rounded-2xl font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:scale-100">
+                        <SparklesIcon className="w-4 h-4" />
+                        {uploadingLogo ? 'Uploading Logo...' : 'Upload New Logo'}
                         <input
                           type="file"
                           accept="image/*"
@@ -329,114 +437,173 @@ export default function SettingsPage() {
                           className="hidden"
                         />
                       </label>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Upload your company logo. Recommended: Square image, PNG or JPG, max 2MB.
-                      </p>
+                      
+                      <div className="space-y-2 text-sm text-gray-900">
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                          Recommended: Square image (1:1 aspect ratio)
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                          Formats: PNG, JPG, or SVG files
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                          Maximum size: 2MB
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <hr />
-
-                <h3 className="font-medium text-gray-900">Basic Information</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="label">Company Name *</label>
-                    <input
-                      type="text"
-                      {...companyForm.register('name', { required: true })}
-                      className="input"
-                    />
+                {/* Basic Information Section */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg flex items-center justify-center">
+                      <DocumentTextIcon className="w-4 h-4 text-black" />
+                    </div>
+                    <h3 className="text-lg font-bold text-black">Basic Information</h3>
                   </div>
-                  <div className="form-group">
-                    <label className="label">Email</label>
-                    <input
-                      type="email"
-                      {...companyForm.register('email')}
-                      className="input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="label">Phone</label>
-                    <input
-                      type="tel"
-                      {...companyForm.register('phone')}
-                      className="input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="label">Website</label>
-                    <input
-                      type="url"
-                      {...companyForm.register('website')}
-                      className="input"
-                      placeholder="https://"
-                    />
-                  </div>
-                </div>
-
-                <hr />
-
-                <h3 className="font-medium text-gray-900">Registration Details</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="label">Tax ID</label>
-                    <input
-                      type="text"
-                      {...companyForm.register('tax_id')}
-                      className="input"
-                      placeholder="Tax identification number"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="label">Registration Number</label>
-                    <input
-                      type="text"
-                      {...companyForm.register('registration_number')}
-                      className="input"
-                      placeholder="Company registration number"
-                    />
-                  </div>
-                </div>
-
-                <hr />
-
-                <h3 className="font-medium text-gray-900">Address</h3>
-                <div className="space-y-4">
-                  <div className="form-group">
-                    <label className="label">Street Address</label>
-                    <input
-                      type="text"
-                      {...companyForm.register('address')}
-                      className="input"
-                    />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="form-group">
-                      <label className="label">City</label>
+                  
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black flex items-center gap-2">
+                        Company Name *
+                        <span className="text-red-500">•</span>
+                      </label>
                       <input
                         type="text"
-                        {...companyForm.register('city')}
-                        className="input"
+                        {...companyForm.register('name', { required: true })}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 hover:border-blue-400"
+                        placeholder="Your company name"
                       />
                     </div>
-                    <div className="form-group">
-                      <label className="label">Country</label>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Email Address</label>
                       <input
-                        type="text"
-                        {...companyForm.register('country')}
-                        className="input"
+                        type="email"
+                        {...companyForm.register('email')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="contact@company.com"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Phone Number</label>
+                      <input
+                        type="tel"
+                        {...companyForm.register('phone')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Website</label>
+                      <input
+                        type="url"
+                        {...companyForm.register('website')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="https://company.com"
                       />
                     </div>
                   </div>
                 </div>
 
+                {/* Divider */}
+                <div className="border-t border-gray-200"></div>
 
-              </div>
-              <div className="card-footer flex justify-end">
-                <button type="submit" disabled={saving} className="btn-primary">
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
+                {/* Registration Details Section */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg flex items-center justify-center">
+                      <ShieldCheckIcon className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Registration Details</h3>
+                  </div>
+                  
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Tax ID</label>
+                      <input
+                        type="text"
+                        {...companyForm.register('tax_id')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="Tax identification number"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Registration Number</label>
+                      <input
+                        type="text"
+                        {...companyForm.register('registration_number')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="Company registration number"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200"></div>
+
+                {/* Address Section */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg flex items-center justify-center">
+                      <BuildingOfficeIcon className="w-4 h-4 text-black" />
+                    </div>
+                    <h3 className="text-lg font-bold text-black">Business Address</h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">Street Address</label>
+                      <input
+                        type="text"
+                        {...companyForm.register('address')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="123 Business Street"
+                      />
+                    </div>
+                    
+                    <div className="grid lg:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-black">City</label>
+                        <input
+                          type="text"
+                          {...companyForm.register('city')}
+                          className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                          placeholder="City name"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-black">Country</label>
+                        <input
+                          type="text"
+                          {...companyForm.register('country')}
+                          className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                          placeholder="Country name"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Save Button */}
+                <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-8 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:scale-100"
+                  >
+                    <SparklesIcon className="w-4 h-4" />
+                    {saving ? 'Saving Changes...' : 'Save Company Settings'}
+                  </button>
+                </div>
               </div>
             </form>
           )}
@@ -445,8 +612,8 @@ export default function SettingsPage() {
           {activeTab === 'financial' && (
             <form onSubmit={financialForm.handleSubmit(onSaveFinancial)} className="card">
               <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Financial Settings</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="font-semibold text-black">Financial Settings</h2>
+                <p className="text-sm text-black mt-1">
                   Configure fiscal year and default values
                 </p>
               </div>
@@ -487,26 +654,26 @@ export default function SettingsPage() {
                     {...financialForm.register('sales_tax_rate', { valueAsNumber: true })}
                     className="input max-w-xs"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-black mt-1">
                     Massachusetts sales tax is 6.25%
                   </p>
                 </div>
 
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-medium text-blue-900">Base Currency</h4>
-                  <p className="text-sm text-blue-700 mt-1">
+                <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
+                  <h4 className="font-medium text-black">Base Currency</h4>
+                  <p className="text-sm text-black mt-1">
                     USD (US Dollar) - Contact support to change base currency
                   </p>
                 </div>
 
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <BookOpenIcon className="w-5 h-5 text-green-700" />
-                        <h4 className="font-medium text-green-900">Chart of Accounts</h4>
+                        <BookOpenIcon className="w-5 h-5 text-black" />
+                        <h4 className="font-medium text-black">Chart of Accounts</h4>
                       </div>
-                      <p className="text-sm text-green-700">
+                      <p className="text-sm text-black">
                         View all account numbers and categories for bills, expenses, and transactions
                       </p>
                     </div>
@@ -524,8 +691,8 @@ export default function SettingsPage() {
                 <hr />
 
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Exchange Rates</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <h3 className="font-medium text-black mb-2">Exchange Rates</h3>
+                  <p className="text-sm text-black mb-4">
                     Multi-currency support with automatic exchange rate updates from exchangerate-api.com
                   </p>
                   <button
@@ -546,7 +713,7 @@ export default function SettingsPage() {
                       'Refresh Exchange Rates'
                     )}
                   </button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-black mt-2">
                     Last updated rates are cached in database. Click to fetch latest rates for USD, EUR, GBP, and UGX.
                   </p>
                 </div>
@@ -563,8 +730,8 @@ export default function SettingsPage() {
           {activeTab === 'invoicing' && (
             <div className="card">
               <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Invoice Settings</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="font-semibold text-black">Invoice Settings</h2>
+                <p className="text-sm text-black mt-1">
                   Customize invoice appearance and numbering
                 </p>
               </div>
@@ -603,8 +770,8 @@ export default function SettingsPage() {
           {activeTab === 'branding' && (
             <div className="card">
               <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Branding</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="font-semibold text-black">Branding</h2>
+                <p className="text-sm text-black mt-1">
                   Upload your logo and customize appearance
                 </p>
               </div>
@@ -629,7 +796,7 @@ export default function SettingsPage() {
                       <button type="button" className="btn-secondary">
                         Upload Logo
                       </button>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-sm text-black mt-2">
                         PNG, JPG up to 2MB. Recommended size: 200x200px
                       </p>
                     </div>
@@ -640,15 +807,15 @@ export default function SettingsPage() {
                   <label className="label">Brand Colors</label>
                   <div className="flex gap-4">
                     <div>
-                      <label className="text-sm text-gray-500">Primary (Navy)</label>
+                      <label className="text-sm text-black">Primary (Navy)</label>
                       <div className="w-12 h-12 rounded-lg bg-navy-600 border border-gray-200 mt-1" />
                     </div>
                     <div>
-                      <label className="text-sm text-gray-500">Accent (Magenta)</label>
+                      <label className="text-sm text-black">Accent (Magenta)</label>
                       <div className="w-12 h-12 rounded-lg bg-magenta-600 border border-gray-200 mt-1" />
                     </div>
                     <div>
-                      <label className="text-sm text-gray-500">Secondary (Purple)</label>
+                      <label className="text-sm text-black">Secondary (Purple)</label>
                       <div className="w-12 h-12 rounded-lg bg-purple-600 border border-gray-200 mt-1" />
                     </div>
                   </div>
@@ -664,8 +831,8 @@ export default function SettingsPage() {
           {activeTab === 'notifications' && (
             <div className="card">
               <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Notification Preferences</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="font-semibold text-black">Notification Preferences</h2>
+                <p className="text-sm text-black mt-1">
                   Control when and how you receive notifications
                 </p>
               </div>
@@ -680,8 +847,8 @@ export default function SettingsPage() {
                   <label key={item.label} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg cursor-pointer">
                     <input type="checkbox" defaultChecked className="mt-1" />
                     <div>
-                      <p className="font-medium text-gray-900">{item.label}</p>
-                      <p className="text-sm text-gray-500">{item.description}</p>
+                      <p className="font-medium text-black">{item.label}</p>
+                      <p className="text-sm text-black">{item.description}</p>
                     </div>
                   </label>
                 ))}
@@ -697,16 +864,16 @@ export default function SettingsPage() {
             <div className="card">
               <div className="card-header flex justify-between items-center">
                 <div>
-                  <h2 className="font-semibold text-gray-900">Team Members</h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <h2 className="font-semibold text-black">Team Members</h2>
+                  <p className="text-sm text-black mt-1">
                     Manage user access and permissions
                   </p>
                 </div>
                 <button className="btn-primary">Invite User</button>
               </div>
               <div className="card-body">
-                <div className="text-center py-8 text-gray-500">
-                  <UserGroupIcon className="w-12 h-12 mx-auto text-gray-400" />
+                <div className="text-center py-8 text-black">
+                  <UserGroupIcon className="w-12 h-12 mx-auto text-black" />
                   <p className="mt-2">You're the only user</p>
                   <p className="text-sm">Invite team members to collaborate</p>
                 </div>
@@ -719,7 +886,7 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <div className="card">
                 <div className="card-header">
-                  <h2 className="font-semibold text-gray-900">Password</h2>
+                  <h2 className="font-semibold text-black">Password</h2>
                 </div>
                 <div className="card-body space-y-4">
                   <div className="form-group">
@@ -742,13 +909,13 @@ export default function SettingsPage() {
 
               <div className="card">
                 <div className="card-header">
-                  <h2 className="font-semibold text-gray-900">Two-Factor Authentication</h2>
+                  <h2 className="font-semibold text-black">Two-Factor Authentication</h2>
                 </div>
                 <div className="card-body">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">2FA is not enabled</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-black">2FA is not enabled</p>
+                      <p className="text-sm text-black">
                         Add an extra layer of security to your account
                       </p>
                     </div>
@@ -759,13 +926,13 @@ export default function SettingsPage() {
 
               <div className="card">
                 <div className="card-header">
-                  <h2 className="font-semibold text-gray-900">Active Sessions</h2>
+                  <h2 className="font-semibold text-black">Active Sessions</h2>
                 </div>
                 <div className="card-body">
                   <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">Current Session</p>
-                      <p className="text-sm text-gray-500">Windows • Chrome • Active now</p>
+                      <p className="text-sm text-black">Windows • Chrome • Active now</p>
                     </div>
                     <span className="badge badge-success">Current</span>
                   </div>
@@ -773,6 +940,8 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

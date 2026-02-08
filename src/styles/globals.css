@@ -200,14 +200,14 @@
   }
   .input:focus {
     border-color: var(--blueox-primary);
-    ring-color: var(--blueox-primary);
+    --tw-ring-color: var(--blueox-primary);
   }
 
   .input-error {
     border-color: var(--blueox-error);
   }
   .input-error:focus {
-    ring-color: var(--blueox-error);
+    --tw-ring-color: var(--blueox-error);
   }
 
   .label {
@@ -340,11 +340,11 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors;
+    @apply flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200;
   }
 
   .sidebar-link-active {
-    @apply sidebar-link bg-breco-navy text-white;
+    @apply sidebar-link bg-gray-100 text-gray-900 border border-gray-300 shadow-sm;
   }
 
   .sidebar-link-inactive {
@@ -352,7 +352,7 @@
   }
 
   .dropdown {
-    @apply absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50;
+    @apply absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200 z-50;
   }
 
   .dropdown-item {

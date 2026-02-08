@@ -23,6 +23,8 @@ module.exports = {
           900: '#1e293b', // Royal blue darkest
           950: '#0f172a',
         },
+        // BlueOx colors that match browser defaults for undefined classes
+         // Black text (browser default)
         // BlueOx specific brand colors
         brand: {
           primary: '#2C4BA0',     // Professional royal blue
@@ -124,6 +126,7 @@ module.exports = {
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
+        'shimmer': 'shimmer 2s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -141,6 +144,10 @@ module.exports = {
         scaleIn: {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       },
     },

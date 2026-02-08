@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, TableRowSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Invoice, Customer } from '@/types/database';
 
 export default function InvoicesPage() {
@@ -163,8 +164,27 @@ export default function InvoicesPage() {
       {/* Invoices table */}
       <div className="card">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin h-8 w-8 border-4 border-breco-navy border-t-transparent rounded-full" />
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl">
+            <div className="p-6">
+              {/* Table Header Skeleton */}
+              <div className="flex justify-between items-center pb-4 border-b border-blueox-primary/10">
+                <ShimmerSkeleton className="h-6 w-24" />
+                <ShimmerSkeleton className="h-6 w-16" />
+                <ShimmerSkeleton className="h-6 w-20" />
+                <ShimmerSkeleton className="h-6 w-16" />
+                <ShimmerSkeleton className="h-6 w-20" />
+                <ShimmerSkeleton className="h-6 w-16" />
+                <ShimmerSkeleton className="h-6 w-18" />
+                <ShimmerSkeleton className="h-6 w-16" />
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              <div className="space-y-4 pt-4">
+                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <TableRowSkeleton key={i} />
+                ))}
+              </div>
+            </div>
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="text-center py-12">

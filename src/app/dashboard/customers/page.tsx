@@ -12,6 +12,7 @@ import {
   EnvelopeIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, TableRowSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Customer } from '@/types/database';
 
 export default function CustomersPage() {
@@ -127,8 +128,34 @@ export default function CustomersPage() {
 
       {/* Customers Grid/Table */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
+        <div className="space-y-6">
+          {/* Desktop Table Skeleton */}
+          <div className="hidden md:block overflow-hidden bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl">
+            <div className="p-6">
+              {/* Table Header Skeleton */}
+              <div className="flex justify-between items-center pb-4 border-b border-blueox-primary/10">
+                <ShimmerSkeleton className="h-6 w-24" />
+                <ShimmerSkeleton className="h-6 w-20" />
+                <ShimmerSkeleton className="h-6 w-28" />
+                <ShimmerSkeleton className="h-6 w-16" />
+                <ShimmerSkeleton className="h-6 w-20" />
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              <div className="space-y-4 pt-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRowSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Cards Skeleton */}
+          <div className="md:hidden space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       ) : customers.length === 0 ? (
         <div className="card">

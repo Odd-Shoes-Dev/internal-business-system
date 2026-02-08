@@ -12,6 +12,9 @@ import { formatCurrency } from '@/lib/utils';
 import {
   CheckCircleIcon,
   DocumentTextIcon,
+  CreditCardIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Stripe
@@ -61,20 +64,27 @@ function PaymentForm({ invoice, clientSecret }: { invoice: Invoice; clientSecret
 
   if (isComplete) {
     return (
-      <div className="text-center py-8">
-        <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-        <p className="text-gray-600">Thank you for your payment.</p>
+      <div className="bg-gradient-to-r from-green-50/80 to-emerald-50/80 backdrop-blur-sm rounded-3xl p-8 text-center border border-green-200">
+        <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <CheckCircleIcon className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-green-800 mb-3">Payment Successful!</h2>
+        <p className="text-green-700 font-medium">Thank you for your payment. Your transaction has been processed securely.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <div className="flex justify-between items-center">
-          <span className="text-gray-600">Amount Due</span>
-          <span className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900">
+    <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 backdrop-blur-sm rounded-2xl p-6 border border-blueox-primary/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-blueox-primary/20 to-blueox-accent/20 rounded-xl flex items-center justify-center">
+              <CreditCardIcon className="w-5 h-5 text-blueox-primary" />
+            </div>
+            <span className="text-lg font-semibold text-gray-700">Amount Due</span>
+          </div>
+          <span className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">
             {formatCurrency(amountDue)}
           </span>
         </div>
@@ -178,10 +188,17 @@ export default function PayClient({ invoiceId }: { invoiceId?: string }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f] mx-auto"></div>
-          <p className="text-gray-500 mt-4">Loading invoice...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+          <div className="absolute bottom-20 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+        </div>
+        
+        <div className="relative bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-8 shadow-xl text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blueox-primary border-t-transparent mx-auto mb-4"></div>
+          <h2 className="text-xl font-bold text-blueox-primary-dark mb-2">Loading Invoice</h2>
+          <p className="text-gray-600">Please wait while we prepare your payment...</p>
         </div>
       </div>
     );
@@ -189,13 +206,19 @@ export default function PayClient({ invoiceId }: { invoiceId?: string }) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-red-500/5 rounded-full blur-xl"></div>
+          <div className="absolute bottom-20 right-16 w-24 h-24 bg-red-500/10 rounded-full blur-lg"></div>
+        </div>
+        
+        <div className="relative bg-white/80 backdrop-blur-xl border border-red-200 rounded-3xl p-8 shadow-xl max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <DocumentTextIcon className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Error</h1>
-          <p className="text-gray-600">{error}</p>
+          <h1 className="text-xl font-bold text-red-800 mb-3">Payment Error</h1>
+          <p className="text-red-700">{error}</p>
         </div>
       </div>
     );
