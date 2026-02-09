@@ -34,7 +34,7 @@
 - Up to 10 users
 - 10GB storage
 - Full accounting suite
-- **Unlimited industry modules** (choose any)
+- **Up to 3 industry modules included** (additional modules available)
 - Custom branding on invoices/receipts
 - Priority support (24-hour response)
 - Live chat support

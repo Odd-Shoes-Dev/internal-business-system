@@ -55,19 +55,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Get company settings
+    // Get company settings including module quota
     const { data: settings } = await supabase
       .from('company_settings')
-      .select('stripe_subscription_id, subscription_status, currency')
+      .select('stripe_subscription_id, subscription_status, currency, included_modules_quota, plan_tier')
       .eq('company_id', profile.company_id)
       .single();
 
-    if (!settings?.stripe_subscription_id) {
-      return NextResponse.json({ error: 'No active subscription found' }, { status: 404 });
+    if (!settings) {
+      return NextResponse.json({ error: 'Company settings not found' }, { status: 404 });
     }
 
-    if (settings.subscription_status === 'trial') {
-      return NextResponse.json({ error: 'Cannot add modules during trial' }, { status: 400 });
+    // Get module quota (default based on plan if not set)
+    const moduleQuota = settings.included_modules_quota || (
+      settings.plan_tier === 'professional' ? 3 :
+      settings.plan_tier === 'enterprise' ? 999 :
+      1
+    );
+
+    // Count current included modules
+    const { data: currentModules, count: includedCount } = await supabase
+      .from('subscription_modules')
+      .select('*', { count: 'exact' })
+      .eq('company_id', profile.company_id)
+      .eq('is_active', true)
+      .eq('is_included', true);
+
+    const currentIncludedCount = includedCount || 0;
+    const remainingQuota = Math.max(0, moduleQuota - currentIncludedCount);
+
+    // During trial, users can add modules within their quota for free
+    const isTrial = settings.subscription_status === 'trial';
+    
+    if (!isTrial && !settings?.stripe_subscription_id && module_ids.some((_, index) => index >= remainingQuota)) {
+      return NextResponse.json({ error: 'No active subscription found. Please upgrade to add more modules.' }, { status: 404 });
     }
 
     // Module pricing
@@ -82,6 +103,7 @@ export async function POST(request: NextRequest) {
 
     const currency = (settings.currency || 'usd').toLowerCase();
     const addedModules: any[] = [];
+    let modulesAddedCount = 0;
 
     const stripe = await getStripe();
 
@@ -100,6 +122,10 @@ export async function POST(request: NextRequest) {
         continue; // Skip if already active
       }
 
+      // Determine if this module is included in quota or paid
+      const isIncluded = (currentIncludedCount + modulesAddedCount) < moduleQuota;
+      let stripeSubscriptionItemId = null;
+
       // Get module price
       const modulePrice = modulePricing[moduleId]?.[currency];
       if (!modulePrice) {
@@ -107,26 +133,31 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Create a product for this module (Stripe will handle duplicates)
-      const product = await stripe.products.create({
-        name: `${moduleId.charAt(0).toUpperCase() + moduleId.slice(1)} Module`,
-        metadata: { module_id: moduleId },
-      });
+      // Only add to Stripe if it's a PAID module (not included in quota) AND not in trial
+      if (!isIncluded && !isTrial && settings.stripe_subscription_id) {
+        // Create a product for this module (Stripe will handle duplicates)
+        const product = await stripe.products.create({
+          name: `${moduleId.charAt(0).toUpperCase() + moduleId.slice(1)} Module`,
+          metadata: { module_id: moduleId },
+        });
 
-      // Create price for the product
-      const price = await stripe.prices.create({
-        product: product.id,
-        currency: currency,
-        unit_amount: Math.round(modulePrice * (currency === 'ugx' ? 1 : 100)),
-        recurring: { interval: 'month' },
-      });
+        // Create price for the product
+        const price = await stripe.prices.create({
+          product: product.id,
+          currency: currency,
+          unit_amount: Math.round(modulePrice * (currency === 'ugx' ? 1 : 100)),
+          recurring: { interval: 'month' },
+        });
 
-      // Add to Stripe subscription
-      const subscriptionItem = await stripe.subscriptionItems.create({
-        subscription: settings.stripe_subscription_id,
-        price: price.id,
-        proration_behavior: 'create_prorations',
-      });
+        // Add to Stripe subscription
+        const subscriptionItem = await stripe.subscriptionItems.create({
+          subscription: settings.stripe_subscription_id,
+          price: price.id,
+          proration_behavior: 'create_prorations',
+        });
+
+        stripeSubscriptionItemId = subscriptionItem.id;
+      }
 
       // Add to database
       const { data: newModule } = await supabaseAdmin
@@ -137,21 +168,31 @@ export async function POST(request: NextRequest) {
           monthly_price: modulePrice,
           currency: currency.toUpperCase(),
           is_active: true,
-          is_trial_module: false,
-          stripe_subscription_item_id: subscriptionItem.id,
+          is_trial_module: isTrial,
+          is_included: isIncluded,
+          stripe_subscription_item_id: stripeSubscriptionItemId,
         })
         .select()
         .single();
 
       if (newModule) {
         addedModules.push(newModule);
+        modulesAddedCount++;
       }
     }
+
+    const includedModulesAdded = addedModules.filter(m => m.is_included).length;
+    const paidModulesAdded = addedModules.filter(m => !m.is_included && !m.is_trial_module).length;
 
     return NextResponse.json({
       success: true,
       added_modules: addedModules,
       message: `${addedModules.length} module(s) added successfully`,
+      breakdown: {
+        included: includedModulesAdded,
+        paid: paidModulesAdded,
+        remainingQuota: Math.max(0, moduleQuota - (currentIncludedCount + includedModulesAdded)),
+      },
     });
   } catch (error) {
     console.error('Error adding modules:', error);

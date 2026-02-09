@@ -33,6 +33,7 @@ import {
   UsersIcon,
   CalculatorIcon,
   CakeIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 
 // Navigation grouped by category - with module requirements
@@ -102,6 +103,7 @@ const navigationGroups = [
     items: [
       { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
+      { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
     ]
   },
@@ -169,17 +171,18 @@ export default function DashboardLayout({
             try {
               const { data: settings, error: settingsError } = await supabase
                 .from('company_settings')
-                .select('subscription_status, trial_end_date')
+                .select('subscription_status, trial_end_date, company_id')
                 .eq('company_id', profile.company_id)
-                .single();
+                .maybeSingle();
               
               if (!settingsError && settings) {
                 setSubscriptionStatus(settings.subscription_status || '');
                 setTrialEndDate(settings.trial_end_date || undefined);
               }
             } catch (error) {
-              // If columns don't exist, silently continue without subscription status
-              console.warn('Unable to fetch subscription status from company_settings:', error);
+              // If columns don't exist or schema cache not updated, silently continue
+              // This can happen right after migrations - will resolve automatically
+              console.debug('Subscription status fetch skipped (schema cache updating):', error);
             }
           }
 

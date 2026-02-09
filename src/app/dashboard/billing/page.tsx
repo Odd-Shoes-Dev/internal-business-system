@@ -25,7 +25,15 @@ interface Module {
   monthly_price: number;
   is_active: boolean;
   is_trial_module: boolean;
+  is_included: boolean;
   added_at: string;
+}
+
+interface ModuleQuota {
+  total: number;
+  included: number;
+  paid: number;
+  remaining: number;
 }
 
 interface BillingHistory {
@@ -57,9 +65,11 @@ export default function BillingPage() {
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
+  const [moduleQuota, setModuleQuota] = useState<ModuleQuota | null>(null);
   const [billingHistory, setBillingHistory] = useState<BillingHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const [removingModuleId, setRemovingModuleId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBillingData();
@@ -75,6 +85,7 @@ export default function BillingPage() {
         const subData = await subResponse.json();
         setSubscription(subData.subscription);
         setModules(subData.modules || []);
+        setModuleQuota(subData.moduleQuota || null);
       }
 
       // Fetch billing history
@@ -141,6 +152,34 @@ export default function BillingPage() {
     }
   }
 
+  async function handleRemoveModule(moduleId: string, moduleName: string) {
+    if (!confirm(`Remove ${moduleName}? This will take effect immediately.`)) {
+      return;
+    }
+
+    setRemovingModuleId(moduleId);
+    try {
+      const response = await fetch('/api/billing/remove-module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ module_id: moduleId }),
+      });
+
+      if (response.ok) {
+        await fetchBillingData();
+        alert(`${moduleName} removed successfully.`);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to remove module. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to remove module:', error);
+      alert('Failed to remove module. Please try again.');
+    } finally {
+      setRemovingModuleId(null);
+    }
+  }
+
   function getStatusBadge(status: string) {
     const badges = {
       trial: { color: 'bg-blue-100 text-blue-800', icon: ClockIcon, text: 'Trial' },
@@ -170,14 +209,44 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+          <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+          <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto py-8 px-6">
+          {/* Header Skeleton */}
+          <div className="mb-8 animate-pulse">
+            <div className="h-10 bg-white/60 rounded-2xl w-1/3 mb-3"></div>
+            <div className="h-6 bg-white/40 rounded-xl w-1/2"></div>
+          </div>
+
+          {/* Current Plan Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-8 shadow-xl mb-6 animate-pulse">
+            <div className="h-8 bg-blueox-primary/10 rounded-xl w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <div className="h-4 bg-blueox-primary/10 rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-blueox-primary/20 rounded-xl w-3/4"></div>
+              </div>
+              <div>
+                <div className="h-4 bg-blueox-primary/10 rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-blueox-primary/20 rounded-xl w-3/4"></div>
+              </div>
+              <div>
+                <div className="h-4 bg-blueox-primary/10 rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-blueox-primary/20 rounded-xl w-3/4"></div>
+              </div>
             </div>
+          </div>
+
+          {/* Modules Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-8 shadow-xl animate-pulse">
+            <div className="h-8 bg-blueox-primary/10 rounded-xl w-1/4 mb-4"></div>
+            <div className="h-24 bg-blueox-primary/5 rounded-2xl"></div>
           </div>
         </div>
       </div>
@@ -212,26 +281,47 @@ export default function BillingPage() {
   const monthlyTotal = subscription.base_price_amount + totalModuleCost;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Billing & Subscription</h1>
-          <p className="text-gray-600 mt-2">Manage your subscription, modules, and payment methods</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+        <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
+      </div>
+      
+      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
+        {/* Hero Header */}
+        <div className="text-center lg:text-left">
+          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
+            <CreditCardIcon className="w-6 h-6 text-blueox-primary" />
+            <span className="text-blueox-primary font-semibold">Billing & Subscription</span>
+          </div>
+          
+          <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
+            Manage Your Subscription
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl">
+            Control your subscription, modules, and payment methods
+          </p>
         </div>
 
         {/* Trial Warning */}
         {isTrial && daysRemaining <= 7 && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <div className="flex">
-              <ClockIcon className="h-5 w-5 text-yellow-400" />
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  <strong>Trial ending in {daysRemaining} days!</strong> Upgrade now to continue using your selected modules.
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-400/50 rounded-3xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-yellow-100 rounded-xl">
+                <ClockIcon className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-yellow-900 mb-2">
+                  Trial ending in {daysRemaining} days!
+                </p>
+                <p className="text-yellow-700 mb-4">
+                  Upgrade now to continue using your selected modules without interruption.
                 </p>
                 <button
                   onClick={handleUpgrade}
-                  className="mt-2 text-sm font-medium text-yellow-700 underline hover:text-yellow-800"
+                  className="bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg"
                 >
                   Upgrade to Paid Plan →
                 </button>
@@ -242,16 +332,21 @@ export default function BillingPage() {
 
         {/* Past Due Warning */}
         {isPastDue && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-            <div className="flex">
-              <XCircleIcon className="h-5 w-5 text-red-400" />
-              <div className="ml-3">
-                <p className="text-sm text-red-700">
-                  <strong>Payment Failed!</strong> Please update your payment method to continue using your subscription.
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-400/50 rounded-3xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-red-100 rounded-xl">
+                <XCircleIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-red-900 mb-2">
+                  Payment Failed!
+                </p>
+                <p className="text-red-700 mb-4">
+                  Please update your payment method to continue using your subscription.
                 </p>
                 <button
                   onClick={handleManagePayment}
-                  className="mt-2 text-sm font-medium text-red-700 underline hover:text-red-800"
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300"
                 >
                   Update Payment Method →
                 </button>
@@ -261,12 +356,12 @@ export default function BillingPage() {
         )}
 
         {/* Current Plan */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-8 border-b border-blueox-primary/10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Current Plan</h2>
-                <p className="text-gray-600 mt-1">
+                <h2 className="text-2xl font-bold text-blueox-primary-dark">Current Plan</h2>
+                <p className="text-gray-600 mt-2 font-medium">
                   {PLAN_NAMES[subscription.plan_tier]} - {subscription.billing_period === 'monthly' ? 'Monthly' : 'Annual'} Billing
                 </p>
               </div>
@@ -274,21 +369,21 @@ export default function BillingPage() {
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Base Plan</p>
-                <p className="text-2xl font-bold text-gray-900">
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="bg-gradient-to-br from-blueox-primary/5 to-blueox-accent/5 p-6 rounded-2xl">
+                <p className="text-sm font-semibold text-blueox-primary-dark mb-2">Base Plan</p>
+                <p className="text-3xl font-bold text-blueox-primary">
                   {formatPrice(subscription.base_price_amount, subscription.currency.toUpperCase() as Currency)}
-                  <span className="text-sm font-normal text-gray-600">/{subscription.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
+                  <span className="text-base font-normal text-gray-600 ml-1">/{subscription.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-600 mb-1">
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
                   {isTrial ? 'Trial Ends' : subscription.billing_period === 'monthly' ? 'Next Billing Date' : 'Renewal Date'}
                 </p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-xl font-bold text-gray-900">
                   {new Date(isTrial && subscription.trial_end_date ? subscription.trial_end_date : subscription.current_period_end).toLocaleDateString('en-US', {
                     month: 'long',
                     day: 'numeric',
@@ -296,20 +391,20 @@ export default function BillingPage() {
                   })}
                 </p>
                 {!isTrial && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-2 font-medium">
                     {getDaysRemaining(subscription.current_period_end)} days remaining
                   </p>
                 )}
               </div>
 
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Monthly Cost</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Total Monthly Cost</p>
+                <p className="text-3xl font-bold text-blueox-primary">
                   {isTrial ? 'Free' : formatPrice(monthlyTotal, subscription.currency.toUpperCase() as Currency)}
-                  {!isTrial && <span className="text-sm font-normal text-gray-600">/mo</span>}
+                  {!isTrial && <span className="text-base font-normal text-gray-600 ml-1">/mo</span>}
                 </p>
                 {!isTrial && totalModuleCost > 0 && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-2 font-medium">
                     Includes {modules.filter(m => m.is_active && !m.is_trial_module).length} module(s)
                   </p>
                 )}
@@ -317,12 +412,12 @@ export default function BillingPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-gray-200">
+            <div className="flex flex-wrap gap-4 mt-8 pt-8 border-t border-blueox-primary/10">
               {isTrial ? (
                 <button
                   onClick={handleUpgrade}
                   disabled={processingAction === 'upgrade'}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-8 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {processingAction === 'upgrade' ? 'Loading...' : 'Upgrade Now'}
                 </button>
@@ -331,23 +426,23 @@ export default function BillingPage() {
                   <button
                     onClick={handleUpgrade}
                     disabled={!!processingAction}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50"
                   >
                     Change Plan
                   </button>
                   <button
                     onClick={handleManagePayment}
                     disabled={!!processingAction}
-                    className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border-2 border-blueox-primary/30 text-blueox-primary-dark px-6 py-3 rounded-2xl font-semibold hover:bg-blueox-primary/10 hover:border-blueox-primary transition-all duration-300 disabled:opacity-50"
                   >
-                    <CreditCardIcon className="h-5 w-5 inline mr-2" />
+                    <CreditCardIcon className="h-5 w-5" />
                     Manage Payment
                   </button>
                   {!isCancelled && (
                     <button
                       onClick={handleCancelSubscription}
                       disabled={!!processingAction}
-                      className="border border-red-300 text-red-600 px-6 py-2 rounded-lg font-semibold hover:bg-red-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border-2 border-red-300 text-red-600 px-6 py-3 rounded-2xl font-semibold hover:bg-red-50 transition-all duration-300 disabled:opacity-50"
                     >
                       Cancel Subscription
                     </button>
@@ -359,54 +454,102 @@ export default function BillingPage() {
         </div>
 
         {/* Active Modules */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-8 border-b border-blueox-primary/10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Active Modules</h2>
-                <p className="text-gray-600 mt-1">Industry-specific features for your business</p>
+                <h2 className="text-2xl font-bold text-blueox-primary-dark">Active Modules</h2>
+                <p className="text-gray-600 mt-2 font-medium">Industry-specific features for your business</p>
+                {moduleQuota && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="bg-blueox-primary/10 text-blueox-primary px-4 py-2 rounded-xl font-bold text-sm">
+                      {moduleQuota.included} of {moduleQuota.total} included modules used
+                    </div>
+                    {moduleQuota.paid > 0 && (
+                      <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold text-sm">
+                        +{moduleQuota.paid} paid module{moduleQuota.paid !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              {!isTrial && (
+              {(moduleQuota?.remaining || 0) > 0 && (
                 <button
                   onClick={handleAddModule}
                   disabled={!!processingAction}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50"
                 >
-                  Add Module
+                  Add Module ({moduleQuota?.remaining} free remaining)
+                  <ArrowPathIcon className="h-5 w-5" />
                 </button>
               )}
             </div>
           </div>
 
-          <div className="p-6">
-            {modules.filter(m => m.is_active).length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No modules active</p>
+          <div className="p-8">
+            {modules.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-blueox-primary/10 rounded-2xl mb-4">
+                  <CreditCardIcon className="w-10 h-10 text-blueox-primary" />
+                </div>
+                <p className="text-gray-600 font-medium mb-6">No modules active</p>
                 <button
                   onClick={handleAddModule}
-                  className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                  className="inline-flex items-center gap-2 text-blueox-primary hover:text-blueox-primary-dark font-semibold transition-colors"
                 >
                   Browse Available Modules →
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {modules.filter(m => m.is_active).map((module) => (
-                  <div key={module.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                    <div className="flex items-start justify-between">
+              <div className="space-y-4">
+                {modules.map((module) => (
+                  <div
+                    key={module.id}
+                    className="bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 border border-blueox-primary/20 rounded-2xl p-6 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{MODULE_NAMES[module.module_id] || module.module_id}</h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {module.is_trial_module ? (
-                            <span className="text-blue-600 font-medium">Trial Module</span>
-                          ) : (
-                            <>
-                              {formatPrice(module.monthly_price, subscription.currency.toUpperCase() as Currency)}/mo
-                            </>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-bold text-blueox-primary-dark">
+                            {MODULE_NAMES[module.module_id]}
+                          </h3>
+                          {module.is_included && (
+                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
+                              Included in Plan
+                            </span>
                           )}
+                          {module.is_trial_module && (
+                            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                              Trial
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Added {new Date(module.added_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </p>
                       </div>
-                      <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-blueox-primary">
+                            {module.is_included || module.is_trial_module ? 'Free' : formatPrice(module.monthly_price, subscription.currency.toUpperCase() as Currency)}
+                          </p>
+                          {!module.is_included && !module.is_trial_module && (
+                            <p className="text-sm text-gray-600 font-medium">/month</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleRemoveModule(module.module_id, MODULE_NAMES[module.module_id])}
+                          disabled={removingModuleId === module.module_id}
+                          className="p-2 hover:bg-red-50 rounded-xl transition-colors group"
+                          title="Remove module"
+                        >
+                          <XCircleIcon className="h-6 w-6 text-gray-400 group-hover:text-red-600 transition-colors" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -416,66 +559,66 @@ export default function BillingPage() {
         </div>
 
         {/* Billing History */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Billing History</h2>
-            <p className="text-gray-600 mt-1">View and download past invoices</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-8 border-b border-blueox-primary/10">
+            <h2 className="text-2xl font-bold text-blueox-primary-dark">Billing History</h2>
+            <p className="text-gray-600 mt-2 font-medium">View and download past invoices</p>
           </div>
 
-          <div className="p-6">
+          <div className="p-8">
             {billingHistory.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No billing history yet</p>
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-blueox-primary/10 rounded-2xl mb-4">
+                  <CalendarIcon className="w-10 h-10 text-blueox-primary" />
+                </div>
+                <p className="text-gray-600 font-medium">No billing history yet</p>
+                <p className="text-sm text-gray-500 mt-2">Your invoices will appear here after your first payment</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {billingHistory.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm font-medium text-gray-900">{invoice.invoice_number}</td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
+              <div className="space-y-3">
+                {billingHistory.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="bg-white border border-blueox-primary/20 rounded-2xl p-6 hover:shadow-md transition-all duration-300"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-blueox-primary-dark">{invoice.invoice_number}</p>
+                        <p className="text-sm text-gray-600 mt-1">
                           {new Date(invoice.paid_at).toLocaleDateString('en-US', {
-                            month: 'short',
+                            month: 'long',
                             day: 'numeric',
                             year: 'numeric'
                           })}
-                        </td>
-                        <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                          {formatPrice(invoice.amount, invoice.currency.toUpperCase() as Currency)}
-                        </td>
-                        <td className="px-4 py-4 text-sm">
-                          {invoice.status === 'succeeded' ? (
-                            <span className="text-green-600 font-medium">Paid</span>
-                          ) : (
-                            <span className="text-red-600 font-medium">Failed</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-right">
-                          {invoice.invoice_pdf && (
-                            <a
-                              href={invoice.invoice_pdf}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                              Download
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-blueox-primary">
+                            {formatPrice(invoice.amount, invoice.currency.toUpperCase() as Currency)}
+                          </p>
+                          <p className={`text-sm font-medium ${
+                            invoice.status === 'succeeded' ? 'text-green-600' : 
+                            invoice.status === 'pending' ? 'text-yellow-600' : 
+                            'text-red-600'
+                          }`}>
+                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                          </p>
+                        </div>
+                        {invoice.invoice_pdf && (
+                          <a
+                            href={invoice.invoice_pdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-blueox-primary/10 rounded-xl transition-colors"
+                          >
+                            <ArrowPathIcon className="h-5 w-5 text-blueox-primary" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

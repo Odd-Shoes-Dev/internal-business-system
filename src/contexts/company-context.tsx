@@ -74,7 +74,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             subscription_status,
             subscription_plan,
             tax_id,
-            registration_number
+            registration_number,
+            region
           )
         `)
         .eq('user_id', user.id);

@@ -1,5 +1,57 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import type { Region } from '@/lib/regional-pricing';
+
+// Map country to region for pricing
+function getRegionFromCountry(country: string): Region {
+  const countryLower = country.toLowerCase();
+  
+  // Africa
+  if ([
+    'uganda', 'kenya', 'tanzania', 'rwanda', 'burundi',
+    'south africa', 'nigeria', 'ghana', 'ethiopia', 'egypt',
+    'morocco', 'algeria', 'tunisia', 'libya', 'senegal',
+    'cameron', 'ivory coast', 'zimbabwe', 'zambia', 'mozambique'
+  ].some(c => countryLower.includes(c))) {
+    return 'AFRICA';
+  }
+  
+  // United Kingdom
+  if ([
+    'united kingdom', 'uk', 'england', 'scotland', 'wales',
+    'northern ireland', 'britain', 'great britain'
+  ].some(c => countryLower.includes(c))) {
+    return 'GB';
+  }
+  
+  // European Union
+  if ([
+    'germany', 'france', 'italy', 'spain', 'netherlands',
+    'belgium', 'austria', 'switzerland', 'poland', 'sweden',
+    'norway', 'denmark', 'finland', 'ireland', 'portugal',
+    'greece', 'czech', 'hungary', 'romania', 'bulgaria'
+  ].some(c => countryLower.includes(c))) {
+    return 'EU';
+  }
+  
+  // United States
+  if ([
+    'united states', 'usa', 'us', 'america'
+  ].some(c => countryLower.includes(c))) {
+    return 'US';
+  }
+  
+  // Asia
+  if ([
+    'india', 'china', 'japan', 'south korea', 'singapore',
+    'malaysia', 'thailand', 'vietnam', 'philippines', 'indonesia',
+    'bangladesh', 'pakistan', 'sri lanka'
+  ].some(c => countryLower.includes(c))) {
+    return 'ASIA';
+  }
+  
+  return 'DEFAULT';
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +120,9 @@ export async function POST(request: NextRequest) {
     // Use service role for remaining operations (bypasses RLS)
     const supabaseAdmin = await createClient();
 
+    // Detect region based on country
+    const region = getRegionFromCountry(country || 'Uganda');
+
     // 2. Create company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
@@ -79,6 +134,7 @@ export async function POST(request: NextRequest) {
         address: address,
         city: city,
         country: country,
+        region: region,
         currency: currency || 'UGX',
         tax_id: taxId || null,
         registration_number: registrationNumber || null,

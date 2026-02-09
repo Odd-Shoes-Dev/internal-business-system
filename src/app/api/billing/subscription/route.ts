@@ -48,9 +48,10 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .single();
 
-    // If no subscription in subscriptions table, check company_settings for trial
+    // If no subscription in subscriptions table, check/create company_settings for trial
     if (subError || !subscription) {
-      const { data: settings } = await supabase
+      // First check if company_settings exists
+      let { data: settings, error: settingsError } = await supabase
         .from('company_settings')
         .select(`
           subscription_status,
@@ -61,39 +62,106 @@ export async function GET(request: NextRequest) {
           current_period_start,
           current_period_end,
           stripe_customer_id,
-          stripe_subscription_id
+          stripe_subscription_id,
+          company_id
         `)
         .eq('company_id', profile.company_id)
         .single();
 
-      if (settings?.subscription_status === 'trial') {
-        // Return trial subscription data
-        const trialSubscription = {
-          id: 'trial',
-          plan_tier: settings.plan_tier || 'professional',
-          billing_period: settings.billing_period || 'monthly',
-          status: 'trial',
-          base_price_amount: 0,
-          currency: 'usd',
-          current_period_start: settings.trial_start_date,
-          current_period_end: settings.trial_end_date,
-          trial_end_date: settings.trial_end_date,
-        };
+      // If company_settings doesn't exist, create it
+      if (settingsError || !settings) {
+        const now = new Date();
+        const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-        // Get trial modules
-        const { data: modules } = await supabase
-          .from('subscription_modules')
-          .select('*')
-          .eq('company_id', profile.company_id)
-          .eq('is_active', true);
+        const { data: newSettings, error: insertError } = await supabase
+          .from('company_settings')
+          .insert({
+            company_id: profile.company_id,
+            subscription_status: 'trial',
+            plan_tier: 'professional',
+            billing_period: 'monthly',
+            trial_start_date: now.toISOString(),
+            trial_end_date: trialEnd.toISOString(),
+          })
+          .select()
+          .single();
 
-        return NextResponse.json({
-          subscription: trialSubscription,
-          modules: modules || [],
-        });
+        if (insertError || !newSettings) {
+          console.error('Failed to create company_settings:', insertError);
+          return NextResponse.json({ error: 'Failed to initialize subscription' }, { status: 500 });
+        }
+
+        settings = newSettings;
       }
 
-      return NextResponse.json({ error: 'No subscription found' }, { status: 404 });
+      // At this point settings should exist, but check to be safe
+      if (!settings) {
+        return NextResponse.json({ error: 'Failed to load subscription settings' }, { status: 500 });
+      }
+
+      // Initialize trial dates if not set
+      const now2 = new Date();
+      const trialStart = settings.trial_start_date ? new Date(settings.trial_start_date) : now2;
+      const trialEnd = settings.trial_end_date ? new Date(settings.trial_end_date) : new Date(now2.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      // If no subscription_status is set, update it to 'trial'
+      if (!settings.subscription_status || !settings.trial_start_date) {
+        await supabase
+          .from('company_settings')
+          .update({
+            subscription_status: 'trial',
+            trial_start_date: trialStart.toISOString(),
+            trial_end_date: trialEnd.toISOString(),
+            plan_tier: settings.plan_tier || 'professional',
+            billing_period: settings.billing_period || 'monthly',
+          })
+          .eq('company_id', profile.company_id);
+      }
+
+      // Return trial subscription data
+      const trialSubscription = {
+        id: 'trial',
+        plan_tier: settings.plan_tier || 'professional',
+        billing_period: settings.billing_period || 'monthly',
+        status: settings.subscription_status || 'trial',
+        base_price_amount: 0,
+        currency: 'usd',
+        current_period_start: trialStart.toISOString(),
+        current_period_end: trialEnd.toISOString(),
+        trial_end_date: trialEnd.toISOString(),
+      };
+
+      // Get trial modules
+      const { data: modules } = await supabase
+        .from('subscription_modules')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true)
+        .order('added_at', { ascending: true });
+
+      // Get module quota from company_settings
+      const { data: quotaData } = await supabase
+        .from('company_settings')
+        .select('included_modules_quota')
+        .eq('company_id', profile.company_id)
+        .single();
+
+      const moduleQuota = quotaData?.included_modules_quota || (settings.plan_tier === 'professional' ? 3 : 1);
+      const includedModules = (modules || []).filter(m => m.is_included);
+      const paidModules = (modules || []).filter(m => !m.is_included);
+
+      return NextResponse.json({
+        subscription: trialSubscription,
+        modules: modules || [],
+        moduleQuota: {
+          total: moduleQuota,
+          included: includedModules.length,
+          paid: paidModules.length,
+          remaining: Math.max(0, moduleQuota - includedModules.length),
+        },
+        includedModules,
+        paidModules,
+      });
     }
 
     // Get active modules
@@ -104,9 +172,28 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('added_at', { ascending: true });
 
+    // Get module quota
+    const { data: quotaData } = await supabase
+      .from('company_settings')
+      .select('included_modules_quota')
+      .eq('company_id', profile.company_id)
+      .single();
+
+    const moduleQuota = quotaData?.included_modules_quota || (subscription.plan_tier === 'professional' ? 3 : 1);
+    const includedModules = (modules || []).filter(m => m.is_included);
+    const paidModules = (modules || []).filter(m => !m.is_included);
+
     return NextResponse.json({
       subscription,
       modules: modules || [],
+      moduleQuota: {
+        total: moduleQuota,
+        included: includedModules.length,
+        paid: paidModules.length,
+        remaining: Math.max(0, moduleQuota - includedModules.length),
+      },
+      includedModules,
+      paidModules,
     });
   } catch (error) {
     console.error('Error fetching subscription:', error);

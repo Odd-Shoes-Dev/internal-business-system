@@ -74,8 +74,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cannot remove trial modules' }, { status: 400 });
     }
 
-    // Remove from Stripe subscription
-    if (module.stripe_subscription_item_id) {
+    // Check if it's an included module or paid module
+    const isIncludedModule = module.is_included === true;
+
+    // Remove from Stripe subscription (only if it's a PAID module with Stripe item)
+    if (!isIncludedModule && module.stripe_subscription_item_id) {
       await stripe.subscriptionItems.del(module.stripe_subscription_item_id, {
         proration_behavior: 'create_prorations',
       });
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Module removed successfully',
+      wasIncluded: isIncludedModule,
     });
   } catch (error) {
     console.error('Error removing module:', error);
