@@ -1,5 +1,7 @@
 // =====================================================
-// Breco Safaris Ltd - Financial & Operations System
+// Business Management Platform
+// Core Database Types & Interfaces
+// =====================================================
 // Database Types for Supabase tables
 // =====================================================
 

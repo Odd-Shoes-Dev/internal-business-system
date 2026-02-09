@@ -11,7 +11,7 @@ export default function PaymentSuccessPage(props: any) {
         {/* Logo */}
         <img
           src="/assets/logo.png"
-          alt="Breco Safaris"
+          alt="Company Logo"
           className="h-8 mx-auto mb-6"
         />
 
@@ -40,7 +40,7 @@ export default function PaymentSuccessPage(props: any) {
             href="/"
             className="block w-full py-3 px-4 bg-[#1e3a5f] text-white rounded-lg font-medium hover:bg-[#1e3a5f]/90 transition-colors text-center"
           >
-            Return to Breco Safaris
+            Return Home
           </Link>
           
           <PrintButton className="block w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -351,7 +351,7 @@ export default function EditHotelPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -385,7 +385,7 @@ export default function EditHotelPage() {
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <BuildingStorefrontIcon className="w-5 h-5 text-breco-navy" />
+            <BuildingStorefrontIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Basic Information</h2>
           </div>
 
@@ -400,7 +400,7 @@ export default function EditHotelPage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="e.g., Mweya Safari Lodge"
               />
             </div>
@@ -413,7 +413,7 @@ export default function EditHotelPage() {
                 name="destination_id"
                 value={formData.destination_id}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 <option value="">Select destination</option>
                 {destinations.map((dest) => (
@@ -432,7 +432,7 @@ export default function EditHotelPage() {
                 name="hotel_type"
                 value={formData.hotel_type}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {hotelTypes.map((type) => (
                   <option key={type} value={type}>
@@ -450,7 +450,7 @@ export default function EditHotelPage() {
                 name="star_rating"
                 value={formData.star_rating}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {[1, 2, 3, 4, 5].map((rating) => (
                   <option key={rating} value={rating}>
@@ -469,7 +469,7 @@ export default function EditHotelPage() {
                 value={formData.address}
                 onChange={handleChange}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Enter hotel address"
               />
             </div>
@@ -479,7 +479,7 @@ export default function EditHotelPage() {
         {/* Contact Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <PhoneIcon className="w-5 h-5 text-breco-navy" />
+            <PhoneIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Contact Information</h2>
           </div>
 
@@ -493,7 +493,7 @@ export default function EditHotelPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="+256 xxx xxx xxx"
               />
             </div>
@@ -507,7 +507,7 @@ export default function EditHotelPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="hotel@example.com"
               />
             </div>
@@ -521,7 +521,7 @@ export default function EditHotelPage() {
                 name="website"
                 value={formData.website}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="https://www.hotel-website.com"
               />
             </div>
@@ -535,7 +535,7 @@ export default function EditHotelPage() {
                 name="contact_person"
                 value={formData.contact_person}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Contact person name"
               />
             </div>
@@ -549,7 +549,7 @@ export default function EditHotelPage() {
                 name="contact_phone"
                 value={formData.contact_phone}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="+256 xxx xxx xxx"
               />
             </div>
@@ -559,7 +559,7 @@ export default function EditHotelPage() {
         {/* Rates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+            <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Room Rates (USD)</h2>
           </div>
 
@@ -575,7 +575,7 @@ export default function EditHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -591,7 +591,7 @@ export default function EditHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -607,7 +607,7 @@ export default function EditHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -624,7 +624,7 @@ export default function EditHotelPage() {
                 min="0"
                 max="100"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="10"
               />
             </div>
@@ -634,7 +634,7 @@ export default function EditHotelPage() {
         {/* Images */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <GlobeAltIcon className="w-5 h-5 text-breco-navy" />
+            <GlobeAltIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Hotel Images</h2>
           </div>
 
@@ -669,7 +669,7 @@ export default function EditHotelPage() {
                   {existingImages.map((img, index) => (
                     <div key={img.id} className="relative group">
                       <div className={`relative rounded-lg overflow-hidden border-2 ${
-                        primaryImageIndex === index ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                        primaryImageIndex === index ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                       }`}>
                         <img
                           src={img.image_url}
@@ -677,7 +677,7 @@ export default function EditHotelPage() {
                           className="w-full h-32 object-cover"
                         />
                         {primaryImageIndex === index && (
-                          <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                          <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                             Primary
                           </div>
                         )}
@@ -685,7 +685,7 @@ export default function EditHotelPage() {
                           <button
                             type="button"
                             onClick={() => setPrimaryImageIndex(index)}
-                            className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                            className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                             title="Set as primary"
                           >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -722,7 +722,7 @@ export default function EditHotelPage() {
                     return (
                       <div key={`new-${index}`} className="relative group">
                         <div className={`relative rounded-lg overflow-hidden border-2 ${
-                          primaryImageIndex === globalIndex ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                          primaryImageIndex === globalIndex ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                         }`}>
                           <img
                             src={preview}
@@ -730,7 +730,7 @@ export default function EditHotelPage() {
                             className="w-full h-32 object-cover"
                           />
                           {primaryImageIndex === globalIndex && (
-                            <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                            <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                               Primary
                             </div>
                           )}
@@ -738,7 +738,7 @@ export default function EditHotelPage() {
                             <button
                               type="button"
                               onClick={() => setPrimaryImageIndex(globalIndex)}
-                              className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                              className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                               title="Set as primary"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -787,8 +787,8 @@ export default function EditHotelPage() {
                       onClick={() => setPrimaryImageIndex(actualIndex)}
                       className={`flex-shrink-0 p-2 rounded ${
                         primaryImageIndex === actualIndex
-                          ? 'text-breco-gold'
-                          : 'text-gray-400 hover:text-breco-gold'
+                          ? 'text-blueox-warning'
+                          : 'text-gray-400 hover:text-blueox-warning'
                       }`}
                       title="Set as primary"
                     >
@@ -800,7 +800,7 @@ export default function EditHotelPage() {
                       type="url"
                       value={url}
                       onChange={(e) => updateImageUrl(index, e.target.value)}
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                       placeholder={`Image URL ${index + 1}`}
                     />
                     <button
@@ -820,7 +820,7 @@ export default function EditHotelPage() {
               <button
                 type="button"
                 onClick={addImageUrl}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-breco-navy hover:text-breco-navy transition-colors"
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blueox-primary hover:text-blueox-primary transition-colors"
               >
                 + Add Image URL
               </button>
@@ -837,7 +837,7 @@ export default function EditHotelPage() {
         {/* Additional Notes */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <InformationCircleIcon className="w-5 h-5 text-breco-navy" />
+            <InformationCircleIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Additional Information</h2>
           </div>
 
@@ -851,7 +851,7 @@ export default function EditHotelPage() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Any additional notes about this hotel..."
               />
             </div>
@@ -869,7 +869,7 @@ export default function EditHotelPage() {
                 name="is_partner"
                 checked={formData.is_partner}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">
                 Mark as partner hotel
@@ -882,7 +882,7 @@ export default function EditHotelPage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">
                 Hotel is active

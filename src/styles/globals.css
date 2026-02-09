@@ -4,7 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BlueOx Business Platform Design System */
+/**
+ * BlueOx Business Platform Design System
+ * 
+ * IMPORTANT FOR DEVELOPERS:
+ * - Use 'blueox-*' classes for new code (e.g., 'bg-blueox-primary', 'text-blueox-success')
+ * - Legacy 'breco-*' classes are aliased to 'blueox-*' for backward compatibility
+ * - Avoid using 'breco-*' classes in new components
+ */
 :root {
   /* Primary Brand Colors - Professional Royal Blue */
   --blueox-primary: #2C4BA0;

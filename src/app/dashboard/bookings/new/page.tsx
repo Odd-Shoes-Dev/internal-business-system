@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -401,7 +401,7 @@ export default function NewBookingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -441,11 +441,11 @@ export default function NewBookingPage() {
               onClick={() => setFormData(prev => ({ ...prev, booking_type: 'tour' }))}
               className={`p-4 rounded-lg border-2 transition-all ${
                 formData.booking_type === 'tour'
-                  ? 'border-breco-navy bg-breco-navy/5'
+                  ? 'border-blueox-primary bg-blueox-primary/5'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <MapIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'tour' ? 'text-breco-navy' : 'text-gray-400'}`} />
+              <MapIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'tour' ? 'text-blueox-primary' : 'text-gray-400'}`} />
               <div className="text-sm font-medium text-gray-900">Tour Package</div>
               <div className="text-xs text-gray-500 mt-1">Safari tours</div>
             </button>
@@ -455,11 +455,11 @@ export default function NewBookingPage() {
               onClick={() => setFormData(prev => ({ ...prev, booking_type: 'hotel' }))}
               className={`p-4 rounded-lg border-2 transition-all ${
                 formData.booking_type === 'hotel'
-                  ? 'border-breco-navy bg-breco-navy/5'
+                  ? 'border-blueox-primary bg-blueox-primary/5'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <BuildingOffice2Icon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'hotel' ? 'text-breco-navy' : 'text-gray-400'}`} />
+              <BuildingOffice2Icon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'hotel' ? 'text-blueox-primary' : 'text-gray-400'}`} />
               <div className="text-sm font-medium text-gray-900">Hotel Only</div>
               <div className="text-xs text-gray-500 mt-1">Accommodation</div>
             </button>
@@ -469,11 +469,11 @@ export default function NewBookingPage() {
               onClick={() => setFormData(prev => ({ ...prev, booking_type: 'car_hire' }))}
               className={`p-4 rounded-lg border-2 transition-all ${
                 formData.booking_type === 'car_hire'
-                  ? 'border-breco-navy bg-breco-navy/5'
+                  ? 'border-blueox-primary bg-blueox-primary/5'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <TruckIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'car_hire' ? 'text-breco-navy' : 'text-gray-400'}`} />
+              <TruckIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'car_hire' ? 'text-blueox-primary' : 'text-gray-400'}`} />
               <div className="text-sm font-medium text-gray-900">Car Hire</div>
               <div className="text-xs text-gray-500 mt-1">Vehicle rental</div>
             </button>
@@ -483,11 +483,11 @@ export default function NewBookingPage() {
               onClick={() => setFormData(prev => ({ ...prev, booking_type: 'custom' }))}
               className={`p-4 rounded-lg border-2 transition-all ${
                 formData.booking_type === 'custom'
-                  ? 'border-breco-navy bg-breco-navy/5'
+                  ? 'border-blueox-primary bg-blueox-primary/5'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <DocumentTextIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'custom' ? 'text-breco-navy' : 'text-gray-400'}`} />
+              <DocumentTextIcon className={`w-8 h-8 mx-auto mb-2 ${formData.booking_type === 'custom' ? 'text-blueox-primary' : 'text-gray-400'}`} />
               <div className="text-sm font-medium text-gray-900">Custom</div>
               <div className="text-xs text-gray-500 mt-1">Combination</div>
             </button>
@@ -497,7 +497,7 @@ export default function NewBookingPage() {
         {/* Customer & Basic Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <DocumentTextIcon className="w-5 h-5 text-breco-navy" />
+            <DocumentTextIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Booking Details</h2>
           </div>
 
@@ -511,7 +511,7 @@ export default function NewBookingPage() {
                 value={formData.customer_id}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 <option value="">Select customer</option>
                 {customers.map(customer => (
@@ -531,7 +531,7 @@ export default function NewBookingPage() {
                 name="booking_date"
                 value={formData.booking_date}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -551,7 +551,7 @@ export default function NewBookingPage() {
         {(formData.booking_type === 'tour') && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-4">
-              <MapIcon className="w-5 h-5 text-breco-navy" />
+              <MapIcon className="w-5 h-5 text-blueox-primary" />
               <h2 className="font-semibold text-gray-900">Tour Package</h2>
             </div>
 
@@ -564,7 +564,7 @@ export default function NewBookingPage() {
                 value={formData.tour_package_id}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 <option value="">Select tour package</option>
                 {tourPackages.map(pkg => (
@@ -587,7 +587,7 @@ export default function NewBookingPage() {
         {(formData.booking_type === 'hotel' || formData.booking_type === 'custom') && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-4">
-              <BuildingOffice2Icon className="w-5 h-5 text-breco-navy" />
+              <BuildingOffice2Icon className="w-5 h-5 text-blueox-primary" />
               <h2 className="font-semibold text-gray-900">Hotel Accommodation</h2>
             </div>
 
@@ -601,7 +601,7 @@ export default function NewBookingPage() {
                   value={formData.hotel_id}
                   onChange={handleChange}
                   required={formData.booking_type === 'hotel'}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 >
                   <option value="">Select hotel</option>
                   {hotels.map(hotel => (
@@ -625,7 +625,7 @@ export default function NewBookingPage() {
                   name="room_type"
                   value={formData.room_type}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 >
                   <option value="">Select room type</option>
                   <option value="Standard">Standard</option>
@@ -645,7 +645,7 @@ export default function NewBookingPage() {
                   value={formData.num_rooms}
                   onChange={handleChange}
                   min="1"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 />
               </div>
             </div>
@@ -656,7 +656,7 @@ export default function NewBookingPage() {
         {(formData.booking_type === 'car_hire' || formData.booking_type === 'custom') && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-4">
-              <TruckIcon className="w-5 h-5 text-breco-navy" />
+              <TruckIcon className="w-5 h-5 text-blueox-primary" />
               <h2 className="font-semibold text-gray-900">Vehicle Rental</h2>
             </div>
 
@@ -670,7 +670,7 @@ export default function NewBookingPage() {
                   value={formData.assigned_vehicle_id}
                   onChange={handleChange}
                   required={formData.booking_type === 'car_hire'}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 >
                   <option value="">Select vehicle</option>
                   {vehicles.map(vehicle => (
@@ -694,7 +694,7 @@ export default function NewBookingPage() {
                   name="rental_type"
                   value={formData.rental_type}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 >
                   <option value="">Select type</option>
                   <option value="self_drive">Self Drive</option>
@@ -713,7 +713,7 @@ export default function NewBookingPage() {
                   value={formData.pickup_location}
                   onChange={handleChange}
                   placeholder="e.g., Entebbe Airport"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 />
               </div>
 
@@ -727,7 +727,7 @@ export default function NewBookingPage() {
                   value={formData.dropoff_location}
                   onChange={handleChange}
                   placeholder="e.g., Kampala Hotel"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 />
               </div>
             </div>
@@ -737,7 +737,7 @@ export default function NewBookingPage() {
         {/* Travel Dates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CalendarDaysIcon className="w-5 h-5 text-breco-navy" />
+            <CalendarDaysIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">
               {formData.booking_type === 'hotel' ? 'Stay Dates' : 'Travel Dates'}
             </h2>
@@ -754,7 +754,7 @@ export default function NewBookingPage() {
                 value={formData.travel_start_date}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -768,7 +768,7 @@ export default function NewBookingPage() {
                 value={formData.travel_end_date}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
           </div>
@@ -782,7 +782,7 @@ export default function NewBookingPage() {
         {/* Group Size */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <UserGroupIcon className="w-5 h-5 text-breco-navy" />
+            <UserGroupIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">
               {formData.booking_type === 'hotel' ? 'Guests' : 'Travelers'}
             </h2>
@@ -800,7 +800,7 @@ export default function NewBookingPage() {
                 onChange={handleChange}
                 required
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -814,7 +814,7 @@ export default function NewBookingPage() {
                 value={formData.num_children}
                 onChange={handleChange}
                 min="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -828,7 +828,7 @@ export default function NewBookingPage() {
                 value={formData.num_infants}
                 onChange={handleChange}
                 min="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
           </div>
@@ -837,7 +837,7 @@ export default function NewBookingPage() {
         {/* Pricing */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+            <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Pricing</h2>
           </div>
 
@@ -853,7 +853,7 @@ export default function NewBookingPage() {
                   value={formData.subtotal}
                   onChange={handleChange}
                   step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy bg-gray-50"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary bg-gray-50"
                   readOnly
                 />
               </div>
@@ -869,7 +869,7 @@ export default function NewBookingPage() {
                   onChange={handleChange}
                   min="0"
                   step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 />
               </div>
             </div>
@@ -883,7 +883,7 @@ export default function NewBookingPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold text-gray-900">Total</span>
-                <span className="text-2xl font-bold text-breco-navy">
+                <span className="text-2xl font-bold text-blueox-primary">
                   {formatPrice(formData.total, formData.currency)}
                 </span>
               </div>
@@ -905,7 +905,7 @@ export default function NewBookingPage() {
                 value={formData.special_requests}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="E.g., window seats, room preferences, celebration occasions..."
               />
             </div>
@@ -919,7 +919,7 @@ export default function NewBookingPage() {
                 value={formData.dietary_requirements}
                 onChange={handleChange}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Vegetarian, vegan, allergies, etc."
               />
             </div>
@@ -933,7 +933,7 @@ export default function NewBookingPage() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Internal notes about the booking..."
               />
             </div>

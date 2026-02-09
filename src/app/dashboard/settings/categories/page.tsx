@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -135,7 +135,7 @@ export default function CategoriesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -221,7 +221,7 @@ export default function CategoriesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleEdit(category)}
-                        className="text-breco-navy hover:text-breco-navy/80 mr-4"
+                        className="text-blueox-primary hover:text-blueox-primary/80 mr-4"
                       >
                         <PencilIcon className="w-5 h-5" />
                       </button>

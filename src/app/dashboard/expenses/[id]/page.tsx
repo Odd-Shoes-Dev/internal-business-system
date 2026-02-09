@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -486,7 +486,7 @@ export default function ExpenseDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -575,7 +575,7 @@ export default function ExpenseDetailPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
               <div className="flex items-center gap-2 md:gap-3 mb-2">
-                <ReceiptPercentIcon className="w-6 h-6 md:w-8 md:h-8 text-breco-navy" />
+                <ReceiptPercentIcon className="w-6 h-6 md:w-8 md:h-8 text-blueox-primary" />
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900">EXPENSE</h2>
               </div>
               <p className="text-sm md:text-base text-gray-600">Expense #: {expense.expense_number}</p>
@@ -750,7 +750,7 @@ export default function ExpenseDetailPage() {
               href={expense.receipt_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-sm md:text-base text-breco-navy hover:text-breco-navy/80 flex items-center gap-2"
+              className="text-sm md:text-base text-blueox-primary hover:text-blueox-primary/80 flex items-center gap-2"
             >
               <DocumentTextIcon className="w-5 h-5" />
               View Receipt

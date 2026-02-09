@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -145,7 +145,7 @@ export default function EditAssetPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import {
   PrinterIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 interface ReportLine {
   code: string;
@@ -391,7 +392,7 @@ export default function ProfitLossReportPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                  className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -400,24 +401,24 @@ export default function ProfitLossReportPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                  className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
                 />
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <button onClick={() => setPresetPeriod('thisMonth')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-breco-navy hover:bg-gray-100 rounded-md font-medium transition-colors">
+              <button onClick={() => setPresetPeriod('thisMonth')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blueox-primary hover:bg-gray-100 rounded-md font-medium transition-colors">
                 This Month
               </button>
-              <button onClick={() => setPresetPeriod('lastMonth')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-breco-navy hover:bg-gray-100 rounded-md font-medium transition-colors">
+              <button onClick={() => setPresetPeriod('lastMonth')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blueox-primary hover:bg-gray-100 rounded-md font-medium transition-colors">
                 Last Month
               </button>
-              <button onClick={() => setPresetPeriod('thisQuarter')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-breco-navy hover:bg-gray-100 rounded-md font-medium transition-colors">
+              <button onClick={() => setPresetPeriod('thisQuarter')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blueox-primary hover:bg-gray-100 rounded-md font-medium transition-colors">
                 This Quarter
               </button>
-              <button onClick={() => setPresetPeriod('thisYear')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-breco-navy hover:bg-gray-100 rounded-md font-medium transition-colors">
+              <button onClick={() => setPresetPeriod('thisYear')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blueox-primary hover:bg-gray-100 rounded-md font-medium transition-colors">
                 This Year
               </button>
-              <button onClick={() => setPresetPeriod('lastYear')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-breco-navy hover:bg-gray-100 rounded-md font-medium transition-colors">
+              <button onClick={() => setPresetPeriod('lastYear')} className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blueox-primary hover:bg-gray-100 rounded-md font-medium transition-colors">
                 Last Year
               </button>
             </div>
@@ -427,8 +428,33 @@ export default function ProfitLossReportPage() {
 
       {/* Report */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="text-center space-y-2 mb-8">
+              <ShimmerSkeleton className="h-6 w-48 mx-auto" />
+              <ShimmerSkeleton className="h-4 w-32 mx-auto" />
+              <ShimmerSkeleton className="h-3 w-40 mx-auto" />
+            </div>
+            <div className="space-y-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-3">
+                  <ShimmerSkeleton className="h-5 w-32 mb-3" />
+                  <div className="space-y-2 pl-4">
+                    {[1, 2, 3].map((j) => (
+                      <div key={j} className="flex justify-between">
+                        <ShimmerSkeleton className="h-4 w-40" />
+                        <ShimmerSkeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between font-semibold border-t pt-2">
+                    <ShimmerSkeleton className="h-5 w-32" />
+                    <ShimmerSkeleton className="h-5 w-28" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : data ? (
         <div className="card">

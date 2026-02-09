@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   CubeIcon,
   ArrowDownTrayIcon,
@@ -61,6 +62,7 @@ interface SalesByProductData {
 }
 
 export default function SalesByProductPage() {
+  const { company } = useCompany();
   const [data, setData] = useState<SalesByProductData | null>(null);
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
@@ -95,7 +97,7 @@ export default function SalesByProductPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Sales by Product Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - Breco Safaris Ltd</title>
+          <title>Sales by Product Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - ${company?.name || 'Company'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -221,12 +223,12 @@ export default function SalesByProductPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo.png" alt="Breco Safaris Logo" class="logo" />
+            <img src="/assets/logo.png" alt="${company?.name || 'Company'} Logo" class="logo" />
             <div class="company-info">
-              <h1>Breco Safaris Ltd</h1>
-              <div class="address">Kampala Road Plot 14 Eagen House, Russel Street, P.O.Box 144011, Kampala, Uganda</div>
-              <div class="address">Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com</div>
-              <div class="address">URA TIN: 1014756280 • URSB Reg. No: 80020001634842</div>
+              <h1>${company?.name || 'Company Name'}</h1>
+              <div class="address">${company?.address || ''}</div>
+              <div class="address">Tel: ${company?.phone || ''} • Email: ${company?.email || ''}</div>
+              <div class="address">TIN: ${company?.tax_id || ''}</div>
             </div>
           </div>
           
@@ -375,7 +377,7 @@ export default function SalesByProductPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -384,7 +386,7 @@ export default function SalesByProductPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -392,7 +394,7 @@ export default function SalesByProductPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="all">All Categories</option>
               <option value="Software">Software</option>
@@ -407,7 +409,7 @@ export default function SalesByProductPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="totalRevenue">Total Revenue</option>
               <option value="productName">Product Name</option>
@@ -421,7 +423,7 @@ export default function SalesByProductPage() {
             <button
               onClick={fetchSalesByProduct}
               disabled={isLoading}
-              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Loading...' : 'Refresh Report'}
             </button>
@@ -431,7 +433,7 @@ export default function SalesByProductPage() {
 
       {isLoading ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-breco-navy mx-auto"></div>
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blueox-primary mx-auto"></div>
           <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading product sales data...</p>
         </div>
       ) : data ? (
@@ -517,7 +519,7 @@ export default function SalesByProductPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <CubeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <CubeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Product Sales Performance</h3>
               </div>
             </div>

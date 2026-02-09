@@ -1,6 +1,6 @@
 // =====================================================
 // Fixed Assets & Depreciation Logic
-// Breco Safaris Ltd Financial System
+// Business Management Platform - Financial System
 // =====================================================
 
 import { supabase } from '@/lib/supabase/client';

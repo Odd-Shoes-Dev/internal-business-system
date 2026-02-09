@@ -14,6 +14,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { printBill } from '@/lib/pdf/bill';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
@@ -280,19 +281,52 @@ export default function BillDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="loading"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-48" />
+              <ShimmerSkeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <ShimmerSkeleton key={i} className="h-10 w-24 rounded-xl" />
+            ))}
+          </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6 space-y-6">
+            <ShimmerSkeleton className="h-48 w-full" />
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <ShimmerSkeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[1, 2].map((i) => (
+                  <ShimmerSkeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+            </div>
+            <ShimmerSkeleton className="h-32 w-full" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!bill) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">Bill not found</p>
-        <Link href="/dashboard/bills" className="btn-primary mt-4">
-          Back to Bills
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-12 text-center">
+            <p className="text-gray-600 mb-4">Bill not found</p>
+            <Link href="/dashboard/bills" className="btn-primary">
+              Back to Bills
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -300,15 +334,17 @@ export default function BillDetailPage() {
   const balanceDue = parseFloat(bill.total as any) - parseFloat(bill.amount_paid as any);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6 print:hidden">
         <div className="flex items-center gap-4 mb-4">
           <Link
             href="/dashboard/bills"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
+              <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
+            </button>
           </Link>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{bill.bill_number}</h1>
@@ -318,14 +354,16 @@ export default function BillDetailPage() {
         
         {/* Action Buttons - Mobile Optimized */}
         <div className="flex flex-wrap gap-2">
-          <button onClick={handlePrint} className="btn-secondary text-sm">
-            <PrinterIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+          <button onClick={handlePrint} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
+            <PrinterIcon className="w-4 h-4 md:w-5 md:h-5" />
             <span className="hidden md:inline">Print</span>
           </button>
           
-          <Link href={`/dashboard/bills/${params.id}/edit`} className="btn-secondary text-sm">
-            <PencilIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
-            <span className="hidden md:inline">Edit</span>
+          <Link href={`/dashboard/bills/${params.id}/edit`}>
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
+              <PencilIcon className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden md:inline">Edit</span>
+            </button>
           </Link>
           
           {bill.status === 'draft' && (
@@ -333,17 +371,17 @@ export default function BillDetailPage() {
               <button 
                 onClick={handleApprove} 
                 disabled={actionLoading}
-                className="btn-secondary text-sm"
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
               >
-                <CheckIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <CheckIcon className="w-4 h-4 md:w-5 md:h-5" />
                 <span className="hidden md:inline">Approve</span>
               </button>
               <button 
                 onClick={handleDelete} 
                 disabled={actionLoading}
-                className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <TrashIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <TrashIcon className="w-4 h-4 md:w-5 md:h-5" />
                 <span className="hidden md:inline">Delete</span>
               </button>
             </>
@@ -351,16 +389,18 @@ export default function BillDetailPage() {
 
           {['approved', 'partial', 'overdue'].includes(bill.status) && balanceDue > 0 && (
             <>
-              <Link href={`/dashboard/bills/${params.id}/payment`} className="btn-primary text-sm flex-1 md:flex-none justify-center">
-                <CreditCardIcon className="w-4 h-4 md:w-5 md:h-5 mr-2" />
-                Record Payment
+              <Link href={`/dashboard/bills/${params.id}/payment`}>
+                <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
+                  <CreditCardIcon className="w-4 h-4 md:w-5 md:h-5" />
+                  Record Payment
+                </button>
               </Link>
               <button 
                 onClick={handleVoid} 
                 disabled={actionLoading}
-                className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <XMarkIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <XMarkIcon className="w-4 h-4 md:w-5 md:h-5" />
                 <span className="hidden md:inline">Void</span>
               </button>
             </>
@@ -370,9 +410,9 @@ export default function BillDetailPage() {
             <button 
               onClick={handleChangeToDraft} 
               disabled={actionLoading}
-              className="btn-secondary text-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
             >
-              <PencilIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+              <PencilIcon className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden md:inline">Change to Draft</span>
             </button>
           )}
@@ -381,9 +421,9 @@ export default function BillDetailPage() {
             <button 
               onClick={handleVoid} 
               disabled={actionLoading}
-              className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <XMarkIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+              <XMarkIcon className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden md:inline">Void</span>
             </button>
           )}
@@ -391,7 +431,7 @@ export default function BillDetailPage() {
       </div>
 
       {/* Bill Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
         {/* Header Section */}
         <div className="p-4 md:p-6 border-b border-gray-200">
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
@@ -562,7 +602,7 @@ export default function BillDetailPage() {
 
       {/* Payment History */}
       {payments.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:break-inside-avoid">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden print:break-inside-avoid mt-6">
           <div className="p-4 md:p-6 bg-gray-50 border-b border-gray-200">
             <h2 className="text-base md:text-lg font-semibold text-gray-900">Payment History</h2>
           </div>
@@ -598,6 +638,7 @@ export default function BillDetailPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -167,8 +168,31 @@ export default function VendorDetailPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-64" />
+              <ShimmerSkeleton className="h-4 w-48" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+                <ShimmerSkeleton className="h-6 w-40 mb-4" />
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="space-y-2">
+                      <ShimmerSkeleton className="h-4 w-24" />
+                      <ShimmerSkeleton className="h-5 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -185,7 +209,8 @@ export default function VendorDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -446,6 +471,7 @@ export default function VendorDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

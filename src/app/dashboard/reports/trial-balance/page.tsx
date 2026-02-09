@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 interface TrialBalanceAccount {
   accountCode: string;
@@ -61,7 +62,7 @@ export default function TrialBalancePage() {
     const printHTML = `
       <html>
         <head>
-          <title>Trial Balance - Breco Safaris Ltd</title>
+          <title>Trial Balance - ${company?.name || 'Company'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -327,7 +328,7 @@ export default function TrialBalancePage() {
               type="date"
               value={asOfDate}
               onChange={(e) => setAsOfDate(e.target.value)}
-              className="rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -335,7 +336,7 @@ export default function TrialBalancePage() {
               type="checkbox"
               checked={showZeroBalances}
               onChange={(e) => setShowZeroBalances(e.target.checked)}
-              className="rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+              className="rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
             />
             <span className="text-xs sm:text-sm text-gray-700">Show zero balances</span>
           </label>
@@ -343,9 +344,43 @@ export default function TrialBalancePage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] mx-auto"></div>
-          <p className="text-gray-500 mt-4">Loading trial balance...</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border-2">
+              <div className="flex items-center gap-3">
+                <ShimmerSkeleton className="h-8 w-8 rounded-full" />
+                <ShimmerSkeleton className="h-5 w-64" />
+              </div>
+            </div>
+            <div className="bg-white/50 rounded-2xl overflow-hidden">
+              <div className="border-b border-blueox-primary/10 p-4 flex justify-between">
+                <ShimmerSkeleton className="h-5 w-32" />
+                <div className="flex gap-6">
+                  <ShimmerSkeleton className="h-5 w-24" />
+                  <ShimmerSkeleton className="h-5 w-24" />
+                </div>
+              </div>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="border-b border-gray-100 p-4 flex justify-between">
+                  <div className="space-y-1">
+                    <ShimmerSkeleton className="h-4 w-24" />
+                    <ShimmerSkeleton className="h-4 w-48" />
+                  </div>
+                  <div className="flex gap-6">
+                    <ShimmerSkeleton className="h-4 w-24" />
+                    <ShimmerSkeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              ))}
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 flex justify-between font-semibold">
+                <ShimmerSkeleton className="h-5 w-32" />
+                <div className="flex gap-6">
+                  <ShimmerSkeleton className="h-5 w-28" />
+                  <ShimmerSkeleton className="h-5 w-28" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : data ? (
         <>
@@ -386,7 +421,7 @@ export default function TrialBalancePage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <CalculatorIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <CalculatorIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <div>
                   <h3 className="text-sm sm:text-base font-semibold text-gray-900">{company?.name || 'Company'}</h3>
                   <p className="text-xs sm:text-sm text-gray-500">

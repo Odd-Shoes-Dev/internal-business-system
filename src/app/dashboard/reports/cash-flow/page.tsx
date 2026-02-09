@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -318,7 +318,7 @@ export default function CashFlowPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -327,7 +327,7 @@ export default function CashFlowPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                className="block w-full px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
               />
             </div>
           </div>
@@ -344,7 +344,7 @@ export default function CashFlowPage() {
           {/* Report Header */}
           <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 bg-gray-50">
             <div className="flex items-center gap-2 sm:gap-3">
-              <BanknotesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-breco-navy" />
+              <BanknotesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blueox-primary" />
               <div>
                 <h2 className="text-sm sm:text-base font-semibold text-gray-900">{company?.name || 'Company'}</h2>
                 <p className="text-xs sm:text-sm text-gray-600">
@@ -460,8 +460,8 @@ export default function CashFlowPage() {
                 <span className="tabular-nums text-right">{formatCurrency(data.beginningCash)}</span>
               </div>
               <div className="flex justify-between items-center text-sm sm:text-lg font-bold pt-2 sm:pt-3 border-t border-gray-200">
-                <span className="text-breco-navy pr-2">Ending Cash Balance</span>
-                <span className="text-breco-navy tabular-nums text-right">
+                <span className="text-blueox-primary pr-2">Ending Cash Balance</span>
+                <span className="text-blueox-primary tabular-nums text-right">
                   {formatCurrency(data.endingCash)}
                 </span>
               </div>

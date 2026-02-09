@@ -235,7 +235,7 @@ export default function PayClient({ invoiceId }: { invoiceId?: string }) {
         <div className="text-center mb-8">
           <img
             src="/assets/logo.png"
-            alt="Breco Safaris"
+            alt="Company Logo"
             className="h-10 mx-auto"
           />
         </div>

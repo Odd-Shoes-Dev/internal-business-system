@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -326,7 +326,7 @@ export default function NewHotelPage() {
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BuildingStorefrontIcon className="w-5 h-5 text-breco-navy" />
+            <BuildingStorefrontIcon className="w-5 h-5 text-blueox-primary" />
             Basic Information
           </h2>
 
@@ -341,7 +341,7 @@ export default function NewHotelPage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Serena Hotel"
               />
             </div>
@@ -354,7 +354,7 @@ export default function NewHotelPage() {
                 name="destination_id"
                 value={formData.destination_id}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 <option value="">Select destination</option>
                 {destinations.map((dest) => (
@@ -373,7 +373,7 @@ export default function NewHotelPage() {
                 name="hotel_type"
                 value={formData.hotel_type}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {hotelTypes.map((type) => (
                   <option key={type} value={type}>
@@ -391,7 +391,7 @@ export default function NewHotelPage() {
                 name="star_rating"
                 value={formData.star_rating}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {[1, 2, 3, 4, 5].map((rating) => (
                   <option key={rating} value={rating}>
@@ -413,7 +413,7 @@ export default function NewHotelPage() {
                 min="0"
                 max="100"
                 step="0.1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function NewHotelPage() {
         {/* Contact Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <MapPinIcon className="w-5 h-5 text-breco-navy" />
+            <MapPinIcon className="w-5 h-5 text-blueox-primary" />
             Contact Information
           </h2>
 
@@ -436,7 +436,7 @@ export default function NewHotelPage() {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Plot 12, Kira Road"
               />
             </div>
@@ -450,7 +450,7 @@ export default function NewHotelPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="+256 123 456 789"
               />
             </div>
@@ -464,7 +464,7 @@ export default function NewHotelPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="info@hotel.com"
               />
             </div>
@@ -478,7 +478,7 @@ export default function NewHotelPage() {
                 name="website"
                 value={formData.website}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="https://hotel.com"
               />
             </div>
@@ -492,7 +492,7 @@ export default function NewHotelPage() {
                 name="contact_person"
                 value={formData.contact_person}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="John Doe"
               />
             </div>
@@ -506,7 +506,7 @@ export default function NewHotelPage() {
                 name="contact_phone"
                 value={formData.contact_phone}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="+256 123 456 789"
               />
             </div>
@@ -516,7 +516,7 @@ export default function NewHotelPage() {
         {/* Rates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+            <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
             Room Rates (USD per night)
           </h2>
 
@@ -532,7 +532,7 @@ export default function NewHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -548,7 +548,7 @@ export default function NewHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -564,7 +564,7 @@ export default function NewHotelPage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -574,7 +574,7 @@ export default function NewHotelPage() {
         {/* Images */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <PhotoIcon className="w-5 h-5 text-breco-navy" />
+            <PhotoIcon className="w-5 h-5 text-blueox-primary" />
             Hotel Images
           </h2>
 
@@ -582,7 +582,7 @@ export default function NewHotelPage() {
             {/* File Upload */}
             <div>
               <label className="block">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-breco-navy transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blueox-primary transition-colors cursor-pointer">
                   <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-1">
                     Click to upload or drag and drop
@@ -610,12 +610,12 @@ export default function NewHotelPage() {
                       src={preview}
                       alt={`Preview ${index + 1}`}
                       className={`w-full h-32 object-cover rounded-lg ${
-                        primaryImageIndex === index ? 'ring-4 ring-breco-gold' : ''
+                        primaryImageIndex === index ? 'ring-4 ring-blueox-warning' : ''
                       }`}
                     />
                     
                     {primaryImageIndex === index && (
-                      <div className="absolute top-2 left-2 bg-breco-gold text-white text-xs font-semibold px-2 py-1 rounded">
+                      <div className="absolute top-2 left-2 bg-blueox-warning text-white text-xs font-semibold px-2 py-1 rounded">
                         Primary
                       </div>
                     )}
@@ -625,7 +625,7 @@ export default function NewHotelPage() {
                         <button
                           type="button"
                           onClick={() => setPrimaryImage(index)}
-                          className="p-1.5 bg-breco-navy text-white rounded-full hover:bg-breco-navy-dark transition-colors"
+                          className="p-1.5 bg-blueox-primary text-white rounded-full hover:bg-blueox-primary-dark transition-colors"
                           title="Set as primary"
                         >
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -676,8 +676,8 @@ export default function NewHotelPage() {
                       onClick={() => setPrimaryImage(actualIndex)}
                       className={`flex-shrink-0 p-2 rounded ${
                         primaryImageIndex === actualIndex
-                          ? 'text-breco-gold'
-                          : 'text-gray-400 hover:text-breco-gold'
+                          ? 'text-blueox-warning'
+                          : 'text-gray-400 hover:text-blueox-warning'
                       }`}
                       title="Set as primary"
                     >
@@ -689,7 +689,7 @@ export default function NewHotelPage() {
                       type="url"
                       value={url}
                       onChange={(e) => updateImageUrl(index, e.target.value)}
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                       placeholder={`Image URL ${index + 1}`}
                     />
                     <button
@@ -709,7 +709,7 @@ export default function NewHotelPage() {
               <button
                 type="button"
                 onClick={addImageUrl}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-breco-navy hover:text-breco-navy transition-colors"
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blueox-primary hover:text-blueox-primary transition-colors"
               >
                 + Add Image URL
               </button>
@@ -731,7 +731,7 @@ export default function NewHotelPage() {
             value={formData.notes}
             onChange={handleChange}
             rows={4}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-breco-navy"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blueox-primary"
             placeholder="Any additional information about the hotel..."
           />
         </div>
@@ -747,7 +747,7 @@ export default function NewHotelPage() {
                 name="is_partner"
                 checked={formData.is_partner}
                 onChange={handleChange}
-                className="rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">Partner Hotel</span>
             </label>
@@ -758,7 +758,7 @@ export default function NewHotelPage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">Active</span>
             </label>
@@ -776,7 +776,7 @@ export default function NewHotelPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2 bg-breco-navy text-white rounded-lg hover:bg-breco-navy-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-blueox-primary text-white rounded-lg hover:bg-blueox-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Creating...' : 'Create Hotel'}
           </button>

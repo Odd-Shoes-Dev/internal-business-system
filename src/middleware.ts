@@ -52,10 +52,11 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Refresh session if expired
+  // Refresh session if expired - using getUser() for security
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = [
@@ -77,7 +78,7 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith(path)
   );
 
-  if (isProtectedPath && !session) {
+  if (isProtectedPath && !user) {
     const redirectUrl = new URL('/login', req.url);
     redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
@@ -98,12 +99,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (isAuthPath && session) {
+  if (isAuthPath && user) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // Check subscription status for protected routes
-  if (isProtectedPath && session) {
+  if (isProtectedPath && user) {
     // Skip billing and settings pages from subscription check
     const skipSubscriptionCheck = ['/dashboard/billing', '/dashboard/settings'].some(
       (path) => req.nextUrl.pathname.startsWith(path)
@@ -114,7 +115,7 @@ export async function middleware(req: NextRequest) {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single();
 
       if (profile?.company_id) {

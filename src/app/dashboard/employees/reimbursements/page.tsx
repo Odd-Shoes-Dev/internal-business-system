@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -157,7 +157,7 @@ export default function ReimbursementsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -203,7 +203,7 @@ export default function ReimbursementsPage() {
         </div>
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Awaiting Payment</p>
-          <p className="text-2xl font-bold text-breco-navy">{formatCurrency(stats.unpaid)}</p>
+          <p className="text-2xl font-bold text-blueox-primary">{formatCurrency(stats.unpaid)}</p>
         </div>
       </div>
 
@@ -218,7 +218,7 @@ export default function ReimbursementsPage() {
                 onClick={() => setStatusFilter(status)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   statusFilter === status
-                    ? 'bg-breco-navy text-white'
+                    ? 'bg-blueox-primary text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -295,7 +295,7 @@ export default function ReimbursementsPage() {
                         href={reimbursement.receipt_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-breco-navy hover:text-breco-navy/80"
+                        className="text-blueox-primary hover:text-blueox-primary/80"
                       >
                         <DocumentTextIcon className="w-5 h-5 inline" />
                       </a>

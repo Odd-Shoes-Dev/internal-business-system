@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -289,7 +289,7 @@ export default function NewReimbursementPage() {
                   href={formData.receipt_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-breco-navy hover:underline"
+                  className="text-sm text-blueox-primary hover:underline"
                 >
                   View uploaded receipt
                 </a>

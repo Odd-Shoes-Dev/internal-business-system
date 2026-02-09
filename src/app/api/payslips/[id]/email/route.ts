@@ -42,6 +42,13 @@ export async function POST(
       return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
     }
 
+    // Fetch company information
+    const { data: company } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', user.user_metadata.company_id)
+      .single();
+
     // Check if employee has email
     if (!payslip.employee.email) {
       return NextResponse.json(
@@ -69,7 +76,7 @@ export async function POST(
 
     // Send email via Resend
     const emailData = await resend.emails.send({
-      from: 'Breco Safaris HR <hr@brecosafaris.com>',
+      from: `${company?.name || 'Company'} HR <${process.env.RESEND_FROM_EMAIL || company?.email || 'hr@company.com'}>`,
       to: [payslip.employee.email],
       subject: `Your Payslip - ${payslip.payroll_period.period_name}`,
       html: `
@@ -92,9 +99,9 @@ export async function POST(
           
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-              <strong>Breco Safaris Ltd</strong><br>
+              <strong>${company?.name || 'Company Name'}</strong><br>
               HR Department<br>
-              Email: hr@brecosafaris.com
+              Email: ${company?.email || 'hr@company.com'}
             </p>
           </div>
           

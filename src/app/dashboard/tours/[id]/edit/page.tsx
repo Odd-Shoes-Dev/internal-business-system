@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -384,7 +384,7 @@ export default function EditTourPackagePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -418,7 +418,7 @@ export default function EditTourPackagePage() {
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <GlobeAltIcon className="w-5 h-5 text-breco-navy" />
+            <GlobeAltIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Basic Information</h2>
           </div>
 
@@ -433,7 +433,7 @@ export default function EditTourPackagePage() {
                 value={formData.package_code}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="PKG-001"
               />
             </div>
@@ -447,7 +447,7 @@ export default function EditTourPackagePage() {
                 value={formData.tour_type}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {tourTypes.map((type) => (
                   <option key={type} value={type}>
@@ -467,7 +467,7 @@ export default function EditTourPackagePage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="e.g., 7 Days Uganda Gorilla & Wildlife Safari"
               />
             </div>
@@ -481,7 +481,7 @@ export default function EditTourPackagePage() {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Describe the tour package highlights and overview..."
               />
             </div>
@@ -491,7 +491,7 @@ export default function EditTourPackagePage() {
         {/* Duration & Capacity */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <ClockIcon className="w-5 h-5 text-breco-navy" />
+            <ClockIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Duration & Capacity</h2>
           </div>
 
@@ -507,7 +507,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 required
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -522,7 +522,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 required
                 min="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -537,7 +537,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 required
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -552,7 +552,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 required
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -564,7 +564,7 @@ export default function EditTourPackagePage() {
                 name="difficulty_level"
                 value={formData.difficulty_level}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {difficultyLevels.map((level) => (
                   <option key={level.value} value={level.value}>
@@ -582,7 +582,7 @@ export default function EditTourPackagePage() {
                 name="primary_destination_id"
                 value={formData.primary_destination_id}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 <option value="">Select destination</option>
                 {destinations.map((dest) => (
@@ -598,7 +598,7 @@ export default function EditTourPackagePage() {
         {/* Pricing */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+            <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Pricing</h2>
           </div>
 
@@ -615,7 +615,7 @@ export default function EditTourPackagePage() {
                 required
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -631,7 +631,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -647,7 +647,7 @@ export default function EditTourPackagePage() {
                 onChange={handleChange}
                 min="0"
                 step="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0"
               />
             </div>
@@ -659,7 +659,7 @@ export default function EditTourPackagePage() {
                   name="price_per_person"
                   checked={formData.price_per_person}
                   onChange={handleChange}
-                  className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                  className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
                 />
                 <span className="text-sm text-gray-700">
                   Price is per person (uncheck for group pricing)
@@ -672,7 +672,7 @@ export default function EditTourPackagePage() {
         {/* Tour Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <UserGroupIcon className="w-5 h-5 text-breco-navy" />
+            <UserGroupIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Tour Details</h2>
           </div>
 
@@ -686,7 +686,7 @@ export default function EditTourPackagePage() {
                 value={formData.inclusions}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="List what's included in the package"
               />
             </div>
@@ -700,7 +700,7 @@ export default function EditTourPackagePage() {
                 value={formData.exclusions}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="List what's not included"
               />
             </div>
@@ -740,7 +740,7 @@ export default function EditTourPackagePage() {
                     {existingImages.map((img, index) => (
                       <div key={img.id} className="relative group">
                         <div className={`relative rounded-lg overflow-hidden border-2 ${
-                          primaryImageIndex === index ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                          primaryImageIndex === index ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                         }`}>
                           <img
                             src={img.image_url}
@@ -748,7 +748,7 @@ export default function EditTourPackagePage() {
                             className="w-full h-32 object-cover"
                           />
                           {primaryImageIndex === index && (
-                            <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                            <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                               Primary
                             </div>
                           )}
@@ -756,7 +756,7 @@ export default function EditTourPackagePage() {
                             <button
                               type="button"
                               onClick={() => setPrimaryImageIndex(index)}
-                              className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                              className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                               title="Set as primary"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -793,7 +793,7 @@ export default function EditTourPackagePage() {
                       return (
                         <div key={`new-${index}`} className="relative group">
                           <div className={`relative rounded-lg overflow-hidden border-2 ${
-                            primaryImageIndex === globalIndex ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                            primaryImageIndex === globalIndex ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                           }`}>
                             <img
                               src={preview}
@@ -801,7 +801,7 @@ export default function EditTourPackagePage() {
                               className="w-full h-32 object-cover"
                             />
                             {primaryImageIndex === globalIndex && (
-                              <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                              <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                                 Primary
                               </div>
                             )}
@@ -809,7 +809,7 @@ export default function EditTourPackagePage() {
                               <button
                                 type="button"
                                 onClick={() => setPrimaryImageIndex(globalIndex)}
-                                className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                                className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                                 title="Set as primary"
                               >
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -858,8 +858,8 @@ export default function EditTourPackagePage() {
                         onClick={() => setPrimaryImageIndex(actualIndex)}
                         className={`flex-shrink-0 p-2 rounded ${
                           primaryImageIndex === actualIndex
-                            ? 'text-breco-gold'
-                            : 'text-gray-400 hover:text-breco-gold'
+                            ? 'text-blueox-warning'
+                            : 'text-gray-400 hover:text-blueox-warning'
                         }`}
                         title="Set as primary"
                       >
@@ -871,7 +871,7 @@ export default function EditTourPackagePage() {
                         type="url"
                         value={url}
                         onChange={(e) => updateImageUrl(index, e.target.value)}
-                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                         placeholder={`Image URL ${index + 1}`}
                       />
                       <button
@@ -891,7 +891,7 @@ export default function EditTourPackagePage() {
                 <button
                   type="button"
                   onClick={addImageUrl}
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-breco-navy hover:text-breco-navy transition-colors"
+                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blueox-primary hover:text-blueox-primary transition-colors"
                 >
                   + Add Image URL
                 </button>
@@ -917,7 +917,7 @@ export default function EditTourPackagePage() {
                 name="is_featured"
                 checked={formData.is_featured}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">
                 Mark as featured
@@ -930,7 +930,7 @@ export default function EditTourPackagePage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">
                 Package is active

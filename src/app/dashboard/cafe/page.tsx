@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -221,7 +221,7 @@ export default function CafeDashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -233,7 +233,7 @@ export default function CafeDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <BuildingStorefrontIcon className="w-8 h-8 text-breco-navy" />
+          <BuildingStorefrontIcon className="w-8 h-8 text-blueox-primary" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Cafe Performance</h1>
             <p className="text-gray-500">Track cafe revenue, expenses, and profitability</p>
@@ -354,7 +354,7 @@ export default function CafeDashboardPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-breco-navy h-2 rounded-full"
+                      className="bg-blueox-primary h-2 rounded-full"
                       style={{ width: `${maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0}%` }}
                     ></div>
                   </div>
@@ -421,9 +421,9 @@ export default function CafeDashboardPage() {
 
             <Link
               href="/dashboard/employees?department=Cafe"
-              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-breco-navy hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-blueox-primary hover:bg-gray-50 transition-colors"
             >
-              <UsersIcon className="w-6 h-6 text-breco-navy" />
+              <UsersIcon className="w-6 h-6 text-blueox-primary" />
               <div>
                 <p className="font-medium text-gray-900">View Cafe Staff</p>
                 <p className="text-xs text-gray-500">{stats.employeeCount} employees</p>
@@ -432,9 +432,9 @@ export default function CafeDashboardPage() {
 
             <Link
               href="/dashboard/expenses?department=Cafe"
-              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-breco-navy hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-blueox-primary hover:bg-gray-50 transition-colors"
             >
-              <BanknotesIcon className="w-6 h-6 text-breco-navy" />
+              <BanknotesIcon className="w-6 h-6 text-blueox-primary" />
               <div>
                 <p className="font-medium text-gray-900">View Cafe Expenses</p>
                 <p className="text-xs text-gray-500">All cafe costs</p>
@@ -443,9 +443,9 @@ export default function CafeDashboardPage() {
 
             <Link
               href="/dashboard/reports/profit-loss?accounts=42"
-              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-breco-navy hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-blueox-primary hover:bg-gray-50 transition-colors"
             >
-              <ChartBarIcon className="w-6 h-6 text-breco-navy" />
+              <ChartBarIcon className="w-6 h-6 text-blueox-primary" />
               <div>
                 <p className="font-medium text-gray-900">Cafe P&L Report</p>
                 <p className="text-xs text-gray-500">Detailed financials</p>
@@ -454,9 +454,9 @@ export default function CafeDashboardPage() {
 
             <Link
               href="/dashboard/general-ledger?account_filter=42"
-              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-breco-navy hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-blueox-primary hover:bg-gray-50 transition-colors"
             >
-              <DocumentTextIcon className="w-6 h-6 text-breco-navy" />
+              <DocumentTextIcon className="w-6 h-6 text-blueox-primary" />
               <div>
                 <p className="font-medium text-gray-900">Cafe Transactions</p>
                 <p className="text-xs text-gray-500">View all entries</p>

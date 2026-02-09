@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -247,7 +247,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -256,7 +256,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Payroll Period Not Found</h2>
-        <Link href="/dashboard/payroll" className="text-breco-navy hover:underline">
+        <Link href="/dashboard/payroll" className="text-blueox-primary hover:underline">
           Back to Payroll
         </Link>
       </div>
@@ -388,7 +388,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/dashboard/payroll/${periodId}/payslips/${payslip.id}`}
-                        className="text-breco-navy hover:text-breco-navy/80 text-sm font-medium inline-flex items-center gap-1"
+                        className="text-blueox-primary hover:text-blueox-primary/80 text-sm font-medium inline-flex items-center gap-1"
                       >
                         <EyeIcon className="w-4 h-4" />
                         View

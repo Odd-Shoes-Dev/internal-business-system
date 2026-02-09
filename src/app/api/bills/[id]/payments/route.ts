@@ -17,7 +17,7 @@ export async function GET(
         *,
         bill_payment:bill_payments(
           *,
-          bank_account:bank_accounts(id, name, currency)
+          pay_from_account:accounts(id, name, currency)
         )
       `)
       .eq('bill_id', id)
@@ -36,7 +36,7 @@ export async function GET(
       payment_method: app.bill_payment.payment_method,
       reference_number: app.bill_payment.reference_number,
       notes: app.bill_payment.notes,
-      bank_account: app.bill_payment.bank_account,
+      account: app.bill_payment.pay_from_account,
     }));
 
     return NextResponse.json({ data: payments });

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -264,7 +264,7 @@ export default function EditInventoryItemPage() {
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                <Link href="/dashboard/settings/categories" className="text-breco-navy hover:underline">
+                <Link href="/dashboard/settings/categories" className="text-blueox-primary hover:underline">
                   Manage categories
                 </Link>
               </p>

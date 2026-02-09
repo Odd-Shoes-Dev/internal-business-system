@@ -12,12 +12,13 @@ export async function POST(request: NextRequest, context: any) {
     const { sendInvoiceEmail } = await import('@/lib/email/resend');
     const invoiceId = params.id;
 
-    // Fetch invoice with customer
+    // Fetch invoice with customer and company
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
         *,
-        customer:customers(name, email, email_2, email_3, email_4)
+        customer:customers(name, email, email_2, email_3, email_4),
+        company:companies(name, email, phone, address, city, country)
       `)
       .eq('id', invoiceId)
       .single();
@@ -25,6 +26,13 @@ export async function POST(request: NextRequest, context: any) {
     if (invoiceError || !invoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!invoice.company) {
+      return NextResponse.json(
+        { error: 'Company information not found' },
         { status: 404 }
       );
     }
@@ -58,6 +66,14 @@ export async function POST(request: NextRequest, context: any) {
       totalAmount: Number(invoice.total_amount),
       balanceDue,
       paymentLink,
+      company: {
+        name: invoice.company.name,
+        email: invoice.company.email,
+        phone: invoice.company.phone || undefined,
+        address: invoice.company.address || undefined,
+        city: invoice.company.city || undefined,
+        country: invoice.company.country || undefined,
+      },
     });
 
     // Update invoice status to sent if it was draft

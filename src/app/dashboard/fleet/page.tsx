@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -191,7 +191,7 @@ export default function FleetPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -300,7 +300,7 @@ export default function FleetPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVehicles.map((vehicle) => (
             <div key={vehicle.id} className={`card overflow-hidden ${vehicle.status === 'out_of_service' ? 'opacity-60' : ''}`}>
-              <div className="h-24 bg-gradient-to-br from-breco-navy to-breco-navy-light flex items-center justify-center overflow-hidden">
+              <div className="h-24 bg-gradient-to-br from-blueox-primary to-blueox-primary-light flex items-center justify-center overflow-hidden">
                 {vehicle.primary_image?.image_url || vehicle.images?.[0]?.image_url ? (
                   <img 
                     src={vehicle.primary_image?.image_url || vehicle.images?.[0]?.image_url} 

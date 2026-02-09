@@ -12,6 +12,7 @@ import {
   FunnelIcon,
   ReceiptPercentIcon,
   EyeIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type { Expense } from '@/types/database';
 
@@ -127,237 +128,272 @@ export default function ExpensesPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-gray-500 mt-1">Track and manage business expenses</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+        <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
+      </div>
+      
+      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
+        {/* Hero Header */}
+        <div className="text-center lg:text-left">
+          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
+            <ReceiptPercentIcon className="w-6 h-6 text-blueox-primary" />
+            <span className="text-blueox-primary font-semibold">Expense Management</span>
+          </div>
+          
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
+                Business Expenses
+              </h1>
+              <p className="text-lg text-gray-600 max-w-2xl">
+                Track business expenses, manage approvals, and monitor spending patterns
+              </p>
+            </div>
+            
+            <Link 
+              href="/dashboard/expenses/new" 
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Record Expense
+              <SparklesIcon className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
-        <Link href="/dashboard/expenses/new" className="btn-primary">
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Record Expense
-        </Link>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-sm font-medium text-gray-600 mb-2">This Month (USD)</p>
+          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{formatCurrency(stats.thisMonth)}</p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-sm font-medium text-gray-600 mb-2">Pending Approval</p>
+          <p className="text-2xl lg:text-3xl font-bold text-amber-600">{stats.pendingApproval}</p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-sm font-medium text-gray-600 mb-2">Approved</p>
+          <p className="text-2xl lg:text-3xl font-bold text-blue-600">{stats.approved}</p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-sm font-medium text-gray-600 mb-2">Paid</p>
+          <p className="text-2xl lg:text-3xl font-bold text-green-600">{stats.paid}</p>
+        </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search expenses..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <FunnelIcon className="w-5 h-5 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value as ExpenseStatus);
-                  setCurrentPage(1);
-                }}
-                className="input w-auto"
-              >
-                <option value="all">All Expenses</option>
-                <option value="pending">Pending Approval</option>
-                <option value="approved">Approved</option>
-                <option value="paid">Paid</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-          </div>
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <FunnelIcon className="w-5 h-5 text-blueox-primary" />
+          <h3 className="text-lg font-bold text-blueox-primary-dark">Search & Filter</h3>
         </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">This Month (USD)</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.thisMonth)}</p>
+        
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by expense number or description..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+            />
           </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Pending Approval</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">{stats.pendingApproval}</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Approved</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1">{stats.approved}</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Paid</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">{stats.paid}</p>
+          <div className="lg:w-54">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as ExpenseStatus);
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40 appearance-none"
+            >
+              <option value="all">All Expenses</option>
+              <option value="pending">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Expenses List */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
-        </div>
-      ) : expenses.length === 0 ? (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <ReceiptPercentIcon className="w-12 h-12 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">No expenses found.</p>
-            <Link href="/dashboard/expenses/new" className="btn-primary mt-4 inline-flex">
-              <PlusIcon className="w-5 h-5 mr-2" />
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blueox-primary/20 border-t-blueox-primary" />
+          </div>
+        ) : expenses.length === 0 ? (
+          <div className="text-center py-16 px-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-blueox-primary/10 rounded-full mb-6">
+              <ReceiptPercentIcon className="w-10 h-10 text-blueox-primary" />
+            </div>
+            <h3 className="text-2xl font-bold text-blueox-primary-dark mb-3">No expenses found</h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              Start tracking your business expenses to better manage your spending.
+            </p>
+            <Link 
+              href="/dashboard/expenses/new" 
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              <PlusIcon className="w-5 h-5" />
               Record Your First Expense
             </Link>
           </div>
-        </div>
-      ) : (
-        <>
-          {/* Desktop & Tablet Table */}
-          <div className="card overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Expense #</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Department</th>
-                  <th>Vendor</th>
-                  <th className="text-right">Amount</th>
-                  <th>Method</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((expense) => (
-                  <tr 
-                    key={expense.id}
-                    onClick={() => window.location.href = `/dashboard/expenses/${expense.id}`}
-                    className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="whitespace-nowrap">{formatDate(expense.expense_date)}</td>
-                    <td>
-                      <span className="font-mono text-sm">{expense.expense_number || '-'}</span>
-                    </td>
-                    <td>
-                      <p className="max-w-xs truncate">{expense.description}</p>
-                    </td>
-                    <td>
-                      <span className="text-sm text-gray-600">
-                        {expense.accounts?.name || '-'}
-                      </span>
-                    </td>
-                    <td>
-                      {expense.department ? (
-                        <span className="badge badge-blue text-xs">
-                          {expense.department}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap">{expense.vendors?.name || expense.payee || '-'}</td>
-                    <td className="text-right font-medium whitespace-nowrap">
-                      {formatCurrency(expense.total, expense.currency || 'USD')}
-                    </td>
-                    <td className="whitespace-nowrap">
-                      <span className="badge badge-gray">
-                        {expense.payment_method}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <Link
-                        href={`/dashboard/expenses/${expense.id}`}
-                        className="btn-ghost p-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <EyeIcon className="w-5 h-5" />
-                      </Link>
-                    </td>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-blueox-primary/10">
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Date</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Expense #</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Description</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Category</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Vendor/Payee</th>
+                    <th className="text-right py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Amount</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Method</th>
+                    <th className="text-right py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {expenses.map((expense) => (
+                    <tr 
+                      key={expense.id}
+                      className="border-b border-blueox-primary/5 hover:bg-blueox-primary/5 transition-colors duration-200 cursor-pointer"
+                      onClick={() => window.location.href = `/dashboard/expenses/${expense.id}`}
+                    >
+                      <td className="py-4 px-6 text-gray-600 whitespace-nowrap">{formatDate(expense.expense_date)}</td>
+                      <td className="py-4 px-6">
+                        <span className="font-mono text-sm text-blueox-primary font-semibold">{expense.expense_number || '-'}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="max-w-xs truncate text-gray-900 font-medium">{expense.description}</p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="text-sm text-gray-600">
+                          {expense.accounts?.name || '-'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 font-medium whitespace-nowrap">{expense.vendors?.name || expense.payee || '-'}</td>
+                      <td className="py-4 px-6 text-right text-gray-900 font-semibold whitespace-nowrap">
+                        {formatCurrency(expense.total, expense.currency || 'USD')}
+                      </td>
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700">
+                          {expense.payment_method}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <Link
+                          href={`/dashboard/expenses/${expense.id}`}
+                          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blueox-primary/10 hover:bg-blueox-primary/20 text-blueox-primary transition-all duration-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <EyeIcon className="w-5 h-5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Mobile Cards - Hidden by default, can be shown if preferred */}
-          <div className="hidden grid gap-4">
-            {expenses.map((expense) => (
-              <div key={expense.id} className="card">
-                <div className="card-body">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-900 truncate max-w-[200px]">
+            {/* Mobile Cards */}
+            <div className="lg:hidden p-4 space-y-4">
+              {expenses.map((expense) => (
+                <div 
+                  key={expense.id} 
+                  className="bg-white/90 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl p-5 hover:shadow-lg hover:border-blueox-primary/40 transition-all duration-300 cursor-pointer"
+                  onClick={() => window.location.href = `/dashboard/expenses/${expense.id}`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <p className="text-lg font-bold text-blueox-primary-dark truncate">
                         {expense.description}
                       </p>
-                      <p className="text-sm text-gray-500">{formatDate(expense.expense_date)}</p>
+                      <p className="text-sm text-gray-600 mt-1">{formatDate(expense.expense_date)}</p>
+                      {expense.expense_number && (
+                        <p className="text-xs font-mono text-gray-500 mt-1">{expense.expense_number}</p>
+                      )}
                     </div>
-                    <span className="badge badge-gray">
+                    <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 ml-2">
                       {expense.payment_method}
                     </span>
                   </div>
-                  <div className="mt-3 space-y-1.5 text-sm">
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-blueox-primary/10">
                     {expense.accounts && (
-                      <p className="text-gray-600">{expense.accounts.name}</p>
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 mb-1">Category</p>
+                        <p className="text-sm font-medium text-gray-900">{expense.accounts.name}</p>
+                      </div>
                     )}
                     {(expense.vendors || expense.payee) && (
-                      <p className="text-gray-600">Payee: {expense.vendors?.name || expense.payee}</p>
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 mb-1">Vendor/Payee</p>
+                        <p className="text-sm font-medium text-gray-900">{expense.vendors?.name || expense.payee}</p>
+                      </div>
                     )}
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Amount</p>
+                      <p className="text-lg font-bold text-blueox-primary">
+                        {formatCurrency(expense.total, expense.currency || 'USD')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t flex justify-between items-center">
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatCurrency(expense.total, expense.currency || 'USD')}
-                    </span>
-                    <Link
-                      href={`/dashboard/expenses/${expense.id}`}
-                      className="text-navy-600 font-medium text-sm"
-                    >
-                      View Details
-                    </Link>
-                  </div>
+                  
+                  <Link
+                    href={`/dashboard/expenses/${expense.id}`}
+                    className="mt-4 w-full flex items-center justify-center gap-2 bg-blueox-primary/10 hover:bg-blueox-primary/20 text-blueox-primary px-4 py-2 rounded-xl font-medium transition-all duration-200"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    View Details
+                  </Link>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} expenses
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="btn-secondary disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="btn-secondary disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+              ))}
             </div>
-          )}
-        </>
+          </>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {!loading && expenses.length > 0 && totalPages > 1 && (
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-gray-600 font-medium">
+              Showing <span className="text-blueox-primary font-bold">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-blueox-primary font-bold">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="text-blueox-primary font-bold">{totalCount}</span> expenses
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-6 py-2 bg-white border-2 border-blueox-primary/30 text-blueox-primary rounded-xl font-semibold hover:bg-blueox-primary hover:text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-blueox-primary"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-6 py-2 bg-white border-2 border-blueox-primary/30 text-blueox-primary rounded-xl font-semibold hover:bg-blueox-primary hover:text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-blueox-primary"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+      </div>
     </div>
   );
 }

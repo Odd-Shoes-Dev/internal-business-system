@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -123,7 +124,7 @@ export default function ReceiptDetailPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Receipt #${receipt.receipt_number} - Breco Safaris Ltd</title>
+          <title>Receipt #${receipt.receipt_number} - ${company?.name || 'Company'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -552,30 +553,66 @@ export default function ReceiptDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-64" />
+              <ShimmerSkeleton className="h-4 w-48" />
+            </div>
+          </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-24 w-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <ShimmerSkeleton className="h-4 w-24" />
+                  <ShimmerSkeleton className="h-5 w-full" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <ShimmerSkeleton className="h-4 w-24" />
+                  <ShimmerSkeleton className="h-5 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!receipt || !customer) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Receipt not found</p>
-        <Link href="/dashboard/receipts" className="btn-primary mt-4">
-          Back to Receipts
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-12 text-center">
+            <p className="text-gray-500 mb-4">Receipt not found</p>
+            <Link href="/dashboard/receipts" className="btn-primary">
+              Back to Receipts
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/dashboard/receipts" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
+          <Link href="/dashboard/receipts">
+            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
+              <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
+            </button>
           </Link>
           <div className="min-w-0 flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -599,7 +636,7 @@ export default function ReceiptDetailPage() {
             return balanceDue > 0 && !hasInvoiceReference && (
               <button 
                 onClick={() => setShowPaymentModal(true)}
-                className="px-3 py-2 text-sm rounded-lg font-medium bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
               >
                 <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">Record Payment</span>
@@ -608,17 +645,17 @@ export default function ReceiptDetailPage() {
             );
           })()}
           {customer?.email && (
-            <button onClick={handleSendEmail} className="px-3 py-2 text-sm rounded-lg font-medium bg-[#1e3a5f] hover:bg-[#152a45] text-white flex items-center gap-2">
+            <button onClick={handleSendEmail} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
               <EnvelopeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Send Email</span>
               <span className="sm:hidden">Send</span>
             </button>
           )}
-          <button onClick={handlePrint} className="btn-secondary text-sm">
-            <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
+          <button onClick={handlePrint} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
+            <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
-          <button onClick={handleDelete} className="btn-ghost text-red-600 hover:bg-red-50 p-2">
+          <button onClick={handleDelete} className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200">
             <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
@@ -651,11 +688,9 @@ export default function ReceiptDetailPage() {
       {/* Receipt Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Customer Information */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Customer Information</h3>
-          </div>
-          <div className="card-body space-y-3">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+          <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Customer Name</p>
               <p className="font-medium">{customer.name}</p>
@@ -688,11 +723,9 @@ export default function ReceiptDetailPage() {
         </div>
 
         {/* Receipt Information */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Receipt Details</h3>
-          </div>
-          <div className="card-body space-y-3">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Receipt Details</h3>
+          <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Receipt Number</p>
               <p className="font-medium">{receipt.receipt_number}</p>
@@ -727,10 +760,8 @@ export default function ReceiptDetailPage() {
       </div>
 
       {/* Line Items */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title text-base sm:text-lg">Line Items</h3>
-        </div>
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Line Items</h3>
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="table min-w-full">
             <thead>
@@ -758,11 +789,9 @@ export default function ReceiptDetailPage() {
       </div>
 
       {/* Payment Summary */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title text-base sm:text-lg">Payment Summary</h3>
-        </div>
-        <div className="card-body">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
+        <div>
           <div className="flex justify-end">
             <div className="w-full sm:w-80 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-sm sm:text-base text-gray-600">
@@ -810,23 +839,27 @@ export default function ReceiptDetailPage() {
 
       {/* Notes */}
       {receipt.notes && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Notes</h3>
-          </div>
-          <div className="card-body">
-            <p className="text-gray-700 whitespace-pre-wrap">{receipt.notes}</p>
-          </div>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+          <p className="text-gray-700 whitespace-pre-wrap">{receipt.notes}</p>
         </div>
       )}
 
       {/* Company Info Footer */}
-      <div className="card bg-gray-50">
-        <div className="card-body text-center text-sm text-gray-600">
-          <p className="font-semibold text-gray-900">Breco Safaris Ltd</p>
-          <p>Kampala Road Plot 14 Eagen House, Russel Street, P.O.Box 144011, Kampala, Uganda</p>
-          <p>Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com</p>
-          <p>URA TIN: 1014756280 • URSB Reg. No: 80020001634842</p>
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+        <div className="text-center text-sm text-gray-600 space-y-1">
+          <p className="font-semibold text-gray-900">{company?.name || 'Company Name'}</p>
+          {company?.address && <p>{company.address}</p>}
+          <p>
+            {company?.phone && `Tel: ${company.phone}`}
+            {company?.phone && company?.email && ' • '}
+            {company?.email && `Email: ${company.email}`}
+          </p>
+          <p>
+            {company?.tax_id && `TIN: ${company.tax_id}`}
+            {company?.tax_id && company?.registration_number && ' • '}
+            {company?.registration_number && `Reg. No: ${company.registration_number}`}
+          </p>
           <p className="mt-2 text-xs">This is an official receipt for accounting purposes.</p>
         </div>
       </div>
@@ -907,6 +940,7 @@ export default function ReceiptDetailPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

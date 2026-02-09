@@ -523,7 +523,8 @@ export default function NewReceiptPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/receipts" className="btn-ghost p-2">
@@ -537,8 +538,8 @@ export default function NewReceiptPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Receipt Details */}
-        <div className="card">
-          <div className="card-body">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-group md:col-span-2">
                 <label className="label">Customer *</label>
@@ -690,9 +691,9 @@ export default function NewReceiptPage() {
         </div>
 
         {/* Line Items */}
-        <div className="card">
-          <div className="card-header flex items-center justify-between">
-            <h3 className="card-title">Line Items</h3>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-blueox-primary/20 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Line Items</h3>
             <button
               type="button"
               onClick={() =>
@@ -712,7 +713,7 @@ export default function NewReceiptPage() {
               Add Line
             </button>
           </div>
-          <div className="card-body">
+          <div className="p-6">
             <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="p-4 bg-gray-50 rounded-lg space-y-3">
@@ -811,8 +812,8 @@ export default function NewReceiptPage() {
         </div>
 
         {/* Totals */}
-        <div className="card">
-          <div className="card-body">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-6">
             <div className="flex justify-end">
               <div className="w-80 space-y-2">
                 <div className="flex justify-between">
@@ -833,8 +834,8 @@ export default function NewReceiptPage() {
         </div>
 
         {/* Notes */}
-        <div className="card">
-          <div className="card-body">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-6">
             <div className="form-group">
               <label className="label">Notes</label>
               <textarea
@@ -857,6 +858,7 @@ export default function NewReceiptPage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

@@ -33,7 +33,7 @@ let scheduledReports: ScheduledReport[] = [
     frequency: 'monthly',
     dayOfMonth: 1,
     time: '09:00',
-    recipients: ['admin@brecosafaris.com', 'accounting@brecosafaris.com'],
+    recipients: ['admin@example.com', 'accounting@example.com'],
     format: 'pdf',
     parameters: {},
     isActive: true,
@@ -49,7 +49,7 @@ let scheduledReports: ScheduledReport[] = [
     frequency: 'weekly',
     dayOfWeek: 1, // Monday
     time: '08:30',
-    recipients: ['sales@brecosafaris.com'],
+    recipients: ['sales@example.com'],
     format: 'excel',
     parameters: {
       sortBy: 'totalSales',
@@ -68,7 +68,7 @@ let scheduledReports: ScheduledReport[] = [
     frequency: 'quarterly',
     monthOfQuarter: 1,
     time: '10:00',
-    recipients: ['tax@brecosafaris.com', 'admin@brecosafaris.com'],
+    recipients: ['tax@example.com', 'admin@example.com'],
     format: 'pdf',
     parameters: {},
     isActive: false,

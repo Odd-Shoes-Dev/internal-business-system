@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -20,7 +20,11 @@ import {
   EyeIcon,
   PrinterIcon,
   ExclamationTriangleIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  MinusCircleIcon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 
 type PayrollStatus = 'draft' | 'processing' | 'approved' | 'paid';
@@ -610,55 +614,117 @@ export default function PayrollPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
+        <div className="mb-8">
+          <ShimmerSkeleton className="h-12 w-64 mb-6 rounded-full" />
+          <ShimmerSkeleton className="h-10 w-80 mb-2" />
+          <ShimmerSkeleton className="h-6 w-96" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl">
+              <ShimmerSkeleton className="h-4 w-24 mb-3" />
+              <ShimmerSkeleton className="h-8 w-32" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payroll</h1>
-          <p className="text-gray-500 mt-1">Process payroll with PAYE & NSSF compliance</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
+      {/* Hero Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-full px-6 py-3 mb-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <BanknotesIcon className="w-6 h-6 text-blueox-primary" />
+          <span className="font-bold text-blueox-primary-dark text-lg">Payroll Management</span>
+          <SparklesIcon className="w-5 h-5 text-cyan-500" />
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Pay Period
-        </button>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
+              Employee Payroll
+            </h1>
+            <p className="text-gray-600 text-lg">Process payroll with PAYE & NSSF compliance</p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+          >
+            <PlusIcon className="w-5 h-5" />
+            New Pay Period
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
-          <p className="text-sm text-gray-500">Active Employees</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-blue-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Active Employees</p>
+              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-blueox-primary transition-colors">
+                {employees.length}
+              </p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-2xl group-hover:bg-blue-200 transition-colors">
+              <UserGroupIcon className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
         </div>
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-breco-navy">
-            {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (e.basic_salary || 0), 0))}
-          </p>
-          <p className="text-sm text-gray-500">This Month Payroll</p>
+        
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-green-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">This Month Payroll</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-blueox-primary-dark group-hover:text-green-600 transition-colors">
+                {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (e.basic_salary || 0), 0))}
+              </p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-2xl group-hover:bg-green-200 transition-colors">
+              <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
         </div>
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-red-600">
-            {formatCurrency(currentPeriod?.total_deductions || 0)}
-          </p>
-          <p className="text-sm text-gray-500">Total Deductions</p>
+        
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-red-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Total Deductions</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-red-600 group-hover:text-red-700 transition-colors">
+                {formatCurrency(currentPeriod?.total_deductions || 0)}
+              </p>
+            </div>
+            <div className="p-3 bg-red-100 rounded-2xl group-hover:bg-red-200 transition-colors">
+              <MinusCircleIcon className="w-6 h-6 text-red-600" />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tax Compliance Alert */}
-      <div className="card p-4 bg-yellow-50 border-yellow-200">
-        <div className="flex items-start gap-3">
-          <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600 flex-shrink-0" />
+      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-xl border-l-4 border-amber-500 rounded-3xl p-6 mb-8 shadow-xl">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-amber-100 rounded-2xl flex-shrink-0">
+            <ExclamationTriangleIcon className="w-6 h-6 text-amber-600" />
+          </div>
           <div>
-            <h3 className="font-medium text-yellow-800">Statutory Remittances</h3>
-            <p className="text-sm text-yellow-700 mt-1">
+            <h3 className="font-bold text-amber-900 text-lg mb-2">Statutory Remittances</h3>
+            <p className="text-amber-700">
               PAYE must be remitted to URA by the 15th of each month. NSSF contributions must be paid by the 15th following the pay period.
             </p>
           </div>
@@ -667,13 +733,15 @@ export default function PayrollPage() {
 
       {/* Payroll Periods */}
       {payrollPeriods.length === 0 ? (
-        <div className="card p-12 text-center">
-          <BanknotesIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No payroll periods</h3>
-          <p className="text-gray-500 mb-4">Create your first payroll period to get started</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-16 shadow-xl text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
+            <BanknotesIcon className="w-10 h-10 text-blueox-primary" />
+          </div>
+          <h3 className="text-2xl font-bold text-blueox-primary-dark mb-3">No payroll periods</h3>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">Create your first payroll period to get started</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary inline-flex items-center gap-2"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
             New Pay Period
@@ -682,11 +750,12 @@ export default function PayrollPage() {
       ) : (
         <div className="space-y-4">
           {payrollPeriods.map((period) => (
-            <div key={period.id} className="card">
-              <div className="card-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div key={period.id} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-5 border-b border-blueox-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{period.period_name}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-xl font-bold text-blueox-primary-dark">{period.period_name}</h3>
+                  <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                    <CalendarDaysIcon className="w-4 h-4" />
                     {formatDate(period.start_date)} - {formatDate(period.end_date)}
                   </p>
                 </div>
@@ -695,27 +764,27 @@ export default function PayrollPage() {
                 </div>
               </div>
               
-              <div className="card-body">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-400">Employees</p>
-                    <p className="font-semibold">{period.employee_count || '-'}</p>
+              <div className="p-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border border-blue-100">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Employees</p>
+                    <p className="text-2xl font-bold text-blueox-primary-dark">{period.employee_count || '-'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Gross Pay</p>
-                    <p className="font-semibold">{formatCurrency(period.total_gross)}</p>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Gross Pay</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(period.total_gross)}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Deductions</p>
-                    <p className="font-semibold text-red-600">{formatCurrency(period.total_deductions)}</p>
+                  <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-4 border border-red-100">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Deductions</p>
+                    <p className="text-xl font-bold text-red-600">{formatCurrency(period.total_deductions)}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Net Pay</p>
-                    <p className="font-semibold text-green-600">{formatCurrency(period.total_net)}</p>
+                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-4 border border-cyan-100">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Net Pay</p>
+                    <p className="text-xl font-bold text-cyan-600">{formatCurrency(period.total_net)}</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
+                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-blueox-primary/10">
                   {period.status === 'draft' && !period.employee_count && (
                     <button
                       onClick={() => {

@@ -20,12 +20,12 @@ function ShimmerSkeleton({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 bg-[length:200%_100%] animate-shimmer",
+        "relative isolate overflow-hidden rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100",
         className
       )}
       {...props}
     >
-      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent" />
     </div>
   )
 }

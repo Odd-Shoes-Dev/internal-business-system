@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -456,7 +456,7 @@ export default function CustomerStatementPage() {
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="">Select Customer</option>
               {customers.map(customer => (
@@ -472,7 +472,7 @@ export default function CustomerStatementPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -481,14 +481,14 @@ export default function CustomerStatementPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={fetchStatement}
               disabled={!customerId || isLoading}
-              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Loading...' : 'Generate Statement'}
             </button>
@@ -498,7 +498,7 @@ export default function CustomerStatementPage() {
 
       {isLoading ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-breco-navy mx-auto"></div>
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blueox-primary mx-auto"></div>
           <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading customer statement...</p>
         </div>
       ) : data ? (
@@ -522,7 +522,7 @@ export default function CustomerStatementPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
-                <UserIcon className="w-5 h-5 sm:w-6 sm:h-6 text-breco-navy" />
+                <UserIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Customer Information</h3>
               </div>
               <div className="space-y-2">
@@ -543,7 +543,7 @@ export default function CustomerStatementPage() {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
-                <CurrencyDollarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-breco-navy" />
+                <CurrencyDollarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Account Summary</h3>
               </div>
               <div className="space-y-2">
@@ -571,7 +571,7 @@ export default function CustomerStatementPage() {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
-                <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-breco-navy" />
+                <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Statement Period</h3>
               </div>
               <div className="space-y-2">
@@ -622,7 +622,7 @@ export default function CustomerStatementPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Transaction History</h3>
               </div>
             </div>

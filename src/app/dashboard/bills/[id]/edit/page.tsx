@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
@@ -220,27 +221,76 @@ export default function EditBillPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="loading"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="w-10 h-10 rounded-lg" />
+            <div className="flex-1">
+              <ShimmerSkeleton className="h-8 w-32 mb-2" />
+              <ShimmerSkeleton className="h-4 w-48" />
+            </div>
+          </div>
+          
+          {/* Bill Details Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-6 w-40 mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-32 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Line Items Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <ShimmerSkeleton className="h-6 w-32" />
+              <ShimmerSkeleton className="h-9 w-28" />
+            </div>
+            <div className="space-y-2">
+              <ShimmerSkeleton className="h-12 w-full" />
+              <ShimmerSkeleton className="h-12 w-full" />
+              <ShimmerSkeleton className="h-12 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error && !bill) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error}</p>
-        <Link href="/dashboard/bills" className="btn-primary">
-          Back to Bills
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-12 text-center">
+            <p className="text-red-600 mb-6 text-lg">{error}</p>
+            <Link href="/dashboard/bills" className="btn-primary inline-block">
+              Back to Bills
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
         <Link
           href={`/dashboard/bills/${params.id}`}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -259,9 +309,9 @@ export default function EditBillPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Bill Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Bill Details */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <DocumentTextIcon className="w-5 h-5 text-[#52b53b]" />
             <h2 className="font-semibold text-gray-900">Bill Details</h2>
@@ -330,10 +380,10 @@ export default function EditBillPage() {
               />
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Line Items */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          {/* Line Items */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Line Items</h2>
             <button
@@ -438,10 +488,10 @@ export default function EditBillPage() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Notes */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          {/* Notes */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Notes</h2>
           <textarea
             name="notes"
@@ -451,10 +501,10 @@ export default function EditBillPage() {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
             placeholder="Internal notes..."
           />
-        </div>
+          </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3">
           <Link
             href={`/dashboard/bills/${params.id}`}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -468,8 +518,9 @@ export default function EditBillPage() {
           >
             {isSubmitting ? 'Saving...' : 'Save Changes'}
           </button>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

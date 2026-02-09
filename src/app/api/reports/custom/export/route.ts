@@ -328,7 +328,7 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string, 
       </head>
       <body>
         <div class="header">
-          <img src="${origin}/Breco Safaris%20assets/Breco Safaris_logo.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
+          <img src="${origin}/assets/logo.png" alt="${companySettings.name} Logo" class="logo" onerror="this.style.display='none'" />
           <div class="company-info">
             <h1>${companySettings.name}</h1>
             <div class="address">${companySettings.address_line1}${companySettings.address_line2 ? ', ' + companySettings.address_line2 : ''}, ${companySettings.city}, ${companySettings.state} ${companySettings.zip_code}</div>

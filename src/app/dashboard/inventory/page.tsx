@@ -12,7 +12,10 @@ import {
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
+  SparklesIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types/database';
 
 export default function InventoryPage() {
@@ -99,155 +102,237 @@ export default function InventoryPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-          <p className="text-gray-500 mt-1">Track and manage stock levels</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
+      {/* Hero Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-full px-6 py-3 mb-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Squares2X2Icon className="w-6 h-6 text-blueox-primary" />
+          <span className="font-bold text-blueox-primary-dark text-lg">Inventory Management</span>
+          <SparklesIcon className="w-5 h-5 text-cyan-500" />
         </div>
-        <div className="flex gap-3">
-          <Link href="/dashboard/inventory/movements" className="btn-secondary">
-            Stock Movements
-          </Link>
-          <Link href="/dashboard/inventory/new" className="btn-primary">
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Add Item
-          </Link>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
+              Stock Control
+            </h1>
+            <p className="text-gray-600 text-lg">Track and manage your inventory levels</p>
+          </div>
+          <div className="flex gap-3">
+            <Link 
+              href="/dashboard/inventory/movements" 
+              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              Stock Movements
+            </Link>
+            <Link 
+              href="/dashboard/inventory/new" 
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add Item
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Total Items</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-blue-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Total Items</p>
+              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-blueox-primary transition-colors">
+                {stats.totalItems}
+              </p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-2xl group-hover:bg-blue-200 transition-colors">
+              <CubeIcon className="w-6 h-6 text-blue-600" />
+            </div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Total Value</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalValue)}</p>
+        
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-green-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Total Value</p>
+              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-green-600 transition-colors">
+                {formatCurrency(stats.totalValue)}
+              </p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-2xl group-hover:bg-green-200 transition-colors">
+              <ArrowTrendingUpIcon className="w-6 h-6 text-green-600" />
+            </div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Low Stock</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">{stats.lowStock}</p>
+        
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-amber-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Low Stock</p>
+              <p className="text-3xl font-extrabold text-amber-600 group-hover:text-amber-700 transition-colors">
+                {stats.lowStock}
+              </p>
+            </div>
+            <div className="p-3 bg-amber-100 rounded-2xl group-hover:bg-amber-200 transition-colors">
+              <ArrowTrendingDownIcon className="w-6 h-6 text-amber-600" />
+            </div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Out of Stock</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">{stats.outOfStock}</p>
+        
+        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-red-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-2">Out of Stock</p>
+              <p className="text-3xl font-extrabold text-red-600 group-hover:text-red-700 transition-colors">
+                {stats.outOfStock}
+              </p>
+            </div>
+            <div className="p-3 bg-red-100 rounded-2xl group-hover:bg-red-200 transition-colors">
+              <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, SKU, or barcode..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <FunnelIcon className="w-5 h-5 text-gray-400" />
-              <select
-                value={stockFilter}
-                onChange={(e) => {
-                  setStockFilter(e.target.value as any);
-                  setCurrentPage(1);
-                }}
-                className="input w-auto"
-              >
-                <option value="all">All Items</option>
-                <option value="low">Low Stock</option>
-                <option value="out">Out of Stock</option>
-              </select>
-            </div>
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <FunnelIcon className="w-5 h-5 text-blueox-primary" />
+          <h3 className="text-lg font-bold text-blueox-primary-dark">Search & Filter</h3>
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, SKU, or barcode..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+            />
           </div>
+          <select
+            value={stockFilter}
+            onChange={(e) => {
+              setStockFilter(e.target.value as any);
+              setCurrentPage(1);
+            }}
+            className="w-full md:w-48 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+          >
+            <option value="all">All Items</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+          </select>
         </div>
       </div>
 
       {/* Inventory List */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-xl border-l-4 border-gray-200 rounded-3xl p-6 shadow-xl">
+                <ShimmerSkeleton className="h-4 w-20 mb-3" />
+                <ShimmerSkeleton className="h-8 w-16" />
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <ShimmerSkeleton className="h-5 w-48" />
+                  <ShimmerSkeleton className="h-5 w-24" />
+                  <ShimmerSkeleton className="h-5 w-20" />
+                  <ShimmerSkeleton className="h-5 w-20" />
+                  <ShimmerSkeleton className="h-5 w-20" />
+                  <ShimmerSkeleton className="h-5 w-24" />
+                  <ShimmerSkeleton className="h-5 w-24" />
+                  <ShimmerSkeleton className="h-6 w-20 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="md:hidden space-y-3">
+            {[1, 2, 3].map((i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <CubeIcon className="w-12 h-12 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">No inventory items found.</p>
-            <Link href="/dashboard/inventory/new" className="btn-primary mt-4 inline-flex">
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Add Your First Item
-            </Link>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-16 shadow-xl text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
+            <CubeIcon className="w-10 h-10 text-blueox-primary" />
           </div>
+          <h3 className="text-2xl font-bold text-blueox-primary-dark mb-3">No inventory items found</h3>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            Add your first inventory item to start tracking stock
+          </p>
+          <Link 
+            href="/dashboard/inventory/new" 
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add Your First Item
+          </Link>
         </div>
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block overflow-hidden">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>SKU</th>
-                  <th className="text-right">On Hand</th>
-                  <th className="text-right">Reserved</th>
-                  <th className="text-right">Available</th>
-                  <th className="text-right">Unit Cost</th>
-                  <th className="text-right">Total Value</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="hidden md:block bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-blueox-primary/10 bg-gradient-to-r from-blue-50 to-cyan-50">
+                    <th className="text-left py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Item</th>
+                    <th className="text-left py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">SKU</th>
+                    <th className="text-right py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">On Hand</th>
+                    <th className="text-right py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Reserved</th>
+                    <th className="text-right py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Available</th>
+                    <th className="text-right py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Unit Cost</th>
+                    <th className="text-right py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Total Value</th>
+                    <th className="text-left py-5 px-6 text-sm font-bold text-blueox-primary-dark uppercase tracking-wide">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {items.map((item) => {
                   const status = getStockStatus(item);
                   const available = (item.quantity_on_hand || 0) - (item.quantity_reserved || 0);
                   return (
-                    <tr key={item.id}>
-                      <td>
+                    <tr key={item.id} className="border-b border-blueox-primary/5 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-cyan-50/50 transition-all duration-200">
+                      <td className="py-4 px-6">
                         <Link
                           href={`/dashboard/inventory/${item.id}`}
-                          className="font-medium text-gray-900 hover:text-navy-600"
+                          className="font-semibold text-blueox-primary hover:text-blueox-primary-dark transition-colors"
                         >
                           {item.name}
                         </Link>
                         {item.description && (
-                          <p className="text-sm text-gray-500 truncate max-w-xs">{item.description}</p>
+                          <p className="text-sm text-gray-500 truncate max-w-xs mt-1">{item.description}</p>
                         )}
                       </td>
-                      <td>
-                        <span className="font-mono text-sm">{item.sku || '-'}</span>
+                      <td className="py-4 px-6">
+                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{item.sku || '-'}</span>
                       </td>
-                      <td className="text-right font-medium">
+                      <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
                         {item.quantity_on_hand} {item.unit_of_measure}
                       </td>
-                      <td className="text-right text-gray-500">
+                      <td className="py-4 px-6 text-right text-gray-500">
                         {item.quantity_reserved}
                       </td>
-                      <td className="text-right font-medium">
+                      <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
                         {available} {item.unit_of_measure}
                       </td>
-                      <td className="text-right">{formatCurrency(item.cost_price, item.currency)}</td>
-                      <td className="text-right font-medium">
+                      <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.cost_price, item.currency)}</td>
+                      <td className="py-4 px-6 text-right font-bold text-blueox-primary-dark">
                         {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency)}
                       </td>
-                      <td>
+                      <td className="py-4 px-6">
                         <span className={`badge ${status.class}`}>
                           {status.label}
                         </span>
@@ -258,53 +343,54 @@ export default function InventoryPage() {
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden grid gap-4">
+        {/* Mobile Cards */}
+        <div className="md:hidden grid gap-4">
             {items.map((item) => {
               const status = getStockStatus(item);
               const available = (item.quantity_on_hand || 0) - (item.quantity_reserved || 0);
               return (
-                <div key={item.id} className="card">
-                  <div className="card-body">
+                <div key={item.id} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+                  <div>
                     <div className="flex justify-between items-start">
                       <div>
                         <Link
                           href={`/dashboard/inventory/${item.id}`}
-                          className="font-semibold text-gray-900 hover:text-navy-600"
+                          className="font-bold text-blueox-primary hover:text-blueox-primary-dark transition-colors"
                         >
                           {item.name}
                         </Link>
-                        <p className="text-sm text-gray-500 font-mono">{item.sku || '-'}</p>
+                        <p className="text-sm text-gray-500 font-mono mt-1">{item.sku || '-'}</p>
                       </div>
                       <span className={`badge ${status.class}`}>
                         {status.label}
                       </span>
                     </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-500">On Hand</p>
-                        <p className="font-semibold">{item.quantity_on_hand}</p>
+                    <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
+                        <p className="text-xs font-medium text-gray-600 mb-1">On Hand</p>
+                        <p className="text-lg font-bold text-blueox-primary-dark">{item.quantity_on_hand}</p>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-500">Reserved</p>
-                        <p className="font-semibold">{item.quantity_reserved}</p>
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-3 border border-amber-100">
+                        <p className="text-xs font-medium text-gray-600 mb-1">Reserved</p>
+                        <p className="text-lg font-bold text-amber-600">{item.quantity_reserved}</p>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-xs text-gray-500">Available</p>
-                        <p className="font-semibold">{available}</p>
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-3 border border-green-100">
+                        <p className="text-xs font-medium text-gray-600 mb-1">Available</p>
+                        <p className="text-lg font-bold text-green-600">{available}</p>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t flex justify-between text-sm">
+                    <div className="mt-4 pt-4 border-t border-blueox-primary/10 flex justify-between items-center">
                       <div>
-                        <span className="text-gray-500">Value:</span>
-                        <span className="ml-1.5 font-medium">
+                        <span className="text-sm text-gray-500">Total Value:</span>
+                        <span className="ml-2 text-lg font-bold text-blueox-primary-dark">
                           {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0))}
                         </span>
                       </div>
                       <Link
                         href={`/dashboard/inventory/${item.id}`}
-                        className="text-navy-600 font-medium"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-white px-4 py-2 rounded-xl font-semibold text-sm hover:shadow-lg transition-all duration-300 hover:scale-105"
                       >
                         Manage
                       </Link>
@@ -317,22 +403,22 @@ export default function InventoryPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} items
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-600">
+                Showing <span className="font-bold text-blueox-primary">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-bold text-blueox-primary">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="font-bold text-blueox-primary">{totalCount}</span> items
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="btn-secondary disabled:opacity-50"
+                  className="px-6 py-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="btn-secondary disabled:opacity-50"
+                  className="px-6 py-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Next
                 </button>

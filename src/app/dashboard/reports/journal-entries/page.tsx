@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import {
   XCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
 interface JournalEntry {
@@ -396,7 +397,7 @@ export default function JournalEntriesPage() {
           </button>
           <Link
             href="/dashboard/journal-entries/new"
-            className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90"
+            className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90"
           >
             <PlusIcon className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">New Entry</span>
@@ -414,7 +415,7 @@ export default function JournalEntriesPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -423,7 +424,7 @@ export default function JournalEntriesPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -431,7 +432,7 @@ export default function JournalEntriesPage() {
             <select
               value={entryType}
               onChange={(e) => setEntryType(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="all">All Types</option>
               <option value="Manual">Manual</option>
@@ -445,7 +446,7 @@ export default function JournalEntriesPage() {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="all">All Status</option>
               <option value="Posted">Posted</option>
@@ -461,7 +462,7 @@ export default function JournalEntriesPage() {
                 placeholder="Entry #, reference..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 pl-8 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 pl-8 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
               />
               <MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-2 top-2" />
             </div>
@@ -470,7 +471,7 @@ export default function JournalEntriesPage() {
             <button
               onClick={fetchJournalEntries}
               disabled={isLoading}
-              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Loading...' : 'Refresh'}
             </button>
@@ -479,9 +480,38 @@ export default function JournalEntriesPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-breco-navy mx-auto"></div>
-          <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading journal entries...</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4">
+                  <ShimmerSkeleton className="h-4 w-20 mb-2" />
+                  <ShimmerSkeleton className="h-6 w-16" />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="bg-white/50 rounded-2xl p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="space-y-2">
+                      <ShimmerSkeleton className="h-5 w-32" />
+                      <ShimmerSkeleton className="h-4 w-48" />
+                    </div>
+                    <ShimmerSkeleton className="h-6 w-20 rounded-full" />
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2].map((j) => (
+                      <div key={j} className="flex justify-between">
+                        <ShimmerSkeleton className="h-4 w-40" />
+                        <ShimmerSkeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : data ? (
         <>
@@ -552,7 +582,7 @@ export default function JournalEntriesPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Journal Entries</h3>
               </div>
             </div>
@@ -588,7 +618,7 @@ export default function JournalEntriesPage() {
                         <span>{formatDate(entry.date)}</span>
                         <button
                           onClick={() => setShowDetails(showDetails === entry.id ? null : entry.id)}
-                          className="text-breco-navy hover:text-breco-navy/80"
+                          className="text-blueox-primary hover:text-blueox-primary/80"
                         >
                           <EyeIcon className="w-4 h-4" />
                         </button>

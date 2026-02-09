@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -234,11 +234,11 @@ export default function SelectModulesPage() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-breco-navy mb-3">
+          <h1 className="text-3xl font-bold text-blueox-primary mb-3">
             Choose Your Industry Modules
           </h1>
           <p className="text-gray-600 text-lg mb-2">
-            Your 30-day trial includes the Professional plan with up to <span className="font-semibold text-breco-navy">3 industry modules</span>
+            Your 30-day trial includes the Professional plan with up to <span className="font-semibold text-blueox-primary">3 industry modules</span>
           </p>
           <p className="text-sm text-gray-500">
             You can select 0-3 modules. All core features are included automatically.
@@ -249,7 +249,7 @@ export default function SelectModulesPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-white rounded-full px-6 py-3 shadow-sm border border-blue-100">
             <span className="text-gray-600">Selected:</span>
-            <span className={`font-bold text-lg ${selectedModules.length === MAX_MODULES ? 'text-green-600' : 'text-breco-navy'}`}>
+            <span className={`font-bold text-lg ${selectedModules.length === MAX_MODULES ? 'text-green-600' : 'text-blueox-primary'}`}>
               {selectedModules.length} / {MAX_MODULES}
             </span>
           </div>
@@ -286,7 +286,7 @@ export default function SelectModulesPage() {
                       <Icon className={`w-6 h-6 ${isSelected ? 'text-green-600' : 'text-blue-600'}`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-breco-navy mb-1">
+                      <h3 className="font-semibold text-lg text-blueox-primary mb-1">
                         {module.name}
                       </h3>
                       <div className="text-sm text-gray-500">
@@ -325,7 +325,7 @@ export default function SelectModulesPage() {
           <button
             onClick={handleSkip}
             disabled={loading}
-            className="text-gray-600 hover:text-breco-navy transition-colors text-sm"
+            className="text-gray-600 hover:text-blueox-primary transition-colors text-sm"
           >
             Skip for now, I'll add modules later
           </button>
@@ -333,7 +333,7 @@ export default function SelectModulesPage() {
 
         {/* Info Box */}
         <div className="mt-8 max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h4 className="font-semibold text-breco-navy mb-2">What's included in your trial:</h4>
+          <h4 className="font-semibold text-blueox-primary mb-2">What's included in your trial:</h4>
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />

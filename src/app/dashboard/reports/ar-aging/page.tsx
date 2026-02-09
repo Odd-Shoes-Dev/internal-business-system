@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -318,7 +318,7 @@ export default function ARAgingPage() {
             type="date"
             value={asOfDate}
             onChange={(e) => setAsOfDate(e.target.value)}
-            className="rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+            className="rounded-lg border border-gray-300 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
           />
         </div>
       </div>
@@ -386,7 +386,7 @@ export default function ARAgingPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Customer Aging Detail</h3>
               </div>
             </div>

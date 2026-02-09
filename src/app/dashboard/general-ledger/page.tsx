@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   BookOpenIcon,
   FunnelIcon,
@@ -142,7 +143,8 @@ export default function GeneralLedgerPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -159,7 +161,7 @@ export default function GeneralLedgerPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
+      <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <FunnelIcon className="w-5 h-5 text-gray-400" />
@@ -204,7 +206,7 @@ export default function GeneralLedgerPage() {
       </div>
 
       {/* Entries List */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 sm:gap-3">
             <BookOpenIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#52b53b]" />
@@ -216,9 +218,11 @@ export default function GeneralLedgerPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] mx-auto"></div>
-            <p className="text-gray-500 mt-4">Loading entries...</p>
+          <div className="p-8 space-y-4">
+            <ShimmerSkeleton className="h-16 w-full rounded-xl" />
+            <ShimmerSkeleton className="h-16 w-full rounded-xl" />
+            <ShimmerSkeleton className="h-16 w-full rounded-xl" />
+            <ShimmerSkeleton className="h-16 w-full rounded-xl" />
           </div>
         ) : filteredEntries.length === 0 ? (
           <div className="p-8 text-center">
@@ -379,6 +383,7 @@ export default function GeneralLedgerPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

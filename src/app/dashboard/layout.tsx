@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -165,16 +165,21 @@ export default function DashboardLayout({
             
             setCompany(companyData);
 
-            // Fetch subscription status
-            const { data: settings } = await supabase
-              .from('company_settings')
-              .select('subscription_status, trial_end_date')
-              .eq('company_id', profile.company_id)
-              .single();
-            
-            if (settings) {
-              setSubscriptionStatus(settings.subscription_status || '');
-              setTrialEndDate(settings.trial_end_date || undefined);
+            // Fetch subscription status (wrapped in try-catch to handle missing columns)
+            try {
+              const { data: settings, error: settingsError } = await supabase
+                .from('company_settings')
+                .select('subscription_status, trial_end_date')
+                .eq('company_id', profile.company_id)
+                .single();
+              
+              if (!settingsError && settings) {
+                setSubscriptionStatus(settings.subscription_status || '');
+                setTrialEndDate(settings.trial_end_date || undefined);
+              }
+            } catch (error) {
+              // If columns don't exist, silently continue without subscription status
+              console.warn('Unable to fetch subscription status from company_settings:', error);
             }
           }
 
@@ -276,7 +281,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>

@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
-import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner } from '@/components/ui';
+import { Button, Badge, LoadingSpinner } from '@/components/ui';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
@@ -233,7 +234,7 @@ export default function InvoiceDetailPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Invoice #${invoice.invoice_number} - Breco Safaris Ltd</title>
+          <title>Invoice #${invoice.invoice_number} - ${company?.name || 'Company'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -694,21 +695,85 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center gap-3">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-64" />
+              <ShimmerSkeleton className="h-4 w-48" />
+            </div>
+          </div>
+          
+          {/* Action Buttons Skeleton */}
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <ShimmerSkeleton key={i} className="h-10 w-24 rounded-xl" />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+                <ShimmerSkeleton className="h-6 w-40 mb-4" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <ShimmerSkeleton className="h-4 w-24" />
+                      <ShimmerSkeleton className="h-5 w-32" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+                <ShimmerSkeleton className="h-6 w-32 mb-4" />
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex justify-between">
+                      <ShimmerSkeleton className="h-4 w-64" />
+                      <ShimmerSkeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar Skeleton */}
+            <div className="space-y-6">
+              <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+                <ShimmerSkeleton className="h-6 w-32 mb-4" />
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <ShimmerSkeleton className="h-4 w-28" />
+                      <ShimmerSkeleton className="h-6 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!invoice) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Invoice not found</p>
-        <Link href="/dashboard/invoices">
-          <Button variant="outline" className="mt-4">
-            Back to Invoices
-          </Button>
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-12 text-center">
+            <p className="text-gray-500 mb-4">Invoice not found</p>
+            <Link href="/dashboard/invoices">
+              <button className="px-6 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-sm font-medium">
+                Back to Invoices
+              </button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -716,14 +781,15 @@ export default function InvoiceDetailPage() {
   const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
           <Link href="/dashboard/invoices">
-            <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </Button>
+            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
+              <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+            </button>
           </Link>
           <div className="min-w-0 flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
@@ -740,91 +806,87 @@ export default function InvoiceDetailPage() {
 
         <div className="flex flex-wrap gap-2">
           {invoice.customer?.email && (
-            <Button 
-              variant="success" 
-              size="sm" 
+            <button 
               onClick={handleSendEmail}
               disabled={actionLoading === 'email'}
-              className="text-xs sm:text-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
             >
-              <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{actionLoading === 'email' ? 'Sending...' : 'Send Email'}</span>
               <span className="sm:hidden">Send</span>
-            </Button>
+            </button>
           )}
 
-          <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
-            <PrinterIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+          <button 
+            onClick={handlePrint}
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
+          >
+            <PrinterIcon className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Print / PDF</span>
-          </Button>
+          </button>
           
           {/* Convert to Invoice button for Quotations and Proformas */}
           {(invoice.document_type === 'quotation' || invoice.document_type === 'proforma') && 
            invoice.status !== 'converted' && invoice.status !== 'posted' && (
-            <Button 
-              variant="primary" 
-              size="sm" 
+            <button 
               onClick={handleConvertToInvoice}
               disabled={actionLoading === 'convert'}
-              className="text-xs sm:text-sm bg-[#52b53b] hover:bg-[#52b53b]/90"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
             >
-              <ArrowPathIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <ArrowPathIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">
                 {actionLoading === 'convert' ? 'Converting...' : 'Convert to Invoice'}
               </span>
               <span className="sm:hidden">Convert</span>
-            </Button>
+            </button>
           )}
           
           {invoice.status === 'draft' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <button 
               onClick={handleMarkAsSent}
               disabled={actionLoading === 'send'}
-              className="text-xs sm:text-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
             >
-              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Mark as Sent</span>
-            </Button>
+            </button>
           )}
           
           {(invoice.status === 'sent' || invoice.status === 'partial') && invoice.document_type === 'invoice' && (
-            <Button 
-              variant="success" 
-              size="sm" 
+            <button 
               onClick={handleMarkAsPaid}
               disabled={actionLoading === 'paid'}
-              className="text-xs sm:text-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
             >
-              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{actionLoading === 'paid' ? 'Processing...' : 'Mark as Paid'}</span>
-            </Button>
+            </button>
           )}
           
           {balanceDue > 0 && invoice.status !== 'draft' && (
-            <Button variant="outline" size="sm" onClick={handleCopyPaymentLink} className="text-xs sm:text-sm">
-              <CreditCardIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+            <button 
+              onClick={handleCopyPaymentLink}
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
+            >
+              <CreditCardIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Copy Payment Link</span>
-            </Button>
+            </button>
           )}
           
           <Link href={`/dashboard/invoices/${params.id}/edit`}>
-            <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-              <PencilIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
+              <PencilIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Edit</span>
-            </Button>
+            </button>
           </Link>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <button 
             onClick={handleDelete}
             disabled={actionLoading === 'delete'}
-            className="text-red-600 hover:bg-red-50 text-xs sm:text-sm p-2 sm:px-3"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -832,39 +894,32 @@ export default function InvoiceDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Invoice Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Details</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Invoice Date</p>
-                  <p className="font-medium">{formatDate(invoice.invoice_date)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Due Date</p>
-                  <p className="font-medium">{formatDate(invoice.due_date)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">PO Number</p>
-                  <p className="font-medium">{invoice.po_number || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium capitalize">{invoice.status}</p>
-                </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice Details</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Invoice Date</p>
+                <p className="font-medium">{formatDate(invoice.invoice_date)}</p>
               </div>
-            </CardBody>
-          </Card>
+              <div>
+                <p className="text-sm text-gray-500">Due Date</p>
+                <p className="font-medium">{formatDate(invoice.due_date)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">PO Number</p>
+                <p className="font-medium">{invoice.po_number || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <p className="font-medium capitalize">{invoice.status}</p>
+              </div>
+            </div>
+          </div>
 
           {/* Line Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Line Items</h2>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b">
@@ -922,31 +977,23 @@ export default function InvoiceDetailPage() {
                   </>
                 )}
               </div>
-            </CardBody>
-          </Card>
+          </div>
 
           {/* Notes */}
           {invoice.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
-              </CardBody>
-            </Card>
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
+              <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+            </div>
           )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Customer Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-2">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer</h2>
+            <div className="space-y-2">
                 <p className="font-medium">{invoice.customer?.name}</p>
                 {invoice.customer?.email && (
                   <p className="text-sm text-gray-500">{invoice.customer.email}</p>
@@ -965,22 +1012,18 @@ export default function InvoiceDetailPage() {
                 )}
               </div>
               <Link href={`/dashboard/customers/${invoice.customer_id}`}>
-                <Button variant="outline" size="sm" className="mt-4 w-full">
+                <button className="w-full mt-4 px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-sm font-medium">
                   View Customer
-                </Button>
+                </button>
               </Link>
-            </CardBody>
-          </Card>
+          </div>
           {/* Related Booking */}
           {relatedBooking && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DocumentDuplicateIcon className="h-5 w-5 text-gray-400" />
-                  Related Booking
-                </CardTitle>
-              </CardHeader>
-              <CardBody>
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <DocumentDuplicateIcon className="h-5 w-5 text-gray-400" />
+                Related Booking
+              </h2>
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Booking Number</p>
@@ -1106,20 +1149,16 @@ export default function InvoiceDetailPage() {
                   </div>
 
                   <Link href={`/dashboard/bookings/${relatedBooking.id}`}>
-                    <Button variant="outline" size="sm" className="mt-4 w-full">
+                    <button className="w-full mt-4 px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-sm font-medium">
                       View Booking Details
-                    </Button>
+                    </button>
                   </Link>
                 </div>
-              </CardBody>
-            </Card>
+            </div>
           )}
           {/* Payment Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Summary</CardTitle>
-            </CardHeader>
-            <CardBody>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Total Amount</span>
@@ -1139,10 +1178,10 @@ export default function InvoiceDetailPage() {
 
               {balanceDue > 0 && invoice.status !== 'draft' && (
                 <Link href={`/dashboard/invoices/${params.id}/payment`}>
-                  <Button className="w-full mt-4">
-                    <CreditCardIcon className="w-4 h-4 mr-2" />
+                  <button className="w-full mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 text-sm font-medium">
+                    <CreditCardIcon className="w-4 h-4" />
                     Record Payment
-                  </Button>
+                  </button>
                 </Link>
               )}
 
@@ -1152,16 +1191,12 @@ export default function InvoiceDetailPage() {
                   <span className="text-sm font-medium">Paid in Full</span>
                 </div>
               )}
-            </CardBody>
-          </Card>
+          </div>
 
           {/* Payment History */}
           {payments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment History</CardTitle>
-              </CardHeader>
-              <CardBody>
+            <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment History</h2>
                 <div className="space-y-3">
                   {payments.map((payment) => (
                     <div key={payment.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
@@ -1176,10 +1211,10 @@ export default function InvoiceDetailPage() {
                     </div>
                   ))}
                 </div>
-              </CardBody>
-            </Card>
+            </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

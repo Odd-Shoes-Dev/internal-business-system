@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { CurrencySelect } from '@/components/ui';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 export default function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -143,28 +144,59 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="w-10 h-10 rounded-xl" />
+            <div className="space-y-2">
+              <ShimmerSkeleton className="w-48 h-8" />
+              <ShimmerSkeleton className="w-64 h-4" />
+            </div>
+          </div>
+
+          {/* Form Skeletons */}
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+              <ShimmerSkeleton className="w-48 h-6 mb-4" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="space-y-2">
+                    <ShimmerSkeleton className="w-24 h-4" />
+                    <ShimmerSkeleton className="w-full h-10 rounded-xl" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Action Buttons Skeleton */}
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="w-32 h-10 rounded-xl" />
+            <ShimmerSkeleton className="w-24 h-10 rounded-xl" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href={`/dashboard/employees/${employeeId}`} className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Link href={`/dashboard/employees/${employeeId}`} className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200">
+            <ArrowLeftIcon className="w-5 h-5" />
+          </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Employee</h1>
           <p className="text-gray-500 mt-1">Update employee information</p>
+          </div>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Personal Information */}
-        <div className="card">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Personal Information</h2>
           </div>
@@ -235,8 +267,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Statutory Information */}
-        <div className="card">
+          {/* Statutory Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Statutory Information</h2>
           </div>
@@ -273,8 +305,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Contact Information */}
-        <div className="card">
+          {/* Contact Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Contact Information</h2>
           </div>
@@ -329,8 +361,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Employment Details */}
-        <div className="card">
+          {/* Employment Details */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Employment Details</h2>
           </div>
@@ -409,8 +441,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Salary Information */}
-        <div className="card">
+          {/* Salary Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Salary Information</h2>
           </div>
@@ -451,8 +483,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Bank Details */}
-        <div className="card">
+          {/* Bank Details */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Bank Details</h2>
           </div>
@@ -489,8 +521,8 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Notes */}
-        <div className="card">
+          {/* Notes */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="card-header">
             <h2 className="font-semibold">Notes</h2>
           </div>
@@ -505,23 +537,24 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="btn-primary"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <Link
-            href={`/dashboard/employees/${employeeId}`}
-            className="btn-secondary"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
+          {/* Actions */}
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-3 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <Link
+              href={`/dashboard/employees/${employeeId}`}
+              className="px-6 py-3 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200"
+            >
+              Cancel
+            </Link>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

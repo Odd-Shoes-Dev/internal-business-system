@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter, convertCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -359,10 +360,19 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading invoice...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          <ShimmerSkeleton className="h-12 w-48" />
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6 space-y-4">
+            <ShimmerSkeleton className="h-10 w-full" />
+            <div className="grid grid-cols-2 gap-4">
+              <ShimmerSkeleton className="h-10 w-full" />
+              <ShimmerSkeleton className="h-10 w-full" />
+            </div>
+          </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-32 w-full" />
+          </div>
         </div>
       </div>
     );
@@ -370,12 +380,14 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
   if (!invoice) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <p className="text-gray-600">Invoice not found</p>
-          <Link href="/dashboard/invoices" className="btn-primary mt-4">
-            Back to Invoices
-          </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-12 text-center">
+            <p className="text-gray-600 mb-4">Invoice not found</p>
+            <Link href="/dashboard/invoices" className="btn-primary">
+              Back to Invoices
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -386,24 +398,26 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   
   if (!canEdit) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/invoices/${resolvedParams.id}`} className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Cannot Edit Invoice</h1>
-            <p className="text-gray-500 mt-1">This invoice cannot be edited because it has been {invoice.status}</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <p className="text-gray-600 mb-4">
-              Only draft or sent invoices can be edited. This invoice has status: <strong>{invoice.status}</strong>
-            </p>
-            <Link href={`/dashboard/invoices/${resolvedParams.id}`} className="btn-primary">
-              Back to Invoice
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <Link href={`/dashboard/invoices/${resolvedParams.id}`} className="btn-ghost p-2">
+              <ArrowLeftIcon className="w-5 h-5" />
             </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Cannot Edit Invoice</h1>
+              <p className="text-gray-500 mt-1">This invoice cannot be edited because it has been {invoice.status}</p>
+            </div>
+          </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">
+                Only draft or sent invoices can be edited. This invoice has status: <strong>{invoice.status}</strong>
+              </p>
+              <Link href={`/dashboard/invoices/${resolvedParams.id}`} className="btn-primary">
+                Back to Invoice
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -411,7 +425,8 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -448,8 +463,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Customer and dates */}
-        <div className="card">
-          <div className="card-body">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="form-group md:col-span-2">
                 <label className="label">Customer *</label>
@@ -516,15 +530,12 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                 />
               </div>
             </div>
-          </div>
         </div>
 
         {/* Line items */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="font-semibold text-gray-900">Line Items</h2>
-          </div>
-          <div className="card-body space-y-4">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Line Items</h2>
+          <div className="space-y-4">
             {fields.map((field, index) => (
               <div
                 key={field.id}
@@ -633,19 +644,17 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
         {/* Notes and totals */}
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="card">
-            <div className="card-body">
-              <label className="label">Notes</label>
-              <textarea
-                {...register('notes')}
-                className="input min-h-[120px]"
-                placeholder="Notes to appear on the invoice..."
-              />
-            </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <label className="label">Notes</label>
+            <textarea
+              {...register('notes')}
+              className="input min-h-[120px]"
+              placeholder="Notes to appear on the invoice..."
+            />
           </div>
 
-          <div className="card">
-            <div className="card-body space-y-3">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
@@ -674,6 +683,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

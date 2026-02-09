@@ -244,7 +244,8 @@ export default function NewInvoicePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/invoices" className="btn-ghost p-2">
@@ -524,6 +525,7 @@ export default function NewInvoicePage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

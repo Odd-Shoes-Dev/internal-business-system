@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -156,7 +156,7 @@ export default function SalaryAdvancesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -202,7 +202,7 @@ export default function SalaryAdvancesPage() {
         </div>
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Outstanding</p>
-          <p className="text-2xl font-bold text-breco-navy">{formatCurrency(stats.totalOutstanding)}</p>
+          <p className="text-2xl font-bold text-blueox-primary">{formatCurrency(stats.totalOutstanding)}</p>
         </div>
       </div>
 
@@ -217,7 +217,7 @@ export default function SalaryAdvancesPage() {
                 onClick={() => setStatusFilter(status)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   statusFilter === status
-                    ? 'bg-breco-navy text-white'
+                    ? 'bg-blueox-primary text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >

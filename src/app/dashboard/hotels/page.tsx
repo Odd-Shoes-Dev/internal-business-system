@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -161,7 +161,7 @@ export default function HotelsPage() {
       <div className="flex items-center gap-0.5">
         {[...Array(5)].map((_, i) => (
           i < rating ? (
-            <StarSolidIcon key={i} className="w-4 h-4 text-breco-gold" />
+            <StarSolidIcon key={i} className="w-4 h-4 text-blueox-warning" />
           ) : (
             <StarIcon key={i} className="w-4 h-4 text-gray-300" />
           )
@@ -173,7 +173,7 @@ export default function HotelsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function HotelsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHotels.map((hotel) => (
             <div key={hotel.id} className={`card overflow-hidden ${!hotel.is_active ? 'opacity-60' : ''}`}>
-              <div className="h-32 bg-gradient-to-br from-breco-navy to-breco-navy-light flex items-center justify-center overflow-hidden">
+              <div className="h-32 bg-gradient-to-br from-blueox-primary to-blueox-primary-light flex items-center justify-center overflow-hidden">
                 {hotel.primary_image?.image_url || hotel.images?.[0]?.image_url ? (
                   <img 
                     src={hotel.primary_image?.image_url || hotel.images?.[0]?.image_url} 

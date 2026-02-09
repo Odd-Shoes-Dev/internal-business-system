@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { MagnifyingGlassIcon, BookOpenIcon } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 interface Account {
   id: string;
@@ -88,16 +89,21 @@ export default function ChartOfAccountsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="loading"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <ShimmerSkeleton className="h-20 w-full rounded-3xl" />
+          <ShimmerSkeleton className="h-32 w-full rounded-3xl" />
+          <ShimmerSkeleton className="h-96 w-full rounded-3xl" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
         <div className="flex items-center gap-3 mb-2">
           <BookOpenIcon className="w-8 h-8 text-[#1e3a5f]" />
           <h1 className="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
@@ -105,20 +111,19 @@ export default function ChartOfAccountsPage() {
         <p className="text-gray-500">
           Reference guide for all accounting categories and their account numbers
         </p>
-      </div>
+        </div>
 
-      {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        {/* Info Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">How to Use Account Numbers</h3>
         <p className="text-sm text-blue-700">
           When creating bills, expenses, or recording transactions, select the account number that best describes what you're paying for. 
           For example, use <strong>5110</strong> for Gorilla Permits, <strong>6100</strong> for Salaries, or <strong>7510</strong> for Fuel.
         </p>
-      </div>
+        </div>
 
-      {/* Search & Filter */}
-      <div className="card">
-        <div className="card-body">
+        {/* Search & Filter */}
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -144,15 +149,14 @@ export default function ChartOfAccountsPage() {
             </select>
           </div>
         </div>
-      </div>
 
-      {/* Accounts by Type */}
-      <div className="space-y-6">
+        {/* Accounts by Type */}
+        <div className="space-y-6">
         {Object.entries(groupedAccounts).map(([type, typeAccounts]) => (
-          <div key={type} className="card">
-            <div className="card-header">
+          <div key={type} className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h2 className="card-title">{formatAccountType(type)}</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{formatAccountType(type)}</h2>
                 <span className={`badge ${getTypeColor(type)}`}>
                   {typeAccounts.length} accounts
                 </span>
@@ -196,18 +200,17 @@ export default function ChartOfAccountsPage() {
             </div>
           </div>
         ))}
-      </div>
 
-      {filteredAccounts.length === 0 && (
-        <div className="text-center py-12">
-          <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No accounts found matching your search</p>
+        {filteredAccounts.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No accounts found matching your search</p>
+          </div>
+          )}
         </div>
-      )}
 
-      {/* Quick Reference Guide */}
-      <div className="card bg-gray-50">
-        <div className="card-body">
+        {/* Quick Reference Guide */}
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
           <h3 className="font-semibold text-gray-900 mb-4">Quick Reference Guide</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

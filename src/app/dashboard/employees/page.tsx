@@ -22,6 +22,8 @@ import {
   EyeIcon,
   CheckBadgeIcon,
   XCircleIcon,
+  SparklesIcon,
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -246,49 +248,70 @@ export default function EmployeesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blueox-primary/20 border-t-blueox-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Employees</h1>
-          <p className="text-gray-500 mt-1">Manage staff and payroll information</p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Employee
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+        <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
+      
+      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
+        {/* Hero Header */}
+        <div className="text-center lg:text-left">
+          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
+            <UserGroupIcon className="w-6 h-6 text-blueox-primary" />
+            <span className="text-blueox-primary font-semibold">Employee Management</span>
+          </div>
+          
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
+                Employee Directory
+              </h1>
+              <p className="text-lg text-gray-600 max-w-2xl">
+                Manage staff information and payroll details
+              </p>
+            </div>
+            
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add Employee
+              <SparklesIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
-          <p className="text-sm text-gray-500">Total Employees</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{employees.length}</p>
+          <p className="text-sm font-medium text-gray-600 mt-2">Total Employees</p>
         </div>
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-green-600">
+        <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-2xl lg:text-3xl font-bold text-green-600">
             {employees.filter(e => e.employment_status === 'active').length}
           </p>
-          <p className="text-sm text-gray-500">Active</p>
+          <p className="text-sm font-medium text-gray-600 mt-2">Active</p>
         </div>
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-blue-600">
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-2xl lg:text-3xl font-bold text-blue-600">
             {employees.filter(e => e.employment_status === 'probation').length}
           </p>
-          <p className="text-sm text-gray-500">On Probation</p>
+          <p className="text-sm font-medium text-gray-600 mt-2">On Probation</p>
         </div>
-        <div className="card p-4">
-          <p className="text-2xl font-bold text-breco-navy">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary">
             {formatCurrency(
               employees
                 .filter(e => e.is_active)
@@ -296,27 +319,32 @@ export default function EmployeesPage() {
               'UGX'
             )}
           </p>
-          <p className="text-sm text-gray-500">Monthly Payroll</p>
+          <p className="text-sm font-medium text-gray-600 mt-2">Monthly Payroll</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card p-4">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <FunnelIcon className="w-5 h-5 text-blueox-primary" />
+          <h3 className="text-lg font-bold text-blueox-primary-dark">Search & Filter</h3>
+        </div>
+        
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search employees..."
+              placeholder="Search employees by name, email, or employee number..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-10"
+              className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="input w-full sm:w-44"
+            className="w-full sm:w-48 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
           >
             <option value="all">All Statuses</option>
             {statuses.map(status => (
@@ -328,7 +356,7 @@ export default function EmployeesPage() {
           <select
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="input w-full sm:w-44"
+            className="w-full sm:w-48 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
           >
             <option value="all">All Departments</option>
             {departments.map(dept => (
@@ -340,81 +368,83 @@ export default function EmployeesPage() {
 
       {/* Employees Table */}
       {filteredEmployees.length === 0 ? (
-        <div className="card p-12 text-center">
-          <UserGroupIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No employees found</h3>
-          <p className="text-gray-500 mb-4">Add your first employee</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-16 shadow-xl text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
+            <UserGroupIcon className="w-10 h-10 text-blueox-primary" />
+          </div>
+          <h3 className="text-2xl font-bold text-blueox-primary-dark mb-3">No employees found</h3>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">Add your first employee to get started</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary inline-flex items-center gap-2"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
             Add Employee
           </button>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="table">
+            <table className="w-full">
               <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Position</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Hire Date</th>
-                  <th>Salary</th>
-                  <th className="text-right">Actions</th>
+                <tr className="border-b border-blueox-primary/10">
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Employee</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Position</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Department</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Status</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Hire Date</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Salary</th>
+                  <th className="text-right py-4 px-6 text-sm font-semibold text-blueox-primary-dark">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.map((employee) => (
-                  <tr key={employee.id} className={employee.employment_status === 'terminated' ? 'opacity-50' : ''}>
-                    <td>
+                  <tr key={employee.id} className={`border-b border-blueox-primary/5 hover:bg-blueox-primary/5 transition-colors duration-200 ${employee.employment_status === 'terminated' ? 'opacity-50' : ''}`}>
+                    <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-breco-navy/10 rounded-full flex items-center justify-center">
-                          <UserIcon className="w-5 h-5 text-breco-navy" />
+                        <div className="w-10 h-10 bg-blueox-primary/10 rounded-full flex items-center justify-center">
+                          <UserIcon className="w-5 h-5 text-blueox-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">
+                          <p className="font-semibold text-gray-900">
                             {employee.first_name} {employee.last_name}
                           </p>
                           <p className="text-sm text-gray-500">{employee.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <p className="font-medium">{employee.job_title || '-'}</p>
-                      <p className="text-xs text-gray-400">
+                    <td className="py-4 px-6">
+                      <p className="font-medium text-gray-900">{employee.job_title || '-'}</p>
+                      <p className="text-xs text-gray-500">
                         {employee.employee_number}
                       </p>
                     </td>
-                    <td>{employee.department || '-'}</td>
-                    <td>{getStatusBadge(employee.employment_status)}</td>
-                    <td>{formatDate(employee.hire_date)}</td>
-                    <td>
-                      <p className="font-medium">
+                    <td className="py-4 px-6 text-gray-900">{employee.department || '-'}</td>
+                    <td className="py-4 px-6">{getStatusBadge(employee.employment_status)}</td>
+                    <td className="py-4 px-6 text-gray-900">{formatDate(employee.hire_date)}</td>
+                    <td className="py-4 px-6">
+                      <p className="font-semibold text-gray-900">
                         {formatCurrency(employee.basic_salary, employee.salary_currency)}
                       </p>
-                      <p className="text-xs text-gray-400">{employee.pay_frequency}</p>
+                      <p className="text-xs text-gray-500 capitalize">{employee.pay_frequency}</p>
                     </td>
-                    <td>
+                    <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/dashboard/employees/${employee.id}`}
-                          className="btn-secondary btn-sm"
+                          className="inline-flex items-center justify-center w-9 h-9 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all duration-200"
                         >
                           <EyeIcon className="w-4 h-4" />
                         </Link>
                         <Link
                           href={`/dashboard/employees/${employee.id}/edit`}
-                          className="btn-secondary btn-sm"
+                          className="inline-flex items-center justify-center w-9 h-9 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200"
                         >
                           <PencilIcon className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => deleteEmployee(employee.id)}
-                          className="btn-sm btn-danger"
+                          className="inline-flex items-center justify-center w-9 h-9 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all duration-200"
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
@@ -671,6 +701,7 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

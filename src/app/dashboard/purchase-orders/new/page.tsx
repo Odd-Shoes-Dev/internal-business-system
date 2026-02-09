@@ -211,7 +211,8 @@ export default function NewPurchaseOrderPage() {
   const formatCurrency = (amount: number) => currencyFormatter(amount, formData.currency as any);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/purchase-orders" className="btn-ghost p-2">
@@ -225,11 +226,11 @@ export default function NewPurchaseOrderPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* PO Details */}
-        <div className="card">
-          <div className="card-header">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-blueox-primary/20">
             <h2 className="text-lg font-semibold">Order Information</h2>
           </div>
-          <div className="card-body space-y-4">
+          <div className="p-6 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="label">
@@ -313,15 +314,15 @@ export default function NewPurchaseOrderPage() {
         </div>
 
         {/* Line Items */}
-        <div className="card">
-          <div className="card-header flex items-center justify-between">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-blueox-primary/20 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Line Items</h2>
             <button type="button" onClick={addLine} className="btn-secondary text-sm">
               <PlusIcon className="w-4 h-4 mr-1" />
               Add Line
             </button>
           </div>
-          <div className="card-body">
+          <div className="p-6">
             <div className="overflow-x-auto">
               <table className="table">
                 <thead>
@@ -406,8 +407,8 @@ export default function NewPurchaseOrderPage() {
         </div>
 
         {/* Totals */}
-        <div className="card">
-          <div className="card-body">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
+          <div className="p-6">
             <div className="flex justify-end">
               <div className="w-80 space-y-2">
                 <div className="flex justify-between text-sm">
@@ -437,6 +438,7 @@ export default function NewPurchaseOrderPage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

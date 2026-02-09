@@ -213,7 +213,8 @@ export default function NewExpensePage() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
@@ -236,7 +237,7 @@ export default function NewExpensePage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <CreditCardIcon className="w-5 h-5 text-[#52b53b]" />
             <h2 className="font-semibold text-gray-900">Expense Details</h2>
@@ -380,7 +381,7 @@ export default function NewExpensePage() {
         </div>
 
         {/* Amount */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Amount</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -429,7 +430,7 @@ export default function NewExpensePage() {
         </div>
 
         {/* Additional Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Additional Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -538,6 +539,7 @@ export default function NewExpensePage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

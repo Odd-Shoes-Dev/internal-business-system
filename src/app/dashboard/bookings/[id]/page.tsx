@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import type { Booking, BookingStatus } from '@/types/breco';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
   CalendarDaysIcon,
@@ -22,8 +23,8 @@ import {
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
   inquiry: 'bg-purple-100 text-purple-800',
-  confirmed: 'bg-breco-navy text-white',
-  deposit_paid: 'bg-breco-gold text-white',
+  confirmed: 'bg-blueox-primary text-white',
+  deposit_paid: 'bg-blueox-warning text-white',
   fully_paid: 'bg-green-100 text-green-800',
   completed: 'bg-green-500 text-white',
   cancelled: 'bg-gray-200 text-gray-600',
@@ -369,19 +370,63 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-breco-navy border-t-transparent"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <ShimmerSkeleton className="h-9 w-9 rounded-xl" />
+              <div className="space-y-2">
+                <ShimmerSkeleton className="h-8 w-48 rounded-lg" />
+                <ShimmerSkeleton className="h-4 w-32 rounded-lg" />
+              </div>
+            </div>
+            <ShimmerSkeleton className="h-8 w-32 rounded-full" />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Main Content Skeleton */}
+            <div className="xl:col-span-2 space-y-6">
+              <ShimmerSkeleton className="h-96 rounded-3xl" />
+              <ShimmerSkeleton className="h-48 rounded-3xl" />
+              <ShimmerSkeleton className="h-48 rounded-3xl" />
+            </div>
+
+            {/* Sidebar Skeleton */}
+            <div className="xl:col-span-1 space-y-6">
+              <ShimmerSkeleton className="h-64 rounded-3xl" />
+              <ShimmerSkeleton className="h-96 rounded-3xl" />
+              <ShimmerSkeleton className="h-64 rounded-3xl" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 mb-4">Booking not found</p>
-        <Link href="/dashboard/bookings" className="btn-secondary">
-          Back to Bookings
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-12 text-center max-w-md">
+          <div className="mb-6">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full flex items-center justify-center">
+              <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Booking Not Found</h3>
+          <p className="text-gray-500 mb-6">The booking you're looking for doesn't exist or has been removed.</p>
+          <Link 
+            href="/dashboard/bookings" 
+            className="inline-flex items-center gap-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg px-6 py-3 font-medium transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Bookings
+          </Link>
+        </div>
       </div>
     );
   }
@@ -389,13 +434,14 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
   const totalTravelers = booking.num_adults + booking.num_children + booking.num_infants;
 
   return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/dashboard/bookings"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-500/20 rounded-xl shadow-lg transition-all duration-200"
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </Link>
@@ -425,7 +471,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
         <div className="xl:col-span-2 space-y-6">
           {/* Tour Package Information */}
           {booking.booking_type === 'tour' && booking.tour_package && (
-            <div className="card overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl overflow-hidden">
               <Link 
                 href={`/dashboard/tours/${booking.tour_package.id}`}
                 className="block group"
@@ -472,13 +518,13 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     </div>
                     <div>
                       <span className="text-xs text-gray-500 block">Base Price</span>
-                      <p className="font-semibold text-breco-navy mt-1">
+                      <p className="font-semibold text-blueox-primary mt-1">
                         ${booking.tour_package.base_price_usd}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="mt-4 text-sm text-breco-navy group-hover:text-breco-teal transition-colors flex items-center gap-1">
+                  <div className="mt-4 text-sm text-blueox-primary group-hover:text-blueox-accent transition-colors flex items-center gap-1">
                     View package details
                     <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -491,7 +537,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
           {/* Hotel Information */}
           {(booking.booking_type === 'hotel' || booking.booking_type === 'custom') && booking.hotel && (
-            <div className="card overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl overflow-hidden">
               <Link 
                 href={`/dashboard/hotels/${booking.hotel.id}`}
                 className="block group"
@@ -567,7 +613,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     )}
                   </div>
                   
-                  <div className="mt-4 text-sm text-breco-navy group-hover:text-breco-teal transition-colors flex items-center gap-1">
+                  <div className="mt-4 text-sm text-blueox-primary group-hover:text-blueox-accent transition-colors flex items-center gap-1">
                     View hotel details
                     <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -580,7 +626,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
           {/* Vehicle Information */}
           {(booking.booking_type === 'car_hire' || booking.booking_type === 'custom') && booking.vehicle && (
-            <div className="card overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl overflow-hidden">
               <Link 
                 href={`/dashboard/fleet/${booking.vehicle.id}`}
                 className="block group"
@@ -626,7 +672,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     )}
                     <div>
                       <span className="text-xs text-gray-500 block">Daily Rate</span>
-                      <p className="font-semibold text-breco-navy mt-1">
+                      <p className="font-semibold text-blueox-primary mt-1">
                         {new Intl.NumberFormat('en-US', {
                           style: 'currency',
                           currency: booking.currency || 'USD',
@@ -653,7 +699,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     </div>
                   )}
                   
-                  <div className="mt-4 text-sm text-breco-navy group-hover:text-breco-teal transition-colors flex items-center gap-1">
+                  <div className="mt-4 text-sm text-blueox-primary group-hover:text-blueox-accent transition-colors flex items-center gap-1">
                     View vehicle details
                     <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -665,7 +711,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           )}
 
           {/* Customer Information */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <UserGroupIcon className="h-5 w-5 text-gray-400" />
@@ -700,7 +746,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
 
           {/* Travel Dates */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
               <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
               Travel Dates
@@ -733,7 +779,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
           {/* Additional Information */}
           {(booking.special_requests || booking.dietary_requirements || booking.notes) && (
-            <div className="card">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <DocumentTextIcon className="h-5 w-5 text-gray-400" />
                 Additional Information
@@ -765,7 +811,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
         {/* Sidebar */}
         <div className="xl:col-span-1 space-y-6">
           {/* Pricing Summary */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
               <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
               Pricing Summary
@@ -796,7 +842,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
               <div className="pt-4 border-t-2 border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-lg text-gray-900">Total</span>
-                  <span className="font-bold text-2xl text-breco-navy">
+                  <span className="font-bold text-2xl text-blueox-primary">
                     {booking.currency} {booking.total.toFixed(2)}
                   </span>
                 </div>
@@ -811,7 +857,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-gray-900">Balance Due</span>
-                    <span className="font-bold text-xl text-breco-gold">
+                    <span className="font-bold text-xl text-blueox-warning">
                       {booking.currency} {(booking.total - booking.amount_paid).toFixed(2)}
                     </span>
                   </div>
@@ -821,12 +867,12 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
 
           {/* Related Invoices */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
               <DocumentDuplicateIcon className="h-5 w-5 text-gray-400" />
               Related Invoices
               {relatedInvoices.length > 0 && (
-                <span className="ml-auto text-xs bg-breco-navy text-white px-2 py-1 rounded-full">
+                <span className="ml-auto text-xs bg-blueox-primary text-white px-2 py-1 rounded-full">
                   {relatedInvoices.length}
                 </span>
               )}
@@ -856,7 +902,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     <Link
                       key={invoice.id}
                       href={`/dashboard/invoices/${invoice.id}`}
-                      className="block border border-gray-200 rounded-lg p-4 hover:border-breco-navy hover:shadow-md transition-all"
+                      className="block border border-gray-200 rounded-lg p-4 hover:border-blueox-primary hover:shadow-md transition-all"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
@@ -929,7 +975,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
 
           {/* Payment History */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
               <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
               Payment History
@@ -999,7 +1045,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                               {payment.invoice_number && (
                                 <Link
                                   href={`/dashboard/invoices/${payment.invoice_id}`}
-                                  className="text-xs text-breco-navy hover:underline inline-flex items-center gap-1"
+                                  className="text-xs text-blueox-primary hover:underline inline-flex items-center gap-1"
                                 >
                                   Applied to {payment.invoice_number}
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1049,12 +1095,12 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
 
           {/* Status Management */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5">Change Status</h2>
             <select
               value={booking.status}
               onChange={(e) => handleStatusChange(e.target.value as BookingStatus)}
-              className="w-full rounded-lg border-2 border-gray-300 px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-transparent"
+              className="w-full rounded-lg border-2 border-gray-300 px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-transparent"
             >
               <option value="inquiry">Inquiry</option>
               <option value="confirmed">Confirmed</option>
@@ -1066,33 +1112,33 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
 
           {/* Actions */}
-          <div className="card p-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-5">Actions</h2>
             <div className="space-y-3">
               <button
                 onClick={() => setShowInvoiceModal(true)}
-                className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+                className="bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg w-full flex items-center justify-center gap-2 py-2.5 font-medium transition-all duration-200"
               >
                 <DocumentDuplicateIcon className="h-4 w-4" />
                 Generate Invoice
               </button>
               <Link
                 href={`/dashboard/bookings/${booking.id}/edit`}
-                className="btn-secondary w-full flex items-center justify-center gap-2 py-2.5"
+                className="bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-500/20 rounded-xl shadow-lg w-full flex items-center justify-center gap-2 py-2.5 font-medium transition-all duration-200"
               >
                 <PencilIcon className="h-4 w-4" />
                 Edit Booking
               </Link>
               <button
                 onClick={() => window.print()}
-                className="btn-secondary w-full flex items-center justify-center gap-2 py-2.5"
+                className="bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-500/20 rounded-xl shadow-lg w-full flex items-center justify-center gap-2 py-2.5 font-medium transition-all duration-200"
               >
                 <PrinterIcon className="h-4 w-4" />
                 Print
               </button>
               <button
                 onClick={handleDelete}
-                className="w-full px-4 py-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 font-medium"
+                className="bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg w-full px-4 py-2.5 flex items-center justify-center gap-2 font-medium transition-all duration-200"
               >
                 <TrashIcon className="h-4 w-4" />
                 Delete Booking
@@ -1104,8 +1150,8 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
       {/* Invoice Generation Modal */}
       {showInvoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Generate Invoice</h3>
               <button
@@ -1226,7 +1272,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                 <select
                   value={invoiceType}
                   onChange={(e) => setInvoiceType(e.target.value as 'full' | 'deposit' | 'balance')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 >
                   <option value="full">Full Invoice ({booking.currency} {booking.total.toFixed(2)})</option>
                   <option value="deposit">Deposit Invoice</option>
@@ -1246,7 +1292,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                       onChange={(e) => setDepositPercent(parseInt(e.target.value) || 30)}
                       min="1"
                       max="100"
-                      className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                      className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                     />
                     <span className="text-sm text-gray-600">%</span>
                     <span className="text-sm text-gray-600 ml-2">
@@ -1295,14 +1341,14 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
               <button
                 onClick={() => setShowInvoiceModal(false)}
                 disabled={generatingInvoice}
-                className="btn-secondary"
+                className="bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-500/20 rounded-xl shadow-lg px-4 py-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerateInvoice}
                 disabled={generatingInvoice}
-                className="btn-primary"
+                className="bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg px-4 py-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingInvoice ? 'Generating...' : 'Generate Invoice'}
               </button>
@@ -1310,6 +1356,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

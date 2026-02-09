@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -209,7 +209,7 @@ export default function VehicleDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -241,7 +241,7 @@ export default function VehicleDetailPage() {
           </Link>
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <TruckIcon className="w-6 h-6 text-breco-navy" />
+              <TruckIcon className="w-6 h-6 text-blueox-primary" />
               <h1 className="text-2xl font-bold text-gray-900">
                 {vehicle.make} {vehicle.model}
               </h1>
@@ -374,7 +374,7 @@ export default function VehicleDetailPage() {
                           onClick={() => setSelectedImageIndex(index)}
                           className={`w-20 h-20 object-cover rounded cursor-pointer transition-all ${
                             selectedImageIndex === index 
-                              ? 'ring-4 ring-breco-navy opacity-100' 
+                              ? 'ring-4 ring-blueox-primary opacity-100' 
                               : 'opacity-60 hover:opacity-100'
                           }`}
                         />
@@ -435,7 +435,7 @@ export default function VehicleDetailPage() {
                 {vehicle.features.map((feature, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center px-3 py-1 bg-breco-navy bg-opacity-10 text-breco-navy text-sm font-medium rounded-full"
+                    className="inline-flex items-center px-3 py-1 bg-blueox-primary bg-opacity-10 text-blueox-primary text-sm font-medium rounded-full"
                   >
                     {feature}
                   </span>
@@ -447,7 +447,7 @@ export default function VehicleDetailPage() {
           {/* Maintenance History */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <WrenchScrewdriverIcon className="w-5 h-5 text-breco-navy" />
+              <WrenchScrewdriverIcon className="w-5 h-5 text-blueox-primary" />
               <h2 className="font-semibold text-gray-900">Maintenance Information</h2>
             </div>
             <div className="space-y-3">
@@ -486,14 +486,14 @@ export default function VehicleDetailPage() {
           {/* Rental Rates */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+              <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
               <h3 className="font-semibold text-gray-900">Rental Rates</h3>
             </div>
             <div className="space-y-3">
               {vehicle.daily_rate_usd && vehicle.daily_rate_usd > 0 && (
                 <div className="border-b border-gray-200 pb-2">
                   <div className="text-sm text-gray-600 mb-1">Daily Rate (USD)</div>
-                  <div className="text-xl font-bold text-breco-navy">
+                  <div className="text-xl font-bold text-blueox-primary">
                     {formatPrice(vehicle.daily_rate_usd, 'USD')}
                   </div>
                   <div className="text-xs text-gray-500">per day</div>
@@ -503,7 +503,7 @@ export default function VehicleDetailPage() {
               {vehicle.daily_rate_ugx && vehicle.daily_rate_ugx > 0 && (
                 <div className="border-b border-gray-200 pb-2">
                   <div className="text-sm text-gray-600 mb-1">Daily Rate (UGX)</div>
-                  <div className="text-xl font-bold text-breco-navy">
+                  <div className="text-xl font-bold text-blueox-primary">
                     {formatPrice(vehicle.daily_rate_ugx, 'UGX')}
                   </div>
                   <div className="text-xs text-gray-500">per day</div>
@@ -513,7 +513,7 @@ export default function VehicleDetailPage() {
               {vehicle.weekly_rate_usd && vehicle.weekly_rate_usd > 0 && (
                 <div className="border-b border-gray-200 pb-2">
                   <div className="text-sm text-gray-600 mb-1">Weekly Rate</div>
-                  <div className="text-xl font-bold text-breco-navy">
+                  <div className="text-xl font-bold text-blueox-primary">
                     {formatPrice(vehicle.weekly_rate_usd, 'USD')}
                   </div>
                   <div className="text-xs text-gray-500">per week</div>
@@ -523,7 +523,7 @@ export default function VehicleDetailPage() {
               {vehicle.mileage_rate && vehicle.mileage_rate > 0 && (
                 <div className="pb-2">
                   <div className="text-sm text-gray-600 mb-1">Mileage Rate</div>
-                  <div className="text-xl font-bold text-breco-navy">
+                  <div className="text-xl font-bold text-blueox-primary">
                     {formatPrice(vehicle.mileage_rate, 'USD')}
                   </div>
                   <div className="text-xs text-gray-500">per km</div>
@@ -536,7 +536,7 @@ export default function VehicleDetailPage() {
           {vehicle.location && (
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-4">
-                <MapPinIcon className="w-5 h-5 text-breco-navy" />
+                <MapPinIcon className="w-5 h-5 text-blueox-primary" />
                 <h3 className="font-semibold text-gray-900">Current Location</h3>
               </div>
               <div className="font-medium text-gray-900">{vehicle.location}</div>
@@ -546,7 +546,7 @@ export default function VehicleDetailPage() {
           {/* Purchase & Value */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <CalendarIcon className="w-5 h-5 text-breco-navy" />
+              <CalendarIcon className="w-5 h-5 text-blueox-primary" />
               <h3 className="font-semibold text-gray-900">Purchase & Value</h3>
             </div>
             <div className="space-y-3">
@@ -565,7 +565,7 @@ export default function VehicleDetailPage() {
               {vehicle.current_value && vehicle.current_value > 0 && (
                 <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                   <span className="text-sm text-gray-600">Current Value:</span>
-                  <span className="text-sm font-bold text-breco-navy">{formatPrice(vehicle.current_value, 'USD')}</span>
+                  <span className="text-sm font-bold text-blueox-primary">{formatPrice(vehicle.current_value, 'USD')}</span>
                 </div>
               )}
             </div>

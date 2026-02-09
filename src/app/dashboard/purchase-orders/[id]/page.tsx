@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -187,7 +187,7 @@ export default function PurchaseOrderDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -156,7 +156,7 @@ export default function GoodsReceiptsPage() {
       <div className="card">
         {loading ? (
           <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary mx-auto"></div>
           </div>
         ) : receipts.length === 0 ? (
           <div className="p-12 text-center">
@@ -188,7 +188,7 @@ export default function GoodsReceiptsPage() {
                       <td>
                         <Link 
                           href={`/dashboard/goods-receipts/${receipt.id}`}
-                          className="font-medium text-breco-navy hover:text-breco-ocean"
+                          className="font-medium text-blueox-primary hover:text-breco-ocean"
                         >
                           {receipt.receipt_number}
                         </Link>

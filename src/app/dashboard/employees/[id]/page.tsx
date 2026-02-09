@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -466,65 +467,134 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <ShimmerSkeleton className="w-10 h-10 rounded-xl" />
+              <div className="space-y-2">
+                <ShimmerSkeleton className="w-48 h-8" />
+                <ShimmerSkeleton className="w-64 h-4" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ShimmerSkeleton className="w-24 h-10 rounded-xl" />
+              <ShimmerSkeleton className="w-24 h-10 rounded-xl" />
+              <ShimmerSkeleton className="w-24 h-10 rounded-xl" />
+            </div>
+          </div>
+
+          {/* Status Badge Skeleton */}
+          <ShimmerSkeleton className="w-24 h-6 rounded-full" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Info Skeletons */}
+            <div className="lg:col-span-2 space-y-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+                  <ShimmerSkeleton className="w-48 h-6 mb-4" />
+                  <div className="grid grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="space-y-2">
+                        <ShimmerSkeleton className="w-24 h-4" />
+                        <ShimmerSkeleton className="w-full h-5" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sidebar Skeletons */}
+            <div className="space-y-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+                  <ShimmerSkeleton className="w-32 h-6 mb-4" />
+                  <div className="space-y-2">
+                    <ShimmerSkeleton className="w-full h-8" />
+                    <ShimmerSkeleton className="w-20 h-4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!employee) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Employee not found</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-12 text-center">
+              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <UserIcon className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Employee Not Found</h3>
+              <p className="text-gray-500 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
+              <Link
+                href="/dashboard/employees"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200"
+              >
+                <ArrowLeftIcon className="w-4 h-4" />
+                Back to Employees
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/employees" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard/employees" className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200">
+              <ArrowLeftIcon className="w-5 h-5" />
+            </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {employee.first_name} {employee.last_name}
             </h1>
             <p className="text-gray-500 mt-1">{employee.employee_number} • {employee.job_title}</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-4 h-4" />
-            Print
-          </button>
-          <Link
-            href={`/dashboard/employees/${employeeId}/edit`}
-            className="btn-primary flex items-center gap-2"
-          >
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            className="btn-danger flex items-center gap-2"
-          >
-            <TrashIcon className="w-4 h-4" />
-            Delete
-          </button>
-        </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrint} className="px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2">
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+            <Link
+              href={`/dashboard/employees/${employeeId}/edit`}
+              className="px-4 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2"
+            >
+              <PencilIcon className="w-4 h-4" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2"
+            >
+              <TrashIcon className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
       </div>
 
-      {/* Status Badge */}
-      <div>{getStatusBadge(employee.employment_status)}</div>
+        {/* Status Badge */}
+        <div>{getStatusBadge(employee.employment_status)}</div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Personal Information */}
-          <div className="card">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Personal Information */}
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="card-header">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <UserIcon className="w-5 h-5" />
@@ -563,8 +633,8 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Contact Information */}
-          <div className="card">
+            {/* Contact Information */}
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="card-header">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <EnvelopeIcon className="w-5 h-5" />
@@ -595,8 +665,8 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Employment Details */}
-          <div className="card">
+            {/* Employment Details */}
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="card-header">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <BuildingOfficeIcon className="w-5 h-5" />
@@ -629,8 +699,8 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Bank Details */}
-          <div className="card">
+            {/* Bank Details */}
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="card-header">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <BanknotesIcon className="w-5 h-5" />
@@ -654,10 +724,10 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Compensation */}
-          <div className="card">
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Compensation */}
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="card-header">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5" />
@@ -667,7 +737,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             <div className="card-body space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Basic Salary</p>
-                <p className="text-2xl font-bold text-breco-navy">
+                <p className="text-2xl font-bold text-blueox-primary">
                   {formatCurrency(employee.basic_salary, employee.salary_currency)}
                 </p>
                 <p className="text-xs text-gray-400 capitalize">{employee.pay_frequency}</p>
@@ -675,9 +745,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Allowances */}
-          {allowances.length > 0 && (
-            <div className="card">
+            {/* Allowances */}
+            {allowances.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
               <div className="card-header">
                 <h2 className="text-base font-semibold">Allowances</h2>
               </div>
@@ -692,9 +762,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           )}
 
-          {/* Deductions */}
-          {deductions.length > 0 && (
-            <div className="card">
+            {/* Deductions */}
+            {deductions.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
               <div className="card-header">
                 <h2 className="text-base font-semibold">Deductions</h2>
               </div>
@@ -711,9 +781,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             </div>
           )}
 
-          {/* Recent Payslips */}
-          {recentPayslips.length > 0 && (
-            <div className="card">
+            {/* Recent Payslips */}
+            {recentPayslips.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
               <div className="card-header">
                 <h2 className="text-base font-semibold">Recent Payslips</h2>
               </div>
@@ -730,6 +800,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

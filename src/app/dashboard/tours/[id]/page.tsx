@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -135,7 +135,7 @@ export default function TourPackageDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function TourPackageDetailPage() {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl font-bold text-gray-900">{pkg.name}</h1>
               {pkg.is_featured && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-breco-gold text-white text-xs font-semibold rounded-full">
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blueox-warning text-white text-xs font-semibold rounded-full">
                   <StarSolidIcon className="w-3 h-3" />
                   Featured
                 </span>
@@ -205,7 +205,7 @@ export default function TourPackageDetailPage() {
           <button
             onClick={toggleFeatured}
             className={`btn-sm ${
-              pkg.is_featured ? 'bg-breco-gold text-white' : 'btn-secondary'
+              pkg.is_featured ? 'bg-blueox-warning text-white' : 'btn-secondary'
             }`}
             title={pkg.is_featured ? 'Remove from featured' : 'Mark as featured'}
           >
@@ -289,12 +289,12 @@ export default function TourPackageDetailPage() {
                           onClick={() => setSelectedImageIndex(index)}
                           className={`w-20 h-20 object-cover rounded cursor-pointer transition-all ${
                             selectedImageIndex === index 
-                              ? 'ring-4 ring-breco-navy opacity-100' 
+                              ? 'ring-4 ring-blueox-primary opacity-100' 
                               : 'opacity-60 hover:opacity-100'
                           }`}
                         />
                         {img.is_primary && (
-                          <div className="absolute -top-1 -right-1 bg-breco-gold text-white rounded-full p-1">
+                          <div className="absolute -top-1 -right-1 bg-blueox-warning text-white rounded-full p-1">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
@@ -345,12 +345,12 @@ export default function TourPackageDetailPage() {
           {/* Pricing */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+              <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
               <h3 className="font-semibold text-gray-900">Pricing</h3>
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-2xl font-bold text-breco-navy">
+                <div className="text-2xl font-bold text-blueox-primary">
                   {formatPrice(pkg.base_price_usd, 'USD')}
                 </div>
                 <div className="text-xs text-gray-500">
@@ -375,7 +375,7 @@ export default function TourPackageDetailPage() {
           {/* Duration & Capacity */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
-              <ClockIcon className="w-5 h-5 text-breco-navy" />
+              <ClockIcon className="w-5 h-5 text-blueox-primary" />
               <h3 className="font-semibold text-gray-900">Duration & Capacity</h3>
             </div>
             <div className="space-y-3 text-sm">
@@ -402,7 +402,7 @@ export default function TourPackageDetailPage() {
           {pkg.primary_destination && (
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-4">
-                <MapPinIcon className="w-5 h-5 text-breco-navy" />
+                <MapPinIcon className="w-5 h-5 text-blueox-primary" />
                 <h3 className="font-semibold text-gray-900">Primary Destination</h3>
               </div>
               <div>

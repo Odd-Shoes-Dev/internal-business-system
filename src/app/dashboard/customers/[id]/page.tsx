@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import type { Customer as CustomerType } from '@/types/database';
 import {
   ArrowLeftIcon,
@@ -116,8 +117,55 @@ export default function CustomerDetailPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-64" />
+              <ShimmerSkeleton className="h-4 w-48" />
+            </div>
+            <div className="flex gap-2">
+              <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+              <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            </div>
+          </div>
+
+          {/* Status Badge Skeleton */}
+          <ShimmerSkeleton className="h-8 w-24 rounded-full" />
+
+          {/* Content Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+                <ShimmerSkeleton className="h-6 w-48 mb-4" />
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="space-y-2">
+                      <ShimmerSkeleton className="h-4 w-24" />
+                      <ShimmerSkeleton className="h-5 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Invoices Table Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-6 w-40 mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <ShimmerSkeleton className="h-4 w-32" />
+                  <ShimmerSkeleton className="h-4 w-24" />
+                  <ShimmerSkeleton className="h-6 w-20 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -134,7 +182,8 @@ export default function CustomerDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -177,7 +226,7 @@ export default function CustomerDetailPage({ params }: PageProps) {
       {/* Customer Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Contact Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-4 sm:p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <UserIcon className="w-5 h-5" />
             Contact Information
@@ -251,7 +300,7 @@ export default function CustomerDetailPage({ params }: PageProps) {
         </div>
 
         {/* Account Summary */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-4 sm:p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Account Summary</h2>
           <div className="space-y-3 sm:space-y-4">
             <div>
@@ -275,8 +324,8 @@ export default function CustomerDetailPage({ params }: PageProps) {
       </div>
 
       {/* Recent Invoices */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl">
+        <div className="px-4 sm:px-6 py-4 border-b border-blueox-primary/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h3 className="text-base font-semibold text-gray-900">Recent Invoices</h3>
           <Link
             href={`/dashboard/invoices/new?customer_id=${id}`}
@@ -337,10 +386,11 @@ export default function CustomerDetailPage({ params }: PageProps) {
       </div>
 
       {/* Metadata */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-4 sm:p-6">
         <p className="text-xs text-gray-500">
           Customer since {formatDate(customer.created_at)}
         </p>
+      </div>
       </div>
     </div>
   );

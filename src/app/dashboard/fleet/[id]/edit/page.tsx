@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -377,7 +377,7 @@ export default function EditVehiclePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-breco-navy border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blueox-primary border-t-transparent" />
       </div>
     );
   }
@@ -411,7 +411,7 @@ export default function EditVehiclePage() {
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <TruckIcon className="w-5 h-5 text-breco-navy" />
+            <TruckIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Basic Information</h2>
           </div>
 
@@ -426,7 +426,7 @@ export default function EditVehiclePage() {
                 value={formData.vehicle_number}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="V001"
               />
             </div>
@@ -441,7 +441,7 @@ export default function EditVehiclePage() {
                 value={formData.registration_number}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="UAZ 123A"
               />
             </div>
@@ -455,7 +455,7 @@ export default function EditVehiclePage() {
                 name="make"
                 value={formData.make}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Toyota"
               />
             </div>
@@ -469,7 +469,7 @@ export default function EditVehiclePage() {
                 name="model"
                 value={formData.model}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Land Cruiser"
               />
             </div>
@@ -485,7 +485,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="1900"
                 max={new Date().getFullYear() + 1}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -498,7 +498,7 @@ export default function EditVehiclePage() {
                 name="color"
                 value={formData.color}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="White"
               />
             </div>
@@ -512,7 +512,7 @@ export default function EditVehiclePage() {
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Main Office"
               />
             </div>
@@ -525,7 +525,7 @@ export default function EditVehiclePage() {
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
@@ -544,7 +544,7 @@ export default function EditVehiclePage() {
                 name="purchase_date"
                 value={formData.purchase_date}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -559,7 +559,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -574,7 +574,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -587,7 +587,7 @@ export default function EditVehiclePage() {
                 name="insurance_expiry"
                 value={formData.insurance_expiry}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
           </div>
@@ -606,7 +606,7 @@ export default function EditVehiclePage() {
                 name="vehicle_type"
                 value={formData.vehicle_type}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {vehicleTypes.map((type) => (
                   <option key={type} value={type}>
@@ -624,7 +624,7 @@ export default function EditVehiclePage() {
                 name="fuel_type"
                 value={formData.fuel_type}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {fuelTypes.map((type) => (
                   <option key={type} value={type}>
@@ -642,7 +642,7 @@ export default function EditVehiclePage() {
                 name="transmission"
                 value={formData.transmission}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               >
                 {transmissionTypes.map((type) => (
                   <option key={type} value={type}>
@@ -662,7 +662,7 @@ export default function EditVehiclePage() {
                 value={formData.seating_capacity}
                 onChange={handleChange}
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -675,7 +675,7 @@ export default function EditVehiclePage() {
                 name="luggage_capacity"
                 value={formData.luggage_capacity}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="e.g., 4 large bags"
               />
             </div>
@@ -689,7 +689,7 @@ export default function EditVehiclePage() {
                 name="features"
                 value={formData.features}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="AC, GPS, 4WD, Pop-up roof (comma-separated)"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -702,7 +702,7 @@ export default function EditVehiclePage() {
         {/* Rental Rates */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CurrencyDollarIcon className="w-5 h-5 text-breco-navy" />
+            <CurrencyDollarIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Rental Rates</h2>
           </div>
 
@@ -718,7 +718,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -734,7 +734,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0"
               />
             </div>
@@ -750,7 +750,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -766,7 +766,7 @@ export default function EditVehiclePage() {
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="0.00"
               />
             </div>
@@ -776,7 +776,7 @@ export default function EditVehiclePage() {
         {/* Maintenance */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <WrenchScrewdriverIcon className="w-5 h-5 text-breco-navy" />
+            <WrenchScrewdriverIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Maintenance</h2>
           </div>
 
@@ -791,7 +791,7 @@ export default function EditVehiclePage() {
                 value={formData.current_mileage}
                 onChange={handleChange}
                 min="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -804,7 +804,7 @@ export default function EditVehiclePage() {
                 name="last_service_date"
                 value={formData.last_service_date}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
 
@@ -818,7 +818,7 @@ export default function EditVehiclePage() {
                 value={formData.next_service_mileage}
                 onChange={handleChange}
                 min="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
               />
             </div>
           </div>
@@ -827,7 +827,7 @@ export default function EditVehiclePage() {
         {/* Images */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <PhotoIcon className="w-5 h-5 text-breco-navy" />
+            <PhotoIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Vehicle Images</h2>
           </div>
 
@@ -862,7 +862,7 @@ export default function EditVehiclePage() {
                   {existingImages.map((img, index) => (
                     <div key={img.id} className="relative group">
                       <div className={`relative rounded-lg overflow-hidden border-2 ${
-                        primaryImageIndex === index ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                        primaryImageIndex === index ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                       }`}>
                         <img
                           src={img.image_url}
@@ -870,7 +870,7 @@ export default function EditVehiclePage() {
                           className="w-full h-32 object-cover"
                         />
                         {primaryImageIndex === index && (
-                          <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                          <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                             Primary
                           </div>
                         )}
@@ -878,7 +878,7 @@ export default function EditVehiclePage() {
                           <button
                             type="button"
                             onClick={() => setPrimaryImageIndex(index)}
-                            className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                            className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                             title="Set as primary"
                           >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -915,7 +915,7 @@ export default function EditVehiclePage() {
                     return (
                       <div key={`new-${index}`} className="relative group">
                         <div className={`relative rounded-lg overflow-hidden border-2 ${
-                          primaryImageIndex === globalIndex ? 'border-breco-gold ring-2 ring-breco-gold' : 'border-gray-200'
+                          primaryImageIndex === globalIndex ? 'border-blueox-warning ring-2 ring-blueox-warning' : 'border-gray-200'
                         }`}>
                           <img
                             src={preview}
@@ -923,7 +923,7 @@ export default function EditVehiclePage() {
                             className="w-full h-32 object-cover"
                           />
                           {primaryImageIndex === globalIndex && (
-                            <div className="absolute top-1 left-1 bg-breco-gold text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                            <div className="absolute top-1 left-1 bg-blueox-warning text-white text-xs px-2 py-0.5 rounded-full font-medium">
                               Primary
                             </div>
                           )}
@@ -931,7 +931,7 @@ export default function EditVehiclePage() {
                             <button
                               type="button"
                               onClick={() => setPrimaryImageIndex(globalIndex)}
-                              className="p-1.5 bg-breco-gold text-white rounded-full hover:bg-yellow-600 transition-colors"
+                              className="p-1.5 bg-blueox-warning text-white rounded-full hover:bg-yellow-600 transition-colors"
                               title="Set as primary"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -980,8 +980,8 @@ export default function EditVehiclePage() {
                       onClick={() => setPrimaryImageIndex(actualIndex)}
                       className={`flex-shrink-0 p-2 rounded ${
                         primaryImageIndex === actualIndex
-                          ? 'text-breco-gold'
-                          : 'text-gray-400 hover:text-breco-gold'
+                          ? 'text-blueox-warning'
+                          : 'text-gray-400 hover:text-blueox-warning'
                       }`}
                       title="Set as primary"
                     >
@@ -993,7 +993,7 @@ export default function EditVehiclePage() {
                       type="url"
                       value={url}
                       onChange={(e) => updateImageUrl(index, e.target.value)}
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                       placeholder={`Image URL ${index + 1}`}
                     />
                     <button
@@ -1013,7 +1013,7 @@ export default function EditVehiclePage() {
               <button
                 type="button"
                 onClick={addImageUrl}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-breco-navy hover:text-breco-navy transition-colors"
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blueox-primary hover:text-blueox-primary transition-colors"
               >
                 + Add Image URL
               </button>
@@ -1030,7 +1030,7 @@ export default function EditVehiclePage() {
         {/* Additional Notes */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <InformationCircleIcon className="w-5 h-5 text-breco-navy" />
+            <InformationCircleIcon className="w-5 h-5 text-blueox-primary" />
             <h2 className="font-semibold text-gray-900">Additional Information</h2>
           </div>
 
@@ -1044,7 +1044,7 @@ export default function EditVehiclePage() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-breco-navy"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
                 placeholder="Any additional notes about this vehicle..."
               />
             </div>
@@ -1062,7 +1062,7 @@ export default function EditVehiclePage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-breco-navy focus:ring-breco-navy"
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
               />
               <span className="text-sm text-gray-700">
                 Vehicle is active

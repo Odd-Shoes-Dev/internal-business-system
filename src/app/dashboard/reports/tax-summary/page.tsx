@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   CalculatorIcon,
   ArrowDownTrayIcon,
@@ -14,6 +15,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 interface TaxDeduction {
   category: string;
@@ -80,6 +82,7 @@ interface TaxSummaryData {
 }
 
 export default function TaxSummaryPage() {
+  const { company } = useCompany();
   const [data, setData] = useState<TaxSummaryData | null>(null);
   const [taxYear, setTaxYear] = useState(new Date().getFullYear());
   const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +111,7 @@ export default function TaxSummaryPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Tax Summary Report - ${data.reportPeriod.taxYear} - Breco Safaris Ltd</title>
+          <title>Tax Summary Report - ${data.reportPeriod.taxYear} - ${company?.name || 'Company'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -229,12 +232,12 @@ export default function TaxSummaryPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo.png" alt="Breco Safaris Logo" class="logo" />
+            <img src="/assets/logo.png" alt="${company?.name || 'Company'} Logo" class="logo" />
             <div class="company-info">
-              <h1>Breco Safaris Ltd</h1>
-              <div class="address">Kampala Road Plot 14 Eagen House, Russel Street, P.O.Box 144011, Kampala, Uganda</div>
-              <div class="address">Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com</div>
-              <div class="address">URA TIN: 1014756280 • URSB Reg. No: 80020001634842</div>
+              <h1>${company?.name || 'Company Name'}</h1>
+              <div class="address">${company?.address || ''}</div>
+              <div class="address">Tel: ${company?.phone || ''} • Email: ${company?.email || ''}</div>
+              <div class="address">TIN: ${company?.tax_id || ''}</div>
             </div>
           </div>
           
@@ -406,7 +409,7 @@ export default function TaxSummaryPage() {
             <select
               value={taxYear}
               onChange={(e) => setTaxYear(parseInt(e.target.value))}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
                 <option key={year} value={year}>{year}</option>
@@ -416,7 +419,7 @@ export default function TaxSummaryPage() {
           <button
             onClick={fetchTaxSummary}
             disabled={isLoading}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Loading...' : 'Refresh Report'}
           </button>
@@ -424,9 +427,54 @@ export default function TaxSummaryPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-breco-navy mx-auto"></div>
-          <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading tax data...</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <ShimmerSkeleton className="h-8 w-8 rounded-full" />
+                    <div className="flex-1">
+                      <ShimmerSkeleton className="h-3 w-24 mb-2" />
+                      <ShimmerSkeleton className="h-5 w-20" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-white/50 rounded-2xl p-6">
+                  <ShimmerSkeleton className="h-5 w-40 mb-4" />
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="flex justify-between items-center">
+                        <div className="space-y-1">
+                          <ShimmerSkeleton className="h-4 w-32" />
+                          <ShimmerSkeleton className="h-3 w-48" />
+                        </div>
+                        <ShimmerSkeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5">
+                  <div className="flex justify-between items-center mb-3">
+                    <ShimmerSkeleton className="h-5 w-32" />
+                    <ShimmerSkeleton className="h-6 w-24 rounded-full" />
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <ShimmerSkeleton className="h-4 w-40" />
+                    <ShimmerSkeleton className="h-4 w-28" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : data ? (
         <>
@@ -485,7 +533,7 @@ export default function TaxSummaryPage() {
             {/* Income Summary */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex items-center gap-2 sm:gap-3 mb-4">
-                <CurrencyDollarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <CurrencyDollarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Income Summary</h3>
               </div>
               <div className="space-y-3">
@@ -512,12 +560,12 @@ export default function TaxSummaryPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <ReceiptPercentIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                  <ReceiptPercentIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                   <h3 className="text-sm sm:text-base font-semibold text-gray-900">Deductions Summary</h3>
                 </div>
                 <button
                   onClick={() => setShowDeductionDetails(!showDeductionDetails)}
-                  className="text-xs text-breco-navy hover:text-breco-navy/80 font-medium"
+                  className="text-xs text-blueox-primary hover:text-blueox-primary/80 font-medium"
                 >
                   {showDeductionDetails ? 'Hide Details' : 'View Details'}
                 </button>
@@ -547,7 +595,7 @@ export default function TaxSummaryPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <CalculatorIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <CalculatorIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Tax Calculations</h3>
               </div>
             </div>
@@ -634,7 +682,7 @@ export default function TaxSummaryPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Quarterly Tax Payments</h3>
               </div>
             </div>
@@ -699,7 +747,7 @@ export default function TaxSummaryPage() {
           {/* Compliance Info */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
             <div className="flex items-center gap-2 sm:gap-3 mb-4">
-              <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+              <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
               <h3 className="text-sm sm:text-base font-semibold text-gray-900">Compliance Information</h3>
             </div>
             

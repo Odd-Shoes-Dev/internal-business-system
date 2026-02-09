@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -417,16 +418,70 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-breco-navy border-t-transparent"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="w-10 h-10 rounded-lg" />
+            <div className="flex-1">
+              <ShimmerSkeleton className="h-8 w-48 mb-2" />
+              <ShimmerSkeleton className="h-4 w-64" />
+            </div>
+          </div>
+          
+          {/* Basic Information Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-6 w-40 mb-5" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+              <div>
+                <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Form Fields Skeleton */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-6 w-40 mb-5" />
+            <div className="space-y-4">
+              <ShimmerSkeleton className="h-10 w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                <ShimmerSkeleton className="h-10 w-full" />
+                <ShimmerSkeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
+            <ShimmerSkeleton className="h-6 w-40 mb-5" />
+            <div className="grid grid-cols-2 gap-6">
+              <ShimmerSkeleton className="h-10 w-full" />
+              <ShimmerSkeleton className="h-10 w-full" />
+              <ShimmerSkeleton className="h-10 w-full" />
+              <ShimmerSkeleton className="h-10 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
         <Link
           href={`/dashboard/bookings/${bookingId}`}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -448,9 +503,9 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <div className="card p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-5">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -520,13 +575,13 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
               </select>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Tour Package Selection */}
-        {(formData.booking_type === 'tour' || formData.booking_type === 'custom') && (
-          <div className="card p-6">
+          {/* Tour Package Selection */}
+          {(formData.booking_type === 'tour' || formData.booking_type === 'custom') && (
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="flex items-center gap-2 mb-5">
-              <MapIcon className="h-5 w-5 text-breco-navy" />
+              <MapIcon className="h-5 w-5 text-blueox-primary" />
               <h2 className="text-lg font-semibold text-gray-900">Tour Package</h2>
             </div>
             <div>
@@ -557,14 +612,14 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
                 </div>
               )}
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Hotel Selection */}
-        {(formData.booking_type === 'hotel' || formData.booking_type === 'custom') && (
-          <div className="card p-6">
+          {/* Hotel Selection */}
+          {(formData.booking_type === 'hotel' || formData.booking_type === 'custom') && (
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="flex items-center gap-2 mb-5">
-              <BuildingOffice2Icon className="h-5 w-5 text-breco-navy" />
+              <BuildingOffice2Icon className="h-5 w-5 text-blueox-primary" />
               <h2 className="text-lg font-semibold text-gray-900">Hotel Information</h2>
             </div>
             <div className="space-y-4">
@@ -623,14 +678,14 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
                 </div>
               )}
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Vehicle Selection */}
-        {(formData.booking_type === 'car_hire' || formData.booking_type === 'custom') && (
-          <div className="card p-6">
+          {/* Vehicle Selection */}
+          {(formData.booking_type === 'car_hire' || formData.booking_type === 'custom') && (
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
             <div className="flex items-center gap-2 mb-5">
-              <TruckIcon className="h-5 w-5 text-breco-navy" />
+              <TruckIcon className="h-5 w-5 text-blueox-primary" />
               <h2 className="text-lg font-semibold text-gray-900">Vehicle Information</h2>
             </div>
             <div className="space-y-4">
@@ -701,13 +756,13 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
                 </div>
               )}
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Travel Dates & Guests */}
-        <div className="card p-6">
+          {/* Travel Dates & Guests */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-2 mb-5">
-            <CalendarDaysIcon className="h-5 w-5 text-breco-navy" />
+            <CalendarDaysIcon className="h-5 w-5 text-blueox-primary" />
             <h2 className="text-lg font-semibold text-gray-900">Travel Details</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -774,12 +829,12 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
               Duration: {calculateNumDays()} day(s)
             </p>
           )}
-        </div>
+          </div>
 
-        {/* Pricing */}
-        <div className="card p-6">
+          {/* Pricing */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-2 mb-5">
-            <CurrencyDollarIcon className="h-5 w-5 text-breco-navy" />
+            <CurrencyDollarIcon className="h-5 w-5 text-blueox-primary" />
             <h2 className="text-lg font-semibold text-gray-900">Pricing</h2>
           </div>
           <div className="space-y-4">
@@ -821,16 +876,16 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
               </div>
               <div className="border-t border-gray-200 pt-2 flex justify-between">
                 <span className="font-semibold text-gray-900">Total:</span>
-                <span className="font-bold text-lg text-breco-navy">{formatPrice(formData.total, formData.currency)}</span>
+                <span className="font-bold text-lg text-blueox-primary">{formatPrice(formData.total, formData.currency)}</span>
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Additional Information */}
-        <div className="card p-6">
+          {/* Additional Information */}
+          <div className="bg-white/80 backdrop-blur-xl border border-blue-200/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-2 mb-5">
-            <DocumentTextIcon className="h-5 w-5 text-breco-navy" />
+            <DocumentTextIcon className="h-5 w-5 text-blueox-primary" />
             <h2 className="text-lg font-semibold text-gray-900">Additional Information</h2>
           </div>
           <div className="space-y-4">
@@ -868,10 +923,10 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
               />
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pb-6">
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pb-6">
           <Link
             href={`/dashboard/bookings/${bookingId}`}
             className="btn-secondary"
@@ -885,8 +940,9 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
           >
             {isSubmitting ? 'Updating...' : 'Update Booking'}
           </button>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

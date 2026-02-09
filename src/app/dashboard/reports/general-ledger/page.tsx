@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
 
@@ -415,7 +416,7 @@ export default function GeneralLedgerPage() {
             className={cn(
               "inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg text-xs sm:text-sm font-medium",
               showAccountSummary
-                ? "bg-breco-navy text-white border-breco-navy"
+                ? "bg-blueox-primary text-white border-blueox-primary"
                 : "border-gray-300 text-gray-700 hover:bg-gray-50"
             )}
           >
@@ -444,7 +445,7 @@ export default function GeneralLedgerPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -453,7 +454,7 @@ export default function GeneralLedgerPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             />
           </div>
           <div>
@@ -461,7 +462,7 @@ export default function GeneralLedgerPage() {
             <select
               value={accountFilter}
               onChange={(e) => setAccountFilter(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="all">All Accounts</option>
               <option value="Assets">Assets</option>
@@ -476,7 +477,7 @@ export default function GeneralLedgerPage() {
             <select
               value={journalType}
               onChange={(e) => setJournalType(e.target.value)}
-              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+              className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
             >
               <option value="all">All Journals</option>
               <option value="General Journal">General Journal</option>
@@ -495,7 +496,7 @@ export default function GeneralLedgerPage() {
                 placeholder="Account, description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 pl-8 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-breco-navy focus:border-breco-navy"
+                className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 pl-8 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary focus:border-blueox-primary"
               />
               <MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
             </div>
@@ -504,7 +505,7 @@ export default function GeneralLedgerPage() {
             <button
               onClick={fetchGeneralLedger}
               disabled={isLoading}
-              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-breco-navy text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-blueox-primary text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Loading...' : 'Refresh Report'}
             </button>
@@ -513,9 +514,39 @@ export default function GeneralLedgerPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-breco-navy mx-auto"></div>
-          <p className="text-gray-500 mt-4 text-sm sm:text-base">Loading general ledger...</p>
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-8">
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border-2">
+              <ShimmerSkeleton className="h-6 w-48 mb-3" />
+              <ShimmerSkeleton className="h-4 w-full" />
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4">
+                  <ShimmerSkeleton className="h-4 w-24 mb-2" />
+                  <ShimmerSkeleton className="h-6 w-20" />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="bg-white/50 rounded-2xl p-5">
+                  <div className="flex justify-between items-center mb-3">
+                    <ShimmerSkeleton className="h-5 w-48" />
+                    <ShimmerSkeleton className="h-5 w-24" />
+                  </div>
+                  <div className="space-y-2 pl-6">
+                    {[1, 2, 3].map((j) => (
+                      <div key={j} className="flex justify-between items-center">
+                        <ShimmerSkeleton className="h-4 w-32" />
+                        <ShimmerSkeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : data ? (
         <>
@@ -621,7 +652,7 @@ export default function GeneralLedgerPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <FunnelIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                  <FunnelIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                   <h3 className="text-sm sm:text-base font-semibold text-gray-900">Account Summary</h3>
                 </div>
               </div>
@@ -696,7 +727,7 @@ export default function GeneralLedgerPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
               <div className="flex items-center gap-2 sm:gap-3">
-                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-breco-navy" />
+                <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blueox-primary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900">Ledger Entries</h3>
               </div>
             </div>

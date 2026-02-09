@@ -18,9 +18,8 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import { 
-  PageHeaderSkeleton,
-  TableRowSkeleton,
-  ShimmerSkeleton 
+  ShimmerSkeleton,
+  CardSkeleton,
 } from '@/components/ui/skeleton';
 import type { Vendor } from '@/types/database';
 
@@ -181,9 +180,16 @@ export default function VendorsPage() {
                 </div>
                 
                 {/* Table Rows Skeleton */}
-                <div className="space-y-4 pt-4">
+                <div className="space-y-3 pt-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <TableRowSkeleton key={i} />
+                    <div key={i} className="flex justify-between items-center p-4 bg-white/50 rounded-2xl">
+                      <ShimmerSkeleton className="h-5 w-32" />
+                      <ShimmerSkeleton className="h-5 w-40" />
+                      <ShimmerSkeleton className="h-5 w-24" />
+                      <ShimmerSkeleton className="h-5 w-28" />
+                      <ShimmerSkeleton className="h-5 w-20" />
+                      <ShimmerSkeleton className="h-8 w-16" />
+                    </div>
                   ))}
                 </div>
               </div>

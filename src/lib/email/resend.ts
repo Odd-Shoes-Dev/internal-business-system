@@ -7,6 +7,15 @@ async function getResendClient() {
   return new Resend(apiKey);
 }
 
+interface CompanyInfo {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 interface SendInvoiceEmailParams {
   to: string;
   customerName: string;
@@ -16,6 +25,7 @@ interface SendInvoiceEmailParams {
   totalAmount: number;
   balanceDue: number;
   paymentLink: string;
+  company: CompanyInfo;
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
@@ -28,6 +38,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     totalAmount,
     balanceDue,
     paymentLink,
+    company,
   } = params;
 
   const formatCurrency = (amount: number) => {
@@ -57,7 +68,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
         <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0d9488 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Breco Safaris Ltd</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">${company.name}</h1>
             <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0;">Invoice ${invoiceNumber}</p>
           </div>
           
@@ -117,22 +128,22 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
             </p>
             
             <p style="font-size: 16px; color: #333; margin-top: 30px;">
-              Thank you for choosing Breco Safaris!
+              Thank you for choosing ${company.name}!
             </p>
             
             <p style="font-size: 14px; color: #666; margin-top: 10px;">
               Best regards,<br>
-              <strong>Breco Safaris Ltd</strong>
+              <strong>${company.name}</strong>
             </p>
           </div>
           
           <!-- Footer -->
           <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #999;">
-              Breco Safaris Ltd • Kampala Road Plot 14 Eagen House, Kampala, Uganda
+              ${company.name}${company.address ? ` • ${company.address}` : ''}
             </p>
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">
-              Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com
+              ${company.phone ? `Tel: ${company.phone} • ` : ''}Email: ${company.email}
             </p>
           </div>
         </div>
@@ -143,10 +154,12 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
 
   try {
     const resend = await getResendClient();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || company.email || 'noreply@example.com';
+    const fromName = company.name;
     const { data, error } = await resend.emails.send({
-      from: 'Breco Safaris Ltd <invoices@brecosafaris.com>',
+      from: `${fromName} <${fromEmail}>`,
       to: [to],
-      subject: `Invoice ${invoiceNumber} from Breco Safaris Ltd`,
+      subject: `Invoice ${invoiceNumber} from ${company.name}`,
       html,
     });
 
@@ -170,6 +183,7 @@ interface SendPaymentReceiptParams {
   paymentAmount: number;
   paymentMethod: string;
   remainingBalance: number;
+  company: CompanyInfo;
 }
 
 export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) {
@@ -181,6 +195,7 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
     paymentAmount,
     paymentMethod,
     remainingBalance,
+    company,
   } = params;
 
   const formatCurrency = (amount: number) => {
@@ -263,23 +278,25 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
             </p>
             
             <p style="font-size: 16px; color: #333; margin-top: 30px;">
-              Thank you for choosing Breco Safaris!
+              Thank you for your business!
             </p>
             
             <p style="font-size: 14px; color: #666; margin-top: 10px;">
               Best regards,<br>
-              <strong>Breco Safaris Ltd</strong>
+              <strong>${company.name}</strong>
             </p>
           </div>
           
           <!-- Footer -->
           <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #999;">
-              Breco Safaris Ltd • Kampala Road Plot 14 Eagen House, Kampala, Uganda
+              ${company.name}${company.address ? ` • ${company.address}` : ''}${company.city ? `, ${company.city}` : ''}${company.country ? `, ${company.country}` : ''}
             </p>
+            ${company.phone || company.email ? `
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">
-              Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com
+              ${company.phone ? `Tel: ${company.phone}` : ''}${company.phone && company.email ? ' • ' : ''}${company.email ? `Email: ${company.email}` : ''}
             </p>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -289,8 +306,10 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
 
   try {
     const resend = await getResendClient();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || company.email || 'noreply@example.com';
+    const fromName = company.name;
     const { data, error } = await resend.emails.send({
-      from: 'Breco Safaris Ltd <receipts@brecosafaris.com>',
+      from: `${fromName} <${fromEmail}>`,
       to: [to],
       subject: `Payment Receipt - Invoice ${invoiceNumber}`,
       html,

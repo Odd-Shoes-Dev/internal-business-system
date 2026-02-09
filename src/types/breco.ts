@@ -1,6 +1,6 @@
 // =====================================================
-// Breco Safaris Ltd - Financial & Operations System
-// Extended Database Types for Tour Operations
+// Business Management Platform
+// Extended Database Types for Operations & Tours
 // =====================================================
 
 import type {
@@ -796,7 +796,7 @@ export interface SeasonalBookingTrend {
 // EXTENDED DATABASE TYPE
 // =====================================================
 
-export interface BrecoDatabaseExtensions {
+export interface ExtendedDatabaseTypes {
   public: {
     Tables: {
       destinations: { Row: Destination; Insert: Partial<Destination>; Update: Partial<Destination> };

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -16,6 +16,8 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
+  FunnelIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
@@ -157,7 +159,7 @@ export default function TourPackagesPage() {
     return (
       <ModuleGuard module="tours">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-breco-navy"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blueox-primary"></div>
         </div>
       </ModuleGuard>
     );
@@ -165,28 +167,49 @@ export default function TourPackagesPage() {
 
   return (
     <ModuleGuard module="tours">
-      <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tour Packages</h1>
-          <p className="text-gray-500 mt-1">Manage your safari tours and itineraries</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+          <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+          <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
         </div>
-        <Link
-          href="/dashboard/tours/new"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Package
-        </Link>
-      </div>
+        
+        <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
+          {/* Hero Header */}
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
+              <GlobeAltIcon className="w-6 h-6 text-blueox-primary" />
+              <span className="text-blueox-primary font-semibold">Tour Package Management</span>
+            </div>
+            
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
+                  Tour Packages & Safaris
+                </h1>
+                <p className="text-lg text-gray-600 max-w-2xl">
+                  Manage your tour packages, safari itineraries, and travel offerings
+                </p>
+              </div>
+              
+              <Link
+                href="/dashboard/tours/new"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+              >
+                <PlusIcon className="w-5 h-5" />
+                New Package
+                <SparklesIcon className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <div className="card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-breco-navy/10 rounded-lg">
-              <GlobeAltIcon className="w-6 h-6 text-breco-navy" />
+            <div className="p-2 bg-blueox-primary/10 rounded-lg">
+              <GlobeAltIcon className="w-6 h-6 text-blueox-primary" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{packages.length}</p>
@@ -196,8 +219,8 @@ export default function TourPackagesPage() {
         </div>
         <div className="card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-breco-gold/20 rounded-lg">
-              <StarSolidIcon className="w-6 h-6 text-breco-gold" />
+            <div className="p-2 bg-blueox-warning/20 rounded-lg">
+              <StarSolidIcon className="w-6 h-6 text-blueox-warning" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
@@ -236,22 +259,27 @@ export default function TourPackagesPage() {
       </div>
 
       {/* Filters */}
-      <div className="card p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <FunnelIcon className="w-5 h-5 text-blueox-primary" />
+          <h3 className="text-lg font-bold text-blueox-primary-dark">Search & Filter</h3>
+        </div>
+        
+        <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search packages..."
+              placeholder="Search tour packages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-10"
+              className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
             />
           </div>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="input w-full sm:w-48"
+            className="lg:w-48 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40 appearance-none"
           >
             <option value="all">All Types</option>
             {tourTypes.map(type => (
@@ -263,11 +291,18 @@ export default function TourPackagesPage() {
 
       {/* Packages Grid */}
       {filteredPackages.length === 0 ? (
-        <div className="card p-12 text-center">
-          <GlobeAltIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No tour packages found</h3>
-          <p className="text-gray-500 mb-4">Get started by creating your first tour package</p>
-          <Link href="/dashboard/tours/new" className="btn-primary inline-flex items-center gap-2">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-16 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-blueox-primary/10 rounded-full mb-6">
+            <GlobeAltIcon className="w-10 h-10 text-blueox-primary" />
+          </div>
+          <h3 className="text-2xl font-bold text-blueox-primary-dark mb-3">No tour packages found</h3>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            Get started by creating your first tour package to offer to customers.
+          </p>
+          <Link 
+            href="/dashboard/tours/new" 
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+          >
             <PlusIcon className="w-5 h-5" />
             Create Package
           </Link>
@@ -275,9 +310,9 @@ export default function TourPackagesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPackages.map((pkg) => (
-            <div key={pkg.id} className="card overflow-hidden hover:shadow-lg transition-shadow">
+            <div key={pkg.id} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl overflow-hidden hover:shadow-xl hover:border-blueox-primary/40 transition-all duration-300">
               {/* Image placeholder */}
-              <div className="h-48 bg-gradient-to-br from-breco-navy to-breco-navy-light flex items-center justify-center relative overflow-hidden">
+              <div className="h-52 bg-gradient-to-br from-blueox-primary/80 to-blueox-primary-dark flex items-center justify-center relative overflow-hidden">
                 {pkg.image_url || pkg.primary_image?.image_url || pkg.images?.[0]?.image_url ? (
                   <img
                     src={pkg.image_url || pkg.primary_image?.image_url || pkg.images?.[0]?.image_url}
@@ -290,83 +325,83 @@ export default function TourPackagesPage() {
                 
                 {/* Featured badge */}
                 {pkg.is_featured && (
-                  <div className="absolute top-3 left-3 bg-breco-gold text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
+                  <div className="absolute top-3 left-3 bg-yellow-500 text-white text-xs font-semibold px-3 py-1 rounded-xl flex items-center gap-1 shadow-lg">
                     <StarSolidIcon className="w-3 h-3" />
                     Featured
                   </div>
                 )}
                 
                 {/* Duration badge */}
-                <div className="absolute bottom-3 right-3 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
+                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-blueox-primary text-sm font-semibold px-3 py-1 rounded-xl shadow-lg">
                   {pkg.duration_days}D / {pkg.duration_nights}N
                 </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-5">
                 {/* Package code and type */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono text-gray-500">{pkg.package_code}</span>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono text-gray-500 font-semibold">{pkg.package_code}</span>
                   {pkg.tour_type && (
-                    <span className="badge-info">{pkg.tour_type}</span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold bg-blueox-primary/10 text-blueox-primary">{pkg.tour_type}</span>
                   )}
                 </div>
 
                 {/* Name */}
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
+                <h3 className="font-bold text-lg text-blueox-primary-dark mb-3 line-clamp-2">{pkg.name}</h3>
 
                 {/* Destination */}
                 {pkg.primary_destination && (
-                  <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
-                    <GlobeAltIcon className="w-4 h-4" />
+                  <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+                    <GlobeAltIcon className="w-4 h-4 text-blueox-primary/60" />
                     {pkg.primary_destination.name}
                   </p>
                 )}
 
                 {/* Price and group size */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-5 pb-5 border-b border-blueox-primary/10">
                   <div>
-                    <p className="text-xl font-bold text-breco-navy">
+                    <p className="text-2xl font-bold text-blueox-primary">
                       {formatPrice(pkg.base_price_usd)}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 mt-1">
                       {pkg.price_per_person ? 'per person' : 'per group'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <UserGroupIcon className="w-4 h-4" />
-                      <span className="text-sm">{pkg.min_group_size}-{pkg.max_group_size}</span>
+                    <div className="flex items-center gap-2 text-gray-900">
+                      <UserGroupIcon className="w-5 h-5 text-blueox-primary/60" />
+                      <span className="text-sm font-semibold">{pkg.min_group_size}-{pkg.max_group_size}</span>
                     </div>
-                    <p className="text-xs text-gray-500">guests</p>
+                    <p className="text-xs text-gray-500 mt-1">guests</p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
                   <Link
                     href={`/dashboard/tours/${pkg.id}`}
-                    className="btn-secondary btn-sm flex-1 flex items-center justify-center gap-1"
+                    className="flex-1 flex items-center justify-center gap-2 bg-blueox-primary/10 hover:bg-blueox-primary/20 text-blueox-primary px-3 py-2 rounded-xl font-medium transition-all duration-200"
                   >
                     <EyeIcon className="w-4 h-4" />
                     View
                   </Link>
                   <Link
                     href={`/dashboard/tours/${pkg.id}/edit`}
-                    className="btn-secondary btn-sm flex items-center justify-center"
+                    className="flex items-center justify-center bg-blueox-primary/10 hover:bg-blueox-primary/20 text-blueox-primary p-2 rounded-xl transition-all duration-200"
                   >
                     <PencilIcon className="w-4 h-4" />
                   </Link>
                   <button
                     onClick={() => toggleFeatured(pkg)}
-                    className={`btn-sm flex items-center justify-center ${
-                      pkg.is_featured ? 'bg-breco-gold text-white' : 'btn-secondary'
+                    className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
+                      pkg.is_featured ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blueox-primary/10 hover:bg-blueox-primary/20 text-blueox-primary'
                     }`}
                   >
                     <StarIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deletePackage(pkg.id)}
-                    className="btn-sm btn-danger flex items-center justify-center"
+                    className="flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-xl transition-all duration-200"
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
@@ -376,6 +411,7 @@ export default function TourPackagesPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
     </ModuleGuard>
   );

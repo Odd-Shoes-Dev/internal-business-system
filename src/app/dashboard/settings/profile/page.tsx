@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -202,7 +202,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={savingProfile}
-                className="px-4 py-2 bg-breco-navy text-white rounded-lg hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="px-4 py-2 bg-blueox-primary text-white rounded-lg hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {savingProfile ? 'Saving...' : 'Save Changes'}
               </button>
@@ -247,7 +247,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={changingPassword}
-                className="px-4 py-2 bg-breco-navy text-white rounded-lg hover:bg-breco-navy/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="px-4 py-2 bg-blueox-primary text-white rounded-lg hover:bg-blueox-primary/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {changingPassword ? 'Changing Password...' : 'Change Password'}
               </button>

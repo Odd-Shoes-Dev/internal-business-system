@@ -22,7 +22,6 @@ import {
 import { 
   StatsCardSkeleton,
   ShimmerSkeleton,
-  TableRowSkeleton 
 } from '@/components/ui/skeleton';
 
 interface DashboardStats {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -537,7 +537,7 @@ export default function PayslipDetailPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-breco-navy"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary"></div>
       </div>
     );
   }
@@ -546,7 +546,7 @@ export default function PayslipDetailPage({
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Payslip Not Found</h2>
-        <Link href="/dashboard/payroll" className="text-breco-navy hover:underline">
+        <Link href="/dashboard/payroll" className="text-blueox-primary hover:underline">
           Back to Payroll
         </Link>
       </div>

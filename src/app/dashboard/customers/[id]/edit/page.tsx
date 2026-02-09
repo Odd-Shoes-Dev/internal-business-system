@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
+import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
   UserGroupIcon,
@@ -155,14 +156,36 @@ export default function EditCustomerPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <ShimmerSkeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <ShimmerSkeleton className="h-8 w-48" />
+              <ShimmerSkeleton className="h-4 w-64" />
+            </div>
+          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+              <ShimmerSkeleton className="h-6 w-40 mb-4" />
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j} className="space-y-2">
+                    <ShimmerSkeleton className="h-4 w-32" />
+                    <ShimmerSkeleton className="h-10 w-full rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+      <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
@@ -185,7 +208,7 @@ export default function EditCustomerPage({ params }: PageProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <UserGroupIcon className="w-5 h-5 text-[#52b53b]" />
             <h2 className="font-semibold text-gray-900">Basic Information</h2>
@@ -307,7 +330,7 @@ export default function EditCustomerPage({ params }: PageProps) {
         </div>
 
         {/* Address */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Address</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -398,7 +421,7 @@ export default function EditCustomerPage({ params }: PageProps) {
         </div>
 
         {/* Payment Terms */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Payment Settings</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -493,6 +516,7 @@ export default function EditCustomerPage({ params }: PageProps) {
           </div>
         </div>
       </form>
+      </div>
     </div>
   );
 }
