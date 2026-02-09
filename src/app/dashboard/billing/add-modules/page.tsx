@@ -306,7 +306,7 @@ export default function AddModulesPage() {
               <div className="flex items-baseline justify-between pt-6 border-t border-blueox-primary/10">
                 <div>
                   <span className="text-3xl font-bold text-gray-900">
-                    {currencySymbol}{module.price}
+                    {currencySymbol} {module.price.toLocaleString()}
                   </span>
                   <span className="text-gray-600 text-sm ml-2 font-semibold">/month</span>
                 </div>
@@ -345,7 +345,7 @@ export default function AddModulesPage() {
                     )}
                   </div>
                   <span className="font-bold text-gray-900 text-lg">
-                    {isFree ? 'Included' : `${currencySymbol}${module?.price}`}
+                    {isFree ? 'Included' : `${currencySymbol} ${module?.price.toLocaleString()}`}
                   </span>
                 </div>
               );
@@ -366,7 +366,7 @@ export default function AddModulesPage() {
                 <div className="flex justify-between items-baseline mb-2">
                   <span className="text-gray-600">Additional Modules:</span>
                   <span className="text-xl font-bold text-gray-900">
-                    {currencySymbol}{calculateTotal()}
+                    {currencySymbol} {calculateTotal().toLocaleString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 font-medium">

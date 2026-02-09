@@ -94,10 +94,10 @@ export default function UpgradePage() {
   const getPrice = (tier: PlanTier) => {
     const tierData = pricing[tier];
     if (billingPeriod === 'monthly') {
-      return `${currencySymbol}${tierData.monthly.min}-${tierData.monthly.max}`;
+      return `${currencySymbol} ${tierData.monthly.min.toLocaleString()}-${tierData.monthly.max.toLocaleString()}`;
     } else {
       const monthlyEquivalent = tierData.annual / 12;
-      return `${currencySymbol}${Math.round(monthlyEquivalent)}`;
+      return `${currencySymbol} ${Math.round(monthlyEquivalent).toLocaleString()}`;
     }
   };
 
