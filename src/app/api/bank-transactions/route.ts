@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { validatePeriodLock } from '@/lib/accounting/period-lock';
 
 // POST /api/bank-transactions - Create a bank transaction
 export async function POST(request: NextRequest) {
@@ -18,6 +19,12 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if period is closed
+    const periodError = await validatePeriodLock(supabase, body.transaction_date);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 403 });
     }
 
     // Get the bank account to retrieve its GL account

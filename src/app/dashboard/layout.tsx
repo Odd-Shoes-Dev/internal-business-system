@@ -58,8 +58,20 @@ const navigationGroups = [
     items: [
       { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon },
       { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon },
+    ]
+  },
+  {
+    name: 'Fleet Management',
+    module: 'fleet', // Requires fleet module
+    items: [
+      { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon },
+    ]
+  },
+  {
+    name: 'Hotels Management',
+    module: 'hotels', // Requires hotels module
+    items: [
       { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon },
-      { name: 'Fleet', href: '/dashboard/fleet', icon: TruckIcon },
     ]
   },
   {
@@ -74,11 +86,17 @@ const navigationGroups = [
     ]
   },
   {
-    name: 'HR & Payroll',
-    module: 'payroll', // Requires payroll module
+    name: 'People',
+    module: null, // Always visible (core platform)
     items: [
       { name: 'Employees', href: '/dashboard/employees', icon: UsersIcon },
-      { name: 'Payroll', href: '/dashboard/payroll', icon: CalculatorIcon },
+    ]
+  },
+  {
+    name: 'Payroll',
+    module: 'payroll', // Requires payroll module
+    items: [
+      { name: 'Payroll Processing', href: '/dashboard/payroll', icon: CalculatorIcon },
     ]
   },
   {
@@ -186,13 +204,13 @@ export default function DashboardLayout({
             }
           }
 
-          // Fetch enabled modules
+          // Fetch enabled modules (industry modules only - core is always enabled)
           if (profile?.company_id) {
             const { data: modulesData } = await supabase
-              .from('company_modules')
+              .from('subscription_modules')
               .select('module_id')
               .eq('company_id', profile.company_id)
-              .eq('enabled', true);
+              .eq('is_active', true);
             
             const modules = modulesData?.map(m => m.module_id) || [];
             setEnabledModules(modules);

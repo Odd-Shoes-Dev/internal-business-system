@@ -15,8 +15,8 @@
 - 1 company account
 - Up to 3 users
 - 1GB storage
-- Core accounting & invoicing
-- **1 industry module** (choose one)
+- **Complete platform:** Accounting, invoicing, customers, vendors, expenses, bank accounts, multi-currency, financial reports
+- **+ 1 industry module** (choose one optional add-on)
 - Email support (48-hour response)
 - 99.5% uptime SLA
 - Mobile access
@@ -33,8 +33,8 @@
 - 1 company account
 - Up to 10 users
 - 10GB storage
-- Full accounting suite
-- **Up to 3 industry modules included** (additional modules available)
+- **Complete platform:** Full accounting suite, invoicing, customers, vendors, expenses, inventory, assets, bank accounts, multi-currency, advanced reports
+- **+ Up to 3 industry modules included** (additional modules available)
 - Custom branding on invoices/receipts
 - Priority support (24-hour response)
 - Live chat support
@@ -55,8 +55,8 @@
 - Multiple company accounts
 - Unlimited users
 - 100GB storage
-- Full accounting suite
-- **All industry modules unlocked**
+- **Complete platform:** Full accounting suite with all features
+- **+ All industry modules unlocked** (all 7+ modules included)
 - White-label option (remove our branding)
 - Dedicated account manager
 - Phone + email + chat support (4-hour response)
@@ -74,27 +74,27 @@
 
 ---
 
-## 💎 À LA CARTE MODULE PRICING
+## 💎 INDUSTRY MODULE PRICING (OPTIONAL ADD-ONS)
 
-### Core Modules (Per Month, Per Module)
+### À La Carte Modules (Per Month, Per Module)
 
-#### 1. **TOURS & SAFARI MANAGEMENT** - $39/month
+#### 1. **TOURS & SAFARI OPERATIONS** - $39/month
 **Best for:** Tour operators, safari companies, travel agencies
 
 **Features:**
 - Tour package creation & management
 - Multi-day itinerary builder
-- Capacity tracking & booking limits
-- Vehicle assignment to tours
-- Tour guide scheduling
+- Booking system with capacity tracking
+- Destination management
+- Season-based pricing
 - Customer booking management
 - Automated confirmation emails
 - Group booking discounts
-- Season-based pricing
 - Commission tracking (guides & agents)
 - Tour images & galleries
 - Availability calendar
 - Mobile-friendly booking forms
+- Integration with Fleet & Hotels modules (if enabled)
 
 **Target Users:** Tour operators, safari companies, adventure travel, eco-tourism, city tours
 
@@ -104,7 +104,7 @@
 **Best for:** Transport companies, rental agencies, logistics
 
 **Features:**
-- Vehicle inventory management
+- Vehicle registry & tracking
 - Maintenance scheduling & tracking
 - Fuel consumption monitoring
 - Driver assignment & scheduling
@@ -116,6 +116,7 @@
 - GPS integration ready
 - Fleet images & documents
 - Depreciation tracking
+- Integration with Tours module (for vehicle assignments)
 
 **Target Users:** Car rentals, transport companies, delivery services, fleet operators
 
@@ -125,46 +126,93 @@
 **Best for:** Hotels, lodges, guesthouses, B&Bs
 
 **Features:**
-- Room inventory & availability
-- Multi-room booking system
+- Hotel directory & room inventory
+- Room type management with pricing
+- Reservation management
 - Check-in / check-out management
 - Housekeeping schedules
-- Room type management
 - Rate management (seasonal pricing)
 - Guest profile management
 - Booking confirmation emails
-- Occupancy reports
+- Occupancy reports & analytics
 - Revenue per available room (RevPAR)
 - Online booking integration ready
 - Room images & descriptions
+- Integration with Tours module (for tour accommodations)
 
 **Target Users:** Hotels, lodges, resorts, guesthouses, hostels, vacation rentals
 
 ---
 
-#### 4. **CAFE & RESTAURANT POS** - $49/month
-**Best for:** Restaurants, cafes, bars, food courts
+#### 4. **INVENTORY & ASSETS** - $39/month
+**Best for:** Businesses with physical inventory and assets
 
 **Features:**
-- Point of sale system
-- Menu management
-- Table management
-- Order processing (dine-in, takeout, delivery)
-- Kitchen display system (KDS)
-- Inventory management
-- Recipe costing
-- Waiter assignment
-- Split bills & group orders
-- Daily sales reports
-- Popular items analytics
-- Loyalty program integration ready
-- QR code menu
+- Product inventory with stock tracking
+- FIFO valuation method
+- Stock adjustments & transfers
+- Low stock alerts
+- Fixed asset registry & tracking
+- Depreciation calculation (straight-line, reducing balance, sum-of-years)
+- Asset maintenance scheduling
+- Asset assignment to employees/departments
+- Purchase orders management
+- Goods receipt processing
+- Multi-location warehouse support
+- Asset disposal tracking
+- Barcode/QR code support
+- Inventory valuation reports
 
-**Target Users:** Restaurants, cafes, bars, food trucks, catering services
+**Target Users:** Retail, manufacturing, warehouses, distribution, any business with inventory/assets
 
 ---
 
-#### 5. **RETAIL & SHOP MANAGEMENT** - $35/month
+#### 5. **PAYROLL PROCESSING** - $35/month
+**Best for:** Any business with employees (requires Employee Directory in core)
+
+**Features:**
+- Automated payroll calculations
+- Monthly payroll runs
+- Tax calculations (PAYE, NSSF)
+- Payslip generation & distribution
+- Salary advances tracking
+- Loan deductions
+- Employee reimbursements
+- Deductions management
+- Bank payment file generation
+- Payroll journals (auto-posting to GL)
+- Payroll compliance reports
+- Employee payroll history
+- Tax year-end reports
+
+**Note:** Employee directory is included in the core platform. This module adds payroll processing capabilities.
+
+**Target Users:** Any business that wants to automate payroll processing
+
+---
+
+#### 6. **CAFE & RESTAURANT** - $49/month
+**Best for:** Cafes, restaurants, bars, food service businesses
+
+**Features:**
+- Sales recording & tracking
+- Daily/Monthly revenue reports
+- Food & beverage sales tracking
+- Catering revenue management
+- Expense breakdown analysis
+- Profit margin calculations
+- Cash & card payment tracking
+- Sales by category reports
+- Monthly/yearly comparisons
+- Integration with accounting (auto journal entries)
+
+**Note:** Requires Inventory & Assets module for full stock tracking capabilities.
+
+**Target Users:** Cafes, restaurants, bars, food trucks, catering services, bakeries
+
+---
+
+#### 7. **RETAIL & SHOP MANAGEMENT** - $35/month (Coming Soon)
 **Best for:** Retail stores, gift shops, boutiques
 
 **Features:**
@@ -185,7 +233,7 @@
 
 ---
 
-#### 6. **SECURITY SERVICES** - $29/month
+#### 8. **SECURITY SERVICES** - $29/month (Coming Soon)
 **Best for:** Security companies, guard services
 
 **Features:**
@@ -206,37 +254,16 @@
 
 ---
 
-#### 7. **INVENTORY & ASSETS** - $39/month
-**Best for:** Businesses with physical assets, warehouses
-
-**Features:**
-- Asset registry & tracking
-- Depreciation calculation (straight-line, reducing balance)
-- Maintenance scheduling
-- Asset assignment to employees/departments
-- Asset images & documentation
-- Disposal & sale tracking
-- Insurance tracking
-- Location management
-- Barcode/QR code labels
-- Asset valuation reports
-- Condition tracking
-- Multi-location warehouse support
-
-**Target Users:** Manufacturing, warehouses, schools, hospitals, construction companies
-
----
-
 ### Module Bundles (Save Money!)
 
-#### **TOURISM BUNDLE** - $99/month (Save $24/month)
-- Tours & Safari Management
-- Fleet Management
-- Hotel Management
+#### **TOURISM BUNDLE** - $99/month (Save $20/month)
+- Tours & Safari Operations ($39)
+- Fleet Management ($35)
+- Hotel Management ($45)
 
-**Regular price:** $123/month  
+**Regular price:** $119/month  
 **Bundle price:** $99/month  
-**You save:** 20%
+**You save:** $20/month (17% discount)
 
 ---
 

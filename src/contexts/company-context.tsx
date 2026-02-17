@@ -128,10 +128,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   async function loadModules(companyId: string) {
     try {
       const { data, error } = await supabase
-        .from('company_modules')
+        .from('subscription_modules')
         .select('module_id')
         .eq('company_id', companyId)
-        .eq('enabled', true);
+        .eq('is_active', true);
 
       if (error) {
         console.error('Error loading modules:', error);

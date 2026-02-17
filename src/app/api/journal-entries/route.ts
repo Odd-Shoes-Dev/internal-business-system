@@ -129,6 +129,12 @@ export async function POST(request: NextRequest) {
       is_posted = false,
     } = body;
 
+    // Check if period is closed
+    const periodError = await validatePeriodLock(supabase, entry_date);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 403 });
+    }
+
     // Validate that debits equal credits
     const totalDebits = lines.reduce((sum: number, l: any) => sum + (l.debit_amount || 0), 0);
     const totalCredits = lines.reduce((sum: number, l: any) => sum + (l.credit_amount || 0), 0);

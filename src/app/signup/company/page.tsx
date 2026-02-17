@@ -351,9 +351,9 @@ export default function CompanyRegistration() {
 
             {/* Modules Selection */}
             <div className="pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Select Additional Features</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Select Industry Modules (Optional)</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Core accounting is included. Add tour management features to handle bookings and packages.
+                Complete platform (accounting, invoicing, CRM, reports) is included by default. Optionally add specialized modules below.
               </p>
               
               <div className="space-y-3">

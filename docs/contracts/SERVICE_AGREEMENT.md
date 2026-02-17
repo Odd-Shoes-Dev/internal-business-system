@@ -41,16 +41,16 @@ Client may enable the following modules based on their subscription plan:
 **STARTER PLAN - $29-39 USD/month**
 - 1 company account
 - Up to 3 users
-- Core accounting features
-- 1 industry module
+- **Complete platform:** Accounting, invoicing, customers, vendors, expenses, reports, multi-currency
+- **+ 1 industry module** (optional add-on)
 - 1GB storage
 - Email support
 
 **PROFESSIONAL PLAN - $99-149 USD/month**
 - 1 company account
 - Up to 10 users
-- Full accounting suite
-- Unlimited industry modules
+- **Complete platform:** Full accounting suite with all features
+- **+ Up to 3 industry modules included**
 - 10GB storage
 - Priority email & chat support
 - Custom branding on documents
@@ -58,7 +58,7 @@ Client may enable the following modules based on their subscription plan:
 **ENTERPRISE PLAN - $349-499 USD/month**
 - Multiple company accounts
 - Unlimited users
-- All features and modules
+- **Complete platform + All industry modules unlocked**
 - 100GB storage
 - Dedicated account manager
 - Phone support

@@ -1,5 +1,6 @@
--- Migration 070: Update Signup Trigger to Include Region
--- Updates the multi-tenant signup trigger to set region based on user metadata or country
+-- Migration 072: Fix Signup Trigger - Remove Company Modules Inserts
+-- Core features are always enabled (no table tracking needed)
+-- Industry modules tracked in subscription_modules table
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_multi_tenant()
 RETURNS TRIGGER AS $$
@@ -97,4 +98,4 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION public.handle_new_user_multi_tenant IS 'Automatically creates company with regional pricing support and links user on signup';
+COMMENT ON FUNCTION public.handle_new_user_multi_tenant IS 'Automatically creates company with regional pricing support and links user on signup. Core features always enabled, industry modules in subscription_modules table.';

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createBillJournalEntry } from '@/lib/accounting/journal-entry-helpers';
 import { increaseInventoryForBill } from '@/lib/accounting/inventory-server';
+import { validatePeriodLock } from '@/lib/accounting/period-lock';
 
 // GET /api/bills - List bills
 export async function GET(request: NextRequest) {
@@ -95,6 +96,12 @@ export async function POST(request: NextRequest) {
 
     if (!membership) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Check if period is closed
+    const periodError = await validatePeriodLock(supabase, body.bill_date);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 403 });
     }
 
     // Generate bill number

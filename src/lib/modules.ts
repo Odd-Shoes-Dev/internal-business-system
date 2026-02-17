@@ -18,8 +18,8 @@ export interface Module {
 export const AVAILABLE_MODULES: Record<string, Module> = {
   core: {
     id: 'core',
-    name: 'Core Accounting',
-    description: 'Essential financial management for all businesses',
+    name: 'Core Business Platform',
+    description: 'Complete business management platform for all businesses',
     icon: 'CalculatorIcon',
     version: '1.0.0',
     setupFee: 0,
@@ -33,8 +33,9 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
       'Bank Accounts',
       'Chart of Accounts',
       'Financial Reports',
-      'Basic Employees',
-      'Basic Payroll',
+      'Multi-Currency Support',
+      'Employee Directory',
+      'Employee Expense Tracking',
     ],
     routes: [
       '/dashboard',
@@ -47,8 +48,10 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
       '/dashboard/bank',
       '/dashboard/chart-of-accounts',
       '/dashboard/reports',
+      '/dashboard/general-ledger',
+      '/dashboard/billing',
+      '/dashboard/settings',
       '/dashboard/employees',
-      '/dashboard/payroll',
     ],
   },
 
@@ -86,8 +89,8 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
     setupFee: 100,
     monthlyFee: 30,
     requiredModules: ['core'],
-    availableForSignup: false, // ❌ DISABLED FOR DEMO
-    comingSoon: true,
+    availableForSignup: true, // ✅ AVAILABLE
+    comingSoon: false,
     features: [
       'Vehicle Registry',
       'Maintenance Tracking',
@@ -107,8 +110,8 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
     setupFee: 100,
     monthlyFee: 30,
     requiredModules: ['core'],
-    availableForSignup: false, // ❌ DISABLED FOR DEMO
-    comingSoon: true,
+    availableForSignup: true, // ✅ AVAILABLE
+    comingSoon: false,
     features: [
       'Hotel Directory',
       'Room Types & Pricing',
@@ -121,49 +124,46 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
   cafe: {
     id: 'cafe',
     name: 'Cafe & Restaurant POS',
-    description: 'Point of sale and kitchen management',
-    icon: 'ShoppingBagIcon',
+    description: 'Point of sale and sales tracking for cafes and restaurants',
+    icon: 'CakeIcon',
     version: '1.0.0',
     setupFee: 150,
-    monthlyFee: 40,
+    monthlyFee: 49,
     requiredModules: ['core', 'inventory'],
-    availableForSignup: false, // ❌ DISABLED FOR DEMO
-    comingSoon: true,
+    availableForSignup: true, // ✅ AVAILABLE
     features: [
-      'Touch POS Interface',
-      'Table Management',
-      'Kitchen Orders',
-      'Menu Management',
-      'Split Bills',
-      'Tips Tracking',
+      'Sales Recording & Tracking',
+      'Daily/Monthly Revenue Reports',
+      'Expense Breakdown',
+      'Food & Beverage Sales',
+      'Catering Revenue Tracking',
+      'Profit Margin Analysis',
     ],
     routes: [
       '/dashboard/cafe',
-      '/dashboard/cafe/pos',
-      '/dashboard/cafe/menu',
-      '/dashboard/cafe/tables',
+      '/dashboard/cafe/record-sales',
     ],
   },
 
   retail: {
     id: 'retail',
-    name: 'Retail & Wholesale',
-    description: 'Advanced inventory and sales management',
-    icon: 'CubeIcon',
+    name: 'Retail & Shop Management',
+    description: 'Advanced inventory and point-of-sale for retail businesses',
+    icon: 'ShoppingBagIcon',
     version: '1.0.0',
     setupFee: 150,
-    monthlyFee: 40,
+    monthlyFee: 35,
     requiredModules: ['core', 'inventory'],
     availableForSignup: false, // ❌ DISABLED FOR DEMO
     comingSoon: true,
     features: [
-      'Multi-location Inventory',
-      'Purchase Orders',
+      'Product Catalog Management',
       'Sales Orders',
-      'Price Tiers',
+      'Price Tiers & Discounts',
       'Barcode Scanning',
+      'POS Integration',
     ],
-    routes: ['/dashboard/inventory', '/dashboard/purchase-orders'],
+    routes: ['/dashboard/retail'],
   },
 
   security: {
@@ -189,23 +189,54 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
 
   inventory: {
     id: 'inventory',
-    name: 'Advanced Inventory',
-    description: 'Full inventory management with multi-location support',
+    name: 'Inventory & Assets',
+    description: 'Full inventory management with multi-location support and asset tracking',
     icon: 'CubeIcon',
+    version: '1.0.0',
+    setupFee: 100,
+    monthlyFee: 39,
+    requiredModules: ['core'],
+    availableForSignup: true,
+    features: [
+      'Product Inventory',
+      'Stock Tracking & Adjustments',
+      'FIFO Valuation',
+      'Low Stock Alerts',
+      'Fixed Assets Management',
+      'Depreciation Tracking',
+      'Purchase Orders',
+      'Multi-location Support',
+    ],
+    routes: [
+      '/dashboard/inventory', 
+      '/dashboard/goods-receipts',
+      '/dashboard/assets',
+      '/dashboard/purchase-orders',
+    ],
+  },
+
+  payroll: {
+    id: 'payroll',
+    name: 'Payroll Processing',
+    description: 'Automated payroll processing with tax compliance and payslip generation',
+    icon: 'CalculatorIcon',
     version: '1.0.0',
     setupFee: 100,
     monthlyFee: 35,
     requiredModules: ['core'],
-    availableForSignup: false, // ❌ DISABLED FOR DEMO
-    comingSoon: true,
+    availableForSignup: true,
     features: [
-      'Stock Tracking',
-      'FIFO Valuation',
-      'Stock Adjustments',
-      'Low Stock Alerts',
-      'Inventory Reports',
+      'Automated Payroll Processing',
+      'Payslip Generation & Distribution',
+      'Tax Calculations (PAYE, NSSF)',
+      'Salary Advances & Loans',
+      'Deductions Management',
+      'Bank Payment Files',
+      'Payroll Compliance Reports',
     ],
-    routes: ['/dashboard/inventory', '/dashboard/goods-receipts'],
+    routes: [
+      '/dashboard/payroll',
+    ],
   },
 };
 

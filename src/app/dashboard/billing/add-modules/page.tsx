@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
 import { regionalPricing } from '@/lib/regional-pricing';
-import { Check, Loader2, Package, AlertCircle, Map, Truck, Building, Coffee, Shield, Box } from 'lucide-react';
+import { AVAILABLE_MODULES } from '@/lib/modules';
+import { Check, Loader2, Package, AlertCircle, Map, Truck, Building, Coffee, Shield, Box, Calculator, CreditCard, ShoppingCart } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 interface Module {
@@ -45,15 +46,7 @@ export default function AddModulesPage() {
   const pricing = regionalPricing[company?.region || 'DEFAULT'];
   const currencySymbol = pricing.starter.currencySymbol;
 
-  // Check if a module will be free (included in quota) or paid
-  const getModuleStatus = (index: number) => {
-    const totalIncluded = moduleQuota?.included || 0;
-    const remaining = moduleQuota?.remaining || 0;
-    const selectedIndex = selectedModules.length - index;
-    
-    return selectedIndex <= remaining ? 'included' : 'paid';
-  };
-
+  // Get available modules - only those marked as availableForSignup
   const availableModules: Module[] = [
     {
       id: 'tours',
@@ -72,7 +65,7 @@ export default function AddModulesPage() {
     {
       id: 'hotels',
       name: 'Hotel Management',
-      description: 'Room bookings, reservations, and hospitality operations',
+      description: 'Hotel directory, room types, and reservations',
       icon: Building,
       price: pricing.modules.hotels,
     },
@@ -84,20 +77,24 @@ export default function AddModulesPage() {
       price: pricing.modules.cafe,
     },
     {
-      id: 'security',
-      name: 'Security Services',
-      description: 'Guard scheduling, incident reporting, and patrol management',
-      icon: Shield,
-      price: pricing.modules.security,
-    },
-    {
       id: 'inventory',
       name: 'Inventory Management',
       description: 'Stock tracking, warehousing, and supply chain',
       icon: Box,
       price: pricing.modules.inventory,
     },
-  ];
+    {
+      id: 'payroll',
+      name: 'Payroll Processing',
+      description: 'Automated payroll, tax calculations, and payslip generation',
+      icon: Calculator,
+      price: pricing.modules.payroll,
+    },
+  ].filter(module => {
+    // Only show modules that are available for signup
+    const moduleInfo = AVAILABLE_MODULES[module.id];
+    return moduleInfo && moduleInfo.availableForSignup !== false && !moduleInfo.comingSoon;
+  });
 
   const toggleModule = (moduleId: string) => {
     if (currentModules.includes(moduleId)) {
@@ -116,6 +113,31 @@ export default function AddModulesPage() {
     if (selectedModules.length === 0) {
       alert('Please select at least one module to add');
       return;
+    }
+
+    // Confirmation dialog
+    const freeCount = getFreeModulesCount();
+    const paidCount = getPaidModulesCount();
+    const total = calculateTotal();
+    
+    let confirmMessage = `You are about to add ${selectedModules.length} module(s):\n\n`;
+    
+    if (freeCount > 0) {
+      confirmMessage += `✓ ${freeCount} FREE module(s) (included in your plan)\n`;
+    }
+    
+    if (paidCount > 0) {
+      confirmMessage += `$ ${paidCount} PAID module(s) - ${currencySymbol} ${total.toLocaleString()}/month\n\n`;
+      confirmMessage += `⚠️ This will require payment and update your subscription.\n\n`;
+    } else {
+      confirmMessage += `\n✓ All modules are FREE (included in your plan quota)\n\n`;
+    }
+    
+    confirmMessage += `Do you want to proceed?`;
+    
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) {
+      return; // User cancelled
     }
 
     setLoading(true);
@@ -210,7 +232,7 @@ export default function AddModulesPage() {
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-blueox-primary/20 text-blueox-primary px-4 py-2 rounded-full mb-4">
             <Package className="w-5 h-5" />
-            <span className="font-semibold text-sm">Add Modules</span>
+            <span className="font-semibold text-sm text-black">Add Modules</span>
           </div>
           <h1 className="text-4xl font-bold text-blueox-primary-dark mb-3">
             Expand Your System
@@ -218,6 +240,11 @@ export default function AddModulesPage() {
           <p className="text-gray-600 text-lg font-medium">
             Choose industry-specific modules to enhance your business operations
           </p>
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 inline-block">
+            <p className="text-blue-800 text-sm font-semibold">
+              💡 Click modules to select them. Review your selection and click the button below to confirm.
+            </p>
+          </div>
           {moduleQuota && (
             <div className="mt-4 flex items-center gap-3">
               <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
@@ -286,7 +313,7 @@ export default function AddModulesPage() {
 
               {isSelected && !isCurrent && (
                 <div className="absolute -top-3 right-6">
-                  <span className="bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md">
+                  <span className="bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md">
                     <Check className="w-4 h-4" />
                     Selected
                   </span>
@@ -363,6 +390,17 @@ export default function AddModulesPage() {
           <div className="pt-6 border-t border-blueox-primary/10">
             {getPaidModulesCount() > 0 ? (
               <>
+                <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-purple-900 font-bold text-sm">Payment Required</p>
+                      <p className="text-purple-700 text-xs mt-1">
+                        You'll be redirected to payment after clicking "Proceed to Payment"
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex justify-between items-baseline mb-2">
                   <span className="text-gray-600">Additional Modules:</span>
                   <span className="text-xl font-bold text-gray-900">
@@ -382,7 +420,7 @@ export default function AddModulesPage() {
           </div>
 
           <p className="text-sm text-gray-500 mt-4 font-medium">
-            Modules will take effect immediately
+            ⚠️ <strong>Note:</strong> Modules will be activated only after you click the confirmation button below. No charges will be made until you confirm.
           </p>
         </div>
       )}
@@ -399,11 +437,16 @@ export default function AddModulesPage() {
         <button
           onClick={handleAddModules}
           disabled={loading || selectedModules.length === 0 || !canSelectModules()}
-          className="px-10 py-4 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-white rounded-2xl hover:shadow-xl hover:scale-105 font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-3 transition-all duration-300"
+          className={`px-10 py-4 rounded-2xl hover:shadow-xl hover:scale-105 font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-3 transition-all duration-300 ${
+            getPaidModulesCount() > 0 
+              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white' 
+              : 'bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-black'
+          }`}
         >
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-          Add {selectedModules.length > 0 && `(${selectedModules.length})`} Module
-          {selectedModules.length !== 1 && 's'}
+          {!loading && getPaidModulesCount() > 0 && <CreditCard className="w-5 h-5" />}
+          {!loading && getPaidModulesCount() === 0 && <ShoppingCart className="w-5 h-5" />}
+          {getPaidModulesCount() > 0 ? 'Proceed to Payment' : `Add ${selectedModules.length > 0 ? `(${selectedModules.length})` : ''} Module${selectedModules.length !== 1 ? 's' : ''}`}
         </button>
       </div>
 

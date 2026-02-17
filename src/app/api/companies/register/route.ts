@@ -176,14 +176,23 @@ export async function POST(request: NextRequest) {
 
     // 4. Enable selected modules
     if (modules.length > 0) {
-      const moduleRecords = modules.map((moduleId: string) => ({
-        company_id: company.id,
-        module_id: moduleId,
-        enabled: true,
-      }));
+      // Get module pricing from modules.ts
+      const { AVAILABLE_MODULES } = await import('@/lib/modules');
+      
+      const moduleRecords = modules.map((moduleId: string) => {
+        const moduleInfo = AVAILABLE_MODULES[moduleId as keyof typeof AVAILABLE_MODULES];
+        return {
+          company_id: company.id,
+          module_id: moduleId,
+          is_active: true,
+          monthly_price: moduleInfo?.monthlyPrice || 0,
+          currency: region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD',
+          is_trial_module: true, // During trial period
+        };
+      });
 
       await supabaseAdmin
-        .from('company_modules')
+        .from('subscription_modules')
         .insert(moduleRecords);
     }
 

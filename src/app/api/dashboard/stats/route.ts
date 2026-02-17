@@ -24,6 +24,15 @@ export async function GET() {
 
     const companyId = userCompany.company_id;
 
+    // Get enabled modules to filter data appropriately
+    const { data: enabledModules } = await supabase
+      .from('subscription_modules')
+      .select('module_id')
+      .eq('company_id', companyId)
+      .eq('is_active', true);
+
+    const moduleIds = enabledModules?.map(m => m.module_id) || [];
+
     // Fetch all financial data - FILTERED BY COMPANY
     const [
       { data: invoices },
@@ -147,50 +156,59 @@ export async function GET() {
       }
     }
 
-    // Calculate inventory value - FILTERED BY COMPANY
+    // Calculate inventory value - ONLY IF INVENTORY MODULE ENABLED
     let inventoryValue = 0;
-    const { data: inventoryItems } = await supabase
-      .from('products')
-      .select('quantity_on_hand, cost_price, currency')
-      .eq('company_id', companyId)
-      .eq('track_inventory', true);
+    if (moduleIds.includes('inventory') || moduleIds.includes('retail') || moduleIds.includes('cafe')) {
+      const { data: inventoryItems } = await supabase
+        .from('products')
+        .select('quantity_on_hand, cost_price, currency')
+        .eq('company_id', companyId)
+        .eq('track_inventory', true);
 
-    if (inventoryItems) {
-      for (const item of inventoryItems) {
-        const quantity = item.quantity_on_hand || 0;
-        const cost = item.cost_price || 0;
-        const itemValue = quantity * cost;
+      if (inventoryItems) {
+        for (const item of inventoryItems) {
+          const quantity = item.quantity_on_hand || 0;
+          const cost = item.cost_price || 0;
+          const itemValue = quantity * cost;
 
-        if (itemValue > 0) {
-          let valueInUSD = itemValue;
+          if (itemValue > 0) {
+            let valueInUSD = itemValue;
 
-          if (item.currency && item.currency !== 'USD') {
-            const { data: converted } = await supabase.rpc('convert_currency', {
-              p_amount: itemValue,
-              p_from_currency: item.currency,
-              p_to_currency: 'USD',
-              p_date: new Date().toISOString().split('T')[0],
-            });
+            if (item.currency && item.currency !== 'USD') {
+              const { data: converted } = await supabase.rpc('convert_currency', {
+                p_amount: itemValue,
+                p_from_currency: item.currency,
+                p_to_currency: 'USD',
+                p_date: new Date().toISOString().split('T')[0],
+              });
 
-            valueInUSD = converted || itemValue;
+              valueInUSD = converted || itemValue;
+            }
+
+            inventoryValue += valueInUSD;
           }
-
-          inventoryValue += valueInUSD;
         }
       }
     }
 
     const netIncome = totalRevenue - totalExpenses;
 
-    return NextResponse.json({
+    // Return stats with conditional fields based on enabled modules
+    const stats: any = {
       totalRevenue,
       totalExpenses,
       netIncome,
       accountsReceivable,
       accountsPayable,
       cashBalance,
-      inventoryValue,
-    });
+    };
+
+    // Only include inventory value if inventory/retail/cafe module is enabled
+    if (moduleIds.includes('inventory') || moduleIds.includes('retail') || moduleIds.includes('cafe')) {
+      stats.inventoryValue = inventoryValue;
+    }
+
+    return NextResponse.json(stats);
   } catch (error: any) {
     console.error('Failed to calculate dashboard stats:', error);
     return NextResponse.json(

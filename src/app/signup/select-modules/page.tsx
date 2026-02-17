@@ -28,16 +28,16 @@ interface IndustryModule {
 const INDUSTRY_MODULES: IndustryModule[] = [
   {
     id: 'tours',
-    name: 'Tours & Safari',
-    description: 'Tour packages, bookings, itineraries, and guide management',
+    name: 'Tours & Safari Operations',
+    description: 'Tour packages, booking system, destinations, and seasonal pricing',
     price: 39,
     icon: GlobeAltIcon,
-    features: ['Tour Packages', 'Booking System', 'Guide Management', 'Seasonal Pricing'],
+    features: ['Tour Packages', 'Booking Management', 'Destinations', 'Seasonal Pricing'],
   },
   {
     id: 'fleet',
     name: 'Fleet Management',
-    description: 'Vehicle tracking, maintenance scheduling, and fuel management',
+    description: 'Vehicle tracking, maintenance scheduling, and driver management',
     price: 35,
     icon: TruckIcon,
     features: ['Vehicle Registry', 'Maintenance Tracking', 'Fuel Management', 'Driver Assignment'],
@@ -45,34 +45,34 @@ const INDUSTRY_MODULES: IndustryModule[] = [
   {
     id: 'hotels',
     name: 'Hotel Management',
-    description: 'Room reservations, occupancy tracking, and pricing',
+    description: 'Room reservations, occupancy tracking, and housekeeping',
     price: 45,
     icon: HomeModernIcon,
     features: ['Hotel Directory', 'Room Types', 'Reservations', 'Occupancy Tracking'],
   },
   {
-    id: 'cafe',
-    name: 'Retail & Restaurant',
-    description: 'POS, menu management, and sales tracking',
-    price: 35,
-    icon: ShoppingBagIcon,
-    features: ['POS System', 'Menu Management', 'Sales Tracking', 'Table Management'],
-  },
-  {
-    id: 'security',
-    name: 'Security Services',
-    description: 'Guard scheduling, site management, and incident reports',
-    price: 29,
-    icon: ShieldCheckIcon,
-    features: ['Guard Scheduling', 'Site Management', 'Patrol Tracking', 'Incident Reports'],
-  },
-  {
     id: 'inventory',
     name: 'Inventory & Assets',
-    description: 'Multi-location inventory, depreciation, and asset tracking',
+    description: 'Stock tracking, asset depreciation, and multi-location support',
     price: 39,
     icon: CubeIcon,
-    features: ['Asset Tracking', 'Depreciation', 'Multi-location', 'Warehouse Support'],
+    features: ['Product Inventory', 'Asset Tracking', 'Depreciation', 'Multi-location'],
+  },
+  {
+    id: 'payroll',
+    name: 'Payroll Processing',
+    description: 'Automated payroll, tax calculations, and payslip generation',
+    price: 35,
+    icon: ShoppingBagIcon,
+    features: ['Payroll Processing', 'Tax Calculations', 'Payslips', 'Compliance Reports'],
+  },
+  {
+    id: 'cafe',
+    name: 'Cafe & Restaurant',
+    description: 'Sales tracking, revenue reports, and profit analysis',
+    price: 49,
+    icon: ShoppingBagIcon,
+    features: ['Sales Tracking', 'Revenue Reports', 'Food & Beverage', 'Profit Analysis'],
   },
 ];
 
@@ -235,13 +235,13 @@ export default function SelectModulesPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blueox-primary mb-3">
-            Choose Your Industry Modules
+            Choose Your Industry Modules (Optional)
           </h1>
           <p className="text-gray-600 text-lg mb-2">
-            Your 30-day trial includes the Professional plan with up to <span className="font-semibold text-blueox-primary">3 industry modules</span>
+            Your 30-day trial includes the <span className="font-semibold text-blueox-primary">complete platform</span> + up to <span className="font-semibold text-blueox-primary">3 industry modules</span>
           </p>
           <p className="text-sm text-gray-500">
-            You can select 0-3 modules. All core features are included automatically.
+            The base platform with all accounting, invoicing, and CRM features is already included. Select 0-3 optional industry modules below.
           </p>
         </div>
 
@@ -337,11 +337,11 @@ export default function SelectModulesPage() {
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <span><strong>All core features:</strong> Accounting, invoicing, expenses, CRM, multi-currency, reporting</span>
+              <span><strong>Complete platform (Always Included):</strong> Accounting, invoicing, customers, vendors, expenses, employees, bank accounts, multi-currency, financial reports</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <span><strong>Up to 3 industry modules:</strong> Try specialized features for your business type</span>
+              <span><strong>+ Up to 3 industry modules (Optional):</strong> Choose specialized features for your specific business type</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />

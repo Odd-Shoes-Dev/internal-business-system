@@ -82,14 +82,49 @@ A comprehensive multi-tenant business management platform featuring double-entry
 - Tour package management with pricing & itineraries
 - Booking system with capacity tracking
 - Customer booking management
-- Hotel and accommodation tracking
-- Fleet management for safari vehicles
-- Guide scheduling and assignment
-- Booking invoicing and payments
 - Seasonal pricing
 - Destination management
 
-#### ☕ Cafe & Restaurant Module (Coming Soon)
+#### 🚗 Fleet Management Module
+- Vehicle registry and tracking
+- Maintenance scheduling
+- Fuel monitoring
+- Driver management
+- Vehicle assignment to tours/bookings
+
+#### 🏨 Hotel Management Module
+- Hotel directory
+- Room inventory and pricing
+- Reservation management
+- Occupancy tracking
+- Housekeeping coordination
+
+#### 📦 Inventory & Assets Module
+- Product inventory with stock tracking
+- FIFO valuation
+- Fixed asset management
+- Depreciation tracking (straight-line, declining balance)
+- Multi-location warehouse support
+- Purchase orders
+
+#### 💰 Payroll Processing Module
+- Automated payroll calculations
+- Tax and deductions (PAYE, NSSF)
+- Payslip generation and distribution
+- Salary advances and loans
+- Bank payment file generation
+- Payroll compliance reporting
+
+#### ☕ Cafe & Restaurant Module
+- Sales recording and tracking
+- Daily/Monthly revenue reports
+- Food & beverage sales
+- Catering revenue tracking
+- Expense breakdown analysis
+- Profit margin calculations
+- Cash & card payment tracking
+
+#### 🏪 Retail & Wholesale Module (Coming Soon)
 - Point of Sale (POS) interface
 - Table management
 - Kitchen order system

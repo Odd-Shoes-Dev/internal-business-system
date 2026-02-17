@@ -120,10 +120,10 @@ export async function getCompanyModules(companyId: string): Promise<string[]> {
   );
   
   const { data, error } = await supabase
-    .from('company_modules')
+    .from('subscription_modules')
     .select('module_id')
     .eq('company_id', companyId)
-    .eq('enabled', true);
+    .eq('is_active', true);
 
   if (error) {
     console.error('Error fetching company modules:', error);
@@ -145,12 +145,15 @@ export async function enableModule(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
   
+  // TODO: This should integrate with Stripe to add subscription item
   const { error } = await supabase
-    .from('company_modules')
+    .from('subscription_modules')
     .upsert({ 
       company_id: companyId, 
       module_id: moduleId, 
-      enabled: true 
+      is_active: true,
+      monthly_price: 0, // This should come from AVAILABLE_MODULES in modules.ts
+      currency: 'USD'
     });
 
   if (error) {
@@ -173,9 +176,13 @@ export async function disableModule(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
   
+  // TODO: This should integrate with Stripe to cancel subscription item
   const { error } = await supabase
-    .from('company_modules')
-    .update({ enabled: false })
+    .from('subscription_modules')
+    .update({ 
+      is_active: false,
+      removed_at: new Date().toISOString()
+    })
     .eq('company_id', companyId)
     .eq('module_id', moduleId);
 

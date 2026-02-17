@@ -646,13 +646,13 @@ export default function Home() {
                           <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blueox-success text-xs">✓</span>
                           </span>
-                          <span>Core accounting & invoicing</span>
+                          <span>Complete platform (accounting, invoicing, CRM, reports)</span>
                         </li>
                         <li className="flex items-center">
                           <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blueox-success text-xs">✓</span>
                           </span>
-                          <span>1 industry module</span>
+                          <span>+ 1 industry module of your choice</span>
                         </li>
                       </ul>
                       
@@ -711,13 +711,13 @@ export default function Home() {
                           <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blueox-success text-sm">✓</span>
                           </span>
-                          <span>Full accounting suite</span>
+                          <span>Complete platform (all accounting, invoicing, CRM, reports)</span>
                         </li>
                         <li className="flex items-center">
                           <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blueox-success text-sm">✓</span>
                           </span>
-                          <span>Up to 3 industry modules</span>
+                          <span>+ Up to 3 industry modules included</span>
                         </li>
                         <li className="flex items-center">
                           <span className="w-6 h-6 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
@@ -779,7 +779,7 @@ export default function Home() {
                           <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blueox-success text-xs">✓</span>
                           </span>
-                          <span>Up to 7 industry modules</span>
+                          <span>Complete platform + All 7 industry modules</span>
                         </li>
                         <li className="flex items-center">
                           <span className="w-5 h-5 bg-blueox-success/10 rounded-full flex items-center justify-center mr-3">
@@ -821,9 +821,9 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
-              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Tours & Safari Management</h3>
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Tours & Safari Operations</h3>
               <p className="text-sm text-gray-600 mb-3">$39/month</p>
-              <p className="text-sm text-gray-600">Tour packages, itineraries, bookings, vehicle assignment, and guide scheduling</p>
+              <p className="text-sm text-gray-600">Tour packages, booking management, itineraries, destinations, and seasonal pricing</p>
             </div>
           </div>
 
@@ -839,31 +839,7 @@ export default function Home() {
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Hotel Management</h3>
               <p className="text-sm text-gray-600 mb-3">$45/month</p>
-              <p className="text-sm text-gray-600">Room inventory, bookings, check-in/out, housekeeping, and occupancy reports</p>
-            </div>
-          </div>
-
-          <div className="card bg-white border border-blue-100 shadow-sm">
-            <div className="card-body">
-              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Cafe & Restaurant POS</h3>
-              <p className="text-sm text-gray-600 mb-3">$49/month</p>
-              <p className="text-sm text-gray-600">Point of sale, menu management, table orders, and kitchen display system</p>
-            </div>
-          </div>
-
-          <div className="card bg-white border border-blue-100 shadow-sm">
-            <div className="card-body">
-              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Retail & Shop Management</h3>
-              <p className="text-sm text-gray-600 mb-3">$35/month</p>
-              <p className="text-sm text-gray-600">Product catalog, inventory, barcode scanning, and POS system</p>
-            </div>
-          </div>
-
-          <div className="card bg-white border border-blue-100 shadow-sm">
-            <div className="card-body">
-              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Security Services</h3>
-              <p className="text-sm text-gray-600 mb-3">$29/month</p>
-              <p className="text-sm text-gray-600">Guard scheduling, site assignment, patrol logs, and incident reporting</p>
+              <p className="text-sm text-gray-600">Room inventory, reservations, check-in/out, housekeeping, and occupancy reports</p>
             </div>
           </div>
 
@@ -871,7 +847,39 @@ export default function Home() {
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Inventory & Assets</h3>
               <p className="text-sm text-gray-600 mb-3">$39/month</p>
-              <p className="text-sm text-gray-600">Asset tracking, depreciation, maintenance scheduling, and multi-location warehouse support</p>
+              <p className="text-sm text-gray-600">Stock tracking, FIFO valuation, asset depreciation, and multi-location warehouse support</p>
+            </div>
+          </div>
+
+          <div className="card bg-white border border-blue-100 shadow-sm">
+            <div className="card-body">
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Payroll Processing</h3>
+              <p className="text-sm text-gray-600 mb-3">$35/month</p>
+              <p className="text-sm text-gray-600">Automated payroll, tax calculations, payslip generation, and compliance reporting</p>
+            </div>
+          </div>
+
+          <div className="card bg-white border border-blue-100 shadow-sm">
+            <div className="card-body">
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Cafe & Restaurant</h3>
+              <p className="text-sm text-gray-600 mb-3">$49/month</p>
+              <p className="text-sm text-gray-600">Sales tracking, revenue reports, food & beverage sales, and profit analysis</p>
+            </div>
+          </div>
+
+          <div className="card bg-white border border-blue-100 shadow-sm opacity-60">
+            <div className="card-body">
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Retail & Shop POS <span className="text-xs bg-gray-200 px-2 py-1 rounded ml-2">Coming Soon</span></h3>
+              <p className="text-sm text-gray-600 mb-3">$35/month</p>
+              <p className="text-sm text-gray-600">Product catalog, barcode scanning, POS system, and inventory tracking</p>
+            </div>
+          </div>
+
+          <div className="card bg-white border border-blue-100 shadow-sm opacity-60">
+            <div className="card-body">
+              <h3 className="text-lg font-semibold text-blueox-primary mb-2">Security Services <span className="text-xs bg-gray-200 px-2 py-1 rounded ml-2">Coming Soon</span></h3>
+              <p className="text-sm text-gray-600 mb-3">$29/month</p>
+              <p className="text-sm text-gray-600">Guard scheduling, site management, patrol logs, and incident reporting</p>
             </div>
           </div>
         </div>
@@ -992,7 +1000,7 @@ export default function Home() {
               Can I try it before paying?
             </h3>
             <p className="text-gray-600">
-              Absolutely! We offer a 30-day free trial with the Professional plan - full access to all core features (accounting, invoicing, inventory, expenses, CRM, reporting) plus your choice of up to 3 industry modules. No credit card required to start.
+              Absolutely! We offer a 30-day free trial with the Professional plan - full access to the complete platform (accounting, invoicing, inventory, expenses, customers, vendors, financial reports, multi-currency) plus your choice of up to 3 optional industry-specific modules. No credit card required to start.
             </p>
           </div>
 
@@ -1002,7 +1010,7 @@ export default function Home() {
               Do I need multiple modules?
             </h3>
             <p className="text-gray-600">
-              Not at all. The core platform (Starter/Professional/Enterprise plans) includes everything most businesses need: accounting, invoicing, expenses, and reporting. Industry modules are optional add-ons. Start with just the core, and add modules later if you need specialized features.
+              Not at all. Every plan includes the complete platform with all essential business features: accounting, invoicing, customers, vendors, expenses, bank accounts, multi-currency, and financial reports. Industry modules (Tours, Fleet, Hotels, etc.) are optional add-ons for specialized needs. Many businesses run successfully with just the base platform.
             </p>
           </div>
 

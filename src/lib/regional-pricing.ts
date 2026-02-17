@@ -296,6 +296,7 @@ export const MODULE_PRICING = {
     cafe: 65000,
     security: 55000,
     inventory: 75000,
+    payroll: 95000,
     currencySymbol: 'UGX',
   },
   ASIA: {
@@ -305,6 +306,7 @@ export const MODULE_PRICING = {
     cafe: 17,
     security: 14,
     inventory: 19,
+    payroll: 25,
     currencySymbol: '$',
   },
   EU: {
@@ -314,6 +316,7 @@ export const MODULE_PRICING = {
     cafe: 35,
     security: 29,
     inventory: 39,
+    payroll: 49,
     currencySymbol: '€',
   },
   GB: {
@@ -323,6 +326,7 @@ export const MODULE_PRICING = {
     cafe: 31,
     security: 26,
     inventory: 35,
+    payroll: 45,
     currencySymbol: '£',
   },
   US: {
@@ -332,6 +336,7 @@ export const MODULE_PRICING = {
     cafe: 35,
     security: 29,
     inventory: 39,
+    payroll: 49,
     currencySymbol: '$',
   },
   DEFAULT: {
@@ -341,6 +346,7 @@ export const MODULE_PRICING = {
     cafe: 35,
     security: 29,
     inventory: 39,
+    payroll: 49,
     currencySymbol: '$',
   },
 };
