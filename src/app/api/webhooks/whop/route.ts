@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '@/lib/supabase/get-service-client';
 import { getWhop, unwrapWhopWebhook } from '@/lib/whop';
 import { mapCountryToRegion } from '@/lib/regional-pricing';
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('Supabase keys are required in the environment to handle Whop webhooks.');
-  }
-  return createClient(url, key);
-}
 
 export async function POST(request: NextRequest) {
   const bodyText = await request.text();
@@ -48,7 +40,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handlePaymentSucceeded(payment: any) {
-  const supabase = getSupabase();
+  const supabase = await getServiceClient();
   const metadata = payment.metadata || {};
   const companyId = metadata.company_id;
   const planTier = metadata.plan_tier;
