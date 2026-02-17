@@ -287,6 +287,31 @@ export function getAnnualTotal(monthlyPrice: number): number {
   return monthlyPrice * 12;
 }
 
+// Map ISO country code (or country string) to Region
+export function mapCountryToRegion(countryCodeOrName?: string): Region {
+  if (!countryCodeOrName) return 'DEFAULT';
+  const code = countryCodeOrName.toUpperCase();
+
+  const african = ['UG', 'KE', 'TZ', 'RW', 'BI', 'ZA', 'NG', 'GH', 'ET', 'EG', 'MA', 'DZ', 'TN', 'MW', 'ZM', 'ZW', 'MZ', 'SN', 'CM', 'CI'];
+  const asian = ['IN', 'PH', 'TH', 'VN', 'ID', 'BD', 'PK', 'LK', 'MY', 'SG', 'JP', 'CN', 'KR'];
+  const eu = ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'SE', 'NO', 'DK', 'FI', 'PL', 'IE', 'PT', 'GR', 'CZ', 'HU', 'RO', 'BG'];
+
+  if (african.includes(code)) return 'AFRICA';
+  if (asian.includes(code)) return 'ASIA';
+  if (code === 'GB' || code === 'UK') return 'GB';
+  if (eu.includes(code)) return 'EU';
+  if (code === 'US' || code === 'CA' || code === 'MX') return 'US';
+
+  // Fallback: check by name substrings
+  const name = countryCodeOrName.toLowerCase();
+  if (name.includes('uganda') || name.includes('kenya') || name.includes('tanzania')) return 'AFRICA';
+  if (name.includes('india') || name.includes('philippines') || name.includes('thailand')) return 'ASIA';
+  if (name.includes('germany') || name.includes('france') || name.includes('italy')) return 'EU';
+  if (name.includes('united states') || name.includes('usa') || name.includes('america')) return 'US';
+
+  return 'DEFAULT';
+}
+
 // Module pricing per region
 export const MODULE_PRICING = {
   AFRICA: {
