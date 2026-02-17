@@ -11,24 +11,22 @@ interface TrialWarningProps {
 
 export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }: TrialWarningProps) {
   const [dismissed, setDismissed] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState<number>(0);
+  // Keep a drifting `now` value so we can compute daysRemaining synchronously
+  // on render (avoids an initial incorrect 0 value flash).
+  const [now, setNow] = useState<number>(Date.now());
 
   useEffect(() => {
     if (!trialEndDate) return;
 
-    const calculateDaysRemaining = () => {
-      const end = new Date(trialEndDate);
-      const now = new Date();
-      const diff = end.getTime() - now.getTime();
-      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-      setDaysRemaining(days);
-    };
-
-    calculateDaysRemaining();
-    const interval = setInterval(calculateDaysRemaining, 1000 * 60 * 60); // Update hourly
-
+    // update `now` hourly so the banner updates without frequent re-renders
+    const interval = setInterval(() => setNow(Date.now()), 1000 * 60 * 60);
     return () => clearInterval(interval);
   }, [trialEndDate]);
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysRemaining = trialEndDate
+    ? Math.ceil((new Date(trialEndDate).getTime() - now) / msPerDay)
+    : Infinity;
 
   // Don't show if dismissed or not in trial
   if (dismissed || subscriptionStatus !== 'trial') {
