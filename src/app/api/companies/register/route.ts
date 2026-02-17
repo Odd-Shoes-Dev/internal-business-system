@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
           company_id: company.id,
           module_id: moduleId,
           is_active: true,
-          monthly_price: moduleInfo?.monthlyPrice || 0,
+          monthly_price: moduleInfo?.monthlyFee || 0,
           currency: region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD',
           is_trial_module: true, // During trial period
         };
