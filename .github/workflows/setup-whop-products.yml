@@ -18,6 +18,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug - Check secrets
+        run: |
+          echo "WHOP_API_KEY length: ${#WHOP_API_KEY}"
+          echo "WHOP_COMPANY_ID length: ${#WHOP_COMPANY_ID}"
+        env:
+          WHOP_API_KEY: ${{ secrets.WHOP_API_KEY }}
+          WHOP_COMPANY_ID: ${{ secrets.WHOP_COMPANY_ID }}
+
       - name: Run Whop setup script
         env:
           WHOP_API_KEY: ${{ secrets.WHOP_API_KEY }}
