@@ -2,7 +2,7 @@ import { regionalPricing, MODULE_PRICING } from '../src/lib/regional-pricing';
 import fs from 'fs';
 import path from 'path';
 
-const BASE_URL = 'https://api.whop.com';
+const BASE_URL = 'https://api.whop.com/api/v1';
 
 async function createProduct(apiKey: string, companyId: string, name: string, description?: string) {
   const body = {
@@ -32,9 +32,15 @@ async function createProduct(apiKey: string, companyId: string, name: string, de
 }
 
 async function createPlan(apiKey: string, productId: string, payload: any) {
-  const body = payload;
+  const body = {
+    access_pass_id: productId,
+    plan_type: 'renewal',
+    initial_price: payload.price,
+    renewal_price: payload.price,
+    billing_period: payload.billing_period === 'month' ? 30 : 365,
+  };
   
-  const res = await fetch(`${BASE_URL}/products/${productId}/plans`, {
+  const res = await fetch(`${BASE_URL}/plans`, {
     method: 'POST',
     headers: { 
       Authorization: `Bearer ${apiKey}`, 
