@@ -113,7 +113,7 @@ async function handlePaymentSucceeded(payment: any) {
 }
 
 async function handlePaymentFailed(payment: any) {
-  const supabase = getSupabase();
+  const supabase = await getServiceClient();
   const companyId = payment.metadata?.company_id;
   if (!companyId) return;
   await supabase.from('subscriptions').update({ status: 'past_due' }).eq('company_id', companyId);
@@ -132,7 +132,7 @@ async function handleMembershipActivated(data: any) {
 }
 
 async function handleMembershipCancelled(data: any) {
-  const supabase = getSupabase();
+  const supabase = await getServiceClient();
   const companyId = data.metadata?.company_id;
   if (!companyId) return;
   await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('company_id', companyId);

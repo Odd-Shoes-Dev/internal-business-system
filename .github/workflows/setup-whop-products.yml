@@ -1,8 +1,7 @@
 name: Setup Whop Products
 
 on:
-  workflow_dispatch:
-    inputs: {}
+  workflow_dispatch
 
 jobs:
   setup-whop:
