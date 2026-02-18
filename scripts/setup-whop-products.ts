@@ -2,38 +2,45 @@ import { regionalPricing, MODULE_PRICING } from '../src/lib/regional-pricing';
 import fs from 'fs';
 import path from 'path';
 
-const BASE_URL = 'https://api.whop.com/api/v1';
+// Dynamically import Whop SDK
+let Whop: any;
 
-async function createProduct(apiKey: string, companyId: string, name: string, description?: string) {
-  const body = { company_id: companyId, title: name, description };
-  const res = await fetch(`${BASE_URL}/products`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to create product ${name}: ${res.status} ${text.substring(0, 200)}`);
+async function initWhop(apiKey: string) {
+  if (Whop) return;
+  try {
+    Whop = (await import('@whop/sdk')).default;
+  } catch (e) {
+    console.error('Failed to import @whop/sdk:', e);
+    throw new Error('@whop/sdk is not installed or failed to import');
   }
-  const data = await res.json();
-  console.log(`  ✓ Created product "${name}" (ID: ${data.id})`);
-  return data;
 }
 
-async function createPlan(apiKey: string, companyId: string, productId: string, payload: any) {
-  const body = { company_id: companyId, product_id: productId, ...payload };
-  console.log(`  Sending plan request:`, JSON.stringify(body, null, 2));
-  const res = await fetch(`${BASE_URL}/plans`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(`  Error response: ${text.substring(0, 500)}`);
-    throw new Error(`Failed to create plan: ${res.status}`);
+async function createProduct(whop: any, companyId: string, name: string, description?: string) {
+  try {
+    const product = await whop.product.create({
+      company_id: companyId,
+      title: name,
+      description: description || '',
+    });
+    console.log(`  ✓ Created product "${name}" (ID: ${product.id})`);
+    return product;
+  } catch (error: any) {
+    throw new Error(`Failed to create product ${name}: ${error.message}`);
   }
-  return res.json();
+}
+
+async function createPlan(whop: any, companyId: string, productId: string, payload: any) {
+  try {
+    const plan = await whop.plan.create({
+      company_id: companyId,
+      product_id: productId,
+      ...payload,
+    });
+    return plan;
+  } catch (error: any) {
+    console.error(`  Error creating plan with payload:`, JSON.stringify(payload, null, 2));
+    throw new Error(`Failed to create plan: ${error.message}`);
+  }
 }
 
 async function main() {
@@ -44,13 +51,16 @@ async function main() {
     process.exit(1);
   }
 
+  await initWhop(apiKey);
+  const whop = new Whop({ accessToken: apiKey });
+
   const regions = ['AFRICA','ASIA','EU','GB','US','DEFAULT'] as const;
   const tiers = ['starter','professional','enterprise'] as const;
 
   const results: any = { plans: {}, modules: {} };
 
   console.log('Creating base product for plans...');
-  const baseProduct = await createProduct(apiKey, companyId, 'Base Plans', 'Subscription tiers');
+  const baseProduct = await createProduct(whop, companyId, 'Base Plans', 'Subscription tiers');
 
   // Create monthly and annual plans for each tier/region
   for (const tier of tiers) {
@@ -61,10 +71,9 @@ async function main() {
       // Extract numeric price - handle both { min, max } object and plain number
       const monthlyPrice = typeof monthlyData === 'object' ? monthlyData.max : monthlyData;
       const planName = `${tier}-${region}-monthly`;
-      const plan = await createPlan(apiKey, companyId, baseProduct.id, {
+      const plan = await createPlan(whop, companyId, baseProduct.id, {
         title: planName,
-        price: monthlyPrice * 100, // Whop uses cents
-        billing_type: 'recurring',
+        price: monthlyPrice,
         billing_period: 'monthly',
         currency: 'usd',
       });
@@ -78,10 +87,9 @@ async function main() {
       const annualPrice = (regionalPricing as any)[region]?.[tier]?.annual;
       if (!annualPrice) continue;
       const planName = `${tier}-${region}-annual`;
-      const plan = await createPlan(apiKey, companyId, baseProduct.id, {
+      const plan = await createPlan(whop, companyId, baseProduct.id, {
         title: planName,
-        price: annualPrice * 100, // Whop uses cents
-        billing_type: 'recurring',
+        price: annualPrice,
         billing_period: 'yearly',
         currency: 'usd',
       });
@@ -95,7 +103,7 @@ async function main() {
   const moduleList = ['tours','fleet','hotels','cafe','inventory','payroll'];
   for (const moduleId of moduleList) {
     console.log(`Creating product for module: ${moduleId}`);
-    const moduleProduct = await createProduct(apiKey, companyId, `${moduleId} module`, `Module: ${moduleId}`);
+    const moduleProduct = await createProduct(whop, companyId, `${moduleId} module`, `Module: ${moduleId}`);
     results.modules[moduleId] = {};
     for (const region of regions) {
       const price = (MODULE_PRICING as any)[region]?.[moduleId];
@@ -108,10 +116,9 @@ async function main() {
         continue;
       }
       const planName = `${moduleId}-${region}`;
-      const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
+      const plan = await createPlan(whop, companyId, moduleProduct.id, {
         title: planName,
-        price: price * 100, // Whop uses cents
-        billing_type: 'recurring',
+        price: price,
         billing_period: 'monthly',
         currency: 'usd',
       });
@@ -120,24 +127,10 @@ async function main() {
     }
   }
 
-  // Write generated IDs to a JSON file and update whop-config.ts
+  // Write generated IDs to a JSON file
   const outPath = path.join(__dirname, '..', 'src', 'lib', 'whop-config.generated.json');
   fs.writeFileSync(outPath, JSON.stringify(results, null, 2));
   console.log('Wrote generated IDs to', outPath);
-
-  // Transform results into config format
-  const planIds: Record<string, Record<string, string>> = {};
-  const moduleIds: Record<string, Record<string, string>> = {};
-
-  // Reorganize plans by tier-period
-  for (const [internalName, regionMap] of Object.entries(results.plans)) {
-    planIds[internalName] = regionMap as Record<string, string>;
-  }
-
-  // Reorganize modules by module name
-  for (const [moduleId, regionMap] of Object.entries(results.modules)) {
-    moduleIds[moduleId] = regionMap as Record<string, string>;
-  }
 
   // Update src/lib/whop-config.ts with generated IDs
   const configPath = path.join(__dirname, '..', 'src', 'lib', 'whop-config.ts');
@@ -148,10 +141,22 @@ async function main() {
   const cleanedLines = lines.filter(line => !line.includes('WHOP_PLAN_IDS_GENERATED') && !line.includes('WHOP_MODULE_IDS_GENERATED') && !line.includes('// GENERATED'));
   const cleanedConfig = cleanedLines.join('\n');
 
+  // Transform results for config export
+  const planIds: Record<string, Record<string, string>> = {};
+  const moduleIds: Record<string, Record<string, string>> = {};
+
+  for (const [internalName, regionMap] of Object.entries(results.plans)) {
+    planIds[internalName] = regionMap as Record<string, string>;
+  }
+
+  for (const [moduleId, regionMap] of Object.entries(results.modules)) {
+    moduleIds[moduleId] = regionMap as Record<string, string>;
+  }
+
   // Create the new config with actual IDs
   const updatedConfig = `import { Region } from './regional-pricing';
 
-// Placeholder mapping. Run \`scripts/setup-whop-products.ts\` to populate real plan IDs.
+// Generated Whop plan and module IDs
 export const WHOP_PLAN_IDS: Record<string, Record<Region, string>> = ${JSON.stringify(planIds, null, 2)};
 
 export const WHOP_MODULE_IDS: Record<string, Record<Region, string>> = ${JSON.stringify(moduleIds, null, 2)};
