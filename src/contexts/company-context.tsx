@@ -87,8 +87,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
 
       if (!userCompanies || userCompanies.length === 0) {
-        // User has no companies - redirect to company setup
-        router.push('/onboarding');
+        // User has no companies - redirect to plan selection
+        router.push('/signup/select-plan');
         setLoading(false);
         return;
       }
