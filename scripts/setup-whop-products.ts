@@ -5,23 +5,34 @@ import path from 'path';
 const BASE_URL = 'https://api.whop.com/api/v1';
 
 async function createProduct(apiKey: string, companyId: string, name: string, description?: string) {
+  const body = { company_id: companyId, title: name, description };
   const res = await fetch(`${BASE_URL}/products`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ company_id: companyId, title: name, description }),
+    body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Failed to create product ${name}: ${res.status} ${await res.text()}`);
-  return res.json();
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create product ${name}: ${res.status} ${text.substring(0, 200)}`);
+  }
+  const data = await res.json();
+  console.log(`  ✓ Created product "${name}" (ID: ${data.id})`);
+  return data;
 }
 
 async function createPlan(apiKey: string, companyId: string, productId: string, payload: any) {
   const body = { company_id: companyId, product_id: productId, ...payload };
+  console.log(`  Sending plan request:`, JSON.stringify(body, null, 2));
   const res = await fetch(`${BASE_URL}/plans`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Failed to create plan: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`  Error response: ${text.substring(0, 200)}`);
+    throw new Error(`Failed to create plan: ${res.status} ${text}`);
+  }
   return res.json();
 }
 
