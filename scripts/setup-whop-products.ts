@@ -4,6 +4,35 @@ import path from 'path';
 
 const BASE_URL = 'https://api.whop.com/api/v1';
 
+// Exchange rates for currency conversion to USD
+// Using approximate rates - update these as needed
+const EXCHANGE_RATES: Record<string, number> = {
+  USD: 1.0,
+  EUR: 1.10,  // 1 EUR ≈ $1.10 USD
+  GBP: 1.27,  // 1 GBP ≈ $1.27 USD
+  UGX: 0.00027, // 1 UGX ≈ $0.00027 USD (3700 UGX ≈ $1)
+};
+
+/**
+ * Convert price from local currency to USD
+ * Detects currency based on the price value and currencySymbol
+ */
+function convertToUSD(price: number, currencySymbol: string): number {
+  let rate = 1.0;
+  
+  if (currencySymbol === '€') {
+    rate = EXCHANGE_RATES.EUR;
+  } else if (currencySymbol === '£') {
+    rate = EXCHANGE_RATES.GBP;
+  } else if (currencySymbol === 'UGX') {
+    rate = EXCHANGE_RATES.UGX;
+  }
+  
+  const usdPrice = price * rate;
+  // Round to 2 decimal places
+  return Math.round(usdPrice * 100) / 100;
+}
+
 async function createProduct(apiKey: string, companyId: string, name: string, description?: string) {
   const body = {
     company_id: companyId,
@@ -39,6 +68,7 @@ async function createPlan(apiKey: string, companyId: string, productId: string, 
     initial_price: payload.price,
     renewal_price: payload.price,
     billing_period: payload.billing_period === 'month' ? 30 : 365,
+    currency: 'usd',  // Whop requires USD for pricing
   };
   
   const res = await fetch(`${BASE_URL}/plans`, {
@@ -80,18 +110,23 @@ async function main() {
   for (const tier of tiers) {
     // Monthly plans
     for (const region of regions) {
-      const monthlyData = (regionalPricing as any)[region]?.[tier]?.monthly;
+      const regionData = (regionalPricing as any)[region]?.[tier];
+      if (!regionData) continue;
+      const monthlyData = regionData.monthly;
       if (!monthlyData) continue;
+      
       const monthlyPrice = typeof monthlyData === 'object' ? monthlyData.max : monthlyData;
+      const currencySymbol = regionData.currencySymbol;
+      const usdPrice = convertToUSD(monthlyPrice, currencySymbol);
       const planName = `${tier}-${region}-monthly`;
       
       try {
         const plan = await createPlan(apiKey, companyId, baseProduct.id, {
           name: planName,
-          price: monthlyPrice,
+          price: usdPrice,
           billing_period: 'month',
         });
-        console.log('✓ Created plan', planName, `(ID: ${plan.id})`);
+        console.log(`✓ Created plan ${planName} (${monthlyPrice} ${currencySymbol} = $${usdPrice} USD) (ID: ${plan.id})`);
         results.plans[`${tier}-monthly`] = results.plans[`${tier}-monthly`] || {};
         results.plans[`${tier}-monthly`][region] = plan.id;
       } catch (e) {
@@ -101,17 +136,22 @@ async function main() {
 
     // Annual plans
     for (const region of regions) {
-      const annualPrice = (regionalPricing as any)[region]?.[tier]?.annual;
+      const regionData = (regionalPricing as any)[region]?.[tier];
+      if (!regionData) continue;
+      const annualPrice = regionData.annual;
       if (!annualPrice) continue;
+      
+      const currencySymbol = regionData.currencySymbol;
+      const usdPrice = convertToUSD(annualPrice, currencySymbol);
       const planName = `${tier}-${region}-annual`;
       
       try {
         const plan = await createPlan(apiKey, companyId, baseProduct.id, {
           name: planName,
-          price: annualPrice,
+          price: usdPrice,
           billing_period: 'year',
         });
-        console.log('✓ Created plan', planName, `(ID: ${plan.id})`);
+        console.log(`✓ Created plan ${planName} (${annualPrice} ${currencySymbol} = $${usdPrice} USD) (ID: ${plan.id})`);
         results.plans[`${tier}-annual`] = results.plans[`${tier}-annual`] || {};
         results.plans[`${tier}-annual`][region] = plan.id;
       } catch (e) {
@@ -131,14 +171,18 @@ async function main() {
       const price = (MODULE_PRICING as any)[region]?.[moduleId];
       if (!price || typeof price !== 'number') continue;
       
+      // Get currency from region's starter tier (all tiers in same region have same currency)
+      const currencySymbol = (regionalPricing as any)[region]?.starter?.currencySymbol || '$';
+      const usdPrice = convertToUSD(price, currencySymbol);
       const planName = `${moduleId}-${region}`;
+      
       try {
         const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
           name: planName,
-          price: price,
+          price: usdPrice,
           billing_period: 'month',
         });
-        console.log(`  ✓ Created ${planName} (ID: ${plan.id})`);
+        console.log(`  ✓ Created ${planName} (${price} ${currencySymbol} = $${usdPrice} USD) (ID: ${plan.id})`);
         results.modules[moduleId][region] = plan.id;
       } catch (e) {
         console.error(`Failed to create ${planName}:`, e);
