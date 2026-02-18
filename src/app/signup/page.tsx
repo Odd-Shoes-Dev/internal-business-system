@@ -82,13 +82,13 @@ export default function SignUpPage() {
         router.push('/login');
       } else {
         // Auto-confirmed (for development)
-        toast.success(`Welcome! Let's customize your experience.`);
+        toast.success(`Welcome! Let's set up your subscription.`);
         
         // Wait for session and trigger to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Redirect to module selection
-        router.push('/signup/select-modules');
+        // Redirect to plan selection
+        router.push('/signup/select-plan');
       }
     } catch (error: any) {
       console.error('Signup error:', error);
