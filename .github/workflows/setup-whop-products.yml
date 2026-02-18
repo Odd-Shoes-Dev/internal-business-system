@@ -1,0 +1,33 @@
+name: Setup Whop Products
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-whop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Whop setup script
+        env:
+          WHOP_API_KEY: ${{ secrets.WHOP_API_KEY }}
+          WHOP_COMPANY_ID: ${{ secrets.WHOP_COMPANY_ID }}
+        run: npx tsx scripts/setup-whop-products.ts
+
+      - name: Commit generated IDs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/whop-config.generated.json src/lib/whop-config.ts
+          git commit -m "chore(billing): add generated Whop plan/module IDs" || echo "No changes to commit"
+          git push origin HEAD:main
