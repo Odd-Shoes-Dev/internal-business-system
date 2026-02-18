@@ -379,9 +379,9 @@ export const MODULE_PRICING = {
 // Helper object for easier access (compatible with old code)
 export const regionalPricing = {
   AFRICA: {
-    starter: { monthly: { min: 60, max: 70 }, annual: 60000, currencySymbol: 'UGX' },
-    professional: { monthly: { min: 200, max: 250 }, annual: 2700000, currencySymbol: 'UGX' },
-    enterprise: { monthly: { min: 800, max: 900 }, annual: 9720000, currencySymbol: 'UGX' },
+    starter: { monthly: { min: 60000, max: 70000 }, annual: 600000, currencySymbol: 'UGX' },
+    professional: { monthly: { min: 200000, max: 250000 }, annual: 2700000, currencySymbol: 'UGX' },
+    enterprise: { monthly: { min: 800000, max: 900000 }, annual: 9720000, currencySymbol: 'UGX' },
     modules: MODULE_PRICING.AFRICA,
   },
   ASIA: {

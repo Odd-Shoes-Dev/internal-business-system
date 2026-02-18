@@ -142,7 +142,14 @@ async function main() {
       if (!annualPrice) continue;
       
       const currencySymbol = regionData.currencySymbol;
-      const usdPrice = convertToUSD(annualPrice, currencySymbol);
+      let usdPrice = convertToUSD(annualPrice, currencySymbol);
+      
+      // Whop has a $2500 limit on single purchases, cap at $2400
+      if (usdPrice > 2400) {
+        console.log(`⚠️  Capping ${tier}-${region}-annual from $${usdPrice} to $2400 (Whop limit)`);
+        usdPrice = 2400;
+      }
+      
       const planName = `${tier}-${region}-annual`;
       
       try {
