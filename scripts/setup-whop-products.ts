@@ -56,12 +56,14 @@ async function main() {
   for (const tier of tiers) {
     // Monthly plans
     for (const region of regions) {
-      const price = (regionalPricing as any)[region]?.[tier]?.monthly;
-      if (!price) continue;
+      const monthlyData = (regionalPricing as any)[region]?.[tier]?.monthly;
+      if (!monthlyData) continue;
+      // Extract numeric price - handle both { min, max } object and plain number
+      const monthlyPrice = typeof monthlyData === 'object' ? monthlyData.max : monthlyData;
       const internalName = `${tier}-${region}-monthly`;
       const plan = await createPlan(apiKey, companyId, baseProduct.id, {
         internal_name: internalName,
-        initial_price: price,
+        initial_price: monthlyPrice,
         plan_type: 'renewal',
         renewal_period: 'monthly',
         visibility: 'visible',
@@ -74,12 +76,12 @@ async function main() {
 
     // Annual plans
     for (const region of regions) {
-      const price = (regionalPricing as any)[region]?.[tier]?.annually;
-      if (!price) continue;
+      const annualPrice = (regionalPricing as any)[region]?.[tier]?.annual;
+      if (!annualPrice) continue;
       const internalName = `${tier}-${region}-annual`;
       const plan = await createPlan(apiKey, companyId, baseProduct.id, {
         internal_name: internalName,
-        initial_price: price,
+        initial_price: annualPrice,
         plan_type: 'renewal',
         renewal_period: 'yearly',
         visibility: 'visible',
@@ -99,7 +101,14 @@ async function main() {
     results.modules[moduleId] = {};
     for (const region of regions) {
       const price = (MODULE_PRICING as any)[region]?.[moduleId];
-      if (!price) continue;
+      if (!price) {
+        console.log(`  ⚠️ No pricing for ${moduleId} in ${region}`);
+        continue;
+      }
+      if (typeof price !== 'number') {
+        console.log(`  ⚠️ Invalid price type for ${moduleId} in ${region}:`, price);
+        continue;
+      }
       const internalName = `${moduleId}-${region}`;
       const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
         internal_name: internalName,
