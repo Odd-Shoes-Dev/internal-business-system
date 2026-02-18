@@ -1,7 +1,8 @@
 import { Region } from './regional-pricing';
 
 // Generated Whop plan and module IDs (created 2026-02-18T07:55:57.120Z)
-export const WHOP_PLAN_IDS: Record<string, Record<Region, string>> = {
+// Note: Some plans may be missing if they exceed Whop's $2500 transaction limit
+export const WHOP_PLAN_IDS: Record<string, Partial<Record<Region, string>>> = {
   "starter-monthly": {
     "ASIA": "plan_rLYEwIBou3UxH",
     "EU": "plan_Wmz2wLPeHrBPs",
@@ -41,7 +42,7 @@ export const WHOP_PLAN_IDS: Record<string, Record<Region, string>> = {
   }
 };
 
-export const WHOP_MODULE_IDS: Record<string, Record<Region, string>> = {
+export const WHOP_MODULE_IDS: Record<string, Partial<Record<Region, string>>> = {
   "tours": {
     "AFRICA": "plan_uDCR7l4S0iDI6",
     "ASIA": "plan_B2f5jgPcRAq6A",
@@ -92,15 +93,13 @@ export const WHOP_MODULE_IDS: Record<string, Record<Region, string>> = {
   }
 };
 
-export function getPlanId(planTier: string, billingPeriod: string, region: Region): string {
+export function getPlanId(planTier: string, billingPeriod: string, region: Region): string | undefined {
   const key = `${planTier}-${billingPeriod}`;
   const id = (WHOP_PLAN_IDS as any)[key]?.[region];
-  if (!id) throw new Error(`No Whop plan id for ${key} in ${region}`);
   return id;
 }
 
-export function getModulePlanId(moduleId: string, region: Region): string {
+export function getModulePlanId(moduleId: string, region: Region): string | undefined {
   const id = (WHOP_MODULE_IDS as any)[moduleId]?.[region];
-  if (!id) throw new Error(`No Whop module plan id for ${moduleId} in ${region}`);
   return id;
 }

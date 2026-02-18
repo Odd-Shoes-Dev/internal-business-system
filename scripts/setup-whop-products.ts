@@ -102,6 +102,7 @@ async function main() {
   const tiers = ['starter','professional','enterprise'] as const;
 
   const results: any = { plans: {}, modules: {} };
+  const plansNeedingContactSupport: string[] = [];  // Track plans exceeding $2500 limit
 
   console.log('Creating base product for plans...');
   const baseProduct = await createProduct(apiKey, companyId, 'Base Plans', 'Subscription tiers');
@@ -142,15 +143,16 @@ async function main() {
       if (!annualPrice) continue;
       
       const currencySymbol = regionData.currencySymbol;
-      let usdPrice = convertToUSD(annualPrice, currencySymbol);
-      
-      // Whop has a $2500 limit on single purchases, cap at $2400
-      if (usdPrice > 2400) {
-        console.log(`⚠️  Capping ${tier}-${region}-annual from $${usdPrice} to $2400 (Whop limit)`);
-        usdPrice = 2400;
-      }
-      
+      const usdPrice = convertToUSD(annualPrice, currencySymbol);
       const planName = `${tier}-${region}-annual`;
+      
+      // Whop has a $2500 limit - for plans above this, direct users to contact support
+      if (usdPrice > 2500) {
+        console.log(`⚠️  SKIPPED ${planName} ($${usdPrice} USD) - Exceeds Whop's $2500 limit`);
+        console.log(`   → Users should contact us via WhatsApp or email for custom pricing`);
+        plansNeedingContactSupport.push(`${planName} ($${usdPrice} USD)`);
+        continue;  // Skip creating this plan
+      }
       
       try {
         const plan = await createPlan(apiKey, companyId, baseProduct.id, {
@@ -219,20 +221,19 @@ async function main() {
   const updatedConfig = `import { Region } from './regional-pricing';
 
 // Generated Whop plan and module IDs (created ${new Date().toISOString()})
-export const WHOP_PLAN_IDS: Record<string, Record<Region, string>> = ${JSON.stringify(planIds, null, 2)};
+// Note: Some plans may be missing if they exceed Whop's $2500 transaction limit
+export const WHOP_PLAN_IDS: Record<string, Partial<Record<Region, string>>> = ${JSON.stringify(planIds, null, 2)};
 
-export const WHOP_MODULE_IDS: Record<string, Record<Region, string>> = ${JSON.stringify(moduleIds, null, 2)};
+export const WHOP_MODULE_IDS: Record<string, Partial<Record<Region, string>>> = ${JSON.stringify(moduleIds, null, 2)};
 
-export function getPlanId(planTier: string, billingPeriod: string, region: Region): string {
+export function getPlanId(planTier: string, billingPeriod: string, region: Region): string | undefined {
   const key = \`\${planTier}-\${billingPeriod}\`;
   const id = (WHOP_PLAN_IDS as any)[key]?.[region];
-  if (!id) throw new Error(\`No Whop plan id for \${key} in \${region}\`);
   return id;
 }
 
-export function getModulePlanId(moduleId: string, region: Region): string {
+export function getModulePlanId(moduleId: string, region: Region): string | undefined {
   const id = (WHOP_MODULE_IDS as any)[moduleId]?.[region];
-  if (!id) throw new Error(\`No Whop module plan id for \${moduleId} in \${region}\`);
   return id;
 }
 `;
@@ -240,7 +241,19 @@ export function getModulePlanId(moduleId: string, region: Region): string {
   fs.writeFileSync(configPath, updatedConfig);
   console.log('Updated whop-config.ts with generated IDs');
 
-  console.log('✅ Whop product setup complete!');
+  console.log('\n✅ Whop product setup complete!');
+  
+  if (plansNeedingContactSupport.length > 0) {
+    console.log('\n⚠️  PLANS REQUIRING MANUAL SETUP (Exceed $2500 limit):');
+    plansNeedingContactSupport.forEach(plan => {
+      console.log(`   • ${plan}`);
+    });
+    console.log('\nℹ️  For these high-value plans, users should contact support:');
+    console.log('   📧 Email: support@blueoox.com');
+    console.log('   💬 WhatsApp: +256-XXX-XXXX-XXX');
+    console.log('\nOnce Whop enables higher transaction limits for your account,');
+    console.log('re-run this script to create these plans automatically.');
+  }
 }
 
 main().catch((err)=>{ console.error(err); process.exit(1); });
