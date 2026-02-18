@@ -30,8 +30,8 @@ async function createPlan(apiKey: string, companyId: string, productId: string, 
   });
   if (!res.ok) {
     const text = await res.text();
-    console.error(`  Error response: ${text.substring(0, 200)}`);
-    throw new Error(`Failed to create plan: ${res.status} ${text}`);
+    console.error(`  Error response: ${text.substring(0, 500)}`);
+    throw new Error(`Failed to create plan: ${res.status}`);
   }
   return res.json();
 }
@@ -60,16 +60,15 @@ async function main() {
       if (!monthlyData) continue;
       // Extract numeric price - handle both { min, max } object and plain number
       const monthlyPrice = typeof monthlyData === 'object' ? monthlyData.max : monthlyData;
-      const internalName = `${tier}-${region}-monthly`;
+      const planName = `${tier}-${region}-monthly`;
       const plan = await createPlan(apiKey, companyId, baseProduct.id, {
-        internal_name: internalName,
-        initial_price: monthlyPrice,
-        plan_type: 'renewal',
-        renewal_period: 'monthly',
-        visibility: 'visible',
-        currency: 'USD',
+        title: planName,
+        price: monthlyPrice * 100, // Whop uses cents
+        billing_type: 'recurring',
+        billing_period: 'monthly',
+        currency: 'usd',
       });
-      console.log('✓ Created plan', internalName, `(ID: ${plan.id})`);
+      console.log('✓ Created plan', planName, `(ID: ${plan.id})`);
       results.plans[`${tier}-monthly`] = results.plans[`${tier}-monthly`] || {};
       results.plans[`${tier}-monthly`][region] = plan.id;
     }
@@ -78,16 +77,15 @@ async function main() {
     for (const region of regions) {
       const annualPrice = (regionalPricing as any)[region]?.[tier]?.annual;
       if (!annualPrice) continue;
-      const internalName = `${tier}-${region}-annual`;
+      const planName = `${tier}-${region}-annual`;
       const plan = await createPlan(apiKey, companyId, baseProduct.id, {
-        internal_name: internalName,
-        initial_price: annualPrice,
-        plan_type: 'renewal',
-        renewal_period: 'yearly',
-        visibility: 'visible',
-        currency: 'USD',
+        title: planName,
+        price: annualPrice * 100, // Whop uses cents
+        billing_type: 'recurring',
+        billing_period: 'yearly',
+        currency: 'usd',
       });
-      console.log('✓ Created plan', internalName, `(ID: ${plan.id})`);
+      console.log('✓ Created plan', planName, `(ID: ${plan.id})`);
       results.plans[`${tier}-annual`] = results.plans[`${tier}-annual`] || {};
       results.plans[`${tier}-annual`][region] = plan.id;
     }
@@ -109,16 +107,15 @@ async function main() {
         console.log(`  ⚠️ Invalid price type for ${moduleId} in ${region}:`, price);
         continue;
       }
-      const internalName = `${moduleId}-${region}`;
+      const planName = `${moduleId}-${region}`;
       const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
-        internal_name: internalName,
-        initial_price: price,
-        plan_type: 'renewal',
-        renewal_period: 'monthly',
-        visibility: 'visible',
-        currency: 'USD',
+        title: planName,
+        price: price * 100, // Whop uses cents
+        billing_type: 'recurring',
+        billing_period: 'monthly',
+        currency: 'usd',
       });
-      console.log(`  ✓ Created ${internalName} (ID: ${plan.id})`);
+      console.log(`  ✓ Created ${planName} (ID: ${plan.id})`);
       results.modules[moduleId][region] = plan.id;
     }
   }
