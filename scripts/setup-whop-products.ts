@@ -31,8 +31,9 @@ async function createProduct(apiKey: string, companyId: string, name: string, de
   return data;
 }
 
-async function createPlan(apiKey: string, productId: string, payload: any) {
+async function createPlan(apiKey: string, companyId: string, productId: string, payload: any) {
   const body = {
+    company_id: companyId,
     access_pass_id: productId,
     plan_type: 'renewal',
     initial_price: payload.price,
@@ -85,7 +86,7 @@ async function main() {
       const planName = `${tier}-${region}-monthly`;
       
       try {
-        const plan = await createPlan(apiKey, baseProduct.id, {
+        const plan = await createPlan(apiKey, companyId, baseProduct.id, {
           name: planName,
           price: monthlyPrice,
           billing_period: 'month',
@@ -105,7 +106,7 @@ async function main() {
       const planName = `${tier}-${region}-annual`;
       
       try {
-        const plan = await createPlan(apiKey, baseProduct.id, {
+        const plan = await createPlan(apiKey, companyId, baseProduct.id, {
           name: planName,
           price: annualPrice,
           billing_period: 'year',
@@ -132,7 +133,7 @@ async function main() {
       
       const planName = `${moduleId}-${region}`;
       try {
-        const plan = await createPlan(apiKey, moduleProduct.id, {
+        const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
           name: planName,
           price: price,
           billing_period: 'month',
