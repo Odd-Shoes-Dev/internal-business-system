@@ -2,15 +2,16 @@ import { regionalPricing, MODULE_PRICING } from '../src/lib/regional-pricing';
 import fs from 'fs';
 import path from 'path';
 
-const BASE_URL = 'https://api.whop.com/api/v1';
+const BASE_URL = 'https://api.whop.com';
 
 async function createProduct(apiKey: string, companyId: string, name: string, description?: string) {
   const body = {
+    company_id: companyId,
     title: name,
     description: description || name,
   };
   
-  const res = await fetch(`${BASE_URL}/companies/${companyId}/products`, {
+  const res = await fetch(`${BASE_URL}/products`, {
     method: 'POST',
     headers: { 
       Authorization: `Bearer ${apiKey}`, 
@@ -44,9 +45,9 @@ async function createPlan(apiKey: string, productId: string, payload: any) {
   
   if (!res.ok) {
     const text = await res.text();
+    console.error(`  Error: ${res.status} - ${text.substring(0, 300)}`);
     console.error(`  Payload:`, JSON.stringify(body, null, 2));
-    console.error(`  Error: ${res.status}`);
-    throw new Error(`Failed to create plan`);
+    throw new Error(`Failed to create plan: ${res.status}`);
   }
   
   return res.json();
