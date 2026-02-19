@@ -1,94 +1,94 @@
 {
   "plans": {
     "starter-monthly": {
-      "AFRICA": "plan_x1K5yoghqePgK",
-      "ASIA": "plan_Siov3f7ySoHDQ",
-      "EU": "plan_njrEhua4WUHum",
-      "GB": "plan_tuNnc9igF93Vm",
-      "US": "plan_6KHDNqZ4YMvE1",
-      "DEFAULT": "plan_QbGDbLI9wme9l"
+      "AFRICA": "plan_y5Xoyuf9yOKQj",
+      "ASIA": "plan_NCACqO4BxEjRq",
+      "EU": "plan_VHeDBlSGTAxS1",
+      "GB": "plan_tLT28ydynMewT",
+      "US": "plan_XxRP91E061ibG",
+      "DEFAULT": "plan_Ph5Dq2JneHVZv"
     },
     "starter-annual": {
-      "AFRICA": "plan_xrBbGyD1oO0cM",
-      "ASIA": "plan_gW4OGCUuGRgMM",
-      "EU": "plan_PaUURFk27BIYR",
-      "GB": "plan_3DS2bEkHJIfuG",
-      "US": "plan_s5p7eHn7Sfas9",
-      "DEFAULT": "plan_dyLFIgwkMFYwG"
+      "AFRICA": "plan_0g12n3A0JH6zy",
+      "ASIA": "plan_LbHJaX9XLDv4B",
+      "EU": "plan_98uGAaILXlPG4",
+      "GB": "plan_u67oSY7Hbdhwp",
+      "US": "plan_E3tzdrlD6LrkE",
+      "DEFAULT": "plan_dx7m5M4GTiA09"
     },
     "professional-monthly": {
-      "AFRICA": "plan_ca4ORvfMSAdKf",
-      "ASIA": "plan_Cm6OCVkuCUzV7",
-      "EU": "plan_nXtWu3GIrjB0k",
-      "GB": "plan_6zgsDrFCe0viz",
-      "US": "plan_KF8KdIK99XMVV",
-      "DEFAULT": "plan_mEcbkW0ZX4wZS"
+      "AFRICA": "plan_PoST35NjvKINJ",
+      "ASIA": "plan_vZSEYN6Az1iVr",
+      "EU": "plan_37WLFegR1HJLJ",
+      "GB": "plan_Yx2os8egqjbXE",
+      "US": "plan_hTdtsaTRNgM5k",
+      "DEFAULT": "plan_JbmZNZRWsTzGw"
     },
     "professional-annual": {
-      "AFRICA": "plan_RNPwYW24dwxWm",
-      "ASIA": "plan_zx1MoJ6mEzVT1",
-      "EU": "plan_wlTdRRZKVzTPe",
-      "GB": "plan_fK0brfHjoECMS",
-      "US": "plan_sGQmwstdicK21",
-      "DEFAULT": "plan_XvA8yvPwlclcZ"
+      "AFRICA": "plan_oscQzlbeaxcoC",
+      "ASIA": "plan_Dlfij7hQdS9wB",
+      "EU": "plan_dVlf9bJHNi4qU",
+      "GB": "plan_e5WPROzGTpnmU",
+      "US": "plan_0734mGn6R9vEe",
+      "DEFAULT": "plan_WOXlnvNrGovFH"
     },
     "enterprise-monthly": {
-      "AFRICA": "plan_LZSwrgYPK2Vu5",
-      "ASIA": "plan_TPQuLidjUU300",
-      "EU": "plan_k77PkbC7Z0cLp",
-      "GB": "plan_qXvmd2Hle3nB9",
-      "US": "plan_mfB53lxhbh4a7",
-      "DEFAULT": "plan_sY7ajHdfPetPS"
+      "AFRICA": "plan_ypXnFMLrYznBD",
+      "ASIA": "plan_RPwWC46jZpc9n",
+      "EU": "plan_OpSRwK4sv4EEL",
+      "GB": "plan_eAzTiXKr0jrBG",
+      "US": "plan_dKcawwZFnzX6j",
+      "DEFAULT": "plan_RTP2gpCwqWJTT"
     }
   },
   "modules": {
     "tours": {
-      "AFRICA": "plan_SRCGUV2boOIA5",
-      "ASIA": "plan_cSzYeqTpD1Vmh",
-      "EU": "plan_X8jT0r5CAzNwl",
-      "GB": "plan_ymneGdMwuauyX",
-      "US": "plan_5aHWnDoQ6aeVU",
-      "DEFAULT": "plan_9HBE5QN7TQiKE"
+      "AFRICA": "plan_2QzqoAINFXK5O",
+      "ASIA": "plan_hyCfADM7pPyXn",
+      "EU": "plan_OAAVQ6irZ7PyV",
+      "GB": "plan_Kn3XoZBISQsnl",
+      "US": "plan_sscDjRacmgA8x",
+      "DEFAULT": "plan_CE0VM24Z3Dkvm"
     },
     "fleet": {
-      "AFRICA": "plan_Ss07cWAvR1COf",
-      "ASIA": "plan_dU8x0l2XzwNe3",
-      "EU": "plan_N0yVfyeAc2aLE",
-      "GB": "plan_o6ntcdpkxXvoI",
-      "US": "plan_K02vNZVHIAOn3",
-      "DEFAULT": "plan_ys0ck3y9CXpR2"
+      "AFRICA": "plan_uDQJK3WcWtHuJ",
+      "ASIA": "plan_fOZwzn0EI2dkW",
+      "EU": "plan_Y5HdbjhCTM0kE",
+      "GB": "plan_VbT5zJOzZbYwR",
+      "US": "plan_oen5q5PEz9JYF",
+      "DEFAULT": "plan_Efya1QEGbjbYw"
     },
     "hotels": {
-      "AFRICA": "plan_3FO0fLRa6K0Xd",
-      "ASIA": "plan_Tk4Bilkx3ssZQ",
-      "EU": "plan_S677LrCsaj2XW",
-      "GB": "plan_B82THBRcHB24t",
-      "US": "plan_3iEM28aWEhSim",
-      "DEFAULT": "plan_aXNyyrvzI0P9k"
+      "AFRICA": "plan_4JaNmis0O5JIg",
+      "ASIA": "plan_1PyhFlTaEFtV6",
+      "EU": "plan_73VQr0EQHfNzE",
+      "GB": "plan_ROjlW2AXqe6hQ",
+      "US": "plan_JmEzHXBnZRcHB",
+      "DEFAULT": "plan_dfq6blugUAD45"
     },
     "cafe": {
-      "AFRICA": "plan_Z1rjh89GjwhV6",
-      "ASIA": "plan_PhhT31ey3bqZa",
-      "EU": "plan_ICPLYu4N4fVKd",
-      "GB": "plan_ZfYHtO03QTp6n",
-      "US": "plan_xsy6Mq49V4YwK",
-      "DEFAULT": "plan_tF9Sq0aVJtuTL"
+      "AFRICA": "plan_HW6o01M0wSdPp",
+      "ASIA": "plan_N2xn8jb0rf32W",
+      "EU": "plan_w0alwAvUWzkGm",
+      "GB": "plan_mDCjz4r40n0pW",
+      "US": "plan_NCBSlxgQlEDiG",
+      "DEFAULT": "plan_rp7ox2iw4aIrq"
     },
     "inventory": {
-      "AFRICA": "plan_UIe0UqUlm0n8n",
-      "ASIA": "plan_DpPgzKzUsXBam",
-      "EU": "plan_vxbBAsGb9luHQ",
-      "GB": "plan_yftW8IdB5Yeyt",
-      "US": "plan_3ZLAoRkFqH7z8",
-      "DEFAULT": "plan_L6QlgqjCfC7uy"
+      "AFRICA": "plan_XBuCbOVX4uepA",
+      "ASIA": "plan_fKKPbaxCgS2nA",
+      "EU": "plan_47XKzF8SEGLE1",
+      "GB": "plan_3qCAFwJnFcXmR",
+      "US": "plan_Mbjjxd9BsSOVZ",
+      "DEFAULT": "plan_aJkoVeDfzypvn"
     },
     "payroll": {
-      "AFRICA": "plan_DCa0E9XfD76Tu",
-      "ASIA": "plan_YWcdMfbvkXRDG",
-      "EU": "plan_hKmjxa438NH4v",
-      "GB": "plan_AQFJOZeaEnsif",
-      "US": "plan_JjUyY011PiemU",
-      "DEFAULT": "plan_zGwFLbaxC3nJc"
+      "AFRICA": "plan_48wUMdGrmsrys",
+      "ASIA": "plan_nwd0x50TU4wBY",
+      "EU": "plan_s7F65ixdVPQPF",
+      "GB": "plan_MCGkQVUk9BbHp",
+      "US": "plan_Nt6h8UK1srqc1",
+      "DEFAULT": "plan_OsvcCH32VMDP9"
     }
   }
 }
