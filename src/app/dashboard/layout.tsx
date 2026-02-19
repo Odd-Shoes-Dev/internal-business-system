@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -165,14 +165,14 @@ export default function DashboardLayout({
           
           if (profileError) {
             console.error('Profile error:', profileError);
-            // If profile doesn't exist, redirect to login
+            // No profile yet = onboarding not finished; send to plan selection (not login – they're already authenticated)
             if (profileError.code === 'PGRST116') {
               setIsLoading(false);
-              router.push('/login');
+              router.push('/signup/select-plan');
               return;
             }
           }
-          
+
           setUser(profile);
 
           // Fetch company information and subscription status

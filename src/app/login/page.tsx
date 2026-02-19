@@ -43,27 +43,32 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // Check if user has any companies (completed onboarding)
+      const userId = data.user?.id;
+      if (!userId) {
+        throw new Error('Sign-in succeeded but no user id returned');
+      }
+
+      // Ensure session is attached to the client before making authenticated requests
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Check if THIS user has any companies (onboarding completed = has company + profile)
       const { data: userCompanies } = await supabase
         .from('user_companies')
         .select('company_id')
+        .eq('user_id', userId)
         .limit(1);
 
-      // Get redirect path from URL or determine based on onboarding status
       const urlParams = new URLSearchParams(window.location.search);
       let redirectTo = urlParams.get('redirectTo') || '/dashboard';
 
-      // If user has no companies, send to plan selection to start onboarding
       if (!userCompanies || userCompanies.length === 0) {
         redirectTo = '/signup/select-plan';
       }
-      
+
       toast.success('Welcome back!');
-      
-      // Wait a bit longer for cookies to be set properly
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Force a full page reload with the redirect
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
       window.location.href = redirectTo;
     } catch (error: any) {
       toast.error(error.message || 'Failed to sign in');

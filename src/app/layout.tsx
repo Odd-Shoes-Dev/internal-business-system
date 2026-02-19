@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   description: 'Complete Business Management Platform for tour operators, cafes, retail, and more',
   icons: {
     icon: [
-      { url: '/assets/logo_no_text.jpg', sizes: '32x32', type: 'image/jpeg' },
-      { url: '/assets/logo_no_text.jpg', sizes: '16x16', type: 'image/jpeg' },
-      { url: '/assets/logo_no_text.jpg', sizes: '192x192', type: 'image/jpeg' },
+      { url: '/assets/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/assets/logo.png', sizes: '16x16', type: 'image/png' },
+      { url: '/assets/logo.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: [{ url: '/assets/logo_no_text.jpg', sizes: '180x180', type: 'image/jpeg' }],
-    shortcut: '/assets/logo_no_text.jpg',
+    apple: [{ url: '/assets/logo.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: '/assets/logo.png',
   },
   manifest: '/manifest.json',
   appleWebApp: {
