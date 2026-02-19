@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import type { Region } from '@/lib/regional-pricing';
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use service role for remaining operations (bypasses RLS)
-    const supabaseAdmin = await createClient();
+    const supabaseAdmin = createServiceClient();
 
     // Detect region based on country
     const region = getRegionFromCountry(country || 'Uganda');

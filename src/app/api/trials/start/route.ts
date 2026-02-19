@@ -1,19 +1,41 @@
+import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
 
-interface CreateCompanyRequest {
+interface StartTrialRequest {
   name: string;
   tier: 'starter' | 'professional' | 'enterprise';
   region: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
-  billingPeriod: 'monthly' | 'annual';
 }
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const supabase = await createClient();
-    const supabaseAdmin = createServiceClient();
+    
+    // Create authenticated client to get user
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: any[]) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    // Create admin client with SERVICE ROLE to bypass RLS
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -25,10 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: CreateCompanyRequest = await request.json();
-    const { name, tier, region, billingPeriod } = body;
+    const body: StartTrialRequest = await request.json();
+    const { name, tier, region } = body;
 
-    if (!name || !tier || !region || !billingPeriod) {
+    if (!name || !tier || !region) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -36,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's primary company (created by auth trigger during signup)
-    const { data: userCompanies, error: fetchError } = await supabase
+    const { data: userCompanies } = await supabase
       .from('user_companies')
       .select('company_id')
       .eq('user_id', user.id)
@@ -45,16 +67,20 @@ export async function POST(request: NextRequest) {
 
     let companyId: string;
 
-    if (fetchError || !userCompanies) {
-      // If no company exists, create one (fallback) using service client
-      const { data: newCompany, error: createError } = await supabaseAdmin
+    if (!userCompanies) {
+      // Create new company for trial using admin client to bypass RLS
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
+
+      const { data: newCompany, error: createError } = await adminClient
         .from('companies')
         .insert({
           name,
-          subscription_plan: `${tier}-${billingPeriod}`,
-          subscription_status: 'active',
+          subscription_plan: `${tier}-trial`,
+          subscription_status: 'trial',
           region,
           currency: 'USD',
+          trial_ends_at: trialEndDate.toISOString(),
         })
         .select()
         .single();
@@ -69,8 +95,8 @@ export async function POST(request: NextRequest) {
 
       companyId = newCompany.id;
 
-      // Link user to the new company using service client
-      const { error: linkError } = await supabaseAdmin
+      // Link user to company using admin client
+      const { error: linkError } = await adminClient
         .from('user_companies')
         .insert({
           user_id: user.id,
@@ -87,16 +113,19 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Update existing company with subscription info using service client
+      // Update existing company with trial info
       companyId = userCompanies.company_id;
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await adminClient
         .from('companies')
         .update({
           name,
-          subscription_plan: `${tier}-${billingPeriod}`,
-          subscription_status: 'active',
+          subscription_plan: `${tier}-trial`,
+          subscription_status: 'trial',
           region,
+          trial_ends_at: trialEndDate.toISOString(),
         })
         .eq('id', companyId);
 
@@ -109,8 +138,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure user profile exists with company_id
-    const { error: profileError } = await supabaseAdmin
+    // Ensure user profile exists using admin client
+    const { error: profileError } = await adminClient
       .from('user_profiles')
       .upsert({
         id: user.id,
@@ -124,11 +153,10 @@ export async function POST(request: NextRequest) {
 
     if (profileError) {
       console.error('User profile upsert error:', profileError);
-      // Don't fail - profile might already exist
     }
 
     // Get the updated/created company
-    const { data: company } = await supabaseAdmin
+    const { data: company } = await adminClient
       .from('companies')
       .select('*')
       .eq('id', companyId)
@@ -137,9 +165,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       company,
+      message: '30-day free trial started!',
     });
   } catch (error: any) {
-    console.error('Onboarding API error:', error);
+    console.error('Trial API error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

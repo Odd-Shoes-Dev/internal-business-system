@@ -2,8 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
-interface CreateCompanyRequest {
-  name: string;
+interface StartTrialRequest {
   tier: 'starter' | 'professional' | 'enterprise';
   region: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
   billingPeriod: 'monthly' | 'annual';
@@ -25,10 +24,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: CreateCompanyRequest = await request.json();
-    const { name, tier, region, billingPeriod } = body;
+    const body: StartTrialRequest = await request.json();
+    const { tier, region, billingPeriod } = body;
 
-    if (!name || !tier || !region || !billingPeriod) {
+    if (!tier || !region || !billingPeriod) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -43,18 +42,20 @@ export async function POST(request: NextRequest) {
       .eq('is_primary', true)
       .single();
 
-    let companyId: string;
+    let companyId: string | undefined;
 
     if (fetchError || !userCompanies) {
-      // If no company exists, create one (fallback) using service client
+      // Create new company using service client
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
       const { data: newCompany, error: createError } = await supabaseAdmin
         .from('companies')
         .insert({
-          name,
-          subscription_plan: `${tier}-${billingPeriod}`,
-          subscription_status: 'active',
+          subscription_plan: `${tier}-trial`,
+          subscription_status: 'trial',
           region,
           currency: 'USD',
+          trial_ends_at: trialEndDate.toISOString(),
         })
         .select()
         .single();
@@ -69,12 +70,11 @@ export async function POST(request: NextRequest) {
 
       companyId = newCompany.id;
 
-      // Link user to the new company using service client
       const { error: linkError } = await supabaseAdmin
         .from('user_companies')
         .insert({
           user_id: user.id,
-          company_id: newCompany.id,
+          company_id: companyId,
           is_primary: true,
           role: 'owner',
         });
@@ -87,15 +87,13 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Update existing company with subscription info using service client
       companyId = userCompanies.company_id;
 
       const { error: updateError } = await supabaseAdmin
         .from('companies')
         .update({
-          name,
           subscription_plan: `${tier}-${billingPeriod}`,
-          subscription_status: 'active',
+          subscription_status: 'trial',
           region,
         })
         .eq('id', companyId);
@@ -103,13 +101,13 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         console.error('Company update error:', updateError);
         return NextResponse.json(
-          { error: 'Failed to update company' },
+          { error: 'Failed to start trial' },
           { status: 500 }
         );
       }
     }
 
-    // Ensure user profile exists with company_id
+    // Ensure user profile exists with company_id using service client
     const { error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .upsert({
@@ -127,7 +125,7 @@ export async function POST(request: NextRequest) {
       // Don't fail - profile might already exist
     }
 
-    // Get the updated/created company
+    // Get the updated company
     const { data: company } = await supabaseAdmin
       .from('companies')
       .select('*')
@@ -137,9 +135,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       company,
+      message: '30-day free trial started successfully',
     });
   } catch (error: any) {
-    console.error('Onboarding API error:', error);
+    console.error('Trial API error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
