@@ -11,7 +11,10 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { plan_tier, billing_period, module_ids = [] } = await request.json();
+    const body = await request.json();
+    const plan_tier = body.plan_tier ?? body.planTier;
+    const billing_period = body.billing_period ?? body.billingPeriod;
+    const module_ids = body.module_ids ?? body.moduleIds ?? [];
 
     // Authenticate user from supabase auth cookie/header
     const authHeader = request.headers.get('authorization');
@@ -29,6 +32,13 @@ export async function POST(request: NextRequest) {
     if (!profile?.company_id) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
 
     const companyId = profile.company_id;
+
+    if (!plan_tier || !billing_period) {
+      return NextResponse.json(
+        { error: 'Missing plan_tier or billing_period' },
+        { status: 400 }
+      );
+    }
 
     // Detect display region for pricing
     const displayRegion = detectRegion();

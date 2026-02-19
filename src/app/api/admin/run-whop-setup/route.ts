@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         const internalName = `${tier}-${region}-monthly`;
         const plan = await createPlan(apiKey, companyId, baseProduct.id, {
           internal_name: internalName,
-          initial_price: price,
+          initial_price: 0,
+          renewal_price: price,
           plan_type: 'renewal',
           renewal_period: 'monthly',
           visibility: 'visible',
@@ -81,7 +82,8 @@ export async function POST(request: NextRequest) {
         const internalName = `${moduleId}-${region}`;
         const plan = await createPlan(apiKey, companyId, moduleProduct.id, {
           internal_name: internalName,
-          initial_price: price,
+          initial_price: 0,
+          renewal_price: price,
           plan_type: 'renewal',
           renewal_period: 'monthly',
           visibility: 'visible',
