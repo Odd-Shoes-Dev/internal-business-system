@@ -6,6 +6,8 @@ interface StartTrialRequest {
   tier: 'starter' | 'professional' | 'enterprise';
   region: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
   billingPeriod: 'monthly' | 'annual';
+  /** Company name (from signup). Required when creating a new company; optional when updating. */
+  name?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -25,11 +27,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body: StartTrialRequest = await request.json();
-    const { tier, region, billingPeriod } = body;
+    const { tier, region, billingPeriod, name: bodyName } = body;
 
     if (!tier || !region || !billingPeriod) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: tier, region, billingPeriod' },
         { status: 400 }
       );
     }
@@ -43,18 +45,38 @@ export async function POST(request: NextRequest) {
       .single();
 
     let companyId: string | undefined;
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 30);
 
     if (fetchError || !userCompanies) {
-      // Create new company using service client
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 30);
+      // No company yet (e.g. trigger didn't run or failed). Create one – name is REQUIRED (DB NOT NULL).
+      const metaCompany = (user.user_metadata?.company_name as string)?.trim();
+      const metaFullName = (user.user_metadata?.full_name as string)?.trim();
+      const emailPrefix = user.email?.split('@')[0] || 'user';
+      const companyName =
+        bodyName?.trim() ||
+        metaCompany ||
+        (metaFullName ? metaFullName + "'s Company" : emailPrefix + "'s Company");
+
+      if (!companyName) {
+        return NextResponse.json(
+          { error: 'Company name is required to start a trial. Please provide "name" in the request body or complete signup with a company name.' },
+          { status: 400 }
+        );
+      }
+
+      const subdomain = companyName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + (user.id as string).slice(0, 8);
+
       const { data: newCompany, error: createError } = await supabaseAdmin
         .from('companies')
         .insert({
+          name: companyName,
+          subdomain,
+          email: user.email ?? null,
+          region,
+          currency: region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD',
           subscription_plan: `${tier}-trial`,
           subscription_status: 'trial',
-          region,
-          currency: 'USD',
           trial_ends_at: trialEndDate.toISOString(),
         })
         .select()
@@ -63,7 +85,7 @@ export async function POST(request: NextRequest) {
       if (createError) {
         console.error('Company creation error:', createError);
         return NextResponse.json(
-          { error: 'Failed to create company' },
+          { error: 'Failed to create company: ' + (createError.message || 'Unknown error') },
           { status: 500 }
         );
       }
@@ -76,7 +98,7 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           company_id: companyId,
           is_primary: true,
-          role: 'owner',
+          role: 'admin',
         });
 
       if (linkError) {
@@ -92,9 +114,11 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabaseAdmin
         .from('companies')
         .update({
-          subscription_plan: `${tier}-${billingPeriod}`,
+          subscription_plan: `${tier}-trial`,
           subscription_status: 'trial',
           region,
+          trial_ends_at: trialEndDate.toISOString(),
+          ...(bodyName?.trim() ? { name: bodyName.trim() } : {}),
         })
         .eq('id', companyId);
 
@@ -123,6 +147,37 @@ export async function POST(request: NextRequest) {
     if (profileError) {
       console.error('User profile upsert error:', profileError);
       // Don't fail - profile might already exist
+    }
+
+    // Sync company_settings so dashboard and middleware see subscription_status and trial_end_date
+    const { data: existingSettings } = await supabaseAdmin
+      .from('company_settings')
+      .select('id')
+      .eq('company_id', companyId)
+      .maybeSingle();
+
+    const trialStartDate = new Date();
+    if (existingSettings) {
+      await supabaseAdmin
+        .from('company_settings')
+        .update({
+          subscription_status: 'trial',
+          plan_tier: tier,
+          billing_period: billingPeriod,
+          trial_end_date: trialEndDate.toISOString(),
+        })
+        .eq('company_id', companyId);
+    } else {
+      await supabaseAdmin
+        .from('company_settings')
+        .insert({
+          company_id: companyId,
+          subscription_status: 'trial',
+          plan_tier: tier,
+          billing_period: billingPeriod,
+          trial_start_date: trialStartDate.toISOString(),
+          trial_end_date: trialEndDate.toISOString(),
+        });
     }
 
     // Get the updated company

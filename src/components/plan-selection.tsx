@@ -93,6 +93,15 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
   const handleStartFreeTrial = async () => {
     setLoading(true);
     try {
+      // Company name from signup (stored in localStorage) – required when API creates a new company
+      let companyName: string | undefined;
+      try {
+        const stored = localStorage.getItem('companyName');
+        if (typeof stored === 'string' && stored.trim()) companyName = stored.trim();
+      } catch {
+        // ignore localStorage errors
+      }
+
       const response = await fetch('/api/trial/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,6 +109,7 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
           tier: selectedTier,
           region: selectedRegion,
           billingPeriod,
+          ...(companyName ? { name: companyName } : {}),
         }),
       });
 
