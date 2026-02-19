@@ -59,6 +59,15 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
         return;
       }
 
+      // Store plan selection details in localStorage to use after payment
+      const planDetails = {
+        tier: selectedTier,
+        region: selectedRegion,
+        billingPeriod: billingPeriod,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('selectedPlan', JSON.stringify(planDetails));
+
       if (onPlanSelected) {
         onPlanSelected(purchaseUrl);
       } else {

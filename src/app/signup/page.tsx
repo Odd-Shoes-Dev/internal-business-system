@@ -84,6 +84,9 @@ export default function SignUpPage() {
         // Auto-confirmed (for development)
         toast.success(`Welcome! Let's set up your subscription.`);
         
+        // Store company name for later use in payment flow
+        localStorage.setItem('companyName', companyName);
+        
         // Wait for session and trigger to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
         

@@ -4,30 +4,87 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
 export function CheckoutSuccessClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
 
   useEffect(() => {
-    // Simulate verification of payment
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    completeOnboarding();
   }, []);
+
+  const completeOnboarding = async () => {
+    try {
+      // Get stored plan details from localStorage
+      const planDataStr = localStorage.getItem('selectedPlan');
+      
+      if (!planDataStr) {
+        console.error('No plan data found in localStorage');
+        setIsLoading(false);
+        return;
+      }
+
+      const planData = JSON.parse(planDataStr);
+      
+      // Get user's company name from localStorage or use default
+      const companyName = localStorage.getItem('companyName') || 'My Company';
+      
+      setIsCreatingCompany(true);
+
+      // Call API to create company and complete onboarding
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: companyName,
+          tier: planData.tier,
+          region: planData.region,
+          billingPeriod: planData.billingPeriod,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to complete onboarding');
+      }
+
+      // Clear stored plan data
+      localStorage.removeItem('selectedPlan');
+      localStorage.removeItem('companyName');
+
+      // Wait a moment then redirect to dashboard
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setIsLoading(false);
+      
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+    } catch (error: any) {
+      console.error('Onboarding error:', error);
+      setIsLoading(false);
+      setIsCreatingCompany(false);
+      toast.error(error.message || 'Failed to complete setup');
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <div className="animate-spin mb-4">
-            <CheckCircleIcon className="w-16 h-16 text-green-500" />
+            <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Your Payment</h1>
-          <p className="text-gray-600">Please wait while we confirm your subscription...</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {isCreatingCompany ? 'Setting up your account' : 'Processing your payment'}
+          </h1>
+          <p className="text-gray-600">
+            {isCreatingCompany 
+              ? 'We are setting up your workspace...' 
+              : 'Please wait while we confirm your subscription...'}
+          </p>
         </div>
       </div>
     );

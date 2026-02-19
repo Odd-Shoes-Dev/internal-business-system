@@ -4,10 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
 import { regionalPricing } from '@/lib/regional-pricing';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Loader2, Mail, MessageCircle, X as CloseIcon } from 'lucide-react';
 
 type BillingPeriod = 'monthly' | 'annual';
 type PlanTier = 'starter' | 'professional' | 'enterprise';
+
+// Contact information for large purchases
+const CONTACT_INFO = {
+  email: 'support@blueox.com',
+  whatsapp: '+256700123456', // Replace with actual WhatsApp number
+  whatsappUrl: 'https://wa.me/256700123456?text=I%20am%20interested%20in%20upgrading%20my%20plan%20for%20enterprise%20pricing',
+  emailUrl: 'mailto:support@blueox.com?subject=Enterprise%20Plan%20Inquiry&body=I%20am%20interested%20in%20upgrading%20to%20an%20enterprise%20plan%20with%20annual%20billing.',
+};
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -16,6 +24,8 @@ export default function UpgradePage() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [loading, setLoading] = useState(false);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [priceExceeded, setPriceExceeded] = useState<number | null>(null);
 
   // Fetch current subscription
   useEffect(() => {
@@ -37,7 +47,45 @@ export default function UpgradePage() {
   const pricing = regionalPricing[company?.region || 'DEFAULT'];
   const currencySymbol = pricing.starter.currencySymbol;
 
+  // Calculate total price in USD
+  const calculateTotalPrice = () => {
+    const pricing = regionalPricing[company?.region || 'DEFAULT'];
+    const tierData = pricing[selectedPlan];
+    
+    let usdPrice = 0;
+    
+    // Get the base price in local currency
+    let localPrice: number;
+    if (billingPeriod === 'monthly') {
+      localPrice = tierData.monthly.max;
+    } else {
+      localPrice = tierData.annual;
+    }
+    
+    // Convert to USD based on currency
+    const exchangeRates: { [key: string]: number } = {
+      '$': 1.0,   // USD
+      '€': 1.10,  // EUR
+      '£': 1.27,  // GBP
+      'UGX': 0.00027, // UGX
+    };
+    
+    const rate = exchangeRates[tierData.currencySymbol] || 1.0;
+    usdPrice = Math.round(localPrice * rate * 100) / 100;
+    
+    return usdPrice;
+  };
+
   const handleUpgrade = async () => {
+    const totalPrice = calculateTotalPrice();
+    
+    // Check if price exceeds $2500 USD limit
+    if (totalPrice > 2500) {
+      setPriceExceeded(totalPrice);
+      setShowContactModal(true);
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch('/api/billing/create-checkout', {
@@ -310,6 +358,80 @@ export default function UpgradePage() {
           <p className="text-sm text-gray-600">
             Start your 14-day free trial • No credit card required
           </p>
+        </div>
+      )}
+
+      {/* Contact Modal for Large Purchases */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Enterprise Plan Inquiry</h3>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-gray-700">
+                Your selected plan <span className="font-bold">${priceExceeded?.toFixed(2)} USD {billingPeriod === 'annual' ? 'annually' : 'per month'}</span> exceeds our standard checkout limit of <span className="font-bold">$2,500 USD</span>.
+              </p>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              For custom pricing and enterprise solutions, please contact our sales team directly:
+            </p>
+
+            <div className="space-y-4 mb-6">
+              {/* WhatsApp Contact */}
+              <a
+                href={CONTACT_INFO.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 p-4 rounded-lg border border-green-200 hover:bg-green-50 transition-colors"
+              >
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <MessageCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900">WhatsApp</div>
+                  <div className="text-sm text-gray-600">{CONTACT_INFO.whatsapp}</div>
+                </div>
+                <div className="text-green-600 font-semibold">→</div>
+              </a>
+
+              {/* Email Contact */}
+              <a
+                href={CONTACT_INFO.emailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 p-4 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Mail className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900">Email</div>
+                  <div className="text-sm text-gray-600">{CONTACT_INFO.email}</div>
+                </div>
+                <div className="text-blue-600 font-semibold">→</div>
+              </a>
+            </div>
+
+            <p className="text-xs text-gray-500 mb-6">
+              Our sales team will work with you to customize a plan that fits your needs and budget.
+            </p>
+
+            <button
+              onClick={() => setShowContactModal(false)}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+            >
+              Back to Plans
+            </button>
+          </div>
         </div>
       )}
     </div>

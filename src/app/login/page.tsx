@@ -43,9 +43,20 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // Get redirect path from URL or default to dashboard
+      // Check if user has any companies (completed onboarding)
+      const { data: userCompanies } = await supabase
+        .from('user_companies')
+        .select('company_id')
+        .limit(1);
+
+      // Get redirect path from URL or determine based on onboarding status
       const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirectTo') || '/dashboard';
+      let redirectTo = urlParams.get('redirectTo') || '/dashboard';
+
+      // If user has no companies, send to plan selection to start onboarding
+      if (!userCompanies || userCompanies.length === 0) {
+        redirectTo = '/signup/select-plan';
+      }
       
       toast.success('Welcome back!');
       
