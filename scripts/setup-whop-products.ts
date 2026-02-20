@@ -65,7 +65,7 @@ async function createPlan(apiKey: string, companyId: string, productId: string, 
     company_id: companyId,
     access_pass_id: productId,
     plan_type: 'renewal',
-    initial_price: payload.price,
+    initial_price: 0,  // No upfront fee – only charge renewal (avoids double price at checkout)
     renewal_price: payload.price,
     billing_period: payload.billing_period === 'month' ? 30 : 365,
     currency: 'usd',  // Whop requires USD for pricing
