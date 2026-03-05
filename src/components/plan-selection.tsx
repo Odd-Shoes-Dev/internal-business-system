@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Region } from '@/lib/regional-pricing';
-import { getSubscriptionPurchaseUrl, getEnterpriseContactInfo, planExceedsWhopLimit } from '@/lib/whop-utils';
+import { getEnterpriseContactInfo, planExceedsWhopLimit } from '@/lib/whop-utils';
 import { 
   CheckIcon, 
   ArrowRightIcon,
@@ -60,14 +60,7 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
   const handleSelectPlan = async () => {
     setLoading(true);
     try {
-      const purchaseUrl = getSubscriptionPurchaseUrl(selectedTier, billingPeriod, selectedRegion);
-      
-      if (!purchaseUrl) {
-        toast.error('Plan not available for this region');
-        return;
-      }
-
-      // Store plan selection details in localStorage to use after payment
+      // Store plan selection details in localStorage for after payment
       const planDetails = {
         tier: selectedTier,
         region: selectedRegion,
@@ -76,11 +69,35 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
       };
       localStorage.setItem('selectedPlan', JSON.stringify(planDetails));
 
+      // Create a Whop checkout session (required – direct plan URLs show an error on Whop)
+      const res = await fetch('/api/billing/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan_tier: selectedTier,
+          billing_period: billingPeriod,
+          region: selectedRegion,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast.error(data.error || 'Could not start checkout');
+        return;
+      }
+
+      const checkoutUrl = data.url;
+      if (!checkoutUrl) {
+        toast.error('No checkout URL returned');
+        return;
+      }
+
       if (onPlanSelected) {
-        onPlanSelected(purchaseUrl);
+        onPlanSelected(checkoutUrl);
       } else {
-        // Redirect to Whop checkout
-        window.location.href = purchaseUrl;
+        window.location.href = checkoutUrl;
       }
     } catch (error) {
       console.error('Error selecting plan:', error);

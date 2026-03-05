@@ -31,7 +31,7 @@ import {
   BanknotesIcon,
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
-import { getPrice, formatPrice, detectRegion, getRegionName, type Region } from '@/lib/regional-pricing';
+import { getPrice, formatPrice, detectRegion, getRegionName, MODULE_PRICING, type Region } from '@/lib/regional-pricing';
 
 export default function Home() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annually'>('monthly');
@@ -56,6 +56,7 @@ export default function Home() {
   }, []);
 
   // Get prices for current region
+  const modulePrice = MODULE_PRICING[userRegion] ?? MODULE_PRICING.DEFAULT;
   const starterPrice = getPrice('starter', userRegion);
   const professionalPrice = getPrice('professional', userRegion);
   const enterprisePrice = getPrice('enterprise', userRegion);
@@ -822,7 +823,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Tours & Safari Operations</h3>
-              <p className="text-sm text-gray-600 mb-3">$39/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.tours.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Tour packages, booking management, itineraries, destinations, and seasonal pricing</p>
             </div>
           </div>
@@ -830,7 +831,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Fleet Management</h3>
-              <p className="text-sm text-gray-600 mb-3">$35/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.fleet.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Vehicle tracking, maintenance scheduling, fuel monitoring, and driver management</p>
             </div>
           </div>
@@ -838,7 +839,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Hotel Management</h3>
-              <p className="text-sm text-gray-600 mb-3">$45/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.hotels.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Room inventory, reservations, check-in/out, housekeeping, and occupancy reports</p>
             </div>
           </div>
@@ -846,7 +847,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Inventory & Assets</h3>
-              <p className="text-sm text-gray-600 mb-3">$39/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.inventory.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Stock tracking, FIFO valuation, asset depreciation, and multi-location warehouse support</p>
             </div>
           </div>
@@ -854,7 +855,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Payroll Processing</h3>
-              <p className="text-sm text-gray-600 mb-3">$35/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.payroll.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Automated payroll, tax calculations, payslip generation, and compliance reporting</p>
             </div>
           </div>
@@ -862,7 +863,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Cafe & Restaurant</h3>
-              <p className="text-sm text-gray-600 mb-3">$49/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.cafe.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Sales tracking, revenue reports, food & beverage sales, and profit analysis</p>
             </div>
           </div>
@@ -870,7 +871,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm opacity-60">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Retail & Shop POS <span className="text-xs bg-gray-200 px-2 py-1 rounded ml-2">Coming Soon</span></h3>
-              <p className="text-sm text-gray-600 mb-3">$35/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.retail.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Product catalog, barcode scanning, POS system, and inventory tracking</p>
             </div>
           </div>
@@ -878,7 +879,7 @@ export default function Home() {
           <div className="card bg-white border border-blue-100 shadow-sm opacity-60">
             <div className="card-body">
               <h3 className="text-lg font-semibold text-blueox-primary mb-2">Security Services <span className="text-xs bg-gray-200 px-2 py-1 rounded ml-2">Coming Soon</span></h3>
-              <p className="text-sm text-gray-600 mb-3">$29/month</p>
+              <p className="text-sm text-gray-600 mb-3">{modulePrice.currencySymbol} {modulePrice.security.toLocaleString()}/month</p>
               <p className="text-sm text-gray-600">Guard scheduling, site management, patrol logs, and incident reporting</p>
             </div>
           </div>

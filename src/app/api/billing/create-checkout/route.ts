@@ -1,37 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getWhop } from '@/lib/whop';
 import { getPlanId, getModulePlanId } from '@/lib/whop-config';
-import { detectRegion } from '@/lib/regional-pricing';
+import type { Region } from '@/lib/regional-pricing';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     const body = await request.json();
     const plan_tier = body.plan_tier ?? body.planTier;
     const billing_period = body.billing_period ?? body.billingPeriod;
     const module_ids = body.module_ids ?? body.moduleIds ?? [];
-
-    // Authenticate user from supabase auth cookie/header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (userError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!profile?.company_id) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
-
-    const companyId = profile.company_id;
+    const region = body.region ?? body.displayRegion;
 
     if (!plan_tier || !billing_period) {
       return NextResponse.json(
@@ -40,12 +19,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Detect display region for pricing
-    const displayRegion = detectRegion();
+    const supabase = await createClient();
+    const supabaseAdmin = createServiceClient();
+
+    // Prefer cookie-based session (for select-plan / browser); fallback to Bearer token
+    let user: { id: string; email?: string } | null = null;
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const { data, error } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
+      if (!error && data?.user) user = data.user;
+    }
+    if (!user) {
+      const { data: { user: sessionUser } } = await supabase.auth.getUser();
+      user = sessionUser;
+    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+
+    const companyId = profile.company_id;
+
+    const displayRegion: Region = region && ['AFRICA', 'ASIA', 'EU', 'GB', 'US', 'DEFAULT'].includes(region)
+      ? region
+      : 'DEFAULT';
 
     // Resolve Whop plan IDs
-    const basePlanId = getPlanId(plan_tier, billing_period, displayRegion as any);
-    const modulePlanIds = module_ids.map((m: string) => getModulePlanId(m, displayRegion as any));
+    const basePlanId = getPlanId(plan_tier, billing_period, displayRegion);
+    const modulePlanIds = (module_ids as string[]).map((m) => getModulePlanId(m, displayRegion)).filter(Boolean);
 
     const whop = await getWhop();
 
