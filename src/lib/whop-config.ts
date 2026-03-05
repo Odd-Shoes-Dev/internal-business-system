@@ -1,98 +1,98 @@
 import { Region } from './regional-pricing';
 
-// Generated Whop plan and module IDs (created 2026-02-19T08:25:35.963Z)
+// Generated Whop plan and module IDs (created 2026-02-20T03:03:00.890Z)
 // Note: Some plans may be missing if they exceed Whop's $2500 transaction limit
 export const WHOP_PLAN_IDS: Record<string, Partial<Record<Region, string>>> = {
   "starter-monthly": {
-    "AFRICA": "plan_y5Xoyuf9yOKQj",
-    "ASIA": "plan_NCACqO4BxEjRq",
-    "EU": "plan_VHeDBlSGTAxS1",
-    "GB": "plan_tLT28ydynMewT",
-    "US": "plan_XxRP91E061ibG",
-    "DEFAULT": "plan_Ph5Dq2JneHVZv"
+    "AFRICA": "plan_iIh0zIbRu26Id",
+    "ASIA": "plan_xqGYTibP3BoWW",
+    "EU": "plan_F6GYl2cR0ExwW",
+    "GB": "plan_2xV1Dc11taSna",
+    "US": "plan_ElSYE60KIciaM",
+    "DEFAULT": "plan_oY7KiEc3QuScB"
   },
   "starter-annual": {
-    "AFRICA": "plan_0g12n3A0JH6zy",
-    "ASIA": "plan_LbHJaX9XLDv4B",
-    "EU": "plan_98uGAaILXlPG4",
-    "GB": "plan_u67oSY7Hbdhwp",
-    "US": "plan_E3tzdrlD6LrkE",
-    "DEFAULT": "plan_dx7m5M4GTiA09"
+    "AFRICA": "plan_o3kpOmXtUSUmI",
+    "ASIA": "plan_1Ik8ltQqJ9WKl",
+    "EU": "plan_3YrxfzoBKphoi",
+    "GB": "plan_EOFIQo2dRsZdO",
+    "US": "plan_NDBI6Ghq3SK06",
+    "DEFAULT": "plan_MyE29AIQdnvDx"
   },
   "professional-monthly": {
-    "AFRICA": "plan_PoST35NjvKINJ",
-    "ASIA": "plan_vZSEYN6Az1iVr",
-    "EU": "plan_37WLFegR1HJLJ",
-    "GB": "plan_Yx2os8egqjbXE",
-    "US": "plan_hTdtsaTRNgM5k",
-    "DEFAULT": "plan_JbmZNZRWsTzGw"
+    "AFRICA": "plan_09u2eo4wQz6pn",
+    "ASIA": "plan_FDK6YzHJJG6nS",
+    "EU": "plan_w57T6NhzIA8QV",
+    "GB": "plan_5eNLGp7dkDzOE",
+    "US": "plan_mQuINZ9PTLwd6",
+    "DEFAULT": "plan_HPQIt3Vu7qmbE"
   },
   "professional-annual": {
-    "AFRICA": "plan_oscQzlbeaxcoC",
-    "ASIA": "plan_Dlfij7hQdS9wB",
-    "EU": "plan_dVlf9bJHNi4qU",
-    "GB": "plan_e5WPROzGTpnmU",
-    "US": "plan_0734mGn6R9vEe",
-    "DEFAULT": "plan_WOXlnvNrGovFH"
+    "AFRICA": "plan_GQTMtac2C2uOK",
+    "ASIA": "plan_Bi7CJ4iyPzqLG",
+    "EU": "plan_eti0rBM2Hnnut",
+    "GB": "plan_IeRG15oioaLmN",
+    "US": "plan_6OHqpi2CVDaH3",
+    "DEFAULT": "plan_IrEPKMObp2vpx"
   },
   "enterprise-monthly": {
-    "AFRICA": "plan_ypXnFMLrYznBD",
-    "ASIA": "plan_RPwWC46jZpc9n",
-    "EU": "plan_OpSRwK4sv4EEL",
-    "GB": "plan_eAzTiXKr0jrBG",
-    "US": "plan_dKcawwZFnzX6j",
-    "DEFAULT": "plan_RTP2gpCwqWJTT"
+    "AFRICA": "plan_CSIzogVBLHhqg",
+    "ASIA": "plan_bahd9MfCxgb71",
+    "EU": "plan_nW3ayHl05DRdp",
+    "GB": "plan_cSiSuBkpJV4kj",
+    "US": "plan_fncQyH81q8F3V",
+    "DEFAULT": "plan_N29rx5IASWA64"
   }
 };
 
 export const WHOP_MODULE_IDS: Record<string, Partial<Record<Region, string>>> = {
   "tours": {
-    "AFRICA": "plan_2QzqoAINFXK5O",
-    "ASIA": "plan_hyCfADM7pPyXn",
-    "EU": "plan_OAAVQ6irZ7PyV",
-    "GB": "plan_Kn3XoZBISQsnl",
-    "US": "plan_sscDjRacmgA8x",
-    "DEFAULT": "plan_CE0VM24Z3Dkvm"
+    "AFRICA": "plan_tPOoRF2Zv2Jlj",
+    "ASIA": "plan_o6MvLc8sGsz8P",
+    "EU": "plan_HHcwVmXZRgWBe",
+    "GB": "plan_8wqBal28NHzOU",
+    "US": "plan_1mpOsMvrEbE7B",
+    "DEFAULT": "plan_PVQkhl9USApz1"
   },
   "fleet": {
-    "AFRICA": "plan_uDQJK3WcWtHuJ",
-    "ASIA": "plan_fOZwzn0EI2dkW",
-    "EU": "plan_Y5HdbjhCTM0kE",
-    "GB": "plan_VbT5zJOzZbYwR",
-    "US": "plan_oen5q5PEz9JYF",
-    "DEFAULT": "plan_Efya1QEGbjbYw"
+    "AFRICA": "plan_QPHNfuMchvMaT",
+    "ASIA": "plan_xAGVjN5u3IFhL",
+    "EU": "plan_tqEfhEagcyt5A",
+    "GB": "plan_Ll9wHyS6qUepc",
+    "US": "plan_Z9iRfuHFeElJe",
+    "DEFAULT": "plan_rca3UViN6vOHj"
   },
   "hotels": {
-    "AFRICA": "plan_4JaNmis0O5JIg",
-    "ASIA": "plan_1PyhFlTaEFtV6",
-    "EU": "plan_73VQr0EQHfNzE",
-    "GB": "plan_ROjlW2AXqe6hQ",
-    "US": "plan_JmEzHXBnZRcHB",
-    "DEFAULT": "plan_dfq6blugUAD45"
+    "AFRICA": "plan_F1QVGrT9qwiBU",
+    "ASIA": "plan_yuHaISsyyZ0rB",
+    "EU": "plan_8LaMFs6P7yQjx",
+    "GB": "plan_te0FePerQGdIY",
+    "US": "plan_Dy4sVIJoxfMFb",
+    "DEFAULT": "plan_qdOWE6t8aZ7g4"
   },
   "cafe": {
-    "AFRICA": "plan_HW6o01M0wSdPp",
-    "ASIA": "plan_N2xn8jb0rf32W",
-    "EU": "plan_w0alwAvUWzkGm",
-    "GB": "plan_mDCjz4r40n0pW",
-    "US": "plan_NCBSlxgQlEDiG",
-    "DEFAULT": "plan_rp7ox2iw4aIrq"
+    "AFRICA": "plan_UIFwyVjjQgfRS",
+    "ASIA": "plan_mapQqFpPGSZYc",
+    "EU": "plan_sV9TU372HtPnM",
+    "GB": "plan_udPZawU3Et8w1",
+    "US": "plan_yVQdUjuE3QbAF",
+    "DEFAULT": "plan_Chbut7NjXrfP7"
   },
   "inventory": {
-    "AFRICA": "plan_XBuCbOVX4uepA",
-    "ASIA": "plan_fKKPbaxCgS2nA",
-    "EU": "plan_47XKzF8SEGLE1",
-    "GB": "plan_3qCAFwJnFcXmR",
-    "US": "plan_Mbjjxd9BsSOVZ",
-    "DEFAULT": "plan_aJkoVeDfzypvn"
+    "AFRICA": "plan_xTaBRYqKpHWiU",
+    "ASIA": "plan_8fEqvwYfiCI7B",
+    "EU": "plan_5Cy9BxVPZEVOV",
+    "GB": "plan_YgNxKbGkH4XoL",
+    "US": "plan_W2QMWf9lkRblz",
+    "DEFAULT": "plan_oLaCpXC38LVaJ"
   },
   "payroll": {
-    "AFRICA": "plan_48wUMdGrmsrys",
-    "ASIA": "plan_nwd0x50TU4wBY",
-    "EU": "plan_s7F65ixdVPQPF",
-    "GB": "plan_MCGkQVUk9BbHp",
-    "US": "plan_Nt6h8UK1srqc1",
-    "DEFAULT": "plan_OsvcCH32VMDP9"
+    "AFRICA": "plan_2JfDy6DDAToS4",
+    "ASIA": "plan_2x7pUOO8MFqLs",
+    "EU": "plan_AbowVFBcKOnhh",
+    "GB": "plan_9u43Fr9xldbnO",
+    "US": "plan_n7ad2q9Gv5dCG",
+    "DEFAULT": "plan_0NWcJyFbwsu5O"
   }
 };
 
