@@ -7,7 +7,7 @@
 
 ---
 
-## Overview
+## Overview 
 This document tracks features and improvements for the booking-invoice integration workflow.
 
 **Core Integration Complete** - System is ready for client use with essential booking-invoice workflow features implemented.
