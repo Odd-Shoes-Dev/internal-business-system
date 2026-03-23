@@ -4,11 +4,13 @@ import { SupabaseClient } from '@supabase/supabase-js';
  * Check if a given date falls within a closed or locked fiscal period
  * @param supabase - Supabase client
  * @param transactionDate - The date to check
+ * @param companyId - The company to check periods for
  * @returns Object with isClosed boolean and error message if applicable
  */
 export async function isPeriodClosed(
   supabase: SupabaseClient,
-  transactionDate: string | Date
+  transactionDate: string | Date,
+  companyId: string
 ): Promise<{ isClosed: boolean; message?: string; period?: any }> {
   try {
     const date = typeof transactionDate === 'string' 
@@ -16,9 +18,11 @@ export async function isPeriodClosed(
       : transactionDate;
 
     // Query fiscal periods that contain this date and are closed/locked
+    // Must filter by company_id so one company's locked periods don't affect another
     const { data: periods, error } = await supabase
       .from('fiscal_periods')
       .select('*')
+      .eq('company_id', companyId)
       .lte('start_date', date.toISOString().split('T')[0])
       .gte('end_date', date.toISOString().split('T')[0])
       .in('status', ['closed', 'locked'])
@@ -49,22 +53,26 @@ export async function isPeriodClosed(
 /**
  * Check if user has permission to override period locks (admin only)
  * @param supabase - Supabase client
- * @returns true if user is admin
+ * @param companyId - The company to check the user's role in
+ * @returns true if user is admin in this company
  */
 export async function canOverridePeriodLock(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  companyId: string
 ): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
+    // Check company-specific role via user_companies (not the global user_profiles.role)
+    const { data: membership } = await supabase
+      .from('user_companies')
       .select('role')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
+      .eq('company_id', companyId)
       .single();
 
-    return profile?.role === 'admin';
+    return membership?.role === 'admin';
   } catch (error) {
     console.error('Error checking period lock override permission:', error);
     return false;
@@ -76,23 +84,25 @@ export async function canOverridePeriodLock(
  * Use this in API routes before creating/updating transactions
  * @param supabase - Supabase client
  * @param transactionDate - The date to validate
+ * @param companyId - The company whose fiscal periods to check
  * @param allowAdminOverride - Whether to allow admins to override (default: false)
  * @returns Error message if period is closed, null if allowed
  */
 export async function validatePeriodLock(
   supabase: SupabaseClient,
   transactionDate: string | Date,
+  companyId: string,
   allowAdminOverride: boolean = false
 ): Promise<string | null> {
-  const lockCheck = await isPeriodClosed(supabase, transactionDate);
+  const lockCheck = await isPeriodClosed(supabase, transactionDate, companyId);
   
   if (!lockCheck.isClosed) {
     return null; // Period is open, allow transaction
   }
 
-  // If admin override is allowed, check if user is admin
+  // If admin override is allowed, check if user is admin in this company
   if (allowAdminOverride) {
-    const isAdmin = await canOverridePeriodLock(supabase);
+    const isAdmin = await canOverridePeriodLock(supabase, companyId);
     if (isAdmin) {
       return null; // Admin can override
     }

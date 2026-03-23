@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('employees')
       .select('*')
+      .eq('company_id', companyId)
       .order('first_name', { ascending: true });
 
     // Apply filters

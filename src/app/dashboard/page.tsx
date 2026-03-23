@@ -74,7 +74,7 @@ export default function DashboardPage() {
       setRecentBills(bills || []);
 
       // Load stats with currency conversion from API
-      const response = await fetch('/api/dashboard/stats');
+      const response = await fetch(`/api/dashboard/stats?company_id=${company.id}`);
       if (response.ok) {
         const statsData = await response.json();
         

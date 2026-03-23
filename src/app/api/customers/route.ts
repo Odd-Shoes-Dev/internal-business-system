@@ -38,10 +38,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    // RLS will automatically filter by company_id
+    // Explicitly filter by company_id (RLS alone is insufficient for multi-company users)
     let query = supabase
       .from('customers')
       .select('*', { count: 'exact' })
+      .eq('company_id', companyId)
       .order('name');
 
     if (search) {

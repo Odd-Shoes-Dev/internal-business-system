@@ -41,15 +41,16 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('code');
 
-    // Get all posted journal entry lines up to the date
+    // Get all posted journal entry lines up to the date, scoped to this company
     const { data: entries } = await supabase
       .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
-        journal_entry:journal_entries!inner (entry_date, status)
+        journal_entry:journal_entries!inner (entry_date, status, company_id)
       `)
+      .eq('journal_entry.company_id', companyId)
       .eq('journal_entry.status', 'posted')
       .lte('journal_entry.entry_date', asOfDate);
 

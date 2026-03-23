@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
 
@@ -11,18 +11,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
+    // Get company_id from query params (required for multi-company users)
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('company_id');
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this company
+    const { data: membership } = await supabase
       .from('user_companies')
       .select('company_id')
       .eq('user_id', user.id)
+      .eq('company_id', companyId)
       .single();
 
-    if (companyError || !userCompany) {
-      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
     }
-
-    const companyId = userCompany.company_id;
 
     // Get enabled modules to filter data appropriately
     const { data: enabledModules } = await supabase

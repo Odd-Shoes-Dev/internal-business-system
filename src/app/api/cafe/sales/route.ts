@@ -21,8 +21,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!body.company_id) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this company
+    const { data: membership } = await supabase
+      .from('user_companies')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('company_id', body.company_id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    }
+
     // Check if period is closed
-    const periodError = await validatePeriodLock(supabase, body.sale_date);
+    const periodError = await validatePeriodLock(supabase, body.sale_date, body.company_id);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 403 });
     }

@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if period is closed
-    const periodError = await validatePeriodLock(supabase, body.bill_date);
+    const periodError = await validatePeriodLock(supabase, body.bill_date, company_id);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 403 });
     }

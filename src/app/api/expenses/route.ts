@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         accounts:expense_account_id (id, name, code),
         bank_accounts (id, name)
       `, { count: 'exact' })
+      .eq('company_id', companyId)
       .order('expense_date', { ascending: false });
 
     if (status && status !== 'all') {
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if period is closed
-    const periodError = await validatePeriodLock(supabase, expenseData.expense_date);
+    const periodError = await validatePeriodLock(supabase, expenseData.expense_date, company_id);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 403 });
     }
