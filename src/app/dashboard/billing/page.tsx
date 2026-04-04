@@ -274,6 +274,8 @@ export default function BillingPage() {
   }
 
   const isTrial = subscription.status === 'trial';
+  const isExpired = subscription.status === 'expired';
+  const isTrialOrExpired = isTrial || isExpired;
   const isPastDue = subscription.status === 'past_due';
   const isCancelled = subscription.status === 'cancelled';
   const daysRemaining = subscription.trial_end_date ? getDaysRemaining(subscription.trial_end_date) : 0;
@@ -306,7 +308,7 @@ export default function BillingPage() {
         </div>
 
         {/* Trial Warning */}
-        {isTrial && (
+        {isTrialOrExpired && (
           <div className={`bg-gradient-to-r ${daysRemaining < 0 ? 'from-red-50 to-rose-50 border-red-400/50' : 'from-yellow-50 to-orange-50 border-yellow-400/50'} border rounded-3xl p-6 shadow-lg`}>
             <div className="flex items-start gap-4">
               <div className={`p-3 ${daysRemaining < 0 ? 'bg-red-100' : 'bg-yellow-100'} rounded-xl`}>
@@ -370,7 +372,7 @@ export default function BillingPage() {
               <div>
                 <h2 className="text-2xl font-bold text-blueox-primary-dark">Current Plan</h2>
                 <p className="text-gray-600 mt-2 font-medium">
-                  {PLAN_NAMES[subscription.plan_tier]} - {subscription.billing_period === 'monthly' ? 'Monthly' : 'Annual'} Billing
+                  {PLAN_NAMES[subscription.plan_tier]} - {isTrialOrExpired ? 'Free Trial' : subscription.billing_period === 'monthly' ? 'Monthly' : 'Annual'} {isTrialOrExpired ? '' : 'Billing'}
                 </p>
               </div>
               {getStatusBadge(subscription.status)}
@@ -380,25 +382,25 @@ export default function BillingPage() {
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-gradient-to-br from-blueox-primary/5 to-blueox-accent/5 p-6 rounded-2xl">
-                <p className="text-sm font-semibold text-blueox-primary-dark mb-2">Base Plan</p>
+                <p className="text-sm font-semibold text-blueox-primary-dark mb-2">{isTrialOrExpired ? 'Trial Access' : 'Base Plan'}</p>
                 <p className="text-3xl font-bold text-blueox-primary">
-                  {formatPrice(subscription.base_price_amount, subscription.currency.toUpperCase() as Currency)}
-                  <span className="text-base font-normal text-gray-600 ml-1">/{subscription.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
+                  {isTrialOrExpired ? 'Free' : formatPrice(subscription.base_price_amount, subscription.currency.toUpperCase() as Currency)}
+                  {!isTrialOrExpired && <span className="text-base font-normal text-gray-600 ml-1">/{subscription.billing_period === 'monthly' ? 'mo' : 'yr'}</span>}
                 </p>
               </div>
 
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl">
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  {isTrial ? (daysRemaining < 0 ? 'Trial Ended' : 'Trial Ends') : subscription.billing_period === 'monthly' ? 'Next Billing Date' : 'Renewal Date'}
+                  {isTrialOrExpired ? (daysRemaining < 0 ? 'Trial Ended' : 'Trial Ends') : subscription.billing_period === 'monthly' ? 'Next Billing Date' : 'Renewal Date'}
                 </p>
                 <p className="text-xl font-bold text-gray-900">
-                  {new Date(isTrial && subscription.trial_end_date ? subscription.trial_end_date : subscription.current_period_end).toLocaleDateString('en-US', {
+                  {new Date(isTrialOrExpired && subscription.trial_end_date ? subscription.trial_end_date : subscription.current_period_end).toLocaleDateString('en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric'
                   })}
                 </p>
-                {!isTrial && (
+                {!isTrialOrExpired && (
                   <p className="text-sm text-gray-600 mt-2 font-medium">
                     {getDaysRemaining(subscription.current_period_end)} days remaining
                   </p>
@@ -406,12 +408,12 @@ export default function BillingPage() {
               </div>
 
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Total Monthly Cost</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">{isTrialOrExpired ? 'Subscription Cost' : 'Total Monthly Cost'}</p>
                 <p className="text-3xl font-bold text-blueox-primary">
-                  {isTrial ? 'Free' : formatPrice(monthlyTotal, subscription.currency.toUpperCase() as Currency)}
-                  {!isTrial && <span className="text-base font-normal text-gray-600 ml-1">/mo</span>}
+                  {isTrial ? 'Free During Trial' : isExpired ? 'Upgrade Required' : formatPrice(monthlyTotal, subscription.currency.toUpperCase() as Currency)}
+                  {!isTrialOrExpired && <span className="text-base font-normal text-gray-600 ml-1">/mo</span>}
                 </p>
-                {!isTrial && totalModuleCost > 0 && (
+                {!isTrialOrExpired && totalModuleCost > 0 && (
                   <p className="text-sm text-gray-600 mt-2 font-medium">
                     Includes {modules.filter(m => m.is_active && !m.is_trial_module).length} module(s)
                   </p>
@@ -421,7 +423,7 @@ export default function BillingPage() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-4 mt-8 pt-8 border-t border-blueox-primary/10">
-              {isTrial ? (
+              {isTrialOrExpired ? (
                 <button
                   onClick={handleUpgrade}
                   disabled={processingAction === 'upgrade'}
