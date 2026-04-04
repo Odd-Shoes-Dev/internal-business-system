@@ -45,8 +45,6 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
   const getUrgencyConfig = () => {
     if (isExpired) {
       return {
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-500',
         textColor: 'text-red-800',
         iconColor: 'text-red-500',
         icon: ExclamationTriangleIcon,
@@ -55,8 +53,6 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
       };
     } else if (daysRemaining === 0) {
       return {
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-400',
         textColor: 'text-red-700',
         iconColor: 'text-red-400',
         icon: ExclamationTriangleIcon,
@@ -65,8 +61,6 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
       };
     } else if (daysRemaining === 1) {
       return {
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-400',
         textColor: 'text-red-700',
         iconColor: 'text-red-400',
         icon: ExclamationTriangleIcon,
@@ -75,8 +69,6 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
       };
     } else if (daysRemaining <= 3) {
       return {
-        bgColor: 'bg-orange-50',
-        borderColor: 'border-orange-400',
         textColor: 'text-orange-700',
         iconColor: 'text-orange-400',
         icon: ExclamationTriangleIcon,
@@ -85,8 +77,6 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
       };
     } else {
       return {
-        bgColor: 'bg-yellow-50',
-        borderColor: 'border-yellow-400',
         textColor: 'text-yellow-700',
         iconColor: 'text-yellow-400',
         icon: ClockIcon,
@@ -100,7 +90,7 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
   const Icon = config.icon;
 
   return (
-    <div className={`${config.bgColor} border-l-4 ${config.borderColor} p-4 mb-6 shadow-sm`}>
+    <div className={`bg-gradient-to-br from-white via-slate-50 to-blue-50 p-4 mb-6 shadow-[0_4px_12px_rgba(0,0,0,0.08)]`}>
       <div className="flex items-start justify-between">
         <div className="flex items-start flex-1">
           <Icon className={`h-5 w-5 ${config.iconColor} flex-shrink-0 mt-0.5`} />
@@ -111,18 +101,13 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
             <p className={`text-sm ${config.textColor} mt-1`}>
               Upgrade to a paid plan to continue accessing your modules and data.
             </p>
-            <div className="mt-3">
+            <div className="mt-4">
               <Link
                 href="/dashboard/billing"
-                className={`inline-flex items-center px-4 py-2 text-sm font-semibold rounded-md ${
-                  isExpired || daysRemaining <= 1
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : daysRemaining <= 3
-                    ? 'bg-orange-600 text-white hover:bg-orange-700'
-                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
-                } transition-colors`}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02]"
               >
-                {config.action} →
+                {config.action}
+                <span>→</span>
               </Link>
             </div>
           </div>

@@ -245,18 +245,23 @@ export default function AddModulesPage() {
           <p className="text-gray-600 text-lg font-medium">
             Choose industry-specific modules to enhance your business operations
           </p>
-          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 inline-block">
-            <p className="text-blue-800 text-sm font-semibold">
-              💡 Click modules to select them. Review your selection and click the button below to confirm.
-            </p>
+          <div className="mt-6 bg-gradient-to-r from-slate-50 via-blue-50 to-cyan-50 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl p-5 inline-block shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-blueox-primary/10 rounded-lg flex items-center justify-center">
+                <span className="text-blueox-primary text-lg font-bold">💡</span>
+              </div>
+              <p className="text-blueox-primary-dark text-sm font-semibold tracking-tight">
+                Click modules to select them. Review your selection and click the button below to confirm.
+              </p>
+            </div>
           </div>
           {moduleQuota && (
-            <div className="mt-4 flex items-center gap-3">
-              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
+            <div className="mt-5 flex items-center gap-3 flex-wrap">
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200/60 text-emerald-700 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-[0_2px_8px_rgba(16,185,129,0.1)]">
                 {moduleQuota.remaining} of {moduleQuota.total} included module slots available
               </div>
               {moduleQuota.paid > 0 && (
-                <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold text-sm">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/60 text-purple-700 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-[0_2px_8px_rgba(168,85,247,0.1)]">
                   {moduleQuota.paid} paid modules active
                 </div>
               )}
@@ -287,22 +292,17 @@ export default function AddModulesPage() {
         )}
 
         {getSubscriptionInfo()?.status === 'expired' && (
-          <div className="mb-8 bg-gradient-to-r from-red-50 to-rose-50 backdrop-blur-xl border border-red-300/50 rounded-2xl p-6 flex items-start gap-4 shadow-lg">
-            <div className="flex items-center justify-center w-12 h-12 bg-red-100/80 rounded-xl flex-shrink-0">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-red-900 text-lg">Trial Expired</h3>
-              <p className="text-red-700 mt-2 font-medium">
-                Your trial has ended. Please upgrade your plan first to activate modules and continue using the platform.
-              </p>
-              <button
-                onClick={() => router.push('/dashboard/billing/upgrade')}
-                className="mt-4 inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors"
-              >
-                Upgrade Now
-              </button>
-            </div>
+          <div className="mb-8">
+            <h3 className="font-bold text-blueox-primary-dark text-lg mb-2">Trial Expired</h3>
+            <p className="text-gray-600 font-medium mb-4">
+              Your trial has ended. Please upgrade your plan first to activate modules and continue using the platform.
+            </p>
+            <button
+              onClick={() => router.push('/dashboard/billing/upgrade')}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            >
+              Upgrade Now
+            </button>
           </div>
         )}
 
