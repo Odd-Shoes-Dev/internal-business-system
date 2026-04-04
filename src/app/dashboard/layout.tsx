@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -144,6 +144,48 @@ export default function DashboardLayout({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    // Scroll detection for mobile header hide/show
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollYRef.current;
+
+      // Keep header visible on desktop
+      if (window.innerWidth >= 1024) {
+        setShowHeader(true);
+        lastScrollYRef.current = currentScrollY;
+        return;
+      }
+
+      // Keep header visible at top of page
+      if (currentScrollY <= 16) {
+        setShowHeader(true);
+      }
+      // Hide on downward scroll
+      else if (delta > 6) {
+        setShowHeader(false);
+      }
+      // Show on upward scroll (even slight)
+      else if (delta < -2) {
+        setShowHeader(true);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Ensure header visible when sidebar opens
+  useEffect(() => {
+    if (sidebarOpen) {
+      setShowHeader(true);
+    }
+  }, [sidebarOpen]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -401,7 +443,7 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm">
+        <header className={`fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm transition-transform duration-300 ease-in-out lg:translate-y-0 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
@@ -554,7 +596,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">
+        <main className="pt-16 px-4 py-4 lg:px-6 lg:py-6">
           {/* Trial Warning Banner */}
           <TrialWarningBanner 
             subscriptionStatus={subscriptionStatus}
