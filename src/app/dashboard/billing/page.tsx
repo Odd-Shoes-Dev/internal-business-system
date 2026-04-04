@@ -309,34 +309,27 @@ export default function BillingPage() {
 
         {/* Trial Warning */}
         {isTrialOrExpired && (
-          <div className={`bg-gradient-to-r ${daysRemaining < 0 ? 'from-red-50 to-rose-50 border-red-400/50' : 'from-yellow-50 to-orange-50 border-yellow-400/50'} border rounded-3xl p-6 shadow-lg`}>
-            <div className="flex items-start gap-4">
-              <div className={`p-3 ${daysRemaining < 0 ? 'bg-red-100' : 'bg-yellow-100'} rounded-xl`}>
-                <ClockIcon className={`h-6 w-6 ${daysRemaining < 0 ? 'text-red-600' : 'text-yellow-600'}`} />
-              </div>
-              <div className="flex-1">
-                <p className={`text-lg font-bold ${daysRemaining < 0 ? 'text-red-900' : 'text-yellow-900'} mb-2`}>
-                  {daysRemaining < 0
-                    ? `Your trial expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago!`
-                    : daysRemaining === 0
-                    ? 'Your trial expires today!'
-                    : daysRemaining === 1
-                    ? 'Your trial ends tomorrow!'
-                    : `Trial ending in ${daysRemaining} days!`}
-                </p>
-                <p className={`${daysRemaining < 0 ? 'text-red-700' : 'text-yellow-700'} mb-4`}>
-                  {daysRemaining < 0
-                    ? 'Your trial has ended. Upgrade now to restore access to your selected modules.'
-                    : 'Upgrade now to continue using your selected modules without interruption.'}
-                </p>
-                <button
-                  onClick={handleUpgrade}
-                  className="bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg"
-                >
-                  Upgrade to Paid Plan →
-                </button>
-              </div>
-            </div>
+          <div>
+            <p className={`text-base font-bold ${daysRemaining < 0 ? 'text-red-900' : 'text-blueox-primary-dark'} mb-2`}>
+              {daysRemaining < 0
+                ? `Your trial expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago!`
+                : daysRemaining === 0
+                ? 'Your trial expires today!'
+                : daysRemaining === 1
+                ? 'Your trial ends tomorrow!'
+                : `Trial ending in ${daysRemaining} days!`}
+            </p>
+            <p className={`text-sm ${daysRemaining < 0 ? 'text-red-700' : 'text-gray-600'} mb-4 font-medium`}>
+              {daysRemaining < 0
+                ? 'Your trial has ended. Upgrade now to restore access to your selected modules.'
+                : 'Upgrade now to continue using your selected modules without interruption.'}
+            </p>
+            <button
+              onClick={handleUpgrade}
+              className="bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            >
+              Upgrade to Paid Plan →
+            </button>
           </div>
         )}
 
