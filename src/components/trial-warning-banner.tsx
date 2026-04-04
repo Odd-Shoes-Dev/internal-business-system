@@ -28,26 +28,49 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
     ? Math.ceil((new Date(trialEndDate).getTime() - now) / msPerDay)
     : Infinity;
 
+  const isExpired = daysRemaining < 0;
+  const daysExpired = isExpired ? Math.abs(daysRemaining) : 0;
+
   // Don't show if dismissed or not in trial
   if (dismissed || subscriptionStatus !== 'trial') {
     return null;
   }
 
-  // Only show warning in last 7 days
-  if (daysRemaining > 7) {
+  // Show when trial is expired OR within 7 days of expiring
+  if (!isExpired && daysRemaining > 7) {
     return null;
   }
 
   // Different urgency levels
   const getUrgencyConfig = () => {
-    if (daysRemaining <= 1) {
+    if (isExpired) {
+      return {
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-500',
+        textColor: 'text-red-800',
+        iconColor: 'text-red-500',
+        icon: ExclamationTriangleIcon,
+        message: `Your trial expired ${daysExpired} day${daysExpired !== 1 ? 's' : ''} ago!`,
+        action: 'Upgrade Now',
+      };
+    } else if (daysRemaining === 0) {
       return {
         bgColor: 'bg-red-50',
         borderColor: 'border-red-400',
         textColor: 'text-red-700',
         iconColor: 'text-red-400',
         icon: ExclamationTriangleIcon,
-        message: daysRemaining === 0 ? 'Your trial ends today!' : 'Your trial ends tomorrow!',
+        message: 'Your trial ends today!',
+        action: 'Upgrade Now',
+      };
+    } else if (daysRemaining === 1) {
+      return {
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-400',
+        textColor: 'text-red-700',
+        iconColor: 'text-red-400',
+        icon: ExclamationTriangleIcon,
+        message: 'Your trial ends tomorrow!',
         action: 'Upgrade Now',
       };
     } else if (daysRemaining <= 3) {
@@ -92,7 +115,7 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
               <Link
                 href="/dashboard/billing"
                 className={`inline-flex items-center px-4 py-2 text-sm font-semibold rounded-md ${
-                  daysRemaining <= 1
+                  isExpired || daysRemaining <= 1
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : daysRemaining <= 3
                     ? 'bg-orange-600 text-white hover:bg-orange-700'

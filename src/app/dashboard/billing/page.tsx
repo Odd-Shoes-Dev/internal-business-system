@@ -306,18 +306,26 @@ export default function BillingPage() {
         </div>
 
         {/* Trial Warning */}
-        {isTrial && daysRemaining <= 7 && (
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-400/50 rounded-3xl p-6 shadow-lg">
+        {isTrial && (
+          <div className={`bg-gradient-to-r ${daysRemaining < 0 ? 'from-red-50 to-rose-50 border-red-400/50' : 'from-yellow-50 to-orange-50 border-yellow-400/50'} border rounded-3xl p-6 shadow-lg`}>
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-yellow-100 rounded-xl">
-                <ClockIcon className="h-6 w-6 text-yellow-600" />
+              <div className={`p-3 ${daysRemaining < 0 ? 'bg-red-100' : 'bg-yellow-100'} rounded-xl`}>
+                <ClockIcon className={`h-6 w-6 ${daysRemaining < 0 ? 'text-red-600' : 'text-yellow-600'}`} />
               </div>
               <div className="flex-1">
-                <p className="text-lg font-bold text-yellow-900 mb-2">
-                  Trial ending in {daysRemaining} days!
+                <p className={`text-lg font-bold ${daysRemaining < 0 ? 'text-red-900' : 'text-yellow-900'} mb-2`}>
+                  {daysRemaining < 0
+                    ? `Your trial expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago!`
+                    : daysRemaining === 0
+                    ? 'Your trial expires today!'
+                    : daysRemaining === 1
+                    ? 'Your trial ends tomorrow!'
+                    : `Trial ending in ${daysRemaining} days!`}
                 </p>
-                <p className="text-yellow-700 mb-4">
-                  Upgrade now to continue using your selected modules without interruption.
+                <p className={`${daysRemaining < 0 ? 'text-red-700' : 'text-yellow-700'} mb-4`}>
+                  {daysRemaining < 0
+                    ? 'Your trial has ended. Upgrade now to restore access to your selected modules.'
+                    : 'Upgrade now to continue using your selected modules without interruption.'}
                 </p>
                 <button
                   onClick={handleUpgrade}
@@ -381,7 +389,7 @@ export default function BillingPage() {
 
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl">
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  {isTrial ? 'Trial Ends' : subscription.billing_period === 'monthly' ? 'Next Billing Date' : 'Renewal Date'}
+                  {isTrial ? (daysRemaining < 0 ? 'Trial Ended' : 'Trial Ends') : subscription.billing_period === 'monthly' ? 'Next Billing Date' : 'Renewal Date'}
                 </p>
                 <p className="text-xl font-bold text-gray-900">
                   {new Date(isTrial && subscription.trial_end_date ? subscription.trial_end_date : subscription.current_period_end).toLocaleDateString('en-US', {

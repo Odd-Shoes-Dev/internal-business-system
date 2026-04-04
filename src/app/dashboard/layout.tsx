@@ -185,17 +185,18 @@ export default function DashboardLayout({
             
             setCompany(companyData);
 
-            // Fetch subscription status (wrapped in try-catch to handle missing columns)
+            // Fetch subscription status and trial end date directly from companies table
+            // (authoritative source — set at signup and never drifts like company_settings)
             try {
-              const { data: settings, error: settingsError } = await supabase
-                .from('company_settings')
-                .select('subscription_status, trial_end_date, company_id')
-                .eq('company_id', profile.company_id)
-                .maybeSingle();
-              
-              if (!settingsError && settings) {
-                setSubscriptionStatus(settings.subscription_status || '');
-                setTrialEndDate(settings.trial_end_date || undefined);
+              const { data: companySubInfo } = await supabase
+                .from('companies')
+                .select('subscription_status, trial_ends_at')
+                .eq('id', profile.company_id)
+                .single();
+
+              if (companySubInfo) {
+                setSubscriptionStatus(companySubInfo.subscription_status || '');
+                setTrialEndDate(companySubInfo.trial_ends_at || undefined);
               }
             } catch (error) {
               // If columns don't exist or schema cache not updated, silently continue

@@ -50,6 +50,13 @@ export async function GET(request: NextRequest) {
 
     // If no subscription in subscriptions table, check/create company_settings for trial
     if (subError || !subscription) {
+      // Fetch the authoritative trial end date from the companies table first
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('trial_ends_at, subscription_status, created_at')
+        .eq('id', profile.company_id)
+        .single();
+
       // First check if company_settings exists
       let { data: settings, error: settingsError } = await supabase
         .from('company_settings')
@@ -68,19 +75,23 @@ export async function GET(request: NextRequest) {
         .eq('company_id', profile.company_id)
         .single();
 
-      // If company_settings doesn't exist, create it
+      // If company_settings doesn't exist, create it using the real trial end from companies table
       if (settingsError || !settings) {
         const now = new Date();
-        const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        // Use companies.trial_ends_at as the authoritative end date.
+        // Fall back to created_at + 30 days only if trial_ends_at is missing.
+        const trialEnd = companyData?.trial_ends_at
+          ? new Date(companyData.trial_ends_at)
+          : new Date((companyData?.created_at ? new Date(companyData.created_at).getTime() : now.getTime()) + 30 * 24 * 60 * 60 * 1000);
 
         const { data: newSettings, error: insertError } = await supabase
           .from('company_settings')
           .insert({
             company_id: profile.company_id,
-            subscription_status: 'trial',
+            subscription_status: companyData?.subscription_status || 'trial',
             plan_tier: 'professional',
             billing_period: 'monthly',
-            trial_start_date: now.toISOString(),
+            trial_start_date: companyData?.created_at || now.toISOString(),
             trial_end_date: trialEnd.toISOString(),
           })
           .select()
@@ -99,17 +110,28 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to load subscription settings' }, { status: 500 });
       }
 
-      // Initialize trial dates if not set
       const now2 = new Date();
       const trialStart = settings.trial_start_date ? new Date(settings.trial_start_date) : now2;
-      const trialEnd = settings.trial_end_date ? new Date(settings.trial_end_date) : new Date(now2.getTime() + 30 * 24 * 60 * 60 * 1000);
+      // Always prefer companies.trial_ends_at as the authoritative trial end date.
+      // This prevents drifting caused by auto-created company_settings using wrong dates.
+      const trialEnd = companyData?.trial_ends_at
+        ? new Date(companyData.trial_ends_at)
+        : (settings.trial_end_date ? new Date(settings.trial_end_date) : new Date(now2.getTime() + 30 * 24 * 60 * 60 * 1000));
 
-      // If no subscription_status is set, update it to 'trial'
+      // Sync company_settings.trial_end_date if it differs from companies.trial_ends_at
+      if (companyData?.trial_ends_at && settings.trial_end_date !== companyData.trial_ends_at) {
+        await supabase
+          .from('company_settings')
+          .update({ trial_end_date: companyData.trial_ends_at })
+          .eq('company_id', profile.company_id);
+      }
+
+      // If no subscription_status is set, update it
       if (!settings.subscription_status || !settings.trial_start_date) {
         await supabase
           .from('company_settings')
           .update({
-            subscription_status: 'trial',
+            subscription_status: companyData?.subscription_status || 'trial',
             trial_start_date: trialStart.toISOString(),
             trial_end_date: trialEnd.toISOString(),
             plan_tier: settings.plan_tier || 'professional',
