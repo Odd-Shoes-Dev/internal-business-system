@@ -123,14 +123,14 @@ export default function AddModulesPage() {
     let confirmMessage = `You are about to add ${selectedModules.length} module(s):\n\n`;
     
     if (freeCount > 0) {
-      confirmMessage += `✓ ${freeCount} FREE module(s) (included in your plan)\n`;
+      confirmMessage += `✓ ${freeCount} included module(s) (covered by your plan)\n`;
     }
     
     if (paidCount > 0) {
       confirmMessage += `$ ${paidCount} PAID module(s) - ${currencySymbol} ${total.toLocaleString()}/month\n\n`;
       confirmMessage += `⚠️ This will require payment and update your subscription.\n\n`;
     } else {
-      confirmMessage += `\n✓ All modules are FREE (included in your plan quota)\n\n`;
+      confirmMessage += `\n✓ All selected modules are included in your plan quota\n\n`;
     }
     
     confirmMessage += `Do you want to proceed?`;
@@ -161,9 +161,9 @@ export default function AddModulesPage() {
       
       let message = 'Modules added successfully!';
       if (includedCount > 0 && paidCount > 0) {
-        message = `${includedCount} free module(s) and ${paidCount} paid module(s) added!`;
+        message = `${includedCount} included module(s) and ${paidCount} paid module(s) added!`;
       } else if (includedCount > 0) {
-        message = `${includedCount} free module(s) added!`;
+        message = `${includedCount} included module(s) added!`;
       } else if (paidCount > 0) {
         message = `${paidCount} paid module(s) added!`;
       }
@@ -209,12 +209,17 @@ export default function AddModulesPage() {
     return currentModules.includes(moduleId);
   };
 
+  const getSubscriptionInfo = () => subscription?.subscription || subscription;
+
   const isProfessionalOrHigher = () => {
-    return subscription?.plan_tier === 'professional' || subscription?.plan_tier === 'enterprise';
+    const subscriptionInfo = getSubscriptionInfo();
+    return subscriptionInfo?.plan_tier === 'professional' || subscriptionInfo?.plan_tier === 'enterprise';
   };
 
   const canSelectModules = () => {
-    if (!subscription) return false;
+    const subscriptionInfo = getSubscriptionInfo();
+    if (!subscriptionInfo) return false;
+    if (subscriptionInfo.status === 'expired' || subscriptionInfo.status === 'cancelled' || subscriptionInfo.status === 'past_due') return false;
     if (isProfessionalOrHigher()) return true;
     // Starter plan can only have 1 module
     return currentModules.length === 0;
@@ -248,7 +253,7 @@ export default function AddModulesPage() {
           {moduleQuota && (
             <div className="mt-4 flex items-center gap-3">
               <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
-                {moduleQuota.remaining} of {moduleQuota.total} free module slots available
+                {moduleQuota.remaining} of {moduleQuota.total} included module slots available
               </div>
               {moduleQuota.paid > 0 && (
                 <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold text-sm">
@@ -277,6 +282,26 @@ export default function AddModulesPage() {
                 </button>
                 .
               </p>
+            </div>
+          </div>
+        )}
+
+        {getSubscriptionInfo()?.status === 'expired' && (
+          <div className="mb-8 bg-gradient-to-r from-red-50 to-rose-50 backdrop-blur-xl border border-red-300/50 rounded-2xl p-6 flex items-start gap-4 shadow-lg">
+            <div className="flex items-center justify-center w-12 h-12 bg-red-100/80 rounded-xl flex-shrink-0">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-red-900 text-lg">Trial Expired</h3>
+              <p className="text-red-700 mt-2 font-medium">
+                Your trial has ended. Please upgrade your plan first to activate modules and continue using the platform.
+              </p>
+              <button
+                onClick={() => router.push('/dashboard/billing/upgrade')}
+                className="mt-4 inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors"
+              >
+                Upgrade Now
+              </button>
             </div>
           </div>
         )}
@@ -357,22 +382,22 @@ export default function AddModulesPage() {
             {selectedModules.map((moduleId, index) => {
               const module = availableModules.find((m) => m.id === moduleId);
               const remaining = moduleQuota?.remaining || 0;
-              const isFree = index < remaining;
+              const isIncluded = index < remaining;
               
               return (
                 <div key={moduleId} className={`flex justify-between items-center rounded-xl p-4 ${
-                  isFree ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5'
+                  isIncluded ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5'
                 }`}>
                   <div className="flex items-center gap-3">
                     <span className="text-gray-700 font-semibold">{module?.name}</span>
-                    {isFree && (
+                    {isIncluded && (
                       <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                        FREE
+                        INCLUDED
                       </span>
                     )}
                   </div>
                   <span className="font-bold text-gray-900 text-lg">
-                    {isFree ? 'Included' : `${currencySymbol} ${module?.price.toLocaleString()}`}
+                    {isIncluded ? 'Included' : `${currencySymbol} ${module?.price.toLocaleString()}`}
                   </span>
                 </div>
               );
@@ -382,7 +407,7 @@ export default function AddModulesPage() {
           {getFreeModulesCount() > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
               <p className="text-green-800 font-semibold text-sm">
-                ✨ {getFreeModulesCount()} module{getFreeModulesCount() !== 1 ? 's' : ''} included in your {subscription?.subscription?.plan_tier || 'Professional'} plan
+                ✨ {getFreeModulesCount()} module{getFreeModulesCount() !== 1 ? 's' : ''} included in your {getSubscriptionInfo()?.plan_tier || 'Professional'} plan
               </p>
             </div>
           )}

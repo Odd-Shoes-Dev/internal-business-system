@@ -117,6 +117,9 @@ export async function GET(request: NextRequest) {
       const trialEnd = companyData?.trial_ends_at
         ? new Date(companyData.trial_ends_at)
         : (settings.trial_end_date ? new Date(settings.trial_end_date) : new Date(now2.getTime() + 30 * 24 * 60 * 60 * 1000));
+      const effectiveStatus = companyData?.subscription_status === 'expired' || trialEnd < now2
+        ? 'expired'
+        : (companyData?.subscription_status || settings.subscription_status || 'trial');
 
       // Sync company_settings.trial_end_date if it differs from companies.trial_ends_at
       if (companyData?.trial_ends_at && settings.trial_end_date !== companyData.trial_ends_at) {
@@ -127,11 +130,11 @@ export async function GET(request: NextRequest) {
       }
 
       // If no subscription_status is set, update it
-      if (!settings.subscription_status || !settings.trial_start_date) {
+      if (!settings.subscription_status || settings.subscription_status !== effectiveStatus || !settings.trial_start_date) {
         await supabase
           .from('company_settings')
           .update({
-            subscription_status: companyData?.subscription_status || 'trial',
+            subscription_status: effectiveStatus,
             trial_start_date: trialStart.toISOString(),
             trial_end_date: trialEnd.toISOString(),
             plan_tier: settings.plan_tier || 'professional',
@@ -145,7 +148,7 @@ export async function GET(request: NextRequest) {
         id: 'trial',
         plan_tier: settings.plan_tier || 'professional',
         billing_period: settings.billing_period || 'monthly',
-        status: settings.subscription_status || 'trial',
+        status: effectiveStatus,
         base_price_amount: 0,
         currency: 'usd',
         current_period_start: trialStart.toISOString(),

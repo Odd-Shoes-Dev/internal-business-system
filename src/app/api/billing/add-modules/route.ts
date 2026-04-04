@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
 import { getStripe } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +50,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
+    const now = new Date();
+
+    const { data: company } = await supabase
+      .from('companies')
+      .select('subscription_status, trial_ends_at')
+      .eq('id', profile.company_id)
+      .single();
+
     // Get company settings including module quota
     const { data: settings } = await supabase
       .from('company_settings')
@@ -84,10 +87,15 @@ export async function POST(request: NextRequest) {
     const currentIncludedCount = includedCount || 0;
     const remainingQuota = Math.max(0, moduleQuota - currentIncludedCount);
 
-    // During trial, users can add modules within their quota for free
-    const isTrial = settings.subscription_status === 'trial';
+    const trialEndsAt = company?.trial_ends_at ? new Date(company.trial_ends_at) : null;
+    const isTrialActive = (company?.subscription_status || settings.subscription_status) === 'trial' && (!trialEndsAt || trialEndsAt > now);
+    const hasActivePaidSubscription = Boolean(settings.stripe_subscription_id) && settings.subscription_status === 'active';
     
-    if (!isTrial && !settings?.stripe_subscription_id && module_ids.some((_, index) => index >= remainingQuota)) {
+    if (!isTrialActive && !hasActivePaidSubscription) {
+      return NextResponse.json({ error: 'Your trial has ended. Please upgrade your plan before adding modules.' }, { status: 403 });
+    }
+
+    if (!hasActivePaidSubscription && module_ids.some((_, index) => index >= remainingQuota)) {
       return NextResponse.json({ error: 'No active subscription found. Please upgrade to add more modules.' }, { status: 404 });
     }
 
@@ -133,8 +141,8 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Only add to Stripe if it's a PAID module (not included in quota) AND not in trial
-      if (!isIncluded && !isTrial && settings.stripe_subscription_id) {
+      // Only add to Stripe if it's a paid module and the company has an active paid subscription
+      if (!isIncluded && hasActivePaidSubscription) {
         // Create a product for this module (Stripe will handle duplicates)
         const product = await stripe.products.create({
           name: `${moduleId.charAt(0).toUpperCase() + moduleId.slice(1)} Module`,
@@ -160,7 +168,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Add to database
-      const { data: newModule } = await supabaseAdmin
+      const { data: newModule } = await supabase
         .from('subscription_modules')
         .insert({
           company_id: profile.company_id,
@@ -168,7 +176,7 @@ export async function POST(request: NextRequest) {
           monthly_price: modulePrice,
           currency: currency.toUpperCase(),
           is_active: true,
-          is_trial_module: isTrial,
+          is_trial_module: isTrialActive,
           is_included: isIncluded,
           stripe_subscription_item_id: stripeSubscriptionItemId,
         })
