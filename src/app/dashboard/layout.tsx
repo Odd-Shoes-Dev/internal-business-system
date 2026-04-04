@@ -443,7 +443,7 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Top bar */}
-        <header className={`fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm transition-transform duration-300 ease-in-out lg:translate-y-0 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+        <header className={`fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm transition-transform duration-300 ease-in-out ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
@@ -596,7 +596,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="pt-16 px-4 py-4 lg:px-6 lg:py-6">
+        <main className="pt-16 px-4 py-4 lg:pt-20 lg:px-6 lg:py-6">
           {/* Trial Warning Banner */}
           <TrialWarningBanner 
             subscriptionStatus={subscriptionStatus}
