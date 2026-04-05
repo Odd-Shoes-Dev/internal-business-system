@@ -1,94 +1,110 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/reports/profit-loss
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
-    
-    // Multi-tenant: Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Multi-tenant: Get and verify company_id
-    const companyId = searchParams.get('company_id');
+    const { searchParams } = new URL(request.url);
+
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
-    
+
     const startDate = searchParams.get('start_date') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
-    const compareStart = searchParams.get('compare_start');
-    const compareEnd = searchParams.get('compare_end');
+
+    const currencyRpc = {
+      rpc: async (fn: string, args: any) => {
+        if (fn !== 'convert_currency') {
+          return { data: null, error: new Error('Unsupported RPC function') };
+        }
+        const result = await db.query<{ value: number }>(
+          `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+          [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+        );
+        return { data: result.rows[0]?.value ?? null, error: null };
+      },
+    };
 
     // Get all revenue accounts (4xxx)
-    const { data: revenueAccounts } = await supabase
-      .from('accounts')
-      .select('id, code, name')
-      .eq('company_id', companyId)
-      .gte('code', '4000')
-      .lt('code', '5000')
-      .order('code');
+    const revenueAccountsResult = await db.query(
+      `SELECT id, code, name
+       FROM accounts
+       WHERE company_id = $1
+         AND code >= '4000'
+         AND code < '5000'
+       ORDER BY code ASC`,
+      [companyId]
+    );
+    const revenueAccounts = revenueAccountsResult.rows;
 
     // Get all expense accounts (5xxx-9xxx)
-    const { data: expenseAccounts } = await supabase
-      .from('accounts')
-      .select('id, code, name')
-      .eq('company_id', companyId)
-      .gte('code', '5000')
-      .order('code');
+    const expenseAccountsResult = await db.query(
+      `SELECT id, code, name
+       FROM accounts
+       WHERE company_id = $1
+         AND code >= '5000'
+       ORDER BY code ASC`,
+      [companyId]
+    );
+    const expenseAccounts = expenseAccountsResult.rows;
 
     // Get invoices for the period (revenue)
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('id, total, currency, invoice_date, status')
-      .eq('company_id', companyId)
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate);
+    const invoicesResult = await db.query(
+      `SELECT id, total, currency, invoice_date, status
+       FROM invoices
+       WHERE company_id = $1
+         AND invoice_date >= $2::date
+         AND invoice_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const invoices = invoicesResult.rows;
 
     // Get bills for the period (expenses)
-    const { data: bills } = await supabase
-      .from('bills')
-      .select('id, total, currency, bill_date, status')
-      .eq('company_id', companyId)
-      .gte('bill_date', startDate)
-      .lte('bill_date', endDate);
+    const billsResult = await db.query(
+      `SELECT id, total, currency, bill_date, status
+       FROM bills
+       WHERE company_id = $1
+         AND bill_date >= $2::date
+         AND bill_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const bills = billsResult.rows;
 
     // Get expenses for the period
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select('id, amount, currency, date, category')
-      .eq('company_id', companyId)
-      .gte('date', startDate)
-      .lte('date', endDate);
+    const expensesResult = await db.query(
+      `SELECT id, amount, currency, date, category
+       FROM expenses
+       WHERE company_id = $1
+         AND date >= $2::date
+         AND date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const expenses = expensesResult.rows;
 
     // Get journal entry lines for the period
-    const { data: entries } = await supabase
-      .from('journal_lines')
-      .select(`
-        account_id,
-        debit,
-        credit,
-        journal_entry:journal_entries!inner (entry_date, status)
-      `)
-      .eq('journal_entry.status', 'posted')
-      .gte('journal_entry.entry_date', startDate)
-      .lte('journal_entries.entry_date', endDate);
+    const entriesResult = await db.query(
+      `SELECT jl.account_id, jl.debit, jl.credit
+       FROM journal_lines jl
+       INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+       WHERE je.company_id = $1
+         AND je.status = 'posted'
+         AND je.entry_date >= $2::date
+         AND je.entry_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const entries = entriesResult.rows;
 
     // Calculate totals by account
     const accountTotals: Record<string, { debit: number; credit: number }> = {};
@@ -125,7 +141,7 @@ export async function GET(request: NextRequest) {
       const currency = invoice.currency || 'USD';
       
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: invoice.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -183,7 +199,7 @@ export async function GET(request: NextRequest) {
       const currency = bill.currency || 'USD';
       
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: bill.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -201,7 +217,7 @@ export async function GET(request: NextRequest) {
       const currency = expense.currency || 'USD';
       
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: expense.amount,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -263,3 +279,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

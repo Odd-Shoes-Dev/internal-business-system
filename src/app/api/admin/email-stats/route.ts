@@ -1,55 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    // Verify user is admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+    if (user.role !== 'admin') {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     // Get email stats for last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: emails, error } = await supabase
-      .from('email_logs')
-      .select('email_type, status')
-      .gte('sent_at', thirtyDaysAgo.toISOString());
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const emails = await db.query<{ email_type: string | null; status: string | null }>(
+      'SELECT email_type, status FROM email_logs WHERE sent_at >= $1',
+      [thirtyDaysAgo.toISOString()]
+    );
+    const rows = emails.rows || [];
 
     const stats = {
-      total: emails?.length || 0,
-      sent: emails?.filter((e) => e.status === 'sent').length || 0,
-      failed: emails?.filter((e) => e.status === 'failed').length || 0,
+      total: rows.length,
+      sent: rows.filter((e) => e.status === 'sent').length,
+      failed: rows.filter((e) => e.status === 'failed').length,
       types: {} as { [key: string]: number },
     };
 
     // Count by type
-    emails?.forEach((email) => {
+    rows.forEach((email) => {
       const type = email.email_type || 'unknown';
       stats.types[type] = (stats.types[type] || 0) + 1;
     });

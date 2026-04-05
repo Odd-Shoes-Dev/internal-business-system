@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
@@ -20,12 +20,12 @@ interface AssetWithCategory extends FixedAsset {
 }
 
 export default function AssetsPage() {
+  const { company } = useCompany();
   const [assets, setAssets] = useState<AssetWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AssetStatus>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({
     totalAssets: 0,
     totalCost: 0,
@@ -37,36 +37,30 @@ export default function AssetsPage() {
   useEffect(() => {
     loadAssets();
     loadStats();
-  }, [searchQuery, statusFilter, currentPage]);
+  }, [statusFilter, company?.id]);
 
   const loadAssets = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
-      let query = supabase
-        .from('fixed_assets')
-        .select(`
-          *,
-          asset_categories (name)
-        `, { count: 'exact' })
-        .order('purchase_date', { ascending: false });
-
-      if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,asset_number.ilike.%${searchQuery}%,serial_number.ilike.%${searchQuery}%`);
-      }
-
+      const params = new URLSearchParams();
+      params.append('company_id', company.id);
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.append('status', statusFilter);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/assets?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load assets');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
-
+      const data = await response.json();
       setAssets(data || []);
-      setTotalCount(count || 0);
     } catch (error) {
       console.error('Failed to load assets:', error);
     } finally {
@@ -76,7 +70,7 @@ export default function AssetsPage() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/assets/stats');
+      const response = await fetch('/api/assets/stats', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -107,7 +101,22 @@ export default function AssetsPage() {
     return styles[status] || 'badge-gray';
   };
 
+  const filteredAssets = assets.filter((asset) => {
+    if (!searchQuery) {
+      return true;
+    }
+
+    const q = searchQuery.toLowerCase();
+    return (
+      asset.name?.toLowerCase().includes(q) ||
+      asset.asset_number?.toLowerCase().includes(q) ||
+      asset.serial_number?.toLowerCase().includes(q)
+    );
+  });
+
+  const totalCount = filteredAssets.length;
   const totalPages = Math.ceil(totalCount / pageSize);
+  const pagedAssets = filteredAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -219,7 +228,7 @@ export default function AssetsPage() {
                 </tr>
               </thead>
               <tbody>
-                {assets.map((asset) => (
+                {pagedAssets.map((asset) => (
                   <tr key={asset.id}>
                     <td>
                       <Link
@@ -257,7 +266,7 @@ export default function AssetsPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden grid gap-4">
-            {assets.map((asset) => (
+            {pagedAssets.map((asset) => (
               <div key={asset.id} className="card">
                 <div className="card-body">
                   <div className="flex justify-between items-start">

@@ -1,23 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    const { data, error } = await supabase
-      .from('asset_categories')
-      .select('*')
-      .order('name');
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('company_id');
 
-    if (error) throw error;
+    const hasCompanyColumn = await db.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.columns
+         WHERE table_name = 'asset_categories'
+           AND column_name = 'company_id'
+       ) AS exists`
+    );
 
-    return NextResponse.json(data);
+    let result;
+    if (hasCompanyColumn.rows[0]?.exists && companyId) {
+      result = await db.query(
+        'SELECT * FROM asset_categories WHERE company_id = $1 ORDER BY name ASC',
+        [companyId]
+      );
+    } else {
+      result = await db.query('SELECT * FROM asset_categories ORDER BY name ASC');
+    }
+
+    return NextResponse.json(result.rows);
   } catch (error: any) {
     console.error('Error fetching asset categories:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,40 +39,50 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     const body = await request.json();
-    const { name, description, depreciation_method, useful_life_years } = body;
+    const { name, description, depreciation_method, useful_life_years, company_id } = body;
 
-    // Validate required fields
     if (!name) {
-      return NextResponse.json(
-        { error: 'Category name is required' },
-        { status: 400 }
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
+    }
+
+    const hasCompanyColumn = await db.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.columns
+         WHERE table_name = 'asset_categories'
+           AND column_name = 'company_id'
+       ) AS exists`
+    );
+
+    let insertResult;
+    if (hasCompanyColumn.rows[0]?.exists && company_id) {
+      insertResult = await db.query(
+        `INSERT INTO asset_categories (
+           company_id, name, description, depreciation_method, useful_life_years
+         ) VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [company_id, name, description || null, depreciation_method || null, useful_life_years || null]
+      );
+    } else {
+      insertResult = await db.query(
+        `INSERT INTO asset_categories (
+           name, description, depreciation_method, useful_life_years
+         ) VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [name, description || null, depreciation_method || null, useful_life_years || null]
       );
     }
 
-    const { data, error } = await supabase
-      .from('asset_categories')
-      .insert({
-        name,
-        description: description || null,
-        depreciation_method: depreciation_method || null,
-        useful_life_years: useful_life_years || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(insertResult.rows[0], { status: 201 });
   } catch (error: any) {
     console.error('Error creating asset category:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

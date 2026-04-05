@@ -1,29 +1,42 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/bookings/stats - Get booking statistics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get all bookings for statistics
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('status, total, amount_paid, balance_due');
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
+
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const bookingsResult = await db.query(
+      `SELECT status, total, amount_paid, balance_due
+       FROM bookings
+       WHERE company_id = $1`,
+      [companyId]
+    );
+
+    const bookings = bookingsResult.rows;
 
     const stats = {
       totalBookings: bookings.length,
-      confirmed: bookings.filter(b => b.status === 'confirmed').length,
-      pending: bookings.filter(b => b.status === 'pending').length,
-      completed: bookings.filter(b => b.status === 'completed').length,
-      cancelled: bookings.filter(b => b.status === 'cancelled').length,
-      totalRevenue: bookings.reduce((sum, b) => sum + (b.total || 0), 0),
-      totalPaid: bookings.reduce((sum, b) => sum + (b.amount_paid || 0), 0),
-      totalOutstanding: bookings.reduce((sum, b) => sum + (b.balance_due || 0), 0),
+      confirmed: bookings.filter((b: any) => b.status === 'confirmed').length,
+      pending: bookings.filter((b: any) => b.status === 'pending').length,
+      completed: bookings.filter((b: any) => b.status === 'completed').length,
+      cancelled: bookings.filter((b: any) => b.status === 'cancelled').length,
+      totalRevenue: bookings.reduce((sum: number, b: any) => sum + Number(b.total || 0), 0),
+      totalPaid: bookings.reduce((sum: number, b: any) => sum + Number(b.amount_paid || 0), 0),
+      totalOutstanding: bookings.reduce((sum: number, b: any) => sum + Number(b.balance_due || 0), 0),
     };
 
     return NextResponse.json(stats, { status: 200 });

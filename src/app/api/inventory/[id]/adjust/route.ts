@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/inventory/[id]/adjust - Adjust inventory quantity
@@ -8,7 +8,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
     if (!body.adjustment_type || body.quantity === undefined) {
@@ -18,48 +22,44 @@ export async function POST(
       );
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const itemResult = await db.query('SELECT * FROM products WHERE id = $1 LIMIT 1', [id]);
+    const item = itemResult.rows[0];
 
-    // Get current product
-    const { data: item, error: itemError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (itemError) {
+    if (!item) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    const companyAccessError = await requireCompanyAccess(user.id, item.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     // Calculate new quantity
-    let newQuantity = item.quantity_on_hand;
-    let movementQuantity = body.quantity;
+    let newQuantity = Number(item.quantity_on_hand || 0);
+    let movementQuantity = Number(body.quantity || 0);
 
     switch (body.adjustment_type) {
       case 'add':
       case 'receive':
       case 'return':
-        newQuantity += body.quantity;
+        newQuantity += Number(body.quantity || 0);
         break;
       case 'remove':
       case 'sell':
       case 'damage':
       case 'shrinkage':
-        if (body.quantity > item.quantity_on_hand) {
+        if (Number(body.quantity || 0) > Number(item.quantity_on_hand || 0)) {
           return NextResponse.json(
             { error: 'Insufficient quantity on hand' },
             { status: 400 }
           );
         }
-        newQuantity -= body.quantity;
-        movementQuantity = -body.quantity;
+        newQuantity -= Number(body.quantity || 0);
+        movementQuantity = -Number(body.quantity || 0);
         break;
       case 'adjustment':
-        newQuantity = body.quantity;
-        movementQuantity = body.quantity - item.quantity_on_hand;
+        newQuantity = Number(body.quantity || 0);
+        movementQuantity = Number(body.quantity || 0) - Number(item.quantity_on_hand || 0);
         break;
       default:
         return NextResponse.json(
@@ -68,43 +68,46 @@ export async function POST(
         );
     }
 
-    // Create movement record
-    const { data: movement, error: movementError } = await supabase
-      .from('inventory_movements')
-      .insert({
-        product_id: id,
-        movement_type: body.adjustment_type,
-        quantity: movementQuantity,
-        unit_cost: body.unit_cost || item.cost_price,
-        notes: body.notes || null,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const movementAndItem = await db.transaction(async (tx) => {
+      const movementResult = await tx.query(
+        `INSERT INTO inventory_movements (
+           product_id, movement_type, quantity, unit_cost, notes, created_by
+         ) VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          id,
+          body.adjustment_type,
+          movementQuantity,
+          Number(body.unit_cost ?? item.cost_price ?? 0),
+          body.notes || null,
+          user.id,
+        ]
+      );
 
-    if (movementError) {
-      return NextResponse.json({ error: movementError.message }, { status: 400 });
-    }
+      const updatedItemResult = await tx.query(
+        `UPDATE products
+         SET quantity_on_hand = $2,
+             cost_price = $3,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          newQuantity,
+          body.update_cost ? Number(body.unit_cost ?? item.cost_price ?? 0) : Number(item.cost_price ?? 0),
+        ]
+      );
 
-    // Update product quantity
-    const { data: updatedItem, error: updateError } = await supabase
-      .from('products')
-      .update({
-        quantity_on_hand: newQuantity,
-        cost_price: body.update_cost ? body.unit_cost : item.cost_price,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
+      return {
+        movement: movementResult.rows[0],
+        item: updatedItemResult.rows[0],
+      };
+    });
 
     return NextResponse.json({
       data: {
-        item: updatedItem,
-        movement,
+        item: movementAndItem.item,
+        movement: movementAndItem.movement,
       },
     });
   } catch (error: any) {
@@ -119,31 +122,48 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
-    
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = (page - 1) * limit;
-
-    const { data, count, error } = await supabase
-      .from('inventory_movements')
-      .select('*', { count: 'exact' })
-      .eq('product_id', id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
+    const { searchParams } = new URL(request.url);
+
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const offset = (page - 1) * limit;
+
+    const productResult = await db.query('SELECT id, company_id FROM products WHERE id = $1 LIMIT 1', [id]);
+    const product = productResult.rows[0];
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, product.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const countResult = await db.query('SELECT COUNT(*)::int AS total FROM inventory_movements WHERE product_id = $1', [id]);
+
+    const rowsResult = await db.query(
+      `SELECT *
+       FROM inventory_movements
+       WHERE product_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [id, limit, offset]
+    );
+
+    const total = Number(countResult.rows[0]?.total || 0);
+
     return NextResponse.json({
-      data,
+      data: rowsResult.rows,
       pagination: {
         page,
         limit,
-        total: count,
-        totalPages: Math.ceil((count || 0) / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error: any) {

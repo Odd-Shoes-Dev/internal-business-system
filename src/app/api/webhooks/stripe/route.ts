@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/stripe';
-import { getServiceClient } from '@/lib/supabase/get-service-client';
+import { getDbProvider } from '@/lib/provider';
 import Stripe from 'stripe';
 import {
   sendPaymentSuccessEmail,
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    const supabase = await getServiceClient();
+    const db = getDbProvider();
 
     // Handle the event
     switch (event.type) {
@@ -39,11 +39,11 @@ export async function POST(request: NextRequest) {
 
         if (invoiceId) {
           // Fetch the invoice
-          const { data: invoice } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('id', invoiceId)
-            .single();
+          const invoiceResult = await db.query(
+            'SELECT * FROM invoices WHERE id = $1 LIMIT 1',
+            [invoiceId]
+          );
+          const invoice = invoiceResult.rows[0] as any;
 
           if (invoice) {
             const paymentAmount = paymentIntent.amount / 100; // Convert from cents
@@ -51,78 +51,138 @@ export async function POST(request: NextRequest) {
             const newStatus = newAmountPaid >= invoice.total ? 'paid' : 'partial';
 
             // Update invoice
-            await supabase
-              .from('invoices')
-              .update({
-                amount_paid: newAmountPaid,
-                status: newStatus,
-                paid_date: newStatus === 'paid' ? new Date().toISOString() : null,
-              })
-              .eq('id', invoiceId);
+            await db.query(
+              `UPDATE invoices
+               SET amount_paid = $2,
+                   status = $3,
+                   paid_date = $4,
+                   updated_at = NOW()
+               WHERE id = $1`,
+              [invoiceId, newAmountPaid, newStatus, newStatus === 'paid' ? new Date().toISOString() : null]
+            );
+
+            const paymentNumberResult = await db.query('SELECT generate_payment_number() AS payment_number');
+            const paymentNumber = paymentNumberResult.rows[0]?.payment_number;
 
             // Create payment record
-            const { data: payment } = await supabase.from('payments_received').insert([
-              {
-                customer_id: invoice.customer_id,
-                payment_date: new Date().toISOString().split('T')[0],
-                amount: paymentAmount,
-                payment_method: 'stripe',
-                reference_number: paymentIntent.id,
-                notes: `Stripe payment: ${paymentIntent.id}`,
-              },
-            ]).select().single();
+            const paymentResult = await db.query(
+              `INSERT INTO payments_received (
+                 company_id,
+                 payment_number,
+                 customer_id,
+                 payment_date,
+                 amount,
+                 payment_method,
+                 reference_number,
+                 stripe_payment_id,
+                 notes,
+                 created_at
+               ) VALUES (
+                 $1, $2, $3, CURRENT_DATE, $4, 'stripe', $5, $5, $6, NOW()
+               )
+               RETURNING id`,
+              [
+                invoice.company_id || null,
+                paymentNumber || `PMT-STRIPE-${Date.now()}`,
+                invoice.customer_id,
+                paymentAmount,
+                paymentIntent.id,
+                `Stripe payment: ${paymentIntent.id}`,
+              ]
+            );
+            const payment = paymentResult.rows[0] as any;
 
             // Create payment application
-            await supabase.from('payment_applications').insert([
-              {
-                payment_id: payment.id,
-                invoice_id: invoiceId,
-                amount_applied: paymentAmount,
-              },
-            ]);
+            await db.query(
+              `INSERT INTO payment_applications (
+                 payment_id,
+                 invoice_id,
+                 amount_applied,
+                 created_at
+               ) VALUES ($1, $2, $3, NOW())`,
+              [payment.id, invoiceId, paymentAmount]
+            );
 
             // Create journal entry for the payment
-            const { data: journalEntry } = await supabase
-              .from('journal_entries')
-              .insert([
-                {
-                  entry_date: new Date().toISOString().split('T')[0],
-                  description: `Payment received for Invoice ${invoice.invoice_number}`,
-                  source_module: 'stripe_payment',
-                  source_document_id: invoiceId,
-                  status: 'posted',
-                },
-              ])
-              .select()
-              .single();
+            const cashAccountResult = await db.query(
+              `SELECT id
+               FROM accounts
+               WHERE code = '1010'
+                 AND (company_id = $1 OR company_id IS NULL)
+               ORDER BY CASE WHEN company_id = $1 THEN 0 ELSE 1 END
+               LIMIT 1`,
+              [invoice.company_id || null]
+            );
+            const arAccountResult = await db.query(
+              `SELECT id
+               FROM accounts
+               WHERE code = '1200'
+                 AND (company_id = $1 OR company_id IS NULL)
+               ORDER BY CASE WHEN company_id = $1 THEN 0 ELSE 1 END
+               LIMIT 1`,
+              [invoice.company_id || null]
+            );
 
-            if (journalEntry) {
+            if (cashAccountResult.rows[0] && arAccountResult.rows[0]) {
+              const entryNumberResult = await db.query('SELECT generate_journal_entry_number() AS entry_number');
+              const entryNumber = entryNumberResult.rows[0]?.entry_number;
+
+              const journalEntryResult = await db.query(
+                `INSERT INTO journal_entries (
+                   company_id,
+                   entry_number,
+                   entry_date,
+                   description,
+                   source_module,
+                   source_document_id,
+                   status,
+                   created_at
+                 ) VALUES (
+                   $1, $2, CURRENT_DATE, $3, 'stripe_payment', $4, 'posted', NOW()
+                 )
+                 RETURNING id`,
+                [
+                  invoice.company_id || null,
+                  entryNumber,
+                  `Payment received for Invoice ${invoice.invoice_number}`,
+                  invoiceId,
+                ]
+              );
+              const journalEntry = journalEntryResult.rows[0] as any;
+
               // Debit Cash/Bank, Credit Accounts Receivable
-              await supabase.from('journal_lines').insert([
-                {
-                  journal_entry_id: journalEntry.id,
-                  account_id: '1010', // Cash account
-                  debit: paymentAmount,
-                  credit: 0,
-                  description: 'Payment received',
-                },
-                {
-                  journal_entry_id: journalEntry.id,
-                  account_id: '1200', // Accounts Receivable
-                  debit: 0,
-                  credit: paymentAmount,
-                  description: 'Payment received',
-                },
-              ]);
+              await db.query(
+                `INSERT INTO journal_lines (
+                   company_id,
+                   journal_entry_id,
+                   line_number,
+                   account_id,
+                   debit,
+                   credit,
+                   base_debit,
+                   base_credit,
+                   description,
+                   created_at
+                 ) VALUES
+                   ($1, $2, 1, $3, $4, 0, $4, 0, 'Payment received', NOW()),
+                   ($1, $2, 2, $5, 0, $4, 0, $4, 'Payment received', NOW())`,
+                [
+                  invoice.company_id || null,
+                  journalEntry.id,
+                  cashAccountResult.rows[0].id,
+                  paymentAmount,
+                  arAccountResult.rows[0].id,
+                ]
+              );
             }
 
             // Send payment success email
             try {
-              const { data: company } = await supabase
-                .from('companies')
-                .select('name, email')
-                .eq('id', invoice.company_id)
-                .single();
+              const companyResult = await db.query(
+                'SELECT name, email FROM companies WHERE id = $1 LIMIT 1',
+                [invoice.company_id]
+              );
+              const company = companyResult.rows[0] as any;
 
               if (company?.email) {
                 await sendPaymentSuccessEmail({
@@ -153,16 +213,20 @@ export async function POST(request: NextRequest) {
           
           // Send payment failed email
           try {
-            const { data: invoice } = await supabase
-              .from('invoices')
-              .select('*, companies!inner(name, email)')
-              .eq('id', invoiceId)
-              .single();
+            const invoiceResult = await db.query(
+              `SELECT i.*, c.name AS company_name, c.email AS company_email
+               FROM invoices i
+               LEFT JOIN companies c ON c.id = i.company_id
+               WHERE i.id = $1
+               LIMIT 1`,
+              [invoiceId]
+            );
+            const invoice = invoiceResult.rows[0] as any;
 
-            if (invoice?.companies?.email) {
+            if (invoice?.company_email) {
               await sendPaymentFailedEmail({
-                to: invoice.companies.email,
-                companyName: invoice.companies.name,
+                to: invoice.company_email,
+                companyName: invoice.company_name,
                 planName: 'Invoice Payment',
                 amount: formatCurrencyForEmail(paymentIntent.amount, paymentIntent.currency),
                 failureReason: paymentIntent.last_payment_error?.message,
@@ -182,46 +246,68 @@ export async function POST(request: NextRequest) {
 
         if (invoiceId && session.payment_status === 'paid') {
           // Similar logic to payment_intent.succeeded
-          const { data: invoice } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('id', invoiceId)
-            .single();
+          const invoiceResult = await db.query(
+            'SELECT * FROM invoices WHERE id = $1 LIMIT 1',
+            [invoiceId]
+          );
+          const invoice = invoiceResult.rows[0] as any;
 
           if (invoice) {
             const paymentAmount = (session.amount_total || 0) / 100;
             const newAmountPaid = (invoice.amount_paid || 0) + paymentAmount;
             const newStatus = newAmountPaid >= invoice.total ? 'paid' : 'partial';
 
-            await supabase
-              .from('invoices')
-              .update({
-                amount_paid: newAmountPaid,
-                status: newStatus,
-                paid_date: newStatus === 'paid' ? new Date().toISOString() : null,
-              })
-              .eq('id', invoiceId);
+            await db.query(
+              `UPDATE invoices
+               SET amount_paid = $2,
+                   status = $3,
+                   paid_date = $4,
+                   updated_at = NOW()
+               WHERE id = $1`,
+              [invoiceId, newAmountPaid, newStatus, newStatus === 'paid' ? new Date().toISOString() : null]
+            );
+
+            const paymentNumberResult = await db.query('SELECT generate_payment_number() AS payment_number');
+            const paymentNumber = paymentNumberResult.rows[0]?.payment_number;
 
             // Create payment record
-            const { data: payment } = await supabase.from('payments_received').insert([
-              {
-                customer_id: invoice.customer_id,
-                payment_date: new Date().toISOString().split('T')[0],
-                amount: paymentAmount,
-                payment_method: 'stripe',
-                reference_number: session.payment_intent as string,
-                notes: `Stripe checkout: ${session.id}`,
-              },
-            ]).select().single();
+            const paymentResult = await db.query(
+              `INSERT INTO payments_received (
+                 company_id,
+                 payment_number,
+                 customer_id,
+                 payment_date,
+                 amount,
+                 payment_method,
+                 reference_number,
+                 stripe_payment_id,
+                 notes,
+                 created_at
+               ) VALUES (
+                 $1, $2, $3, CURRENT_DATE, $4, 'stripe', $5, $5, $6, NOW()
+               )
+               RETURNING id`,
+              [
+                invoice.company_id || null,
+                paymentNumber || `PMT-STRIPE-${Date.now()}`,
+                invoice.customer_id,
+                paymentAmount,
+                session.payment_intent as string,
+                `Stripe checkout: ${session.id}`,
+              ]
+            );
+            const payment = paymentResult.rows[0] as any;
 
             // Create payment application
-            await supabase.from('payment_applications').insert([
-              {
-                payment_id: payment.id,
-                invoice_id: invoiceId,
-                amount_applied: paymentAmount,
-              },
-            ]);
+            await db.query(
+              `INSERT INTO payment_applications (
+                 payment_id,
+                 invoice_id,
+                 amount_applied,
+                 created_at
+               ) VALUES ($1, $2, $3, NOW())`,
+              [payment.id, invoiceId, paymentAmount]
+            );
           }
         }
         break;
@@ -232,36 +318,54 @@ export async function POST(request: NextRequest) {
         const paymentIntentId = charge.payment_intent as string;
 
         // Find invoice with this payment intent
-        const { data: invoice } = await supabase
-          .from('invoices')
-          .select('*')
-          .eq('stripe_payment_intent_id', paymentIntentId)
-          .single();
+        const invoiceResult = await db.query(
+          'SELECT * FROM invoices WHERE stripe_payment_intent_id = $1 LIMIT 1',
+          [paymentIntentId]
+        );
+        const invoice = invoiceResult.rows[0] as any;
 
         if (invoice) {
           const refundAmount = (charge.amount_refunded || 0) / 100;
           const newAmountPaid = Math.max(0, (invoice.amount_paid || 0) - refundAmount);
           const newStatus = newAmountPaid === 0 ? 'sent' : newAmountPaid < invoice.total ? 'partial' : 'paid';
 
-          await supabase
-            .from('invoices')
-            .update({
-              amount_paid: newAmountPaid,
-              status: newStatus,
-            })
-            .eq('id', invoice.id);
+          await db.query(
+            `UPDATE invoices
+             SET amount_paid = $2,
+                 status = $3,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [invoice.id, newAmountPaid, newStatus]
+          );
+
+          const paymentNumberResult = await db.query('SELECT generate_payment_number() AS payment_number');
+          const paymentNumber = paymentNumberResult.rows[0]?.payment_number;
 
           // Create refund record
-          const { data: refundPayment } = await supabase.from('payments_received').insert([
-            {
-              customer_id: invoice.customer_id,
-              amount: -refundAmount, // Negative for refund
-              payment_date: new Date().toISOString().split('T')[0],
-              payment_method: 'stripe_refund',
-              reference: charge.id,
-              notes: `Refund: ${charge.id}`,
-            },
-          ]);
+          await db.query(
+            `INSERT INTO payments_received (
+               company_id,
+               payment_number,
+               customer_id,
+               amount,
+               payment_date,
+               payment_method,
+               reference_number,
+               stripe_charge_id,
+               notes,
+               created_at
+             ) VALUES (
+               $1, $2, $3, $4, CURRENT_DATE, 'stripe', $5, $5, $6, NOW()
+             )`,
+            [
+              invoice.company_id || null,
+              paymentNumber || `PMT-REF-${Date.now()}`,
+              invoice.customer_id,
+              -refundAmount,
+              charge.id,
+              `Refund: ${charge.id}`,
+            ]
+          );
         }
         break;
       }

@@ -8,7 +8,7 @@ import {
   ArrowLeftIcon,
   CreditCardIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 
 interface Bill {
   id: string;
@@ -25,7 +25,9 @@ interface Bill {
 export default function RecordBillPaymentPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [bill, setBill] = useState<Bill | null>(null);
+  const [bankAccountId, setBankAccountId] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -44,32 +46,37 @@ export default function RecordBillPaymentPage() {
 
   const fetchBill = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bills')
-        .select(`
-          id,
-          bill_number,
-          total,
-          amount_paid,
-          status,
-          vendor:vendors(name)
-        `)
-        .eq('id', params.id)
-        .single();
+      const billResponse = await fetch(`/api/bills/${params.id}`, {
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!billResponse.ok) {
+        throw new Error('Failed to load bill');
+      }
 
-      const vendorData = (data as any).vendor;
+      const billResult = await billResponse.json();
+      const data = billResult.data;
       setBill({
         id: data.id,
         bill_number: data.bill_number,
         total: parseFloat(data.total as any),
         amount_paid: parseFloat(data.amount_paid as any),
         status: data.status,
-        vendor: Array.isArray(vendorData)
-          ? vendorData[0] ?? null
-          : vendorData ?? null,
+        currency: data.currency,
+        vendor: data.vendors ? { name: data.vendors.name } : null,
       });
+
+      const companyQuery = company?.id ? `?company_id=${company.id}&active=true` : '?active=true';
+      const bankAccountsResponse = await fetch(`/api/bank-accounts${companyQuery}`, {
+        credentials: 'include',
+      });
+      if (bankAccountsResponse.ok) {
+        const bankAccountsResult = await bankAccountsResponse.json();
+        const firstBankAccount = (bankAccountsResult.data || [])[0];
+        if (firstBankAccount) {
+          setBankAccountId(firstBankAccount.id);
+        }
+      }
 
       // Pre-fill with balance due
       const balanceDue = parseFloat(data.total as any) - parseFloat(data.amount_paid as any);
@@ -103,26 +110,20 @@ export default function RecordBillPaymentPage() {
         throw new Error(`Amount cannot exceed balance due (${formatCurrency(balanceDue)})`);
       }
 
-      // Get bank accounts for payment
-      const { data: bankAccounts } = await supabase
-        .from('bank_accounts')
-        .select('id')
-        .eq('is_active', true)
-        .limit(1);
-
-      if (!bankAccounts || bankAccounts.length === 0) {
+      if (!bankAccountId) {
         throw new Error('No active bank account found. Please set up a bank account first.');
       }
 
       // Record payment via API
       const response = await fetch(`/api/bills/${params.id}/payments`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payment_date: formData.payment_date,
           amount: amount,
           payment_method: formData.payment_method,
-          bank_account_id: bankAccounts[0].id,
+          bank_account_id: bankAccountId,
           reference: formData.reference_number || '',
           notes: formData.notes || '',
           currency: bill!.currency || 'USD',

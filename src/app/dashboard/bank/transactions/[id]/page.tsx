@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
@@ -50,21 +49,15 @@ export default function TransactionDetailPage({ params }: PageProps) {
 
   const loadTransaction = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bank_transactions')
-        .select(`
-          *,
-          bank_accounts (
-            id,
-            name,
-            bank_name
-          )
-        `)
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/bank-transactions/${id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load transaction');
+      }
 
-      if (error) throw error;
-      setTransaction(data);
+      const result = await response.json();
+      setTransaction(result.data || null);
     } catch (error) {
       console.error('Failed to load transaction:', error);
     } finally {
@@ -79,12 +72,13 @@ export default function TransactionDetailPage({ params }: PageProps) {
 
     try {
       setDeleting(true);
-      const { error } = await supabase
-        .from('bank_transactions')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/bank-transactions/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete transaction');
+      }
 
       alert('Transaction deleted successfully');
       router.push('/dashboard/bank/transactions');

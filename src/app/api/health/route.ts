@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 
 interface ApiHealthCheck {
   endpoint: string;
@@ -86,25 +86,12 @@ async function checkDatabaseHealth(): Promise<ApiHealthCheck> {
   const startTime = Date.now();
   
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     
     // Simple query to test database connectivity
-    const { data, error } = await supabase
-      .from('companies')
-      .select('id')
-      .limit(1);
+    await db.query('SELECT id FROM companies LIMIT 1');
 
     const responseTime = Date.now() - startTime;
-
-    if (error) {
-      return {
-        endpoint: 'database',
-        status: 'down',
-        response_time: responseTime,
-        last_checked: new Date().toISOString(),
-        error_message: error.message
-      };
-    }
 
     return {
       endpoint: 'database',
@@ -174,25 +161,12 @@ async function checkRateLimitingHealth(): Promise<ApiHealthCheck> {
   const startTime = Date.now();
   
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     
     // Check if rate limiting table is accessible
-    const { data, error } = await supabase
-      .from('rate_limit_requests')
-      .select('id')
-      .limit(1);
+    await db.query('SELECT id FROM rate_limit_requests LIMIT 1');
 
     const responseTime = Date.now() - startTime;
-
-    if (error) {
-      return {
-        endpoint: 'rate_limiting',
-        status: 'down',
-        response_time: responseTime,
-        last_checked: new Date().toISOString(),
-        error_message: error.message
-      };
-    }
 
     return {
       endpoint: 'rate_limiting',
@@ -214,23 +188,23 @@ async function checkRateLimitingHealth(): Promise<ApiHealthCheck> {
 
 async function getPerformanceMetrics(): Promise<{avg_response_time: number; error_rate: number}> {
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     
     // Get last hour's integration logs for performance metrics
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     
-    const { data: logs } = await supabase
-      .from('integration_logs')
-      .select('status, processing_time_ms')
-      .gte('created_at', oneHourAgo);
+    const logs = await db.query<{ status: string | null; processing_time_ms: number | null }>(
+      'SELECT status, processing_time_ms FROM integration_logs WHERE created_at >= $1',
+      [oneHourAgo]
+    );
 
-    if (!logs || logs.length === 0) {
+    if (!logs.rows || logs.rows.length === 0) {
       return { avg_response_time: 0, error_rate: 0 };
     }
 
-    const totalRequests = logs.length;
-    const errorRequests = logs.filter(log => log.status === 'error').length;
-    const totalResponseTime = logs.reduce((sum, log) => sum + (log.processing_time_ms || 0), 0);
+    const totalRequests = logs.rows.length;
+    const errorRequests = logs.rows.filter(log => log.status === 'error').length;
+    const totalResponseTime = logs.rows.reduce((sum, log) => sum + (log.processing_time_ms || 0), 0);
 
     return {
       avg_response_time: totalRequests > 0 ? totalResponseTime / totalRequests : 0,

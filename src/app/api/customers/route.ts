@@ -1,36 +1,20 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/customers - List customers
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     const { searchParams } = new URL(request.url);
-    
-    // Get company_id from query params
-    const companyId = searchParams.get('company_id');
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
     
     const search = searchParams.get('search');
     const active = searchParams.get('active');
@@ -38,33 +22,41 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    // Explicitly filter by company_id (RLS alone is insufficient for multi-company users)
-    let query = supabase
-      .from('customers')
-      .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
-      .order('name');
+    const where: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`);
+      params.push(`%${search}%`);
+      where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR company_name ILIKE $${params.length})`);
     }
 
-    if (active === 'true') {
-      query = query.eq('is_active', true);
-    } else if (active === 'false') {
-      query = query.eq('is_active', false);
+    if (active === 'true' || active === 'false') {
+      params.push(active === 'true');
+      where.push(`is_active = $${params.length}`);
     }
 
-    query = query.range(offset, offset + limit - 1);
+    const whereSql = `WHERE ${where.join(' AND ')}`;
 
-    const { data, count, error } = await query;
+    const countResult = await db.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total FROM customers ${whereSql}`,
+      params
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const listParams = [...params, limit, offset];
+    const dataResult = await db.query(
+      `SELECT *
+       FROM customers
+       ${whereSql}
+       ORDER BY name
+       LIMIT $${listParams.length - 1}
+       OFFSET $${listParams.length}`,
+      listParams
+    );
+
+    const count = Number(countResult.rows[0]?.total || 0);
 
     return NextResponse.json({
-      data,
+      data: dataResult.rows,
       pagination: {
         page,
         limit,
@@ -80,13 +72,8 @@ export async function GET(request: NextRequest) {
 // POST /api/customers - Create customer
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     const body = await request.json();
     const { company_id, ...customerData } = body;
@@ -95,17 +82,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', company_id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, company_id);
+    if (accessError) return accessError;
 
     // Validate required fields
     if (!customerData.name) {
@@ -115,15 +93,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate email within this company (RLS handles company filtering)
+    // Check for duplicate email within this company
     if (customerData.email) {
-      const { data: existing } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('email', customerData.email)
-        .single();
+      const existing = await db.query(
+        'SELECT id FROM customers WHERE company_id = $1 AND email = $2 LIMIT 1',
+        [company_id, customerData.email]
+      );
 
-      if (existing) {
+      if (existing.rowCount > 0) {
         return NextResponse.json(
           { error: 'A customer with this email already exists' },
           { status: 400 }
@@ -132,45 +109,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate customer number using database function
-    const { data: numberData, error: numberError } = await supabase
-      .rpc('generate_customer_number');
+    const numberResult = await db.query<{ customer_number: string }>('SELECT generate_customer_number() AS customer_number');
+    const customerNumber = numberResult.rows[0]?.customer_number;
 
-    if (numberError) {
-      return NextResponse.json(
-        { error: 'Failed to generate customer number: ' + numberError.message },
-        { status: 500 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from('customers')
-      .insert({
+    const data = await db.query(
+      `INSERT INTO customers (
+         company_id, customer_number, name, company_name, email, phone, tax_id,
+         address_line1, address_line2, city, state, zip_code, country,
+         payment_terms, credit_limit, notes, is_active
+       )
+       VALUES (
+         $1, $2, $3, $4, $5, $6, $7,
+         $8, $9, $10, $11, $12, $13,
+         $14, $15, $16, $17
+       )
+       RETURNING *`,
+      [
         company_id,
-        customer_number: numberData,
-        name: body.name,
-        company_name: body.company_name || null,
-        email: body.email || null,
-        phone: body.phone || null,
-        tax_id: body.tax_id || null,
-        address_line1: body.address_line1 || null,
-        address_line2: body.address_line2 || null,
-        city: body.city || null,
-        state: body.state || null,
-        zip_code: body.postal_code || null,
-        country: body.country || 'USA',
-        payment_terms: body.payment_terms || 30,
-        credit_limit: body.credit_limit || 0,
-        notes: body.notes || null,
-        is_active: body.is_active !== false,
-      })
-      .select()
-      .single();
+        customerNumber,
+        body.name,
+        body.company_name || null,
+        body.email || null,
+        body.phone || null,
+        body.tax_id || null,
+        body.address_line1 || null,
+        body.address_line2 || null,
+        body.city || null,
+        body.state || null,
+        body.postal_code || null,
+        body.country || 'USA',
+        body.payment_terms || 30,
+        body.credit_limit || 0,
+        body.notes || null,
+        body.is_active !== false,
+      ]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: data.rows[0] }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 
 interface RateLimitResult {
   allowed: boolean;
@@ -31,28 +31,22 @@ export class ApiRateLimiter {
     windowMs: number = 60000 // 1 minute default
   ): Promise<RateLimitResult> {
     try {
-      const supabase = await createClient();
+      const db = getDbProvider();
       const now = Date.now();
       const windowStart = now - windowMs;
       
       // Clean up old entries first
-      await supabase
-        .from('rate_limit_requests')
-        .delete()
-        .lt('timestamp', windowStart);
+      await db.query('DELETE FROM rate_limit_requests WHERE timestamp < $1', [windowStart]);
 
       // Count requests in current window
-      const { data: requests, error: countError } = await supabase
-        .from('rate_limit_requests')
-        .select('id')
-        .eq('api_key', apiKey)
-        .gte('timestamp', windowStart);
-
-      if (countError) {
-        throw countError;
-      }
-
-      const currentCount = requests?.length || 0;
+      const countResult = await db.query(
+        `SELECT COUNT(*)::int AS request_count
+         FROM rate_limit_requests
+         WHERE api_key = $1
+           AND timestamp >= $2`,
+        [apiKey, windowStart]
+      );
+      const currentCount = Number((countResult.rows[0] as any)?.request_count || 0);
       const remaining = Math.max(0, limit - currentCount);
       const resetTime = now + windowMs;
 
@@ -68,15 +62,17 @@ export class ApiRateLimiter {
       }
 
       // Record this request
-      const { error: insertError } = await supabase
-        .from('rate_limit_requests')
-        .insert({
-          api_key: apiKey,
-          timestamp: now,
-          endpoint: 'api_generic' // Can be enhanced to track per endpoint
-        });
-
-      if (insertError) {
+      try {
+        await db.query(
+          `INSERT INTO rate_limit_requests (
+             api_key,
+             timestamp,
+             endpoint,
+             created_at
+           ) VALUES ($1, $2, 'api_generic', NOW())`,
+          [apiKey, now]
+        );
+      } catch (insertError) {
         // If we can't record the request, allow it but log the error
         console.error('Failed to record rate limit request:', insertError);
       }
@@ -110,17 +106,19 @@ export class ApiRateLimiter {
     windowMs: number = 60000
   ): Promise<Omit<RateLimitResult, 'allowed'>> {
     try {
-      const supabase = await createClient();
+      const db = getDbProvider();
       const now = Date.now();
       const windowStart = now - windowMs;
 
-      const { data: requests } = await supabase
-        .from('rate_limit_requests')
-        .select('id')
-        .eq('api_key', apiKey)
-        .gte('timestamp', windowStart);
+      const countResult = await db.query(
+        `SELECT COUNT(*)::int AS request_count
+         FROM rate_limit_requests
+         WHERE api_key = $1
+           AND timestamp >= $2`,
+        [apiKey, windowStart]
+      );
 
-      const currentCount = requests?.length || 0;
+      const currentCount = Number((countResult.rows[0] as any)?.request_count || 0);
       const remaining = Math.max(0, limit - currentCount);
       const resetTime = now + windowMs;
 

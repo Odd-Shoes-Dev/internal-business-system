@@ -1,30 +1,43 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
-import { releaseReservedInventory, reduceInventoryForInvoice } from '@/lib/accounting/inventory-server';
 
 // POST /api/quotations/[id]/convert - Convert quotation to invoice
-export async function POST(request: NextRequest, context: any) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     // Get the quotation
-    const { data: quotation, error: fetchError } = await supabase
-      .from('invoices')
-      .select('*, invoice_lines(*)')
-      .eq('id', params.id)
-      .eq('document_type', 'quotation')
-      .single();
+    const quotationResult = await db.query(
+      `SELECT *
+       FROM invoices
+       WHERE id = $1
+         AND document_type = 'quotation'
+       LIMIT 1`,
+      [params.id]
+    );
+    const quotation = quotationResult.rows[0];
 
-    if (fetchError || !quotation) {
+    if (!quotation) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, quotation.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const linesResult = await db.query(
+      `SELECT id, product_id, quantity, description
+       FROM invoice_lines
+       WHERE invoice_id = $1`,
+      [params.id]
+    );
+    const invoiceLines = linesResult.rows;
 
     // Check if already converted
     if (quotation.status === 'converted' || quotation.status === 'posted') {
@@ -32,32 +45,46 @@ export async function POST(request: NextRequest, context: any) {
     }
 
     // Generate new invoice number
-    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+    const invoiceNumberResult = await db.query('SELECT generate_invoice_number() AS invoice_number');
+    const invoiceNumber = invoiceNumberResult.rows[0]?.invoice_number;
 
     // Update the quotation to invoice
-    const { data: updatedInvoice, error: updateError } = await supabase
-      .from('invoices')
-      .update({
-        document_type: 'invoice',
-        invoice_number: invoiceNumber,
-        status: 'draft',
-      })
-      .eq('id', params.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
+    const updatedResult = await db.query(
+      `UPDATE invoices
+       SET document_type = 'invoice',
+           invoice_number = $2,
+           status = 'draft',
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [params.id, invoiceNumber]
+    );
+    const updatedInvoice = updatedResult.rows[0];
 
     // Release reserved inventory (quotations have reserved stock)
-    await releaseReservedInventory(supabase, params.id, quotation.invoice_lines);
+    for (const line of invoiceLines) {
+      if (!line.product_id) {
+        continue;
+      }
+
+      const productResult = await db.query('SELECT quantity_reserved FROM products WHERE id = $1 LIMIT 1', [line.product_id]);
+      const product = productResult.rows[0];
+      if (!product) {
+        continue;
+      }
+
+      const updatedReserved = Math.max(0, Number(product.quantity_reserved || 0) - Number(line.quantity || 0));
+      await db.query('UPDATE products SET quantity_reserved = $2, updated_at = NOW() WHERE id = $1', [line.product_id, updatedReserved]);
+    }
 
     // Mark original quotation status
-    await supabase
-      .from('invoices')
-      .update({ status: 'converted' })
-      .eq('id', params.id);
+    await db.query(
+      `UPDATE invoices
+       SET status = 'converted',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [params.id]
+    );
 
     return NextResponse.json({
       success: true,

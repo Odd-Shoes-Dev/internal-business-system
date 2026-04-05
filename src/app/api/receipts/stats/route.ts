@@ -1,44 +1,51 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
+    const userCompany = await db.query<{ company_id: string }>(
+      `SELECT company_id
+       FROM user_companies
+       WHERE user_id = $1
+       ORDER BY is_primary DESC, joined_at ASC
+       LIMIT 1`,
+      [user.id]
+    );
 
-    if (companyError || !userCompany) {
+    if (!userCompany.rowCount) {
       return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyId = userCompany.rows[0].company_id;
 
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customer_id');
 
-    let query = supabase
-      .from('invoices')
-      .select('total, amount_paid, currency, invoice_date, status, document_type')
-      .eq('company_id', companyId);
+    const params: any[] = [companyId];
+    let whereSql = 'WHERE company_id = $1 AND status <> \'void\'';
 
     if (customerId) {
-      query = query.eq('customer_id', customerId);
+      params.push(customerId);
+      whereSql += ` AND customer_id = $${params.length}`;
     }
 
-    const { data: receipts, error } = await query.neq('status', 'void');
-
-    if (error) throw error;
+    const receipts = await db.query<{
+      total: number | string;
+      amount_paid: number | string;
+      currency: string;
+      invoice_date: string;
+      status: string;
+      document_type: string;
+    }>(
+      `SELECT total, amount_paid, currency, invoice_date, status, document_type
+       FROM invoices
+       ${whereSql}`,
+      params
+    );
 
     let totalAmount = 0;
     let thisMonthCount = 0;
@@ -46,22 +53,20 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    for (const receipt of receipts || []) {
+    for (const receipt of receipts.rows || []) {
       // Only count receipts (document_type === 'receipt')
       if (receipt.document_type !== 'receipt') continue;
 
-      const amountPaid = parseFloat(receipt.amount_paid) || parseFloat(receipt.total) || 0;
+      const amountPaid = Number(receipt.amount_paid) || Number(receipt.total) || 0;
       let amountUSD = amountPaid;
 
       // Convert to USD if not already
       if (receipt.currency && receipt.currency !== 'USD') {
-        const { data: converted } = await supabase.rpc('convert_currency', {
-          p_amount: amountPaid,
-          p_from_currency: receipt.currency,
-          p_to_currency: 'USD',
-          p_date: receipt.invoice_date,
-        });
-        amountUSD = converted || amountPaid;
+        const converted = await db.query<{ converted: number | null }>(
+          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+          [amountPaid, receipt.currency, 'USD', receipt.invoice_date]
+        );
+        amountUSD = converted.rows[0]?.converted || amountPaid;
       }
 
       totalAmount += amountUSD;
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalAmount,
-      totalCount: receipts?.filter(r => r.document_type === 'receipt').length || 0,
+      totalCount: receipts.rows?.filter((r) => r.document_type === 'receipt').length || 0,
       thisMonthCount,
     });
   } catch (error) {

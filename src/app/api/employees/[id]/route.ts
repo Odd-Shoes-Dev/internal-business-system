@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/employees/[id] - Get a single employee
@@ -7,24 +7,42 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await params;
 
-    const { data, error } = await supabase
-      .from('employees')
-      .select(`
-        *,
-        allowances:employee_allowances(*),
-        deductions:employee_deductions(*),
-        advances:salary_advances(*),
-        reimbursements:employee_reimbursements(*)
-      `)
-      .eq('id', id)
-      .single();
+    const employeeResult = await db.query<any>(
+      'SELECT * FROM employees WHERE id = $1 LIMIT 1',
+      [id]
+    );
+    const employee = employeeResult.rows[0];
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, employee.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const [allowances, deductions, advances, reimbursements] = await Promise.all([
+      db.query('SELECT * FROM employee_allowances WHERE employee_id = $1 ORDER BY created_at DESC', [id]),
+      db.query('SELECT * FROM employee_deductions WHERE employee_id = $1 ORDER BY created_at DESC', [id]),
+      db.query('SELECT * FROM salary_advances WHERE employee_id = $1 ORDER BY created_at DESC', [id]),
+      db.query('SELECT * FROM employee_reimbursements WHERE employee_id = $1 ORDER BY created_at DESC', [id]),
+    ]);
+
+    const data = {
+      ...employee,
+      allowances: allowances.rows,
+      deductions: deductions.rows,
+      advances: advances.rows,
+      reimbursements: reimbursements.rows,
+    };
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error: any) {
@@ -38,36 +56,38 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await params;
     const body = await request.json();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get current employee data
+    const currentEmployeeResult = await db.query<any>(
+      'SELECT * FROM employees WHERE id = $1 LIMIT 1',
+      [id]
+    );
+    const currentEmployee = currentEmployeeResult.rows[0];
+
+    if (!currentEmployee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Get current employee data
-    const { data: currentEmployee, error: fetchError } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError || !currentEmployee) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    const companyAccessError = await requireCompanyAccess(user.id, currentEmployee.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     // If changing employee number, check for duplicates
     if (body.employee_number && body.employee_number !== currentEmployee.employee_number) {
-      const { data: existing } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('employee_number', body.employee_number)
-        .neq('id', id)
-        .single();
+      const existing = await db.query<{ id: string }>(
+        'SELECT id FROM employees WHERE employee_number = $1 AND id <> $2 LIMIT 1',
+        [body.employee_number, id]
+      );
 
-      if (existing) {
+      if (existing.rows.length > 0) {
         return NextResponse.json(
           { error: 'Employee number already exists' },
           { status: 409 }
@@ -93,17 +113,20 @@ export async function PATCH(
       updateData.is_active = true;
     }
 
-    // Update the employee
-    const { data, error } = await supabase
-      .from('employees')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const fields = Object.keys(updateData);
+    if (fields.length === 0) {
+      return NextResponse.json({ data: currentEmployee }, { status: 200 });
     }
+
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const values = fields.map((field) => updateData[field]);
+
+    const updateResult = await db.query<any>(
+      `UPDATE employees SET ${setClause} WHERE id = $${values.length + 1} RETURNING *`,
+      [...values, id]
+    );
+
+    const data = updateResult.rows[0];
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error: any) {
@@ -117,38 +140,45 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await params;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const employeeResult = await db.query<any>(
+      'SELECT id, company_id, employment_status FROM employees WHERE id = $1 LIMIT 1',
+      [id]
+    );
+    const employee = employeeResult.rows[0];
+
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, employee.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     // Check if employee has payslips
-    const { data: payslips } = await supabase
-      .from('payslips')
-      .select('id')
-      .eq('employee_id', id)
-      .limit(1);
+    const payslips = await db.query('SELECT id FROM payslips WHERE employee_id = $1 LIMIT 1', [id]);
 
-    if (payslips && payslips.length > 0) {
+    if (payslips.rows.length > 0) {
       // Soft delete - mark as inactive instead of deleting
-      const { data, error } = await supabase
-        .from('employees')
-        .update({
-          is_active: false,
-          employment_status: 'terminated',
-          termination_date: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const softDeleteResult = await db.query<any>(
+        `UPDATE employees
+         SET is_active = false,
+             employment_status = 'terminated',
+             termination_date = $1,
+             updated_at = $2
+         WHERE id = $3
+         RETURNING *`,
+        [new Date().toISOString().split('T')[0], new Date().toISOString(), id]
+      );
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
-      }
+      const data = softDeleteResult.rows[0];
 
       return NextResponse.json({
         data,
@@ -157,14 +187,7 @@ export async function DELETE(
     }
 
     // Hard delete if no payslips
-    const { error } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    await db.query('DELETE FROM employees WHERE id = $1', [id]);
 
     return NextResponse.json({
       message: 'Employee deleted successfully',

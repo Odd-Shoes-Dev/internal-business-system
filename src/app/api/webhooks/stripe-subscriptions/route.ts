@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getDbProvider } from '@/lib/provider';
 import { getStripe } from '@/lib/stripe';
 
 const WEBHOOK_SECRET = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET!;
@@ -14,10 +14,7 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature')!;
 
   const stripe = await getStripe();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const db = getDbProvider();
   let event: Stripe.Event;
 
   try {
@@ -32,23 +29,23 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, stripe, supabase);
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, stripe, db);
         break;
 
       case 'invoice.paid':
-        await handleInvoicePaid(event.data.object as Stripe.Invoice, stripe, supabase);
+        await handleInvoicePaid(event.data.object as Stripe.Invoice, stripe, db);
         break;
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.Invoice, supabase);
+        await handlePaymentFailed(event.data.object as Stripe.Invoice, db);
         break;
 
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription, supabase);
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription, db);
         break;
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionCancelled(event.data.object as Stripe.Subscription, supabase);
+        await handleSubscriptionCancelled(event.data.object as Stripe.Subscription, db);
         break;
 
       default:
@@ -62,7 +59,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe: any, supabase: any) {
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe: any, db: any) {
   console.log('✅ Processing checkout.session.completed');
 
   const companyId = session.metadata!.company_id;
@@ -74,128 +71,239 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
   // Get subscription details
   const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
 
-  // Create subscription record
-  await supabase.from('subscriptions').insert({
-    company_id: companyId,
-    plan_tier: planTier,
-    billing_period: billingPeriod,
-    status: 'active',
-    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    base_price_amount: session.amount_total! / 100,
-    currency: currency,
-    stripe_customer_id: session.customer as string,
-    stripe_subscription_id: session.subscription as string,
-  });
+  await db.query(
+    `INSERT INTO subscriptions (
+       company_id,
+       plan_tier,
+       billing_period,
+       status,
+       current_period_start,
+       current_period_end,
+       base_price_amount,
+       currency,
+       stripe_customer_id,
+       stripe_subscription_id,
+       updated_at
+     ) VALUES (
+       $1, $2, $3, 'active', $4, $5, $6, $7, $8, $9, NOW()
+     )
+     ON CONFLICT (stripe_subscription_id)
+     DO UPDATE SET
+       status = EXCLUDED.status,
+       current_period_start = EXCLUDED.current_period_start,
+       current_period_end = EXCLUDED.current_period_end,
+       base_price_amount = EXCLUDED.base_price_amount,
+       currency = EXCLUDED.currency,
+       stripe_customer_id = EXCLUDED.stripe_customer_id,
+       updated_at = NOW()`,
+    [
+      companyId,
+      planTier,
+      billingPeriod,
+      new Date(subscription.current_period_start * 1000).toISOString(),
+      new Date(subscription.current_period_end * 1000).toISOString(),
+      (session.amount_total || 0) / 100,
+      currency,
+      session.customer as string,
+      session.subscription as string,
+    ]
+  );
 
   // Activate modules
   if (moduleIds.length > 0) {
     // Deactivate trial modules
-    await supabase
-      .from('subscription_modules')
-      .update({ is_active: false, removed_at: new Date().toISOString() })
-      .eq('company_id', companyId)
-      .eq('is_trial_module', true);
+    await db.query(
+      `UPDATE subscription_modules
+       SET is_active = false,
+           removed_at = NOW(),
+           updated_at = NOW()
+       WHERE company_id = $1
+         AND is_trial_module = true
+         AND is_active = true`,
+      [companyId]
+    );
 
-    // Create paid modules
-    const moduleRecords = moduleIds.map((moduleId: string) => ({
-      company_id: companyId,
-      module_id: moduleId,
-      monthly_price: getModulePrice(moduleId, currency),
-      currency: currency,
-      is_active: true,
-      is_trial_module: false,
-    }));
-
-    await supabase.from('subscription_modules').insert(moduleRecords);
+    for (const moduleId of moduleIds) {
+      await db.query(
+        `INSERT INTO subscription_modules (
+           company_id,
+           module_id,
+           monthly_price,
+           currency,
+           is_active,
+           is_trial_module,
+           is_included,
+           added_at,
+           updated_at
+         ) VALUES (
+           $1, $2, $3, $4, true, false, false, NOW(), NOW()
+         )
+         ON CONFLICT (company_id, module_id, is_active)
+         DO NOTHING`,
+        [companyId, moduleId, getModulePrice(moduleId, currency), currency]
+      );
+    }
   }
 
   // Update company settings
   const maxUsers = planTier === 'starter' ? 3 : planTier === 'professional' ? 10 : 999999;
 
-  await supabase
-    .from('company_settings')
-    .update({
-      subscription_status: 'active',
-      plan_tier: planTier,
-      billing_period: billingPeriod,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      max_users_allowed: maxUsers,
-      stripe_customer_id: session.customer as string,
-      stripe_subscription_id: session.subscription as string,
-    })
-    .eq('company_id', companyId);
+  await db.query(
+    `UPDATE company_settings
+     SET subscription_status = 'active',
+         plan_tier = $2,
+         billing_period = $3,
+         current_period_start = $4,
+         current_period_end = $5,
+         max_users_allowed = $6,
+         stripe_customer_id = $7,
+         stripe_subscription_id = $8,
+         updated_at = NOW()
+     WHERE company_id = $1`,
+    [
+      companyId,
+      planTier,
+      billingPeriod,
+      new Date(subscription.current_period_start * 1000).toISOString(),
+      new Date(subscription.current_period_end * 1000).toISOString(),
+      maxUsers,
+      session.customer as string,
+      session.subscription as string,
+    ]
+  );
 
   console.log(`✅ Subscription activated for company ${companyId}`);
 }
 
-async function handleInvoicePaid(invoice: Stripe.Invoice, stripe: any, supabase: any) {
+async function handleInvoicePaid(invoice: Stripe.Invoice, stripe: any, db: any) {
   console.log('✅ Processing invoice.paid');
 
-  const companyId = invoice.subscription_details?.metadata?.company_id;
+  let companyId = invoice.subscription_details?.metadata?.company_id;
+  if (!companyId && invoice.subscription) {
+    const companyResult = await db.query(
+      `SELECT company_id
+       FROM subscriptions
+       WHERE stripe_subscription_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [invoice.subscription as string]
+    );
+    companyId = companyResult.rows[0]?.company_id;
+  }
+
   if (!companyId) return;
 
   // Save to billing history
-  await supabase.from('billing_history').insert({
-    company_id: companyId,
-    amount: invoice.amount_paid / 100,
-    currency: invoice.currency.toUpperCase(),
-    status: 'succeeded',
-    invoice_number: invoice.number,
-    invoice_url: invoice.hosted_invoice_url,
-    invoice_pdf_url: invoice.invoice_pdf,
-    period_start: new Date(invoice.period_start * 1000).toISOString(),
-    period_end: new Date(invoice.period_end * 1000).toISOString(),
-    stripe_invoice_id: invoice.id,
-    stripe_payment_intent_id: invoice.payment_intent as string,
-    paid_at: new Date(invoice.status_transitions.paid_at! * 1000).toISOString(),
-  });
+  await db.query(
+    `INSERT INTO billing_history (
+       company_id,
+       amount,
+       currency,
+       status,
+       invoice_number,
+       invoice_url,
+       invoice_pdf_url,
+       period_start,
+       period_end,
+       stripe_invoice_id,
+       stripe_payment_intent_id,
+       paid_at,
+       created_at
+     ) VALUES (
+       $1, $2, $3, 'succeeded', $4, $5, $6, $7, $8, $9, $10, $11, NOW()
+     )`,
+    [
+      companyId,
+      invoice.amount_paid / 100,
+      (invoice.currency || 'USD').toUpperCase(),
+      invoice.number || null,
+      invoice.hosted_invoice_url || null,
+      invoice.invoice_pdf || null,
+      new Date((invoice.period_start || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+      new Date((invoice.period_end || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+      invoice.id,
+      (invoice.payment_intent as string) || null,
+      invoice.status_transitions.paid_at
+        ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+        : new Date().toISOString(),
+    ]
+  );
 
   // Update subscription period
   if (invoice.subscription) {
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
 
-    await supabase
-      .from('company_settings')
-      .update({
-        subscription_status: 'active',
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      })
-      .eq('company_id', companyId);
+    await db.query(
+      `UPDATE company_settings
+       SET subscription_status = 'active',
+           current_period_start = $2,
+           current_period_end = $3,
+           updated_at = NOW()
+       WHERE company_id = $1`,
+      [
+        companyId,
+        new Date(subscription.current_period_start * 1000).toISOString(),
+        new Date(subscription.current_period_end * 1000).toISOString(),
+      ]
+    );
   }
 
   console.log(`✅ Invoice paid for company ${companyId}`);
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
+async function handlePaymentFailed(invoice: Stripe.Invoice, db: any) {
   console.log('⚠️  Processing invoice.payment_failed');
 
-  const companyId = invoice.subscription_details?.metadata?.company_id;
+  let companyId = invoice.subscription_details?.metadata?.company_id;
+  if (!companyId && invoice.subscription) {
+    const companyResult = await db.query(
+      `SELECT company_id
+       FROM subscriptions
+       WHERE stripe_subscription_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [invoice.subscription as string]
+    );
+    companyId = companyResult.rows[0]?.company_id;
+  }
+
   if (!companyId) return;
 
   // Save failed payment
-  await supabase.from('billing_history').insert({
-    company_id: companyId,
-    amount: invoice.amount_due / 100,
-    currency: invoice.currency.toUpperCase(),
-    status: 'failed',
-    stripe_invoice_id: invoice.id,
-    failed_at: new Date().toISOString(),
-    failure_reason: invoice.last_finalization_error?.message || 'Payment failed',
-  });
+  await db.query(
+    `INSERT INTO billing_history (
+       company_id,
+       amount,
+       currency,
+       status,
+       stripe_invoice_id,
+       failed_at,
+       failure_reason,
+       created_at
+     ) VALUES (
+       $1, $2, $3, 'failed', $4, NOW(), $5, NOW()
+     )`,
+    [
+      companyId,
+      invoice.amount_due / 100,
+      (invoice.currency || 'USD').toUpperCase(),
+      invoice.id,
+      invoice.last_finalization_error?.message || 'Payment failed',
+    ]
+  );
 
   // Update to past_due
-  await supabase
-    .from('company_settings')
-    .update({ subscription_status: 'past_due' })
-    .eq('company_id', companyId);
+  await db.query(
+    `UPDATE company_settings
+     SET subscription_status = 'past_due', updated_at = NOW()
+     WHERE company_id = $1`,
+    [companyId]
+  );
 
   console.log(`⚠️  Payment failed for company ${companyId}`);
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supabase: any) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription, db: any) {
   console.log('🔄 Processing customer.subscription.updated');
 
   const companyId = subscription.metadata.company_id;
@@ -205,34 +313,75 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
                  subscription.status === 'past_due' ? 'past_due' :
                  subscription.status === 'canceled' ? 'cancelled' : 'expired';
 
-  await supabase
-    .from('company_settings')
-    .update({
-      subscription_status: status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    })
-    .eq('company_id', companyId);
+  await db.query(
+    `UPDATE company_settings
+     SET subscription_status = $2,
+         current_period_start = $3,
+         current_period_end = $4,
+         updated_at = NOW()
+     WHERE company_id = $1`,
+    [
+      companyId,
+      status,
+      new Date(subscription.current_period_start * 1000).toISOString(),
+      new Date(subscription.current_period_end * 1000).toISOString(),
+    ]
+  );
+
+  if (subscription.id) {
+    await db.query(
+      `UPDATE subscriptions
+       SET status = $2,
+           current_period_start = $3,
+           current_period_end = $4,
+           updated_at = NOW()
+       WHERE stripe_subscription_id = $1`,
+      [
+        subscription.id,
+        status,
+        new Date(subscription.current_period_start * 1000).toISOString(),
+        new Date(subscription.current_period_end * 1000).toISOString(),
+      ]
+    );
+  }
 
   console.log(`🔄 Subscription updated: ${status}`);
 }
 
-async function handleSubscriptionCancelled(subscription: Stripe.Subscription, supabase: any) {
+async function handleSubscriptionCancelled(subscription: Stripe.Subscription, db: any) {
   console.log('❌ Processing customer.subscription.deleted');
 
   const companyId = subscription.metadata.company_id;
   if (!companyId) return;
 
-  await supabase
-    .from('company_settings')
-    .update({ subscription_status: 'cancelled' })
-    .eq('company_id', companyId);
+  await db.query(
+    `UPDATE company_settings
+     SET subscription_status = 'cancelled', updated_at = NOW()
+     WHERE company_id = $1`,
+    [companyId]
+  );
+
+  if (subscription.id) {
+    await db.query(
+      `UPDATE subscriptions
+       SET status = 'cancelled',
+           cancelled_at = NOW(),
+           updated_at = NOW()
+       WHERE stripe_subscription_id = $1`,
+      [subscription.id]
+    );
+  }
 
   // Deactivate modules
-  await supabase
-    .from('subscription_modules')
-    .update({ is_active: false, removed_at: new Date().toISOString() })
-    .eq('company_id', companyId);
+  await db.query(
+    `UPDATE subscription_modules
+     SET is_active = false,
+         removed_at = NOW(),
+         updated_at = NOW()
+     WHERE company_id = $1
+       AND is_active = true`,
+    [companyId]
+  );
 
   console.log(`❌ Subscription cancelled for company ${companyId}`);
 }

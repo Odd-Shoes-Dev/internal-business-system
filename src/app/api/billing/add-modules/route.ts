@@ -1,27 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
     const body = await request.json();
     const { module_ids } = body;
 
@@ -29,67 +13,71 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Module IDs required' }, { status: 400 });
     }
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Get user's company and check permissions
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id, role')
-      .eq('id', user.id)
-      .single();
+    const profile = await db.query<{ company_id: string; role: string }>(
+      'SELECT company_id, role FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
+    const profileRow = profile.rows[0];
 
-    if (!profile?.company_id) {
+    if (!profileRow?.company_id) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    if (profile.role !== 'owner' && profile.role !== 'admin') {
+    if (profileRow.role !== 'owner' && profileRow.role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     const now = new Date();
 
-    const { data: company } = await supabase
-      .from('companies')
-      .select('subscription_status, trial_ends_at')
-      .eq('id', profile.company_id)
-      .single();
+    const company = await db.query<{ subscription_status: string | null; trial_ends_at: string | null }>(
+      'SELECT subscription_status, trial_ends_at FROM companies WHERE id = $1 LIMIT 1',
+      [profileRow.company_id]
+    );
+    const companyRow = company.rows[0];
 
     // Get company settings including module quota
-    const { data: settings } = await supabase
-      .from('company_settings')
-      .select('stripe_subscription_id, subscription_status, currency, included_modules_quota, plan_tier')
-      .eq('company_id', profile.company_id)
-      .single();
+    const settings = await db.query<{
+      stripe_subscription_id: string | null;
+      subscription_status: string | null;
+      currency: string | null;
+      included_modules_quota: number | null;
+      plan_tier: string | null;
+    }>(
+      `SELECT stripe_subscription_id, subscription_status, currency, included_modules_quota, plan_tier
+       FROM company_settings
+       WHERE company_id = $1
+       LIMIT 1`,
+      [profileRow.company_id]
+    );
+    const settingsRow = settings.rows[0];
 
-    if (!settings) {
+    if (!settingsRow) {
       return NextResponse.json({ error: 'Company settings not found' }, { status: 404 });
     }
 
     // Get module quota (default based on plan if not set)
-    const moduleQuota = settings.included_modules_quota || (
-      settings.plan_tier === 'professional' ? 3 :
-      settings.plan_tier === 'enterprise' ? 999 :
+    const moduleQuota = settingsRow.included_modules_quota || (
+      settingsRow.plan_tier === 'professional' ? 3 :
+      settingsRow.plan_tier === 'enterprise' ? 999 :
       1
     );
 
     // Count current included modules
-    const { data: currentModules, count: includedCount } = await supabase
-      .from('subscription_modules')
-      .select('*', { count: 'exact' })
-      .eq('company_id', profile.company_id)
-      .eq('is_active', true)
-      .eq('is_included', true);
-
-    const currentIncludedCount = includedCount || 0;
+    const includedCountResult = await db.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total
+       FROM subscription_modules
+       WHERE company_id = $1
+         AND is_active = TRUE
+         AND is_included = TRUE`,
+      [profileRow.company_id]
+    );
+    const currentIncludedCount = Number(includedCountResult.rows[0]?.total || 0);
     const remainingQuota = Math.max(0, moduleQuota - currentIncludedCount);
 
-    const trialEndsAt = company?.trial_ends_at ? new Date(company.trial_ends_at) : null;
-    const isTrialActive = (company?.subscription_status || settings.subscription_status) === 'trial' && (!trialEndsAt || trialEndsAt > now);
-    const hasActivePaidSubscription = Boolean(settings.stripe_subscription_id) && settings.subscription_status === 'active';
+    const trialEndsAt = companyRow?.trial_ends_at ? new Date(companyRow.trial_ends_at) : null;
+    const isTrialActive = (companyRow?.subscription_status || settingsRow.subscription_status) === 'trial' && (!trialEndsAt || trialEndsAt > now);
+    const hasActivePaidSubscription = Boolean(settingsRow.stripe_subscription_id) && settingsRow.subscription_status === 'active';
     
     if (!isTrialActive && !hasActivePaidSubscription) {
       return NextResponse.json({ error: 'Your trial has ended. Please upgrade your plan before adding modules.' }, { status: 403 });
@@ -109,7 +97,7 @@ export async function POST(request: NextRequest) {
       inventory: { usd: 39, eur: 35, gbp: 31, ugx: 145000 },
     };
 
-    const currency = (settings.currency || 'usd').toLowerCase();
+    const currency = (settingsRow.currency || 'usd').toLowerCase();
     const addedModules: any[] = [];
     let modulesAddedCount = 0;
 
@@ -118,15 +106,17 @@ export async function POST(request: NextRequest) {
     // Add each module to Stripe subscription
     for (const moduleId of module_ids) {
       // Check if module already exists
-      const { data: existing } = await supabase
-        .from('subscription_modules')
-        .select('id')
-        .eq('company_id', profile.company_id)
-        .eq('module_id', moduleId)
-        .eq('is_active', true)
-        .single();
+      const existing = await db.query(
+        `SELECT id
+         FROM subscription_modules
+         WHERE company_id = $1
+           AND module_id = $2
+           AND is_active = TRUE
+         LIMIT 1`,
+        [profileRow.company_id, moduleId]
+      );
 
-      if (existing) {
+      if (existing.rowCount > 0) {
         continue; // Skip if already active
       }
 
@@ -159,7 +149,7 @@ export async function POST(request: NextRequest) {
 
         // Add to Stripe subscription
         const subscriptionItem = await stripe.subscriptionItems.create({
-          subscription: settings.stripe_subscription_id,
+          subscription: settingsRow.stripe_subscription_id!,
           price: price.id,
           proration_behavior: 'create_prorations',
         });
@@ -168,23 +158,26 @@ export async function POST(request: NextRequest) {
       }
 
       // Add to database
-      const { data: newModule } = await supabase
-        .from('subscription_modules')
-        .insert({
-          company_id: profile.company_id,
-          module_id: moduleId,
-          monthly_price: modulePrice,
-          currency: currency.toUpperCase(),
-          is_active: true,
-          is_trial_module: isTrialActive,
-          is_included: isIncluded,
-          stripe_subscription_item_id: stripeSubscriptionItemId,
-        })
-        .select()
-        .single();
+      const newModule = await db.query(
+        `INSERT INTO subscription_modules (
+           company_id, module_id, monthly_price, currency,
+           is_active, is_trial_module, is_included, stripe_subscription_item_id
+         )
+         VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7)
+         RETURNING *`,
+        [
+          profileRow.company_id,
+          moduleId,
+          modulePrice,
+          currency.toUpperCase(),
+          isTrialActive,
+          isIncluded,
+          stripeSubscriptionItemId,
+        ]
+      );
 
-      if (newModule) {
-        addedModules.push(newModule);
+      if (newModule.rowCount > 0) {
+        addedModules.push(newModule.rows[0]);
         modulesAddedCount++;
       }
     }

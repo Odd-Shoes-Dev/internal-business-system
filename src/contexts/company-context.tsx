@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 // Types
@@ -46,45 +45,25 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   async function loadUserCompanies() {
     try {
       setLoading(true);
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      const response = await fetch('/api/companies/me', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
         setLoading(false);
         return;
       }
 
-      // Get user's companies
-      const { data: userCompanies, error } = await supabase
-        .from('user_companies')
-        .select(`
-          company_id,
-          is_primary,
-          role,
-          companies (
-            id,
-            name,
-            subdomain,
-            email,
-            phone,
-            address,
-            logo_url,
-            currency,
-            subscription_status,
-            subscription_plan,
-            tax_id,
-            registration_number,
-            region
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error loading companies:', error);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        console.error('Error loading companies:', payload?.error || 'Request failed');
         setLoading(false);
         return;
       }
+
+      const payload = await response.json();
+      const userCompanies = payload?.companies || [];
 
       if (!userCompanies || userCompanies.length === 0) {
         // User has no companies - redirect to plan selection
@@ -94,7 +73,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
 
       // Extract companies
-      const companiesList = userCompanies.map((uc: any) => uc.companies).filter(Boolean) as Company[];
+      const companiesList = userCompanies as Company[];
       setCompanies(companiesList);
 
       // Get stored company ID from localStorage or use primary
@@ -105,17 +84,19 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         currentCompany = companiesList.find(c => c.id === storedCompanyId) || null;
       }
 
-      // Fallback to primary company
+      // Fallback to currently selected/primary company
       if (!currentCompany) {
-        const primaryUserCompany = userCompanies.find((uc: any) => uc.is_primary);
-        currentCompany = (primaryUserCompany?.companies as unknown as Company) || companiesList[0];
+        currentCompany =
+          companiesList.find((c: any) => c.id === payload?.currentCompanyId) ||
+          companiesList.find((c: any) => (c as any).is_primary) ||
+          companiesList[0];
       }
 
       setCompany(currentCompany);
       
       // Load modules for current company
       if (currentCompany) {
-        await loadModules(currentCompany.id);
+        setCompanyModules(payload?.modules || []);
       }
 
       setLoading(false);
@@ -127,18 +108,20 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   async function loadModules(companyId: string) {
     try {
-      const { data, error } = await supabase
-        .from('subscription_modules')
-        .select('module_id')
-        .eq('company_id', companyId)
-        .eq('is_active', true);
+      const response = await fetch(`/api/companies/me?company_id=${encodeURIComponent(companyId)}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      if (error) {
-        console.error('Error loading modules:', error);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        console.error('Error loading modules:', payload?.error || 'Request failed');
         return;
       }
 
-      setCompanyModules(data?.map((m: any) => m.module_id) || []);
+      const data = await response.json();
+
+      setCompanyModules(data?.modules || []);
     } catch (error) {
       console.error('Error in loadModules:', error);
     }

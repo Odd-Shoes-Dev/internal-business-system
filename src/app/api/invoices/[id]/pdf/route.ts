@@ -3,48 +3,54 @@ import { generateInvoiceHTML } from '@/lib/pdf/invoice';
 import { generateQuotationHTML } from '@/lib/pdf/quotation';
 import { generateProformaHTML } from '@/lib/pdf/proforma';
 import { generateReceiptHTML } from '@/lib/pdf/receipt';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
-    // Create service-role Supabase client on demand so builds without service keys don't
-    // crash during module evaluation. If the key is missing, return a clear error.
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseKey) {
-      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured on the server' }, { status: 500 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, supabaseKey);
-    const invoiceId = params.id;
+    const invoiceId = resolvedParams.id;
 
     // Fetch invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', invoiceId)
-      .single();
+    const invoiceResult = await db.query<any>(
+      'SELECT * FROM invoices WHERE id = $1 LIMIT 1',
+      [invoiceId]
+    );
+    const invoice = invoiceResult.rows[0];
 
-    if (invoiceError || !invoice) {
+    if (!invoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
       );
     }
 
+    const companyAccessError = await requireCompanyAccess(user.id, invoice.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     // Fetch customer
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', invoice.customer_id)
-      .single();
+    const customerResult = await db.query<any>(
+      'SELECT * FROM customers WHERE id = $1 LIMIT 1',
+      [invoice.customer_id]
+    );
+    const customer = customerResult.rows[0] || null;
 
     // Fetch company info
-    const { data: company } = await supabase
-      .from('companies')
-      .select('name, logo_url, email, phone, address, city, country, tax_id, registration_number, website')
-      .eq('id', invoice.company_id)
-      .single();
+    const companyResult = await db.query<any>(
+      `SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, website
+       FROM companies
+       WHERE id = $1
+       LIMIT 1`,
+      [invoice.company_id]
+    );
+    const company = companyResult.rows[0];
 
     if (!company) {
       return NextResponse.json(
@@ -54,11 +60,14 @@ export async function GET(request: NextRequest, context: any) {
     }
 
     // Fetch line items
-    const { data: lineItems } = await supabase
-      .from('invoice_line_items')
-      .select('*')
-      .eq('invoice_id', invoiceId)
-      .order('line_number');
+    const lineItemsResult = await db.query<any>(
+      `SELECT *
+       FROM invoice_lines
+       WHERE invoice_id = $1
+       ORDER BY line_number ASC`,
+      [invoiceId]
+    );
+    const lineItems = lineItemsResult.rows || [];
 
     // Generate HTML for PDF based on document type
     let html: string;

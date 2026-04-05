@@ -1,28 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/assets/[id] - Get single asset
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from('fixed_assets')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    if (!data) {
+    const result = await db.query<any>(
+      `SELECT fa.*, ac.name AS asset_category_name, v.name AS vendor_name
+       FROM fixed_assets fa
+       LEFT JOIN asset_categories ac ON ac.id = fa.category_id
+       LEFT JOIN vendors v ON v.id = fa.vendor_id
+       WHERE fa.id = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, row.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const data = {
+      ...row,
+      asset_categories: row.asset_category_name
+        ? {
+            name: row.asset_category_name,
+          }
+        : null,
+      vendors: row.vendor_name
+        ? {
+            name: row.vendor_name,
+          }
+        : null,
+    };
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -31,15 +51,26 @@ export async function GET(
 }
 
 // PUT /api/assets/[id] - Update asset
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const body = await request.json();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
+    const existingResult = await db.query<any>('SELECT id, company_id FROM fixed_assets WHERE id = $1 LIMIT 1', [id]);
+    const existing = existingResult.rows[0];
+    if (!existing) {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, existing.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const body = await request.json();
     const {
       name,
       description,
@@ -55,40 +86,41 @@ export async function PUT(
       notes,
     } = body;
 
-    // Calculate book value
-    const { data: existingAsset } = await supabase
-      .from('fixed_assets')
-      .select('accumulated_depreciation')
-      .eq('id', id)
-      .single();
-
-    const { data, error } = await supabase
-      .from('fixed_assets')
-      .update({
+    const updateResult = await db.query<any>(
+      `UPDATE fixed_assets
+       SET name = $2,
+           description = $3,
+           asset_number = $4,
+           serial_number = $5,
+           purchase_date = $6::date,
+           purchase_price = $7,
+           residual_value = $8,
+           useful_life_months = $9,
+           depreciation_method = $10,
+           depreciation_start_date = $11::date,
+           location = $12,
+           notes = $13,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [
+        id,
         name,
-        description: description || null,
+        description || null,
         asset_number,
-        serial_number: serial_number || null,
+        serial_number || null,
         purchase_date,
-        purchase_price: Number(purchase_price),
-        residual_value: Number(residual_value),
-        useful_life_months: Number(useful_life_months),
+        Number(purchase_price),
+        Number(residual_value),
+        Number(useful_life_months),
         depreciation_method,
         depreciation_start_date,
-        location: location || null,
-        notes: notes || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
+        location || null,
+        notes || null,
+      ]
+    );
 
-    if (error) {
-      console.error('Error updating asset:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json(data);
+    return NextResponse.json(updateResult.rows[0]);
   } catch (error: any) {
     console.error('Error in assets PUT:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -96,23 +128,26 @@ export async function PUT(
 }
 
 // DELETE /api/assets/[id] - Delete asset
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-
-    const { error } = await supabase
-      .from('fixed_assets')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
+    const existingResult = await db.query<any>('SELECT id, company_id FROM fixed_assets WHERE id = $1 LIMIT 1', [id]);
+    const existing = existingResult.rows[0];
+    if (!existing) {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, existing.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    await db.query('DELETE FROM fixed_assets WHERE id = $1', [id]);
     return NextResponse.json({ message: 'Asset deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface AssetDepreciation {
   assetId: string;
@@ -128,48 +128,71 @@ const generateDepreciationSchedule = (
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const category = searchParams.get('category') || 'all';
     const status = searchParams.get('status') || 'all';
     const sortBy = searchParams.get('sortBy') || 'assetNumber';
 
-    // Fetch fixed assets with categories
-    let query = supabase
-      .from('fixed_assets')
-      .select(`
-        id,
-        asset_number,
-        name,
-        purchase_date,
-        purchase_price,
-        depreciation_method,
-        useful_life_months,
-        residual_value,
-        accumulated_depreciation,
-        book_value,
-        status,
-        location,
-        currency,
-        asset_categories (
-          name
-        )
-      `)
-      .order('asset_number');
-
-    // Apply filters
+    const params: any[] = [companyId];
+    let statusClause = '';
     if (status !== 'all') {
-      query = query.eq('status', status);
+      params.push(status);
+      statusClause = ` AND fa.status = $${params.length}`;
     }
 
-    const { data: assets, error: assetsError } = await query;
+    const assetsResult = await db.query(
+      `SELECT fa.id,
+              fa.asset_number,
+              fa.name,
+              fa.purchase_date,
+              fa.purchase_price,
+              fa.depreciation_method,
+              fa.useful_life_months,
+              fa.residual_value,
+              fa.accumulated_depreciation,
+              fa.book_value,
+              fa.status,
+              fa.location,
+              fa.currency,
+              ac.name AS category_name
+       FROM fixed_assets fa
+       LEFT JOIN asset_categories ac ON ac.id = fa.category_id
+       WHERE fa.company_id = $1
+       ${statusClause}
+       ORDER BY fa.asset_number ASC`,
+      params
+    );
+    const assets = assetsResult.rows;
 
-    if (assetsError) {
-      console.error('Error fetching assets:', assetsError);
-      return NextResponse.json({ error: assetsError.message }, { status: 500 });
-    }
+    const currencyRpc = {
+      rpc: async (fn: string, args: any) => {
+        if (fn !== 'convert_currency') {
+          return { data: null, error: new Error('Unsupported RPC function') };
+        }
+        const result = await db.query<{ value: number }>(
+          `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+          [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+        );
+        return { data: result.rows[0]?.value ?? null, error: null };
+      },
+    };
 
     // Transform and calculate depreciation for each asset
     const assetDepreciationsPromises = (assets || []).map(async (asset: any) => {
@@ -193,7 +216,7 @@ export async function GET(request: NextRequest) {
         assetId: asset.id,
         assetNumber: asset.asset_number || '',
         assetName: asset.name || '',
-        category: asset.asset_categories?.name || 'Uncategorized',
+        category: asset.category_name || 'Uncategorized',
         purchaseDate: asset.purchase_date,
         purchasePrice: parseFloat(asset.purchase_price) || 0,
         depreciationMethod: asset.depreciation_method || 'straight_line',
@@ -248,7 +271,7 @@ export async function GET(request: NextRequest) {
 
       // Convert purchase price to USD
       const costUSD = await convertCurrency(
-        supabase,
+        currencyRpc,
         asset.purchasePrice,
         assetCurrency,
         'USD' as SupportedCurrency
@@ -256,7 +279,7 @@ export async function GET(request: NextRequest) {
 
       // Convert accumulated depreciation to USD
       const accumulatedUSD = await convertCurrency(
-        supabase,
+        currencyRpc,
         asset.accumulatedDepreciation,
         assetCurrency,
         'USD' as SupportedCurrency
@@ -264,7 +287,7 @@ export async function GET(request: NextRequest) {
 
       // Convert book value to USD
       const bookValueUSD = await convertCurrency(
-        supabase,
+        currencyRpc,
         asset.currentBookValue,
         assetCurrency,
         'USD' as SupportedCurrency
@@ -272,7 +295,7 @@ export async function GET(request: NextRequest) {
 
       // Convert annual depreciation to USD
       const annualDepUSD = await convertCurrency(
-        supabase,
+        currencyRpc,
         asset.annualDepreciation,
         assetCurrency,
         'USD' as SupportedCurrency
@@ -280,7 +303,7 @@ export async function GET(request: NextRequest) {
 
       // Convert monthly depreciation to USD
       const monthlyDepUSD = await convertCurrency(
-        supabase,
+        currencyRpc,
         asset.monthlyDepreciation,
         assetCurrency,
         'USD' as SupportedCurrency
@@ -306,9 +329,9 @@ export async function GET(request: NextRequest) {
         byCategory[cat] = { count: 0, cost: 0, accumulated: 0, bookValue: 0 };
       }
       
-      const costUSD = await convertCurrency(supabase, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
-      const accUSD = await convertCurrency(supabase, asset.accumulatedDepreciation, assetCurrency, 'USD' as SupportedCurrency) || asset.accumulatedDepreciation;
-      const bookUSD = await convertCurrency(supabase, asset.currentBookValue, assetCurrency, 'USD' as SupportedCurrency) || asset.currentBookValue;
+      const costUSD = await convertCurrency(currencyRpc, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
+      const accUSD = await convertCurrency(currencyRpc, asset.accumulatedDepreciation, assetCurrency, 'USD' as SupportedCurrency) || asset.accumulatedDepreciation;
+      const bookUSD = await convertCurrency(currencyRpc, asset.currentBookValue, assetCurrency, 'USD' as SupportedCurrency) || asset.currentBookValue;
       
       byCategory[cat].count += 1;
       byCategory[cat].cost += costUSD;
@@ -327,7 +350,7 @@ export async function GET(request: NextRequest) {
         byMethod[method] = { count: 0, cost: 0 };
       }
       
-      const costUSD = await convertCurrency(supabase, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
+      const costUSD = await convertCurrency(currencyRpc, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
       
       byMethod[method].count += 1;
       byMethod[method].cost += costUSD;
@@ -362,3 +385,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

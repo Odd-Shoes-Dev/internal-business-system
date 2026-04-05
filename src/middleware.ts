@@ -1,10 +1,10 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import type { CookieOptions } from '@supabase/ssr';
+
+const SESSION_COOKIE = 'blueox_session';
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({
+  const res = NextResponse.next({
     request: {
       headers: req.headers,
     },
@@ -27,36 +27,7 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: CookieOptions }>) {
-          cookiesToSet.forEach(({ name, value }) =>
-            req.cookies.set(name, value)
-          );
-          res = NextResponse.next({
-            request: {
-              headers: req.headers,
-            },
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options as any)
-          );
-        },
-      },
-    }
-  );
-
-  // Refresh session if expired - using getUser() for security
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const hasSession = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = [
@@ -78,7 +49,7 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith(path)
   );
 
-  if (isProtectedPath && !user) {
+  if (isProtectedPath && !hasSession) {
     const redirectUrl = new URL('/login', req.url);
     redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
@@ -104,47 +75,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Allow logged-in users to access onboarding pages, but redirect them away from other auth pages
-  if (isAuthPath && user && !isOnboardingPath) {
+  if (isAuthPath && hasSession && !isOnboardingPath) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
-  }
-
-  // Check subscription status for protected routes
-  if (isProtectedPath && user) {
-    // Skip billing and settings pages from subscription check
-    const skipSubscriptionCheck = ['/dashboard/billing', '/dashboard/settings'].some(
-      (path) => req.nextUrl.pathname.startsWith(path)
-    );
-
-    if (!skipSubscriptionCheck) {
-      // Get user's company subscription status
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.company_id) {
-        const { data: settings } = await supabase
-          .from('company_settings')
-          .select('subscription_status, trial_end_date')
-          .eq('company_id', profile.company_id)
-          .single();
-
-        // Redirect to billing if subscription is expired
-        if (settings?.subscription_status === 'expired') {
-          return NextResponse.redirect(new URL('/dashboard/billing?status=expired', req.url));
-        }
-
-        // Check if trial has ended
-        if (settings?.subscription_status === 'trial' && settings.trial_end_date) {
-          const trialEnd = new Date(settings.trial_end_date);
-          const now = new Date();
-          if (now > trialEnd) {
-            return NextResponse.redirect(new URL('/dashboard/billing?status=trial_expired', req.url));
-          }
-        }
-      }
-    }
   }
 
   return res;

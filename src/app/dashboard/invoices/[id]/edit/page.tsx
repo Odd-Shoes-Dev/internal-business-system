@@ -3,10 +3,10 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
-import { formatCurrency as currencyFormatter, convertCurrency } from '@/lib/currency';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { useCompany } from '@/contexts/company-context';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -40,6 +40,7 @@ interface InvoiceFormData {
 export default function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -100,38 +101,37 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   const loadData = async () => {
     try {
       setLoading(true);
+      const invoiceId = resolvedParams.id;
+      const query = company?.id ? `?company_id=${company.id}` : '';
 
-      // Load customers and products
-      const [customersRes, productsRes] = await Promise.all([
-        supabase.from('customers').select('*').eq('is_active', true).order('name'),
-        supabase.from('products').select('*').eq('is_active', true).order('name'),
+      const [customersRes, productsRes, invoiceRes] = await Promise.all([
+        fetch(`/api/customers${query}${query ? '&' : '?'}active=true&limit=500`, {
+          credentials: 'include',
+        }),
+        fetch(`/api/products${query}${query ? '&' : '?'}active=true&limit=500`, {
+          credentials: 'include',
+        }),
+        fetch(`/api/invoices/${invoiceId}`, { credentials: 'include' }),
       ]);
 
-      setCustomers(customersRes.data || []);
-      setProducts(productsRes.data || []);
+      if (!customersRes.ok || !productsRes.ok || !invoiceRes.ok) {
+        throw new Error('Failed to load invoice dependencies');
+      }
 
-      // Load invoice data
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', resolvedParams.id)
-        .single();
+      const customersJson = await customersRes.json();
+      const productsJson = await productsRes.json();
+      const invoiceJson = await invoiceRes.json();
 
-      if (invoiceError) throw invoiceError;
+      setCustomers(customersJson.data || []);
+      setProducts(productsJson.data || []);
 
-      // Load invoice lines
-      const { data: linesData, error: linesError } = await supabase
-        .from('invoice_lines')
-        .select('*')
-        .eq('invoice_id', resolvedParams.id)
-        .order('line_number');
-
-      if (linesError) throw linesError;
+      const invoiceData = invoiceJson.data;
+      const linesData = invoiceData.invoice_lines || [];
 
       setInvoice(invoiceData);
 
       // Populate form with existing data
-      const formData = {
+      const formData: InvoiceFormData = {
         customer_id: invoiceData.customer_id,
         invoice_date: invoiceData.invoice_date,
         due_date: invoiceData.due_date,
@@ -164,7 +164,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   };
 
   const handleProductChange = async (index: number, productId: string) => {
-    const product = products.find((p) => p.id === productId);
+      const product = products.find((p) => p.id === productId);
     if (product) {
       setValue(`lines.${index}.description`, product.name);
       
@@ -175,13 +175,19 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       let convertedPrice = product.unit_price;
       
       if (productCurrency !== invoiceCurrency) {
-        // Convert the product price to invoice currency
-        const converted = await convertCurrency(
-          supabase,
-          product.unit_price,
-          productCurrency as any,
-          invoiceCurrency as any
-        );
+        const conversionResponse = await fetch('/api/currency/convert', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: product.unit_price,
+            from_currency: productCurrency,
+            to_currency: invoiceCurrency,
+          }),
+        });
+
+        const conversionResult = conversionResponse.ok ? await conversionResponse.json() : null;
+        const converted = conversionResult?.data?.converted_amount ?? null;
         
         if (converted !== null) {
           convertedPrice = converted;
@@ -272,26 +278,11 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
     setSaving(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Calculate totals
-      const subtotal = calculateSubtotal();
-      const tax_amount = calculateTax();
-      const total = calculateTotal();
-
-      // Get AR account
-      const { data: arAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '1200')
-        .single();
-
-      // Update invoice
-      const { error: invoiceError } = await supabase
-        .from('invoices')
-        .update({
+      const response = await fetch(`/api/invoices/${resolvedParams.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           customer_id: data.customer_id,
           invoice_date: data.invoice_date,
           due_date: data.due_date,
@@ -299,44 +290,14 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
           po_number: data.po_number || null,
           notes: data.notes || null,
           currency: data.currency || 'USD',
-          subtotal,
-          tax_amount,
-          total,
-          ar_account_id: arAccount?.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', resolvedParams.id);
+          lines: data.lines,
+        }),
+      });
 
-      if (invoiceError) throw invoiceError;
-
-      // Delete existing invoice lines
-      const { error: deleteError } = await supabase
-        .from('invoice_lines')
-        .delete()
-        .eq('invoice_id', resolvedParams.id);
-
-      if (deleteError) throw deleteError;
-
-      // Create new invoice lines
-      const invoiceLines = data.lines.map((line, index) => ({
-        invoice_id: resolvedParams.id,
-        line_number: index + 1,
-        product_id: line.product_id || null,
-        description: line.description,
-        quantity: line.quantity,
-        unit_price: line.unit_price,
-        discount_percent: line.discount_percent,
-        discount_amount: (line.quantity * line.unit_price) * (line.discount_percent / 100),
-        tax_rate: line.tax_rate,
-        tax_amount: calculateLineTax(line),
-        line_total: calculateLineTotal(line),
-      }));
-
-      const { error: linesError } = await supabase
-        .from('invoice_lines')
-        .insert(invoiceLines);
-
-      if (linesError) throw linesError;
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to update invoice');
+      }
 
       // If invoice was posted, we need to update the journal entry
       if (invoice?.journal_entry_id) {

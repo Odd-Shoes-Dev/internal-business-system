@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import type { Customer as CustomerType } from '@/types/database';
@@ -42,40 +41,29 @@ export default function CustomerDetailPage({ params }: PageProps) {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    loadCustomer();
-    loadInvoices();
+    loadCustomerAndInvoices();
   }, [id]);
 
-  const loadCustomer = async () => {
+  const loadCustomerAndInvoices = async () => {
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/customers/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
-      setCustomer(data);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load customer');
+      }
+
+      const payload = await response.json();
+      const customerData = payload?.data || null;
+      setCustomer(customerData);
+      setInvoices(customerData?.recent_invoices || []);
     } catch (error) {
       console.error('Failed to load customer:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadInvoices = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('id, invoice_number, invoice_date, due_date, total, currency, status')
-        .eq('customer_id', id)
-        .order('invoice_date', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setInvoices(data || []);
-    } catch (error) {
-      console.error('Failed to load invoices:', error);
     }
   };
 
@@ -86,18 +74,21 @@ export default function CustomerDetailPage({ params }: PageProps) {
 
     try {
       setDeleting(true);
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/customers/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete customer');
+      }
 
-      alert('Customer deleted successfully');
+      alert(payload?.message || 'Customer deleted successfully');
       router.push('/dashboard/customers');
     } catch (error) {
       console.error('Failed to delete customer:', error);
-      alert('Failed to delete customer. They may have associated invoices.');
+      alert(error instanceof Error ? error.message : 'Failed to delete customer');
     } finally {
       setDeleting(false);
     }

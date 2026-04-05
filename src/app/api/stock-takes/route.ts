@@ -1,41 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const stockTakeId = searchParams.get('stock_take_id');
+    const companyId = getCompanyIdFromRequest(request);
 
-    let query = supabase
-      .from('stock_takes')
-      .select(
-        `
-        *,
-        inventory_locations (id, name, type),
-        user_profiles!stock_takes_counted_by_fkey (full_name)
-      `
-      )
-      .order('stock_take_date', { ascending: false });
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const params: any[] = [companyId];
+    const where = ['st.company_id = $1'];
 
     if (status) {
-      query = query.eq('status', status);
+      params.push(status);
+      where.push(`st.status = $${params.length}`);
     }
 
     if (stockTakeId) {
-      query = query.eq('id', stockTakeId);
+      params.push(stockTakeId);
+      where.push(`st.id = $${params.length}`);
     }
 
-    const { data, error } = await query;
+    const result = await db.query(
+      `SELECT st.*,
+              il.id AS location_ref_id,
+              il.name AS location_name,
+              il.type AS location_type,
+              up.full_name AS counted_by_full_name
+       FROM stock_takes st
+       LEFT JOIN inventory_locations il ON il.id = st.location_id
+       LEFT JOIN user_profiles up ON up.id = st.counted_by
+       WHERE ${where.join(' AND ')}
+       ORDER BY st.stock_take_date DESC`,
+      params
+    );
 
-    if (error) throw error;
+    const data = result.rows.map((row: any) => ({
+      ...row,
+      inventory_locations: row.location_ref_id
+        ? {
+            id: row.location_ref_id,
+            name: row.location_name,
+            type: row.location_type,
+          }
+        : null,
+      user_profiles: row.counted_by_full_name
+        ? {
+            full_name: row.counted_by_full_name,
+          }
+        : null,
+    }));
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -46,67 +74,69 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     const body = await request.json();
-    const {
-      reference_number,
-      stock_take_date,
-      location_id,
-      type,
-      notes,
-      lines,
-    } = body;
+    const { reference_number, stock_take_date, location_id, type, notes, lines } = body;
 
-    // Validate required fields
     if (!reference_number || !stock_take_date || !location_id || !type) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const companyId = body.company_id || getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const locationResult = await db.query(
+      'SELECT id FROM inventory_locations WHERE id = $1 AND company_id = $2 LIMIT 1',
+      [location_id, companyId]
+    );
+    if (!locationResult.rowCount) {
+      return NextResponse.json({ error: 'Location not found for company' }, { status: 404 });
+    }
+
+    const response = await db.transaction(async (tx) => {
+      const stockTakeResult = await tx.query(
+        `INSERT INTO stock_takes (
+           company_id, reference_number, stock_take_date, location_id,
+           type, status, counted_by, notes
+         ) VALUES ($1, $2, $3::date, $4, $5, 'draft', $6, $7)
+         RETURNING *`,
+        [companyId, reference_number, stock_take_date, location_id, type, user.id, notes || null]
       );
-    }
 
-    // Create stock take
-    const { data: stockTake, error: stockTakeError } = await supabase
-      .from('stock_takes')
-      .insert({
-        reference_number,
-        stock_take_date,
-        location_id,
-        type,
-        status: 'draft',
-        counted_by: user.id,
-        notes: notes || null,
-      })
-      .select()
-      .single();
+      const stockTake = stockTakeResult.rows[0];
 
-    if (stockTakeError) throw stockTakeError;
+      if (lines && lines.length > 0) {
+        for (const line of lines) {
+          await tx.query(
+            `INSERT INTO stock_take_lines (
+               stock_take_id, product_id, expected_quantity, counted_quantity, notes
+             ) VALUES ($1, $2, $3, $4, $5)`,
+            [
+              stockTake.id,
+              line.product_id,
+              Number(line.expected_quantity || 0),
+              Number(line.counted_quantity || 0),
+              line.notes || null,
+            ]
+          );
+        }
+      }
 
-    // Create lines if provided
-    if (lines && lines.length > 0) {
-      const linesData = lines.map((line: any) => ({
-        stock_take_id: stockTake.id,
-        product_id: line.product_id,
-        expected_quantity: line.expected_quantity,
-        counted_quantity: line.counted_quantity,
-        variance: line.counted_quantity - line.expected_quantity,
-        notes: line.notes || null,
-      }));
+      return stockTake;
+    });
 
-      const { error: linesError } = await supabase
-        .from('stock_take_lines')
-        .insert(linesData);
-
-      if (linesError) throw linesError;
-    }
-
-    return NextResponse.json(stockTake, { status: 201 });
+    return NextResponse.json(response, { status: 201 });
   } catch (error: any) {
     console.error('Error creating stock take:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

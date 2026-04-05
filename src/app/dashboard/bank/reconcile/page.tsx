@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -30,6 +30,7 @@ interface Transaction {
 }
 
 export default function ReconcilePage() {
+  const { company } = useCompany();
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -40,27 +41,29 @@ export default function ReconcilePage() {
 
   useEffect(() => {
     loadBankAccounts();
-  }, []);
+  }, [company?.id]);
 
   useEffect(() => {
     if (selectedAccount) {
       loadTransactions();
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, company?.id]);
 
   const loadBankAccounts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (!company?.id) {
+        return;
       }
-      setBankAccounts(data || []);
+
+      const response = await fetch(`/api/bank-accounts?company_id=${company.id}&active=true`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load bank accounts');
+      }
+
+      const result = await response.json();
+      setBankAccounts(result.data || []);
     } catch (error) {
       console.error('Failed to load bank accounts:', error);
     }
@@ -68,16 +71,21 @@ export default function ReconcilePage() {
 
   const loadTransactions = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('bank_transactions')
-        .select('*')
-        .eq('bank_account_id', selectedAccount)
-        .eq('is_reconciled', false)
-        .order('transaction_date', { ascending: false });
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setTransactions(data || []);
+      setLoading(true);
+      const response = await fetch(
+        `/api/bank-transactions?company_id=${company.id}&account_id=${selectedAccount}&reconciled=unreconciled`,
+        { credentials: 'include' }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load transactions');
+      }
+
+      const result = await response.json();
+      setTransactions(result.data || []);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {
@@ -121,15 +129,21 @@ export default function ReconcilePage() {
     try {
       setLoading(true);
 
-      // Mark selected transactions as reconciled
-      const { error } = await supabase
-        .from('bank_transactions')
-        .update({ 
-          is_reconciled: true
-        })
-        .in('id', Array.from(selectedTransactions));
+      const response = await fetch('/api/bank-transactions/reconcile', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_id: company?.id,
+          transaction_ids: Array.from(selectedTransactions),
+          is_reconciled: true,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to reconcile transactions');
+      }
 
       alert('Reconciliation completed successfully!');
       setSelectedTransactions(new Set());

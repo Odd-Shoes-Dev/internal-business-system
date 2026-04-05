@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorPurchase {
   vendorId: string;
@@ -43,57 +43,61 @@ interface PurchasesByVendorData {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const vendorType = searchParams.get('vendorType') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalPurchases';
     const minAmount = parseFloat(searchParams.get('minAmount') || '0');
 
-    // Fetch bills with vendor data for the period
-    const { data: bills, error: billsError } = await supabase
-      .from('bills')
-      .select(`
-        id,
-        vendor_id,
-        bill_date,
-        total,
-        currency,
-        payment_terms,
-        vendors (
-          id,
-          name,
-          company_name
-        )
-      `)
-      .gte('bill_date', startDate)
-      .lte('bill_date', endDate)
-      .neq('status', 'void')
-      .order('bill_date');
-
-    if (billsError) {
-      console.error('Error fetching bills:', billsError);
-      return NextResponse.json({ error: billsError.message }, { status: 500 });
-    }
+    const billsResult = await db.query(
+      `SELECT b.id,
+              b.vendor_id,
+              b.bill_date,
+              b.total,
+              b.currency,
+              b.payment_terms,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.company_name AS vendor_company_name
+       FROM bills b
+       LEFT JOIN vendors v ON v.id = b.vendor_id
+       WHERE b.company_id = $1
+         AND b.bill_date >= $2::date
+         AND b.bill_date <= $3::date
+         AND b.status <> 'void'
+       ORDER BY b.bill_date ASC`,
+      [companyId, startDate, endDate]
+    );
+    const bills = billsResult.rows;
 
     // Fetch bill lines to get category/account details
     const billIds = (bills || []).map(bill => bill.id);
     let categoryData: any = {};
 
     if (billIds.length > 0) {
-      const { data: lines, error: linesError } = await supabase
-        .from('bill_lines')
-        .select(`
-          bill_id,
-          description,
-          line_total
-        `)
-        .in('bill_id', billIds);
-
-      if (linesError) {
-        console.error('Error fetching bill lines:', linesError);
-      }
+      const linesResult = await db.query(
+        `SELECT bill_id, description, line_total
+         FROM bill_lines
+         WHERE bill_id = ANY($1::uuid[])`,
+        [billIds]
+      );
+      const lines = linesResult.rows;
 
       // Group categories by bill
       (lines || []).forEach((line: any) => {
@@ -111,13 +115,10 @@ export async function GET(request: NextRequest) {
     const vendorMap = new Map<string, VendorPurchase>();
 
     for (const bill of bills || []) {
-      if (!bill.vendors) continue;
-
-      const vendorData: any = Array.isArray(bill.vendors) ? bill.vendors[0] : bill.vendors;
-      if (!vendorData) continue;
+      if (!bill.vendor_ref_id) continue;
 
       const vendorId = bill.vendor_id;
-      const vendorName = vendorData.company_name || vendorData.name;
+      const vendorName = bill.vendor_company_name || bill.vendor_name;
       const vendorTypeRaw = 'Supplier'; // Default since vendor_type doesn't exist in vendors table
       const paymentTerms = bill.payment_terms || 30;
 
@@ -142,10 +143,22 @@ export async function GET(request: NextRequest) {
       // Convert total to USD for reporting
       const total = parseFloat(bill.total);
       const totalUSD = await convertCurrency(
-        supabase,
+        {
+          rpc: async (fn: string, args: any) => {
+            if (fn !== 'convert_currency') {
+              return { data: null, error: new Error('Unsupported RPC function') };
+            }
+            const result = await db.query<{ value: number }>(
+              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+            );
+            return { data: result.rows[0]?.value ?? null, error: null };
+          },
+        },
         total,
         (bill.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency
+        'USD' as SupportedCurrency,
+        endDate
       ) || total;
       
       vendor.totalPurchases += totalUSD;
@@ -260,3 +273,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

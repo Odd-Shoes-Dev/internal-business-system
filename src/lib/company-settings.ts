@@ -1,6 +1,5 @@
 // Company settings and utilities - Multi-tenant version
-import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from '@/types/database';
+import { getNeonPool } from '@/lib/db/neon';
 
 export interface CompanySettings {
   id: string;
@@ -23,23 +22,39 @@ export interface CompanySettings {
  * Fetch company settings by ID
  */
 export async function getCompanySettings(companyId: string): Promise<CompanySettings | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  const { data, error } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('id', companyId)
-    .single();
+  try {
+    const pool = getNeonPool();
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        phone,
+        address,
+        city,
+        country,
+        tax_id,
+        registration_number,
+        logo_url,
+        website,
+        currency,
+        fiscal_year_start,
+        settings
+       FROM companies
+       WHERE id = $1
+       LIMIT 1`,
+      [companyId]
+    );
 
-  if (error) {
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return result.rows[0] as CompanySettings;
+  } catch (error) {
     console.error('Error fetching company settings:', error);
     return null;
   }
-
-  return data;
 }
 
 /**
@@ -49,20 +64,46 @@ export async function updateCompanySettings(
   companyId: string, 
   settings: Partial<CompanySettings>
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  // @ts-ignore - Type mismatch between CompanySettings and database schema
-  const { error } = await supabase
-    .from('companies')
-    .update(settings)
-    .eq('id', companyId);
+  try {
+    const pool = getNeonPool();
+    const allowedColumns: Array<keyof CompanySettings> = [
+      'name',
+      'email',
+      'phone',
+      'address',
+      'city',
+      'country',
+      'tax_id',
+      'registration_number',
+      'logo_url',
+      'website',
+      'currency',
+      'fiscal_year_start',
+      'settings',
+    ];
 
-  if (error) {
+    const entries = Object.entries(settings).filter(([key, value]) => {
+      return allowedColumns.includes(key as keyof CompanySettings) && value !== undefined;
+    });
+
+    if (entries.length === 0) {
+      return { success: true };
+    }
+
+    const sets = entries.map(([key], idx) => `${key} = $${idx + 1}`);
+    const values = entries.map(([, value]) => value);
+
+    values.push(companyId);
+
+    await pool.query(
+      `UPDATE companies
+       SET ${sets.join(', ')}, updated_at = NOW()
+       WHERE id = $${values.length}`,
+      values
+    );
+  } catch (error: any) {
     console.error('Error updating company settings:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || 'Failed to update settings' };
   }
 
   return { success: true };
@@ -75,62 +116,33 @@ export async function uploadCompanyLogo(
   companyId: string,
   file: File
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  try {
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${companyId}-${Date.now()}.${fileExt}`;
-    const filePath = `company-logos/${fileName}`;
-
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from('assets')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      return { success: false, error: uploadError.message };
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('assets')
-      .getPublicUrl(filePath);
-
-    // Update company record
-    await updateCompanySettings(companyId, { logo_url: publicUrl });
-
-    return { success: true, url: publicUrl };
-  } catch (error) {
-    console.error('Error uploading logo:', error);
-    return { success: false, error: 'Failed to upload logo' };
-  }
+  void companyId;
+  void file;
+  return {
+    success: false,
+    error: 'Logo upload is not configured. Use S3/Cloud storage and save the URL in companies.logo_url.',
+  };
 }
 
 /**
  * Get enabled modules for a company
  */
 export async function getCompanyModules(companyId: string): Promise<string[]> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  const { data, error } = await supabase
-    .from('subscription_modules')
-    .select('module_id')
-    .eq('company_id', companyId)
-    .eq('is_active', true);
+  try {
+    const pool = getNeonPool();
+    const result = await pool.query(
+      `SELECT module_id
+       FROM subscription_modules
+       WHERE company_id = $1
+         AND is_active = true`,
+      [companyId]
+    );
 
-  if (error) {
+    return result.rows.map((row: { module_id: string }) => row.module_id);
+  } catch (error) {
     console.error('Error fetching company modules:', error);
     return [];
   }
-
-  return data?.map(m => m.module_id) || [];
 }
 
 /**
@@ -140,25 +152,22 @@ export async function enableModule(
   companyId: string, 
   moduleId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  // TODO: This should integrate with Stripe to add subscription item
-  const { error } = await supabase
-    .from('subscription_modules')
-    .upsert({ 
-      company_id: companyId, 
-      module_id: moduleId, 
-      is_active: true,
-      monthly_price: 0, // This should come from AVAILABLE_MODULES in modules.ts
-      currency: 'USD'
-    });
-
-  if (error) {
+  try {
+    const pool = getNeonPool();
+    await pool.query(
+      `INSERT INTO subscription_modules (
+         company_id, module_id, is_active, monthly_price, currency, added_at, updated_at
+       ) VALUES ($1, $2, true, 0, 'USD', NOW(), NOW())
+       ON CONFLICT (company_id, module_id, is_active)
+       DO UPDATE SET
+         is_active = true,
+         removed_at = NULL,
+         updated_at = NOW()`,
+      [companyId, moduleId]
+    );
+  } catch (error: any) {
     console.error('Error enabling module:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || 'Failed to enable module' };
   }
 
   return { success: true };
@@ -171,24 +180,19 @@ export async function disableModule(
   companyId: string, 
   moduleId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  // TODO: This should integrate with Stripe to cancel subscription item
-  const { error } = await supabase
-    .from('subscription_modules')
-    .update({ 
-      is_active: false,
-      removed_at: new Date().toISOString()
-    })
-    .eq('company_id', companyId)
-    .eq('module_id', moduleId);
-
-  if (error) {
+  try {
+    const pool = getNeonPool();
+    await pool.query(
+      `UPDATE subscription_modules
+       SET is_active = false,
+           removed_at = NOW(),
+           updated_at = NOW()
+       WHERE company_id = $1 AND module_id = $2`,
+      [companyId, moduleId]
+    );
+  } catch (error: any) {
     console.error('Error disabling module:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || 'Failed to disable module' };
   }
 
   return { success: true };

@@ -1,17 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
-import { validatePeriodLock } from '@/lib/accounting/period-lock';
+import { asQueryExecutor, validatePeriodLockWithDb } from '@/lib/accounting/provider-accounting';
 
 // POST /api/cafe/sales - Record cafe sales
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
+
+    const body = await request.json();
 
     // Validate required fields
     if (!body.sale_date || !body.total || body.total <= 0) {
@@ -26,29 +25,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('company_id', body.company_id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    const companyAccessError = await requireCompanyAccess(user.id, body.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     // Check if period is closed
-    const periodError = await validatePeriodLock(supabase, body.sale_date, body.company_id);
+    const periodError = await validatePeriodLockWithDb(asQueryExecutor(db), body.sale_date, body.company_id);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 403 });
     }
 
     // Get cafe revenue accounts
-    const { data: accounts } = await supabase
-      .from('accounts')
-      .select('id, code, name')
-      .in('code', ['4210', '4220', '4230', '1010']) // Food, Beverage, Catering, Cash
-      .order('code');
+    const accountsResult = await db.query(
+      `SELECT id, code, name
+       FROM accounts
+       WHERE code = ANY($1::text[])
+         AND (company_id = $2 OR company_id IS NULL)
+         AND is_active = true
+       ORDER BY code ASC`,
+      [['4210', '4220', '4230', '1010'], body.company_id]
+    );
+    const accounts = accountsResult.rows as Array<{ id: string; code: string; name: string }>;
 
     if (!accounts || accounts.length < 4) {
       return NextResponse.json(
@@ -74,84 +72,105 @@ export async function POST(request: NextRequest) {
     const ref = `CAFE-${entryDate.getFullYear()}${(entryDate.getMonth() + 1).toString().padStart(2, '0')}${entryDate.getDate().toString().padStart(2, '0')}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     const periodLabel = body.period === 'daily' ? 'Daily' : body.period === 'weekly' ? 'Weekly' : 'Monthly';
-    
-    const { data: journalEntry, error: journalError } = await supabase
-      .from('journal_entries')
-      .insert({
-        entry_number: ref,
-        entry_date: body.sale_date,
-        description: `${periodLabel} Cafe Sales - ${new Date(body.sale_date).toLocaleDateString()}`,
-        memo: body.notes || null,
-        created_by: user.id,
-        status: 'posted',
-      })
-      .select()
-      .single();
+    const response = await db.transaction(async (tx) => {
+      const entryResult = await tx.query(
+        `INSERT INTO journal_entries (
+           company_id,
+           entry_number,
+           entry_date,
+           description,
+           memo,
+           created_by,
+           posted_by,
+           posted_at,
+           status,
+           source_module
+         ) VALUES (
+           $1, $2, $3::date, $4, $5, $6, $6, NOW(), 'posted', 'cafe'
+         )
+         RETURNING *`,
+        [
+          body.company_id,
+          ref,
+          body.sale_date,
+          `${periodLabel} Cafe Sales - ${new Date(body.sale_date).toLocaleDateString()}`,
+          body.notes || null,
+          user.id,
+        ]
+      );
+      const journalEntry = entryResult.rows[0] as any;
 
-    if (journalError) {
-      return NextResponse.json({ error: journalError.message }, { status: 400 });
-    }
+      // Create journal lines
+      const lines: Array<{ account_id: string; debit: number; credit: number; description: string }> = [];
+      let lineNumber = 1;
 
-    // Create journal lines
-    const lines = [];
-    let lineNumber = 1;
+      // Debit: Cash account (asset increase)
+      lines.push({
+        account_id: cashAccount.id,
+        debit: Number(body.total),
+        credit: 0,
+        description: `${periodLabel} sales receipt`,
+      });
 
-    // Debit: Cash account (asset increase)
-    lines.push({
-      journal_entry_id: journalEntry.id,
-      line_number: lineNumber++,
-      account_id: cashAccount.id,
-      debit: body.total,
-      credit: 0,
-      description: `${periodLabel} sales receipt`,
+      // Credits: Revenue accounts
+      if (Number(body.food_sales || 0) > 0) {
+        lines.push({
+          account_id: foodAccount.id,
+          debit: 0,
+          credit: Number(body.food_sales),
+          description: 'Food sales',
+        });
+      }
+
+      if (Number(body.beverage_sales || 0) > 0) {
+        lines.push({
+          account_id: beverageAccount.id,
+          debit: 0,
+          credit: Number(body.beverage_sales),
+          description: 'Beverage sales',
+        });
+      }
+
+      if (Number(body.catering_sales || 0) > 0) {
+        lines.push({
+          account_id: cateringAccount.id,
+          debit: 0,
+          credit: Number(body.catering_sales),
+          description: 'Catering sales',
+        });
+      }
+
+      for (const line of lines) {
+        await tx.query(
+          `INSERT INTO journal_lines (
+             company_id,
+             journal_entry_id,
+             line_number,
+             account_id,
+             debit,
+             credit,
+             base_debit,
+             base_credit,
+             description
+           ) VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7)`,
+          [
+            body.company_id,
+            journalEntry.id,
+            lineNumber,
+            line.account_id,
+            line.debit,
+            line.credit,
+            line.description,
+          ]
+        );
+        lineNumber += 1;
+      }
+
+      return journalEntry;
     });
 
-    // Credits: Revenue accounts
-    if (body.food_sales > 0) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        line_number: lineNumber++,
-        account_id: foodAccount.id,
-        debit: 0,
-        credit: body.food_sales,
-        description: 'Food sales',
-      });
-    }
-
-    if (body.beverage_sales > 0) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        line_number: lineNumber++,
-        account_id: beverageAccount.id,
-        debit: 0,
-        credit: body.beverage_sales,
-        description: 'Beverage sales',
-      });
-    }
-
-    if (body.catering_sales > 0) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        line_number: lineNumber++,
-        account_id: cateringAccount.id,
-        debit: 0,
-        credit: body.catering_sales,
-        description: 'Catering sales',
-      });
-    }
-
-    const { error: linesError } = await supabase
-      .from('journal_lines')
-      .insert(lines);
-
-    if (linesError) {
-      // Rollback journal entry
-      await supabase.from('journal_entries').delete().eq('id', journalEntry.id);
-      return NextResponse.json({ error: linesError.message }, { status: 400 });
-    }
-
     return NextResponse.json({ 
-      data: journalEntry,
+      data: response,
       message: 'Sales recorded successfully'
     }, { status: 201 });
 

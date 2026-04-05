@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // PATCH /api/payroll/[id] - Update payroll period (including status changes and GL posting)
@@ -7,30 +7,40 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await params;
     const body = await request.json();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Get current payroll period
-    const { data: period, error: periodError } = await supabase
-      .from('payroll_periods')
-      .select('*, payslips(*)')
-      .eq('id', id)
-      .single();
+    const periodResult = await db.query(
+      'SELECT * FROM payroll_periods WHERE id = $1 LIMIT 1',
+      [id]
+    );
+    const period = periodResult.rows[0];
 
-    if (periodError || !period) {
+    if (!period) {
       return NextResponse.json({ error: 'Payroll period not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, period.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const payslipsResult = await db.query(
+      'SELECT * FROM payroll_payslips WHERE payroll_period_id = $1',
+      [id]
+    );
+    const payslips = payslipsResult.rows;
 
     // Check if status is changing to 'paid' - this requires GL posting
     if (body.status === 'paid' && period.status !== 'paid') {
       // Verify we have payslips
-      if (!period.payslips || period.payslips.length === 0) {
+      if (!payslips || payslips.length === 0) {
         return NextResponse.json(
           { error: 'Cannot mark payroll as paid without payslips' },
           { status: 400 }
@@ -38,177 +48,172 @@ export async function PATCH(
       }
 
       // Check if accounts exist for GL posting
-      const { data: salaryExpenseAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '5100') // Salary Expense
-        .single();
+      const accountsResult = await db.query(
+        `SELECT id, code
+         FROM accounts
+         WHERE code = ANY($1)
+           AND (company_id = $2 OR company_id IS NULL)
+         ORDER BY (company_id = $2) DESC`,
+        [['5100', '5120', '2200', '2210'], period.company_id]
+      );
 
-      const { data: nssfExpenseAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '5120') // NSSF Employer Expense
-        .single();
+      const accountMap = new Map<string, string>();
+      for (const row of accountsResult.rows as any[]) {
+        if (!accountMap.has(row.code)) {
+          accountMap.set(row.code, row.id);
+        }
+      }
 
-      const { data: payePayableAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '2200') // PAYE Payable
-        .single();
+      const salaryExpenseAccountId = accountMap.get('5100');
+      const nssfExpenseAccountId = accountMap.get('5120');
+      const payePayableAccountId = accountMap.get('2200');
+      const nssfPayableAccountId = accountMap.get('2210');
 
-      const { data: nssfPayableAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '2210') // NSSF Payable
-        .single();
+      const bankAccountResult = await db.query(
+        `SELECT id, name, gl_account_id
+         FROM bank_accounts
+         WHERE company_id = $1
+           AND is_primary = true
+         LIMIT 1`,
+        [period.company_id]
+      );
+      const bankAccount = bankAccountResult.rows[0];
 
-      const { data: bankAccounts } = await supabase
-        .from('bank_accounts')
-        .select('id, name, gl_account_id')
-        .eq('is_primary', true)
-        .single();
-
-      if (!salaryExpenseAccount || !nssfExpenseAccount || !payePayableAccount || !nssfPayableAccount) {
+      if (!salaryExpenseAccountId || !nssfExpenseAccountId || !payePayableAccountId || !nssfPayableAccountId) {
         return NextResponse.json({
           error: 'Required GL accounts not found. Please ensure accounts 5100, 5120, 2200, 2210 exist in chart of accounts.',
         }, { status: 400 });
       }
 
-      if (!bankAccounts || !bankAccounts.gl_account_id) {
+      if (!bankAccount || !bankAccount.gl_account_id) {
         return NextResponse.json({
           error: 'Primary bank account not configured or not linked to GL account',
         }, { status: 400 });
       }
 
       // Calculate totals from payslips
-      const totalGross = period.total_gross || 0;
-      const totalNet = period.total_net || 0;
-      const totalPaye = period.total_paye || 0;
-      const totalNssfEmployee = period.payslips.reduce((sum: number, p: any) => sum + (p.nssf_employee || 0), 0);
-      const totalNssfEmployer = period.payslips.reduce((sum: number, p: any) => sum + (p.nssf_employer || 0), 0);
-
-      // Generate journal entry number
-      const year = new Date(period.payment_date).getFullYear();
-      const { data: lastEntry } = await supabase
-        .from('journal_entries')
-        .select('entry_number')
-        .like('entry_number', `JE-${year}-%`)
-        .order('entry_number', { ascending: false })
-        .limit(1)
-        .single();
-
-      let entryNumber;
-      if (lastEntry?.entry_number) {
-        const lastNum = parseInt(lastEntry.entry_number.split('-')[2]);
-        entryNumber = `JE-${year}-${String(lastNum + 1).padStart(4, '0')}`;
-      } else {
-        entryNumber = `JE-${year}-0001`;
-      }
-
-      // Create journal entry for payroll
-      const { data: journalEntry, error: jeError } = await supabase
-        .from('journal_entries')
-        .insert({
-          entry_number: entryNumber,
-          entry_date: period.payment_date,
-          description: `Payroll payment for ${period.period_name}`,
-          reference: `PAYROLL-${period.id.substring(0, 8)}`,
-          status: 'posted',
-          source_module: 'payroll',
-          source_document_id: period.id,
-          created_by: user.id,
-          posted_by: user.id,
-          posted_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (jeError) {
-        console.error('Failed to create journal entry:', jeError);
-        return NextResponse.json({
-          error: 'Failed to create journal entry for payroll',
-          details: jeError.message,
-        }, { status: 400 });
-      }
+      const totalGross = Number(period.total_gross || 0);
+      const totalNet = Number(period.total_net || 0);
+      const totalPaye = Number(period.total_paye || 0);
+      const totalNssfEmployee = payslips.reduce((sum: number, p: any) => sum + Number(p.nssf_employee || 0), 0);
+      const totalNssfEmployer = payslips.reduce((sum: number, p: any) => sum + Number(p.nssf_employer || 0), 0);
 
       // Create journal lines
       const journalLines = [
         // 1. Debit Salary Expense (gross salary)
         {
-          journal_entry_id: journalEntry.id,
-          account_id: salaryExpenseAccount.id,
+          account_id: salaryExpenseAccountId,
           debit: totalGross,
           credit: 0,
           description: `Salary expense - ${period.period_name}`,
-          created_by: user.id,
         },
         // 2. Debit NSSF Employer Expense (10% employer contribution)
         {
-          journal_entry_id: journalEntry.id,
-          account_id: nssfExpenseAccount.id,
+          account_id: nssfExpenseAccountId,
           debit: totalNssfEmployer,
           credit: 0,
           description: `NSSF employer contribution - ${period.period_name}`,
-          created_by: user.id,
         },
         // 3. Credit Bank Account (net pay to employees)
         {
-          journal_entry_id: journalEntry.id,
-          account_id: bankAccounts.gl_account_id,
+          account_id: bankAccount.gl_account_id,
           debit: 0,
           credit: totalNet,
           description: `Net salary payment - ${period.period_name}`,
-          created_by: user.id,
         },
         // 4. Credit PAYE Payable (tax withholding)
         {
-          journal_entry_id: journalEntry.id,
-          account_id: payePayableAccount.id,
+          account_id: payePayableAccountId,
           debit: 0,
           credit: totalPaye,
           description: `PAYE withholding - ${period.period_name}`,
-          created_by: user.id,
         },
         // 5. Credit NSSF Payable (employee + employer contributions)
         {
-          journal_entry_id: journalEntry.id,
-          account_id: nssfPayableAccount.id,
+          account_id: nssfPayableAccountId,
           debit: 0,
           credit: totalNssfEmployee + totalNssfEmployer,
           description: `NSSF payable (employee + employer) - ${period.period_name}`,
-          created_by: user.id,
         },
       ];
 
-      const { error: jlError } = await supabase
-        .from('journal_lines')
-        .insert(journalLines);
-
-      if (jlError) {
-        console.error('Failed to create journal lines:', jlError);
-        return NextResponse.json({
-          error: 'Failed to create journal lines for payroll',
-          details: jlError.message,
-        }, { status: 400 });
+      const totalDebits = journalLines.reduce((sum, l) => sum + Number(l.debit || 0), 0);
+      const totalCredits = journalLines.reduce((sum, l) => sum + Number(l.credit || 0), 0);
+      if (Math.abs(totalDebits - totalCredits) > 0.01) {
+        return NextResponse.json(
+          { error: `Journal entry not balanced. Debits: ${totalDebits}, Credits: ${totalCredits}` },
+          { status: 400 }
+        );
       }
 
-      // Update payroll period with journal entry reference and paid status
-      const { data: updatedPeriod, error: updateError } = await supabase
-        .from('payroll_periods')
-        .update({
-          status: 'paid',
-          journal_entry_id: journalEntry.id,
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const result = await db.transaction(async (tx) => {
+        const entryNumberResult = await tx.query('SELECT generate_journal_entry_number() AS entry_number');
+        const entryNumber = entryNumberResult.rows[0]?.entry_number;
+        if (!entryNumber) {
+          throw new Error('Failed to create journal entry number');
+        }
 
-      if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
-      }
+        const journalEntryResult = await tx.query(
+          `INSERT INTO journal_entries (
+             company_id, entry_number, entry_date, description, reference,
+             status, source_module, source_document_id, created_by, posted_by, posted_at
+           ) VALUES (
+             $1, $2, $3::date, $4, $5,
+             'posted', 'payroll', $6, $7, $7, NOW()
+           )
+           RETURNING *`,
+          [
+            period.company_id,
+            entryNumber,
+            period.payment_date,
+            `Payroll payment for ${period.period_name}`,
+            `PAYROLL-${String(period.id).substring(0, 8)}`,
+            period.id,
+            user.id,
+          ]
+        );
+
+        const journalEntry = journalEntryResult.rows[0];
+
+        let lineNumber = 1;
+        for (const line of journalLines) {
+          await tx.query(
+            `INSERT INTO journal_lines (
+               company_id, journal_entry_id, line_number, account_id, debit, credit, description
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              period.company_id,
+              journalEntry.id,
+              lineNumber,
+              line.account_id,
+              Number(line.debit || 0),
+              Number(line.credit || 0),
+              line.description,
+            ]
+          );
+          lineNumber += 1;
+        }
+
+        const updatedPeriodResult = await tx.query(
+          `UPDATE payroll_periods
+           SET status = 'paid',
+               journal_entry_id = $2,
+               approved_by = $3,
+               approved_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $1
+           RETURNING *`,
+          [id, journalEntry.id, user.id]
+        );
+
+        return {
+          journalEntry,
+          updatedPeriod: updatedPeriodResult.rows[0],
+        };
+      });
+
+      const updatedPeriod = result.updatedPeriod;
+      const journalEntry = result.journalEntry;
 
       return NextResponse.json({
         data: updatedPeriod,
@@ -228,16 +233,31 @@ export async function PATCH(
       updateData.approved_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
-      .from('payroll_periods')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const disallowed = new Set(['id', 'company_id', 'created_by', 'created_at']);
+    const setParts: string[] = [];
+    const values: any[] = [id];
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    for (const [key, value] of Object.entries(updateData)) {
+      if (disallowed.has(key)) {
+        continue;
+      }
+      values.push(value);
+      setParts.push(`${key} = $${values.length}`);
     }
+
+    if (setParts.length === 0) {
+      const dataResult = await db.query('SELECT * FROM payroll_periods WHERE id = $1 LIMIT 1', [id]);
+      return NextResponse.json({ data: dataResult.rows[0] }, { status: 200 });
+    }
+
+    const dataResult = await db.query(
+      `UPDATE payroll_periods
+       SET ${setParts.join(', ')}
+       WHERE id = $1
+       RETURNING *`,
+      values
+    );
+    const data = dataResult.rows[0];
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error: any) {

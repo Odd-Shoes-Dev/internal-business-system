@@ -1,44 +1,65 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/payroll/periods - List payroll periods
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const year = url.searchParams.get('year');
 
-    let query = supabase
-      .from('payroll_periods')
-      .select(`
-        *,
-        processed_by_user:user_profiles!payroll_periods_processed_by_fkey(id, full_name, email)
-      `)
-      .order('period_start', { ascending: false });
-
+    const where: string[] = ['pp.company_id = $1'];
+    const params: any[] = [companyId];
     if (status) {
-      query = query.eq('status', status);
+      params.push(status);
+      where.push(`pp.status = $${params.length}`);
     }
 
     if (year) {
-      const yearInt = parseInt(year);
-      query = query
-        .gte('period_start', `${yearInt}-01-01`)
-        .lte('period_start', `${yearInt}-12-31`);
+      const yearInt = parseInt(year, 10);
+      params.push(`${yearInt}-01-01`);
+      where.push(`pp.period_start >= $${params.length}::date`);
+      params.push(`${yearInt}-12-31`);
+      where.push(`pp.period_start <= $${params.length}::date`);
     }
 
-    const { data: periods, error } = await query;
+    const periodsResult = await db.query(
+      `SELECT pp.*,
+              up.id AS processed_by_user_id,
+              up.full_name AS processed_by_user_full_name,
+              up.email AS processed_by_user_email
+       FROM payroll_periods pp
+       LEFT JOIN user_profiles up ON up.id = pp.processed_by
+       WHERE ${where.join(' AND ')}
+       ORDER BY pp.period_start DESC`,
+      params
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const periods = periodsResult.rows.map((row: any) => ({
+      ...row,
+      processed_by_user: row.processed_by_user_id
+        ? {
+            id: row.processed_by_user_id,
+            full_name: row.processed_by_user_full_name,
+            email: row.processed_by_user_email,
+          }
+        : null,
+    }));
 
     return NextResponse.json(periods);
   } catch (error: any) {
@@ -47,13 +68,21 @@ export async function GET(request: Request) {
 }
 
 // POST /api/payroll/periods - Create a new payroll period
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     const body = await request.json();
@@ -87,15 +116,16 @@ export async function POST(request: Request) {
     }
 
     // Check for overlapping periods
-    const { data: existing, error: checkError } = await supabase
-      .from('payroll_periods')
-      .select('id')
-      .or(`period_start.lte.${period_end},period_end.gte.${period_start}`)
-      .limit(1);
-
-    if (checkError) {
-      return NextResponse.json({ error: checkError.message }, { status: 400 });
-    }
+    const existingResult = await db.query(
+      `SELECT id
+       FROM payroll_periods
+       WHERE company_id = $1
+         AND period_start <= $2::date
+         AND period_end >= $3::date
+       LIMIT 1`,
+      [companyId, period_end, period_start]
+    );
+    const existing = existingResult.rows;
 
     if (existing && existing.length > 0) {
       return NextResponse.json(
@@ -105,21 +135,15 @@ export async function POST(request: Request) {
     }
 
     // Create the payroll period
-    const { data: period, error: periodError } = await supabase
-      .from('payroll_periods')
-      .insert({
-        period_start,
-        period_end,
-        payment_date,
-        status: 'draft',
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const periodResult = await db.query(
+      `INSERT INTO payroll_periods (
+         company_id, period_start, period_end, payment_date, status, created_by
+       ) VALUES ($1, $2::date, $3::date, $4::date, 'draft', $5)
+       RETURNING *`,
+      [companyId, period_start, period_end, payment_date, user.id]
+    );
 
-    if (periodError) {
-      return NextResponse.json({ error: periodError.message }, { status: 400 });
-    }
+    const period = periodResult.rows[0];
 
     return NextResponse.json(period, { status: 201 });
   } catch (error: any) {

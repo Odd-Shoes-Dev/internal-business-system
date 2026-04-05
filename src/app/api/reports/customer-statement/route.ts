@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface CustomerTransaction {
   id: string;
@@ -44,31 +44,21 @@ interface CustomerStatementData {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const searchParams = request.nextUrl.searchParams;
-    
-    // Multi-tenant: Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Multi-tenant: Get and verify company_id
-    const companyId = searchParams.get('company_id');
+    const searchParams = request.nextUrl.searchParams;
+
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
     
     const customerId = searchParams.get('customerId');
@@ -80,14 +70,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch customer data
-    const { data: customer, error: customerError } = await supabase
-      .from('customers')
-      .select('id, name, company_name, email, phone, address_line1, address_line2, city, state, zip_code')
-      .eq('id', customerId)
-      .eq('company_id', companyId)
-      .single();
-
-    if (customerError || !customer) {
+    const customerResult = await db.query(
+      `SELECT id, name, company_name, email, phone, address_line1, address_line2, city, state, zip_code
+       FROM customers
+       WHERE id = $1 AND company_id = $2
+       LIMIT 1`,
+      [customerId, companyId]
+    );
+    const customer = customerResult.rows[0];
+    if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
@@ -107,36 +98,45 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate beginning balance (invoices before start date minus payments before start date)
-    const { data: beforeInvoices } = await supabase
-      .from('invoices')
-      .select('total, amount_paid')
-      .eq('customer_id', customerId)
-      .eq('company_id', companyId)
-      .lt('invoice_date', startDate);
+    const beforeInvoicesResult = await db.query(
+      `SELECT total, amount_paid
+       FROM invoices
+       WHERE customer_id = $1
+         AND company_id = $2
+         AND invoice_date < $3::date`,
+      [customerId, companyId, startDate]
+    );
+    const beforeInvoices = beforeInvoicesResult.rows;
 
     const beginningBalance = (beforeInvoices || []).reduce((sum, inv) => 
       sum + (parseFloat(inv.total) - parseFloat(inv.amount_paid || '0')), 0
     );
 
     // Fetch invoices in the period
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('id, invoice_number, invoice_date, due_date, total, amount_paid, status, notes')
-      .eq('customer_id', customerId)
-      .eq('company_id', companyId)
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate)
-      .order('invoice_date', { ascending: true });
+    const invoicesResult = await db.query(
+      `SELECT id, invoice_number, invoice_date, due_date, total, amount_paid, status, notes
+       FROM invoices
+       WHERE customer_id = $1
+         AND company_id = $2
+         AND invoice_date >= $3::date
+         AND invoice_date <= $4::date
+       ORDER BY invoice_date ASC`,
+      [customerId, companyId, startDate, endDate]
+    );
+    const invoices = invoicesResult.rows;
 
     // Fetch payments in the period
-    const { data: payments } = await supabase
-      .from('payments_received')
-      .select('id, payment_number, payment_date, amount, payment_method, reference_number, notes')
-      .eq('customer_id', customerId)
-      .eq('company_id', companyId)
-      .gte('payment_date', startDate)
-      .lte('payment_date', endDate)
-      .order('payment_date', { ascending: true });
+    const paymentsResult = await db.query(
+      `SELECT id, payment_number, payment_date, amount, payment_method, reference_number, notes
+       FROM payments_received
+       WHERE customer_id = $1
+         AND company_id = $2
+         AND payment_date >= $3::date
+         AND payment_date <= $4::date
+       ORDER BY payment_date ASC`,
+      [customerId, companyId, startDate, endDate]
+    );
+    const payments = paymentsResult.rows;
 
     // Build transactions list
     const transactions: CustomerTransaction[] = [];
@@ -196,12 +196,16 @@ export async function GET(request: NextRequest) {
     const endingBalance = runningBalance;
 
     // Calculate aging (for unpaid invoices as of end date)
-    const { data: unpaidInvoices } = await supabase
-      .from('invoices')
-      .select('invoice_date, due_date, total, amount_paid')
-      .eq('customer_id', customerId)
-      .lte('invoice_date', endDate)
-      .neq('status', 'paid');
+    const unpaidInvoicesResult = await db.query(
+      `SELECT invoice_date, due_date, total, amount_paid
+       FROM invoices
+       WHERE customer_id = $1
+         AND company_id = $2
+         AND invoice_date <= $3::date
+         AND status <> 'paid'`,
+      [customerId, companyId, endDate]
+    );
+    const unpaidInvoices = unpaidInvoicesResult.rows;
 
     const endDateObj = new Date(endDate);
     const aging = {
@@ -258,3 +262,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

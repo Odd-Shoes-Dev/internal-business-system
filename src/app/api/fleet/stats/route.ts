@@ -1,60 +1,74 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+
+async function resolveCompanyId(db: any, userId: string, request: NextRequest): Promise<string | null> {
+  const requested = getCompanyIdFromRequest(request);
+  if (requested) {
+    return requested;
+  }
+
+  const result = await db.query(
+    `SELECT company_id
+     FROM user_companies
+     WHERE user_id = $1
+     ORDER BY is_primary DESC, joined_at ASC
+     LIMIT 1`,
+    [userId]
+  );
+
+  return result.rows[0]?.company_id || null;
+}
 
 // GET /api/fleet/stats - Get fleet statistics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (companyError || !userCompany) {
+    const companyId = await resolveCompanyId(db, user.id, request);
+    if (!companyId) {
       return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
     }
 
-    const companyId = userCompany.company_id;
-
-    // Get all vehicles for statistics - FILTERED BY COMPANY
-    const { data: vehicles, error } = await supabase
-      .from('vehicles')
-      .select('status, vehicle_type, purchase_price')
-      .eq('company_id', companyId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
-    // Get maintenance records
-    const { data: maintenance } = await supabase
-      .from('vehicle_maintenance')
-      .select('cost');
+    const vehiclesResult = await db.query(
+      `SELECT status, vehicle_type, purchase_price
+       FROM vehicles
+       WHERE company_id = $1`,
+      [companyId]
+    );
+    const vehicles = vehiclesResult.rows;
+
+    const maintenanceResult = await db.query(
+      `SELECT vm.cost
+       FROM vehicle_maintenance vm
+       INNER JOIN vehicles v ON v.id = vm.vehicle_id
+       WHERE v.company_id = $1`,
+      [companyId]
+    );
+    const maintenance = maintenanceResult.rows;
 
     const stats = {
       totalVehicles: vehicles.length,
-      available: vehicles.filter(v => v.status === 'available').length,
-      inUse: vehicles.filter(v => v.status === 'in_use').length,
-      maintenance: vehicles.filter(v => v.status === 'maintenance').length,
-      outOfService: vehicles.filter(v => v.status === 'out_of_service').length,
-      totalValue: vehicles.reduce((sum, v) => sum + (v.purchase_price || 0), 0),
-      totalMaintenanceCost: maintenance?.reduce((sum, m) => sum + (m.cost || 0), 0) || 0,
+      available: vehicles.filter((v: any) => v.status === 'available').length,
+      inUse: vehicles.filter((v: any) => v.status === 'in_use').length,
+      maintenance: vehicles.filter((v: any) => v.status === 'maintenance').length,
+      outOfService: vehicles.filter((v: any) => v.status === 'out_of_service').length,
+      totalValue: vehicles.reduce((sum: number, v: any) => sum + Number(v.purchase_price || 0), 0),
+      totalMaintenanceCost: maintenance.reduce((sum: number, m: any) => sum + Number(m.cost || 0), 0),
       byType: {
-        safari_4x4: vehicles.filter(v => v.vehicle_type === 'safari_4x4').length,
-        minibus: vehicles.filter(v => v.vehicle_type === 'minibus').length,
-        land_cruiser: vehicles.filter(v => v.vehicle_type === 'land_cruiser').length,
-        coaster: vehicles.filter(v => v.vehicle_type === 'coaster').length,
-        sedan: vehicles.filter(v => v.vehicle_type === 'sedan').length,
-        other: vehicles.filter(v => v.vehicle_type === 'other').length,
+        safari_4x4: vehicles.filter((v: any) => v.vehicle_type === 'safari_4x4').length,
+        minibus: vehicles.filter((v: any) => v.vehicle_type === 'minibus').length,
+        land_cruiser: vehicles.filter((v: any) => v.vehicle_type === 'land_cruiser').length,
+        coaster: vehicles.filter((v: any) => v.vehicle_type === 'coaster').length,
+        sedan: vehicles.filter((v: any) => v.vehicle_type === 'sedan').length,
+        other: vehicles.filter((v: any) => v.vehicle_type === 'other').length,
       },
     };
 

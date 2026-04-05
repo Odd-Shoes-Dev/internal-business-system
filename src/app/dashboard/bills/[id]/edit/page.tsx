@@ -11,7 +11,6 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 
 interface Vendor {
   id: string;
@@ -78,15 +77,15 @@ export default function EditBillPage() {
   const loadBill = async () => {
     try {
       setLoading(true);
+      const billId = String(params.id);
 
-      // Fetch bill
-      const { data: billData, error: billError } = await supabase
-        .from('bills')
-        .select('*')
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/bills/${billId}`, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to load bill');
+      }
 
-      if (billError) throw billError;
+      const result = await response.json();
+      const billData = result.data;
 
       // Check if bill can be edited
       if (billData.status !== 'draft') {
@@ -104,24 +103,17 @@ export default function EditBillPage() {
         notes: billData.notes || '',
       });
 
-      // Fetch bill lines
-      const { data: linesData, error: linesError } = await supabase
-        .from('bill_lines')
-        .select('*')
-        .eq('bill_id', params.id)
-        .order('line_number');
-
-      if (linesError) throw linesError;
+      const linesData = billData.bill_lines || [];
 
       setLineItems(
         (linesData || []).map((line: any) => ({
           id: line.id,
           description: line.description,
-          quantity: parseFloat(line.quantity),
-          unit_cost: parseFloat(line.unit_cost),
+          quantity: parseFloat(line.quantity || 0),
+          unit_cost: parseFloat(line.unit_cost || 0),
           account_code: '',
           expense_account_id: line.expense_account_id,
-          amount: parseFloat(line.line_total),
+          amount: parseFloat(line.line_total || 0),
         }))
       );
     } catch (error) {

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface Field {
   id: string;
@@ -37,43 +37,44 @@ interface CustomReportConfig {
 
 
 // Fetch real data from database based on data source
-const fetchTransactionData = async (config: CustomReportConfig) => {
-  const supabase = await createClient();
-  
-  let query = supabase
-    .from('journal_entries')
-    .select('id, entry_number, entry_date, description, memo, status')
-    .order('entry_date', { ascending: false });
-
-  // Apply date range filter
+const fetchTransactionData = async (db: any, companyId: string, config: CustomReportConfig) => {
+  const params: any[] = [companyId];
+  let dateClause = '';
   if (config.dateRange) {
-    query = query
-      .gte('entry_date', config.dateRange.startDate)
-      .lte('entry_date', config.dateRange.endDate);
+    params.push(config.dateRange.startDate, config.dateRange.endDate);
+    dateClause = ` AND entry_date >= $2::date AND entry_date <= $3::date`;
   }
 
-  const { data: entries, error } = await query;
+  const entriesResult = await db.query(
+    `SELECT id, entry_number, entry_date, description, memo, status
+     FROM journal_entries
+     WHERE company_id = $1${dateClause}
+     ORDER BY entry_date DESC`,
+    params
+  );
+  const entries = entriesResult.rows;
 
-  if (error) {
-    console.error('Transaction data fetch error:', error);
-    throw error;
-  }
-
-  // Fetch journal lines to calculate totals
-  const { data: lines, error: linesError } = await supabase
-    .from('journal_lines')
-    .select('journal_entry_id, debit, credit, account_id');
-
-  if (linesError) {
-    console.error('Journal lines fetch error:', linesError);
-    throw linesError;
+  const entryIds = entries.map((entry: any) => entry.id);
+  let linesByEntryId = new Map<string, any[]>();
+  if (entryIds.length > 0) {
+    const linesResult = await db.query(
+      `SELECT journal_entry_id, debit, credit, account_id
+       FROM journal_lines
+       WHERE journal_entry_id = ANY($1::uuid[])`,
+      [entryIds]
+    );
+    for (const line of linesResult.rows) {
+      const current = linesByEntryId.get(line.journal_entry_id) || [];
+      current.push(line);
+      linesByEntryId.set(line.journal_entry_id, current);
+    }
   }
 
   // Transform data to match expected format
-  return (entries || []).map(entry => {
-    const entryLines = (lines || []).filter(line => line.journal_entry_id === entry.id);
-    const totalDebit = entryLines.reduce((sum, line) => sum + (line.debit || 0), 0);
-    const totalCredit = entryLines.reduce((sum, line) => sum + (line.credit || 0), 0);
+  return (entries || []).map((entry: any) => {
+    const entryLines = linesByEntryId.get(entry.id) || [];
+    const totalDebit = entryLines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    const totalCredit = entryLines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
     
     return {
       date: entry.entry_date,
@@ -88,36 +89,23 @@ const fetchTransactionData = async (config: CustomReportConfig) => {
   });
 };
 
-const fetchCustomerData = async (config: CustomReportConfig) => {
-  const supabase = await createClient();
-  
-  // Fetch customers
-  const { data: customers, error: customersError } = await supabase
-    .from('customers')
-    .select('*');
+const fetchCustomerData = async (db: any, companyId: string) => {
+  const customersResult = await db.query('SELECT * FROM customers WHERE company_id = $1', [companyId]);
+  const customers = customersResult.rows;
 
-  if (customersError) {
-    console.error('Customers fetch error:', customersError);
-    throw customersError;
-  }
-
-  // Fetch all invoices
-  const { data: invoices, error: invoicesError } = await supabase
-    .from('invoices')
-    .select('customer_id, total, amount_paid, invoice_date');
-
-  if (invoicesError) {
-    console.error('Invoices fetch error:', invoicesError);
-    throw invoicesError;
-  }
+  const invoicesResult = await db.query(
+    'SELECT customer_id, total, amount_paid, invoice_date FROM invoices WHERE company_id = $1',
+    [companyId]
+  );
+  const invoices = invoicesResult.rows;
 
   // Group invoices by customer and calculate metrics
-  return (customers || []).map(customer => {
-    const customerInvoices = (invoices || []).filter(inv => inv.customer_id === customer.id);
-    const totalSales = customerInvoices.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+  return (customers || []).map((customer: any) => {
+    const customerInvoices = (invoices || []).filter((inv: any) => inv.customer_id === customer.id);
+    const totalSales = customerInvoices.reduce((sum: number, inv: any) => sum + (inv.amount_paid || 0), 0);
     const invoiceCount = customerInvoices.length;
     
-    const sortedInvoices = customerInvoices.sort((a, b) => 
+    const sortedInvoices = customerInvoices.sort((a: any, b: any) => 
       new Date(a.invoice_date).getTime() - new Date(b.invoice_date).getTime()
     );
     
@@ -136,36 +124,23 @@ const fetchCustomerData = async (config: CustomReportConfig) => {
   });
 };
 
-const fetchVendorData = async (config: CustomReportConfig) => {
-  const supabase = await createClient();
-  
-  // Fetch vendors
-  const { data: vendors, error: vendorsError } = await supabase
-    .from('vendors')
-    .select('*');
+const fetchVendorData = async (db: any, companyId: string) => {
+  const vendorsResult = await db.query('SELECT * FROM vendors WHERE company_id = $1', [companyId]);
+  const vendors = vendorsResult.rows;
 
-  if (vendorsError) {
-    console.error('Vendors fetch error:', vendorsError);
-    throw vendorsError;
-  }
-
-  // Fetch all bills
-  const { data: bills, error: billsError } = await supabase
-    .from('bills')
-    .select('vendor_id, total, amount_paid, bill_date');
-
-  if (billsError) {
-    console.error('Bills fetch error:', billsError);
-    throw billsError;
-  }
+  const billsResult = await db.query(
+    'SELECT vendor_id, total, amount_paid, bill_date FROM bills WHERE company_id = $1',
+    [companyId]
+  );
+  const bills = billsResult.rows;
 
   // Group bills by vendor and calculate metrics
-  return (vendors || []).map(vendor => {
-    const vendorBills = (bills || []).filter(bill => bill.vendor_id === vendor.id);
-    const totalPurchases = vendorBills.reduce((sum, bill) => sum + (bill.amount_paid || 0), 0);
+  return (vendors || []).map((vendor: any) => {
+    const vendorBills = (bills || []).filter((bill: any) => bill.vendor_id === vendor.id);
+    const totalPurchases = vendorBills.reduce((sum: number, bill: any) => sum + (bill.amount_paid || 0), 0);
     const billCount = vendorBills.length;
     
-    const sortedBills = vendorBills.sort((a, b) => 
+    const sortedBills = vendorBills.sort((a: any, b: any) => 
       new Date(a.bill_date).getTime() - new Date(b.bill_date).getTime()
     );
     
@@ -184,20 +159,17 @@ const fetchVendorData = async (config: CustomReportConfig) => {
   });
 };
 
-const fetchInventoryData = async (config: CustomReportConfig) => {
-  const supabase = await createClient();
-  
-  const { data: products, error } = await supabase
-    .from('products')
-    .select('id, sku, name, quantity_on_hand, cost_price, reorder_point, updated_at')
-    .eq('track_inventory', true);
+const fetchInventoryData = async (db: any, companyId: string) => {
+  const productsResult = await db.query(
+    `SELECT id, sku, name, quantity_on_hand, cost_price, reorder_point, updated_at
+     FROM products
+     WHERE company_id = $1
+       AND track_inventory = true`,
+    [companyId]
+  );
+  const products = productsResult.rows;
 
-  if (error) {
-    console.error('Inventory fetch error:', error);
-    throw error;
-  }
-
-  return (products || []).map(product => ({
+  return (products || []).map((product: any) => ({
     item_name: product.name,
     sku: product.sku || 'N/A',
     quantity_on_hand: product.quantity_on_hand || 0,
@@ -210,8 +182,8 @@ const fetchInventoryData = async (config: CustomReportConfig) => {
 
 function applyFiltersAndSorts(data: any[], config: CustomReportConfig) {
   // Apply custom filters
-  let filteredData = data.filter(item => {
-    return config.filters.every(filter => {
+  let filteredData = data.filter((item: any) => {
+    return config.filters.every((filter: Filter) => {
       const fieldValue = item[filter.fieldId];
       const filterValue = filter.value;
 
@@ -234,7 +206,7 @@ function applyFiltersAndSorts(data: any[], config: CustomReportConfig) {
 
   // Apply sorting
   if (config.sorts.length > 0) {
-    filteredData.sort((a, b) => {
+    filteredData.sort((a: any, b: any) => {
       for (const sort of config.sorts) {
         const aValue = a[sort.fieldId];
         const bValue = b[sort.fieldId];
@@ -256,9 +228,36 @@ function applyFiltersAndSorts(data: any[], config: CustomReportConfig) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     console.log('Custom report POST request received');
     const config: CustomReportConfig = await request.json();
     console.log('Config:', JSON.stringify(config, null, 2));
+
+    let companyId = getCompanyIdFromRequest(request, config as any);
+    if (!companyId) {
+      const membership = await db.query<{ company_id: string }>(
+        `SELECT company_id
+         FROM user_companies
+         WHERE user_id = $1
+         ORDER BY is_primary DESC, joined_at ASC
+         LIMIT 1`,
+        [user.id]
+      );
+      companyId = membership.rows[0]?.company_id || null;
+    }
+
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
     
     let data: any[] = [];
     
@@ -267,16 +266,16 @@ export async function POST(request: NextRequest) {
     try {
       switch (config.dataSource) {
         case 'transactions':
-          data = await fetchTransactionData(config);
+          data = await fetchTransactionData(db, companyId, config);
           break;
         case 'customers':
-          data = await fetchCustomerData(config);
+          data = await fetchCustomerData(db, companyId);
           break;
         case 'vendors':
-          data = await fetchVendorData(config);
+          data = await fetchVendorData(db, companyId);
           break;
         case 'inventory':
-          data = await fetchInventoryData(config);
+          data = await fetchInventoryData(db, companyId);
           break;
         default:
           console.error('Invalid data source:', config.dataSource);
@@ -299,9 +298,9 @@ export async function POST(request: NextRequest) {
     console.log('After filters and sorts, rows:', data.length);
 
     // Filter data to only include selected fields
-    const filteredRows = data.map(row => {
+    const filteredRows = data.map((row: any) => {
       const filteredRow: any = {};
-      config.selectedFields.forEach(fieldId => {
+      config.selectedFields.forEach((fieldId: string) => {
         filteredRow[fieldId] = row[fieldId];
       });
       return filteredRow;

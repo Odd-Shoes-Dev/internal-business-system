@@ -1,31 +1,81 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { createExpenseJournalEntry } from '@/lib/accounting/journal-entry-helpers';
+import { createExpenseJournalEntryWithDb } from '@/lib/accounting/provider-accounting';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/expenses/[id] - Get expense details
 export async function GET(request: NextRequest, context: any) {
   const { params } = context || {};
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        *,
-        vendor:vendors(id, name, company_name),
-        expense_account:accounts!expenses_expense_account_id_fkey(id, name, code),
-        payment_account:accounts!expenses_payment_account_id_fkey(id, name, code),
-        bank_account:bank_accounts(id, account_name, account_number),
-        customer:customers(id, name),
-        journal_entry:journal_entries(id, entry_number, entry_date),
-        created_by_user:user_profiles!expenses_created_by_fkey(id, email, full_name)
-      `)
-      .eq('id', params.id)
-      .single();
+    const result = await db.query(
+      `SELECT e.*,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.company_name AS vendor_company_name,
+              ea.id AS expense_account_ref_id,
+              ea.name AS expense_account_name,
+              ea.code AS expense_account_code,
+              pa.id AS payment_account_ref_id,
+              pa.name AS payment_account_name,
+              pa.code AS payment_account_code,
+              ba.id AS bank_account_ref_id,
+              ba.account_name AS bank_account_name,
+              ba.account_number AS bank_account_number,
+              c.id AS customer_ref_id,
+              c.name AS customer_name,
+              je.id AS journal_entry_ref_id,
+              je.entry_number AS journal_entry_number,
+              je.entry_date AS journal_entry_date,
+              up.id AS created_by_user_id,
+              up.email AS created_by_user_email,
+              up.full_name AS created_by_user_full_name
+       FROM expenses e
+       LEFT JOIN vendors v ON v.id = e.vendor_id
+       LEFT JOIN accounts ea ON ea.id = e.expense_account_id
+       LEFT JOIN accounts pa ON pa.id = e.payment_account_id
+       LEFT JOIN bank_accounts ba ON ba.id = e.bank_account_id
+       LEFT JOIN customers c ON c.id = e.customer_id
+       LEFT JOIN journal_entries je ON je.id = e.journal_entry_id
+       LEFT JOIN user_profiles up ON up.id = e.created_by
+       WHERE e.id = $1
+       LIMIT 1`,
+      [params.id]
+    );
 
-    if (error) {
+    const row = result.rows[0];
+    if (!row) {
       return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, row.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const data = {
+      ...row,
+      vendor: row.vendor_ref_id ? { id: row.vendor_ref_id, name: row.vendor_name, company_name: row.vendor_company_name } : null,
+      expense_account: row.expense_account_ref_id
+        ? { id: row.expense_account_ref_id, name: row.expense_account_name, code: row.expense_account_code }
+        : null,
+      payment_account: row.payment_account_ref_id
+        ? { id: row.payment_account_ref_id, name: row.payment_account_name, code: row.payment_account_code }
+        : null,
+      bank_account: row.bank_account_ref_id
+        ? { id: row.bank_account_ref_id, account_name: row.bank_account_name, account_number: row.bank_account_number }
+        : null,
+      customer: row.customer_ref_id ? { id: row.customer_ref_id, name: row.customer_name } : null,
+      journal_entry: row.journal_entry_ref_id
+        ? { id: row.journal_entry_ref_id, entry_number: row.journal_entry_number, entry_date: row.journal_entry_date }
+        : null,
+      created_by_user: row.created_by_user_id
+        ? { id: row.created_by_user_id, email: row.created_by_user_email, full_name: row.created_by_user_full_name }
+        : null,
+    };
 
     return NextResponse.json({ data });
   } catch (error: any) {
@@ -37,84 +87,80 @@ export async function GET(request: NextRequest, context: any) {
 export async function PATCH(request: NextRequest, context: any) {
   const { params } = context || {};
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
-    // Get existing expense
-    const { data: existing, error: fetchError } = await supabase
-      .from('expenses')
-      .select('status, journal_entry_id')
-      .eq('id', params.id)
-      .single();
+    const existingResult = await db.query('SELECT id, company_id, status, journal_entry_id FROM expenses WHERE id = $1 LIMIT 1', [params.id]);
+    const existing = existingResult.rows[0];
 
-    if (fetchError) {
+    if (!existing) {
       return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
     }
 
-    // Prevent editing paid expenses
-    if (existing.status === 'paid' && body.status !== 'paid') {
-      return NextResponse.json(
-        { error: 'Cannot edit paid expenses. Void the expense first.' },
-        { status: 400 }
-      );
+    const companyAccessError = await requireCompanyAccess(user.id, existing.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    if (existing.status === 'paid' && body.status !== 'paid') {
+      return NextResponse.json({ error: 'Cannot edit paid expenses. Void the expense first.' }, { status: 400 });
+    }
 
-    // Calculate total if amount or tax changed
-    const total = (body.amount || 0) + (body.tax_amount || 0);
+    const updateData: any = { ...body };
+    if (body.amount !== undefined || body.tax_amount !== undefined) {
+      const amount = Number(body.amount ?? 0);
+      const taxAmount = Number(body.tax_amount ?? 0);
+      updateData.total = amount + taxAmount;
+    }
 
-    // Update expense
-    const updateData: any = {
-      ...body,
-      total: total || body.total,
-    };
-
-    // Remove fields that shouldn't be updated directly
     delete updateData.id;
     delete updateData.created_at;
     delete updateData.created_by;
 
-    const { data: expense, error: updateError } = await supabase
-      .from('expenses')
-      .update(updateData)
-      .eq('id', params.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+    const fields = Object.keys(updateData);
+    if (fields.length === 0) {
+      return NextResponse.json({ data: existing });
     }
 
-    // Create journal entry if status changed to 'paid' and no journal entry exists
-    if (body.status === 'paid' && existing.status !== 'paid' && !existing.journal_entry_id && user) {
-      // Get account code for the expense account
-      const { data: expenseAccount } = await supabase
-        .from('accounts')
-        .select('code')
-        .eq('id', expense.expense_account_id)
-        .single();
+    const setSql = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
+    const values = fields.map((f) => updateData[f]);
 
-      if (expenseAccount) {
-        const journalResult = await createExpenseJournalEntry(
-          supabase,
+    const updateResult = await db.query(
+      `UPDATE expenses
+       SET ${setSql}, updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [params.id, ...values]
+    );
+
+    const expense = updateResult.rows[0];
+
+    if (body.status === 'paid' && existing.status !== 'paid' && !existing.journal_entry_id) {
+      const accountResult = await db.query('SELECT code FROM accounts WHERE id = $1 LIMIT 1', [expense.expense_account_id]);
+      const accountCode = accountResult.rows[0]?.code;
+
+      if (accountCode) {
+        const journalResult = await createExpenseJournalEntryWithDb(
+          db,
           {
             id: expense.id,
             expense_number: expense.expense_number,
             expense_date: expense.expense_date,
             amount: expense.total,
-            account_code: expenseAccount.code,
+            account_code: accountCode,
             description: expense.description || 'Expense',
             bank_account_id: expense.bank_account_id,
           },
           user.id
         );
 
-        if (journalResult.success && journalResult.journalEntry) {
-          await supabase
-            .from('expenses')
-            .update({ journal_entry_id: journalResult.journalEntry.id })
-            .eq('id', params.id);
+        if (journalResult.journalEntryId) {
+          await db.query('UPDATE expenses SET journal_entry_id = $2 WHERE id = $1', [params.id, journalResult.journalEntryId]);
+          expense.journal_entry_id = journalResult.journalEntryId;
         }
       }
     }
@@ -129,20 +175,23 @@ export async function PATCH(request: NextRequest, context: any) {
 export async function DELETE(request: NextRequest, context: any) {
   const { params } = context || {};
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
-    // Get expense to check status
-    const { data: expense, error: fetchError } = await supabase
-      .from('expenses')
-      .select('status, journal_entry_id')
-      .eq('id', params.id)
-      .single();
+    const existingResult = await db.query('SELECT id, company_id, status, journal_entry_id FROM expenses WHERE id = $1 LIMIT 1', [params.id]);
+    const expense = existingResult.rows[0];
 
-    if (fetchError) {
+    if (!expense) {
       return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
     }
 
-    // Only allow deletion of pending/rejected expenses
+    const companyAccessError = await requireCompanyAccess(user.id, expense.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     if (expense.status === 'paid' || expense.status === 'approved') {
       return NextResponse.json(
         { error: 'Cannot delete paid or approved expenses. Only pending/rejected expenses can be deleted.' },
@@ -150,23 +199,11 @@ export async function DELETE(request: NextRequest, context: any) {
       );
     }
 
-    // If there's a journal entry, we shouldn't delete (should void instead)
     if (expense.journal_entry_id) {
-      return NextResponse.json(
-        { error: 'Cannot delete expense with journal entry. Contact administrator.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Cannot delete expense with journal entry. Contact administrator.' }, { status: 400 });
     }
 
-    // Delete the expense
-    const { error: deleteError } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', params.id);
-
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 400 });
-    }
+    await db.query('DELETE FROM expenses WHERE id = $1', [params.id]);
 
     return NextResponse.json({ message: 'Expense deleted successfully' });
   } catch (error: any) {

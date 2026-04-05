@@ -15,7 +15,6 @@ import {
   ChartBarIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 
 interface FixedAsset {
   id: string;
@@ -64,18 +63,15 @@ export default function AssetDetailPage() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('fixed_assets')
-        .select(`
-          *,
-          asset_categories (name),
-          vendors (name)
-        `)
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/assets/${params.id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load asset');
+      }
 
-      if (error) throw error;
-      setAsset(data);
+      const data = await response.json();
+      setAsset(data || null);
     } catch (error) {
       console.error('Failed to load asset:', error);
     } finally {
@@ -131,12 +127,14 @@ export default function AssetDetailPage() {
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('fixed_assets')
-        .delete()
-        .eq('id', params.id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/assets/${params.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to delete asset');
+      }
 
       router.push('/dashboard/assets');
     } catch (error: any) {

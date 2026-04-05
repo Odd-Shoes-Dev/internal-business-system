@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
@@ -52,13 +51,18 @@ export default function EditCustomerPage({ params }: PageProps) {
   const loadCustomer = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/customers/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load customer');
+      }
+
+      const payload = await response.json();
+      const data = payload?.data;
 
       if (data) {
         setFormData({

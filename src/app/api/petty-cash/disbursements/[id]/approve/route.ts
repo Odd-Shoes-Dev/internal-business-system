@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/petty-cash/disbursements/[id]/approve - Approve disbursement
@@ -7,23 +7,41 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-    const { id } = await context.params;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
+    const { id } = await context.params;
+
     // Check current status
-    const { data: existing } = await supabase
-      .from('petty_cash_disbursements')
-      .select('status, amount, cash_account_id')
-      .eq('id', id)
-      .single();
+    const existingResult = await db.query(
+      `SELECT pcd.id,
+              pcd.status,
+              pcd.amount,
+              pcd.cash_account_id,
+              pcd.company_id,
+              ba.name AS cash_account_name,
+              ba.gl_account_id AS cash_gl_account_id
+       FROM petty_cash_disbursements pcd
+       LEFT JOIN bank_accounts ba ON ba.id = pcd.cash_account_id
+       WHERE pcd.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const existing = existingResult.rows[0];
 
     if (!existing) {
       return NextResponse.json({ error: 'Disbursement not found' }, { status: 404 });
+    }
+
+    if (!existing.company_id) {
+      return NextResponse.json({ error: 'Disbursement is missing company context' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, existing.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (existing.status !== 'pending') {
@@ -34,11 +52,16 @@ export async function POST(
     }
 
     // Get petty cash expense account
-    const { data: expenseAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '5300')
-      .single();
+    const expenseAccountResult = await db.query(
+      `SELECT id
+       FROM accounts
+       WHERE code = '5300'
+         AND (company_id = $1 OR company_id IS NULL)
+       ORDER BY CASE WHEN company_id = $1 THEN 0 ELSE 1 END
+       LIMIT 1`,
+      [existing.company_id]
+    );
+    const expenseAccount = expenseAccountResult.rows[0];
 
     if (!expenseAccount) {
       return NextResponse.json(
@@ -47,70 +70,91 @@ export async function POST(
       );
     }
 
-    // Create journal entry: DR Petty Cash Expense, CR Cash Account
-    const { data: journalEntry, error: jeError } = await supabase
-      .from('journal_entries')
-      .insert({
-        entry_date: new Date().toISOString().split('T')[0],
-        description: `Petty cash disbursement - ${existing.amount}`,
-        reference_type: 'petty_cash_disbursement',
-        reference_id: id,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (jeError) {
-      return NextResponse.json({ error: jeError.message }, { status: 400 });
+    if (!existing.cash_gl_account_id) {
+      return NextResponse.json(
+        { error: 'Petty cash account is not linked to a GL account' },
+        { status: 400 }
+      );
     }
 
-    // Create journal lines
-    const lines = [
-      {
-        journal_entry_id: journalEntry.id,
-        account_id: expenseAccount.id, // DR Petty Cash Expense
-        debit: existing.amount,
-        credit: 0,
-      },
-      {
-        journal_entry_id: journalEntry.id,
-        account_id: existing.cash_account_id, // CR Cash
-        debit: 0,
-        credit: existing.amount,
-      },
-    ];
+    const result = await db.transaction(async (tx) => {
+      const entryNumberResult = await tx.query('SELECT generate_journal_entry_number() AS entry_number');
+      const entryNumber = entryNumberResult.rows[0]?.entry_number;
+      if (!entryNumber) {
+        throw new Error('Failed to generate journal entry number');
+      }
 
-    const { error: linesError } = await supabase
-      .from('journal_entry_lines')
-      .insert(lines);
+      const journalEntryResult = await tx.query(
+        `INSERT INTO journal_entries (
+           company_id,
+           entry_number,
+           entry_date,
+           description,
+           reference_type,
+           reference_id,
+           status,
+           source_module,
+           created_by,
+           posted_by,
+           posted_at
+         ) VALUES (
+           $1, $2, CURRENT_DATE, $3, 'petty_cash_disbursement', $4, 'posted', 'petty_cash', $5, $5, NOW()
+         )
+         RETURNING id`,
+        [
+          existing.company_id,
+          entryNumber,
+          `Petty cash disbursement - ${existing.amount}`,
+          id,
+          user.id,
+        ]
+      );
+      const journalEntryId = journalEntryResult.rows[0]?.id;
 
-    if (linesError) {
-      // Rollback journal entry
-      await supabase.from('journal_entries').delete().eq('id', journalEntry.id);
-      return NextResponse.json({ error: linesError.message }, { status: 400 });
-    }
+      await tx.query(
+        `INSERT INTO journal_lines (
+           company_id,
+           journal_entry_id,
+           line_number,
+           account_id,
+           debit,
+           credit,
+           description
+         ) VALUES
+           ($1, $2, 1, $3, $4, 0, $5),
+           ($1, $2, 2, $6, 0, $4, $7)`,
+        [
+          existing.company_id,
+          journalEntryId,
+          expenseAccount.id,
+          Number(existing.amount),
+          'Petty cash expense',
+          existing.cash_gl_account_id,
+          `Cash disbursed from ${existing.cash_account_name || 'petty cash account'}`,
+        ]
+      );
 
-    // Update disbursement status
-    const { data, error } = await supabase
-      .from('petty_cash_disbursements')
-      .update({
-        status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        journal_entry_id: journalEntry.id,
-      })
-      .eq('id', id)
-      .select(`
-        *,
-        cash_account:bank_accounts!petty_cash_disbursements_cash_account_id_fkey(id, account_name)
-      `)
-      .single();
+      const updateResult = await tx.query(
+        `UPDATE petty_cash_disbursements
+         SET status = 'approved',
+             approved_by = $1,
+             approved_at = NOW(),
+             journal_entry_id = $2
+         WHERE id = $3
+         RETURNING *`,
+        [user.id, journalEntryId, id]
+      );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+      return {
+        ...updateResult.rows[0],
+        cash_account: {
+          id: existing.cash_account_id,
+          account_name: existing.cash_account_name,
+        },
+      };
+    });
 
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

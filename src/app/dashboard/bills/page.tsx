@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -22,6 +22,7 @@ interface BillWithVendor extends Bill {
 }
 
 export default function BillsPage() {
+  const { company } = useCompany();
   const [bills, setBills] = useState<BillWithVendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,38 +38,43 @@ export default function BillsPage() {
   const pageSize = 20;
 
   useEffect(() => {
+    if (!company) return;
     loadBills();
     loadStats();
-  }, [searchQuery, statusFilter, currentPage]);
+  }, [company, searchQuery, statusFilter, currentPage]);
 
   const loadBills = async () => {
+    if (!company) return;
+
     try {
       setLoading(true);
-      let query = supabase
-        .from('bills')
-        .select(`
-          *,
-          vendors (name)
-        `, { count: 'exact' })
-        .order('bill_date', { ascending: false });
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.or(`bill_number.ilike.%${searchQuery}%,reference.ilike.%${searchQuery}%`);
+        params.set('search', searchQuery);
       }
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.set('status', statusFilter);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/bills?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load bills');
+      }
 
-      setBills(data || []);
-      setTotalCount(count || 0);
+      const payload = await response.json();
+      setBills(payload?.data || []);
+      setTotalCount(payload?.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load bills:', error);
     } finally {
@@ -77,8 +83,13 @@ export default function BillsPage() {
   };
 
   const loadStats = async () => {
+    if (!company) return;
+
     try {
-      const response = await fetch('/api/bills/stats');
+      const response = await fetch(`/api/bills/stats?company_id=${encodeURIComponent(company.id)}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to load stats');
       
       const data = await response.json();

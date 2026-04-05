@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 
 export interface SubscriptionValidation {
   isValid: boolean;
@@ -13,17 +13,21 @@ export interface SubscriptionValidation {
  */
 export async function validateApiAccess(companyId: string): Promise<SubscriptionValidation> {
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     
     // Get subscription details
-    const { data: subscription, error } = await supabase
-      .from('subscriptions')
-      .select('plan_tier, status, current_period_end')
-      .eq('company_id', companyId)
-      .eq('status', 'active')
-      .single();
+    const subscriptionResult = await db.query(
+      `SELECT plan_tier, status, current_period_end
+       FROM subscriptions
+       WHERE company_id = $1
+         AND status = 'active'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [companyId]
+    );
+    const subscription = subscriptionResult.rows[0] as any;
 
-    if (error || !subscription) {
+    if (!subscription) {
       return {
         isValid: false,
         planTier: null,
@@ -98,23 +102,20 @@ export async function validateApiAccess(companyId: string): Promise<Subscription
  */
 export async function validateIntegrationAccess(apiKey: string): Promise<SubscriptionValidation & { integrationId?: string }> {
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     
     // Get integration and company details
-    const { data: integration, error } = await supabase
-      .from('api_integrations')
-      .select(`
-        id,
-        company_id,
-        is_active,
-        rate_limit_per_minute,
-        companies!inner(id)
-      `)
-      .eq('api_key', apiKey)
-      .eq('is_active', true)
-      .single();
+    const integrationResult = await db.query(
+      `SELECT id, company_id, is_active, rate_limit_per_minute
+       FROM api_integrations
+       WHERE api_key = $1
+         AND is_active = true
+       LIMIT 1`,
+      [apiKey]
+    );
+    const integration = integrationResult.rows[0] as any;
 
-    if (error || !integration) {
+    if (!integration) {
       return {
         isValid: false,
         planTier: null,

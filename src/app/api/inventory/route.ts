@@ -1,69 +1,61 @@
-import { createClient } from '@/lib/supabase/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/inventory - List inventory items
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (companyError || !userCompany) {
-      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     const { searchParams } = new URL(request.url);
-    
+
     const search = searchParams.get('search');
     const lowStock = searchParams.get('low_stock');
     const category = searchParams.get('category');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
 
-    let query = supabase
-      .from('products')
-      .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
-      .order('name');
+    const where: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,description.ilike.%${search}%`);
+      params.push(`%${search}%`);
+      where.push(`(name ILIKE $${params.length} OR sku ILIKE $${params.length} OR description ILIKE $${params.length})`);
     }
 
     if (category) {
-      query = query.eq('category_id', category);
+      params.push(category);
+      where.push(`category_id = $${params.length}`);
     }
 
-    // Apply pagination unless we need to post-filter for low stock
-    if (lowStock !== 'true') {
-      query = query.range(offset, offset + limit - 1);
-    }
+    const whereSql = `WHERE ${where.join(' AND ')}`;
 
-    const { data, count, error } = await query;
+    const allResult = await db.query(
+      `SELECT *
+       FROM products
+       ${whereSql}
+       ORDER BY name ASC`,
+      params
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const allData = allResult.rows;
 
-    // When filtering by low stock, compare columns in JS because PostgREST
-    // lacks a simple column-to-column comparator.
     if (lowStock === 'true') {
-      const filtered = (data || []).filter(
-        (item: any) => (item?.quantity_on_hand ?? 0) <= (item?.reorder_point ?? 0)
+      const filtered = allData.filter(
+        (item: any) => Number(item.quantity_on_hand || 0) <= Number(item.reorder_point || 0)
       );
       const paged = filtered.slice(offset, offset + limit);
 
@@ -78,13 +70,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const paged = allData.slice(offset, offset + limit);
+
     return NextResponse.json({
-      data,
+      data: paged,
       pagination: {
         page,
         limit,
-        total: count,
-        totalPages: Math.ceil((count || 0) / limit),
+        total: allData.length,
+        totalPages: Math.ceil(allData.length / limit),
       },
     });
   } catch (error: any) {
@@ -95,7 +89,11 @@ export async function GET(request: NextRequest) {
 // POST /api/inventory - Create inventory item
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
     if (!body.name || !body.sku) {
@@ -105,12 +103,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check SKU uniqueness
-    const { data: existing } = await supabase
-      .from('products')
-      .select('id')
-      .eq('sku', body.sku)
-      .single();
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const existingResult = await db.query('SELECT id FROM products WHERE sku = $1 AND company_id = $2 LIMIT 1', [
+      body.sku,
+      companyId,
+    ]);
+    const existing = existingResult.rows[0];
 
     if (existing) {
       return NextResponse.json(
@@ -119,52 +126,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get inventory asset account
-    const { data: inventoryAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '1300')
-      .single();
+    const inventoryAccountResult = await db.query(
+      'SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1',
+      ['1300', companyId]
+    );
+    const cogsAccountResult = await db.query(
+      'SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1',
+      ['5100', companyId]
+    );
 
-    // Get COGS account
-    const { data: cogsAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '5100')
-      .single();
+    const dataResult = await db.query(
+      `INSERT INTO products (
+         company_id, sku, name, description, category_id, product_type, unit_of_measure,
+         cost_price, unit_price, currency, quantity_on_hand, quantity_reserved,
+         reorder_point, reorder_quantity, inventory_account_id, cogs_account_id,
+         revenue_account_id, is_active, track_inventory, is_taxable, tax_rate
+       ) VALUES (
+         $1, $2, $3, $4, $5, 'inventory', $6,
+         $7, $8, $9, $10, 0,
+         $11, $12, $13, $14,
+         NULL, $15, $16, $17, $18
+       )
+       RETURNING *`,
+      [
+        companyId,
+        body.sku,
+        body.name,
+        body.description || null,
+        body.category_id || null,
+        body.unit_of_measure || 'each',
+        Number(body.unit_cost || 0),
+        Number(body.unit_price || 0),
+        body.currency || 'USD',
+        Number(body.quantity_on_hand || 0),
+        Number(body.reorder_point || 0),
+        Number(body.reorder_quantity || 0),
+        inventoryAccountResult.rows[0]?.id || null,
+        cogsAccountResult.rows[0]?.id || null,
+        body.is_active !== false,
+        body.track_inventory !== false,
+        body.is_taxable !== false,
+        body.tax_rate || null,
+      ]
+    );
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert({
-        sku: body.sku,
-        name: body.name,
-        description: body.description || null,
-        category_id: body.category_id || null,
-        product_type: 'inventory',
-        unit_of_measure: body.unit_of_measure || 'each',
-        cost_price: body.unit_cost || 0,
-        unit_price: body.unit_price || 0,
-        currency: body.currency || 'USD',
-        quantity_on_hand: body.quantity_on_hand || 0,
-        quantity_reserved: 0,
-        reorder_point: body.reorder_point || 0,
-        reorder_quantity: body.reorder_quantity || 0,
-        inventory_account_id: inventoryAccount?.id,
-        cogs_account_id: cogsAccount?.id,
-        revenue_account_id: null,
-        is_active: body.is_active !== false,
-        track_inventory: body.track_inventory !== false,
-        is_taxable: body.is_taxable !== false,
-        tax_rate: body.tax_rate || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: dataResult.rows[0] }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

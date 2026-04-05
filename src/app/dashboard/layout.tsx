@@ -4,10 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { CompanyProvider } from '@/contexts/company-context';
 import TrialWarningBanner from '@/components/trial-warning-banner';
-import type { UserProfile } from '@/types/database';
 import {
   HomeIcon,
   DocumentTextIcon,
@@ -134,7 +132,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; full_name: string | null; role: string | null } | null>(null);
   const [company, setCompany] = useState<any>(null);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('');
@@ -190,81 +188,70 @@ export default function DashboardLayout({
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        const meResponse = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (meResponse.status === 401) {
           router.push('/login');
           return;
         }
-        
-        if (session?.user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profileError) {
-            console.error('Profile error:', profileError);
-            // No profile yet = onboarding not finished; send to plan selection (not login – they're already authenticated)
-            if (profileError.code === 'PGRST116') {
-              setIsLoading(false);
-              router.push('/signup/select-plan');
-              return;
-            }
-          }
 
-          setUser(profile);
-
-          // Fetch company information and subscription status
-          if (profile?.company_id) {
-            const { data: companyData } = await supabase
-              .from('companies')
-              .select('id, name, logo_url')
-              .eq('id', profile.company_id)
-              .single();
-            
-            setCompany(companyData);
-
-            // Fetch subscription status and trial end date directly from companies table
-            // (authoritative source — set at signup and never drifts like company_settings)
-            try {
-              const { data: companySubInfo } = await supabase
-                .from('companies')
-                .select('subscription_status, trial_ends_at')
-                .eq('id', profile.company_id)
-                .single();
-
-              if (companySubInfo) {
-                setSubscriptionStatus(companySubInfo.subscription_status || '');
-                setTrialEndDate(companySubInfo.trial_ends_at || undefined);
-              }
-            } catch (error) {
-              // If columns don't exist or schema cache not updated, silently continue
-              // This can happen right after migrations - will resolve automatically
-              console.debug('Subscription status fetch skipped (schema cache updating):', error);
-            }
-          }
-
-          // Fetch enabled modules (industry modules only - core is always enabled)
-          if (profile?.company_id) {
-            const { data: modulesData } = await supabase
-              .from('subscription_modules')
-              .select('module_id')
-              .eq('company_id', profile.company_id)
-              .eq('is_active', true);
-            
-            const modules = modulesData?.map(m => m.module_id) || [];
-            setEnabledModules(modules);
-          }
-          
-          setIsLoading(false);
-        } else {
-          // No session, redirect to login
+        if (!meResponse.ok) {
+          const payload = await meResponse.json().catch(() => ({}));
+          console.error('Session error:', payload?.error || 'Failed to load session');
           setIsLoading(false);
           router.push('/login');
+          return;
         }
+
+        const mePayload = await meResponse.json();
+        const sessionUser = mePayload?.user;
+        if (!sessionUser) {
+          setIsLoading(false);
+          router.push('/login');
+          return;
+        }
+
+        setUser(sessionUser);
+
+        const companiesResponse = await fetch('/api/companies/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!companiesResponse.ok) {
+          const payload = await companiesResponse.json().catch(() => ({}));
+          console.error('Company load error:', payload?.error || 'Failed to load company');
+          setIsLoading(false);
+          return;
+        }
+
+        const companiesPayload = await companiesResponse.json();
+        const companies = companiesPayload?.companies || [];
+
+        if (!companies.length) {
+          setIsLoading(false);
+          router.push('/signup/select-plan');
+          return;
+        }
+
+        const selectedCompany =
+          companies.find((c: any) => c.id === companiesPayload?.currentCompanyId) ||
+          companies.find((c: any) => c.is_primary) ||
+          companies[0];
+
+        setCompany(selectedCompany);
+        setEnabledModules(companiesPayload?.modules || []);
+        setSubscriptionStatus(selectedCompany?.subscription_status || '');
+        setTrialEndDate(selectedCompany?.trial_ends_at || undefined);
+
+        if (selectedCompany?.id) {
+          await fetchNotifications(selectedCompany.id);
+        }
+
+        setIsLoading(false);
       } catch (error) {
         console.error('Error in getUser:', error);
         setIsLoading(false);
@@ -273,37 +260,28 @@ export default function DashboardLayout({
     };
 
     getUser();
-    fetchNotifications();
   }, [router]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (companyId: string) => {
     try {
       // Fetch recent notifications based on overdue invoices, bills, etc.
-      const { data: overdueInvoices } = await supabase
-        .from('invoices')
-        .select(`
-          id, 
-          invoice_number, 
-          customer_id, 
-          due_date,
-          customers!inner(name)
-        `)
-        .eq('status', 'overdue')
-        .order('due_date', { ascending: true })
-        .limit(5);
+      const [overdueInvoicesResponse, overdueBillsResponse] = await Promise.all([
+        fetch(
+          `/api/invoices?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
+          { credentials: 'include' }
+        ),
+        fetch(
+          `/api/bills?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
+          { credentials: 'include' }
+        ),
+      ]);
 
-      const { data: overdueBills } = await supabase
-        .from('bills')
-        .select(`
-          id, 
-          bill_number, 
-          vendor_id, 
-          due_date,
-          vendors!inner(name)
-        `)
-        .eq('status', 'overdue')
-        .order('due_date', { ascending: true })
-        .limit(5);
+      const overdueInvoices = overdueInvoicesResponse.ok
+        ? (await overdueInvoicesResponse.json()).data || []
+        : [];
+      const overdueBills = overdueBillsResponse.ok
+        ? (await overdueBillsResponse.json()).data || []
+        : [];
 
       const notificationList: any[] = [];
       
@@ -336,7 +314,10 @@ export default function DashboardLayout({
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
     router.push('/login');
   };
 

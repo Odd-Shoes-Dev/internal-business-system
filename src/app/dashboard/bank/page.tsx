@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   BanknotesIcon,
@@ -15,8 +15,13 @@ import {
 } from '@heroicons/react/24/outline';
 import type { BankAccount, BankTransaction } from '@/types/database';
 
+type BankAccountWithBalance = BankAccount & {
+  current_balance?: number;
+};
+
 export default function BankPage() {
-  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const { company } = useCompany();
+  const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<(BankTransaction & { bank_accounts?: { name: string; currency: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -26,49 +31,44 @@ export default function BankPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [company?.id]);
 
   const loadData = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
+      const companyQuery = `company_id=${company.id}`;
 
-      // Load bank accounts
-      const { data: accountsData, error: accountsError } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      const [accountsResponse, transactionsResponse, statsResponse] = await Promise.all([
+        fetch(`/api/bank-accounts?${companyQuery}&active=true`, { credentials: 'include' }),
+        fetch(`/api/bank-transactions?${companyQuery}&limit=10`, { credentials: 'include' }),
+        fetch(`/api/bank-transactions/stats?${companyQuery}`, { credentials: 'include' }),
+      ]);
 
-      if (accountsError) throw accountsError;
-      setAccounts(accountsData || []);
+      if (!accountsResponse.ok || !transactionsResponse.ok || !statsResponse.ok) {
+        throw new Error('Failed to load bank dashboard data');
+      }
+
+      const accountsResult = await accountsResponse.json();
+      const transactionsResult = await transactionsResponse.json();
+      const statsResult = await statsResponse.json();
+
+      const accountsData: BankAccountWithBalance[] = accountsResult.data || [];
+      setAccounts(accountsData);
 
       // Calculate total balance from all bank accounts (convert to USD for now)
-      const totalBalance = accountsData?.reduce((sum, account) => {
+      const totalBalance = accountsData.reduce((sum: number, account: BankAccountWithBalance) => {
         return sum + (account.current_balance || 0);
       }, 0) || 0;
 
-      // Load recent transactions
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('bank_transactions')
-        .select(`
-          *,
-          bank_accounts (name, currency)
-        `)
-        .order('transaction_date', { ascending: false })
-        .limit(10);
-
-      if (transactionsError) throw transactionsError;
-      setRecentTransactions(transactionsData || []);
-
-      // Count unreconciled
-      const { count } = await supabase
-        .from('bank_transactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_reconciled', false);
+      setRecentTransactions(transactionsResult.data || []);
 
       setStats({
         totalBalance,
-        unreconciledCount: count || 0,
+        unreconciledCount: statsResult.unreconciledCount || 0,
       });
     } catch (error) {
       console.error('Failed to load data:', error);

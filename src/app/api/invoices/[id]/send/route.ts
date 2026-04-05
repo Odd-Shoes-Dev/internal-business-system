@@ -1,43 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 export async function POST(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseKey) {
-      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured on the server' }, { status: 500 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, supabaseKey);
     const { sendInvoiceEmail } = await import('@/lib/email/resend');
-    const invoiceId = params.id;
+    const invoiceId = resolvedParams.id;
 
     // Fetch invoice with customer and company
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(name, email, email_2, email_3, email_4),
-        company:companies(name, email, phone, address, city, country)
-      `)
-      .eq('id', invoiceId)
-      .single();
+    const invoiceResult = await db.query<any>(
+      'SELECT * FROM invoices WHERE id = $1 LIMIT 1',
+      [invoiceId]
+    );
+    const invoice = invoiceResult.rows[0];
 
-    if (invoiceError || !invoice) {
+    if (!invoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
       );
     }
 
-    if (!invoice.company) {
+    const companyAccessError = await requireCompanyAccess(user.id, invoice.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const customerResult = await db.query<any>(
+      'SELECT name, email, email_2, email_3, email_4 FROM customers WHERE id = $1 LIMIT 1',
+      [invoice.customer_id]
+    );
+    const customer = customerResult.rows[0] || null;
+
+    const companyResult = await db.query<any>(
+      'SELECT name, email, phone, address, city, country FROM companies WHERE id = $1 LIMIT 1',
+      [invoice.company_id]
+    );
+    const company = companyResult.rows[0] || null;
+
+    if (!company) {
       return NextResponse.json(
         { error: 'Company information not found' },
         { status: 404 }
       );
     }
 
-    if (!invoice.customer?.email) {
+    if (!customer?.email) {
       return NextResponse.json(
         { error: 'Customer does not have an email address' },
         { status: 400 }
@@ -46,42 +59,43 @@ export async function POST(request: NextRequest, context: any) {
 
     // Collect all customer email addresses
     const emailAddresses = [
-      invoice.customer.email,
-      invoice.customer.email_2,
-      invoice.customer.email_3,
-      invoice.customer.email_4,
+      customer.email,
+      customer.email_2,
+      customer.email_3,
+      customer.email_4,
     ].filter((email): email is string => Boolean(email));
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const paymentLink = `${baseUrl}/pay?invoice=${invoiceId}`;
-    const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
+    const totalAmount = Number(invoice.total ?? invoice.total_amount ?? 0);
+    const balanceDue = totalAmount - Number(invoice.amount_paid || 0);
 
     // Send email to all addresses
     await sendInvoiceEmail({
       to: emailAddresses.join(', '),
-      customerName: invoice.customer.name,
+      customerName: customer.name,
       invoiceNumber: invoice.invoice_number,
       invoiceDate: invoice.invoice_date,
       dueDate: invoice.due_date,
-      totalAmount: Number(invoice.total_amount),
+      totalAmount,
       balanceDue,
       paymentLink,
       company: {
-        name: invoice.company.name,
-        email: invoice.company.email,
-        phone: invoice.company.phone || undefined,
-        address: invoice.company.address || undefined,
-        city: invoice.company.city || undefined,
-        country: invoice.company.country || undefined,
+        name: company.name,
+        email: company.email,
+        phone: company.phone || undefined,
+        address: company.address || undefined,
+        city: company.city || undefined,
+        country: company.country || undefined,
       },
     });
 
     // Update invoice status to sent if it was draft
     if (invoice.status === 'draft') {
-      await supabase
-        .from('invoices')
-        .update({ status: 'sent' })
-        .eq('id', invoiceId);
+      await db.query('UPDATE invoices SET status = $2, updated_at = NOW() WHERE id = $1', [
+        invoiceId,
+        'sent',
+      ]);
     }
 
     return NextResponse.json({ 

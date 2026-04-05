@@ -13,7 +13,6 @@ import {
   XMarkIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { printBill } from '@/lib/pdf/bill';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
@@ -87,45 +86,48 @@ export default function BillDetailPage() {
     try {
       setLoading(true);
 
-      // Fetch bill with vendor
-      const { data: billData, error: billError } = await supabase
-        .from('bills')
-        .select(`
-          *,
-          vendors (
-            name,
-            email,
-            company_name,
-            phone,
-            address_line1,
-            address_line2,
-            city,
-            state,
-            zip_code,
-            country
-          )
-        `)
-        .eq('id', params.id)
-        .single();
+      const billId = String(params.id);
 
-      if (billError) throw billError;
-      setBill(billData);
+      const billResponse = await fetch(`/api/bills/${billId}`, {
+        credentials: 'include',
+      });
+      if (!billResponse.ok) {
+        throw new Error('Failed to load bill');
+      }
 
-      // Fetch bill lines
-      const { data: linesData, error: linesError } = await supabase
-        .from('bill_lines')
-        .select('*')
-        .eq('bill_id', params.id)
-        .order('line_number');
+      const billResult = await billResponse.json();
+      const billData = billResult.data;
 
-      if (linesError) throw linesError;
-      setLines(linesData || []);
+      setBill({
+        ...billData,
+        subtotal: parseFloat(billData.subtotal || 0),
+        tax_amount: parseFloat(billData.tax_amount || 0),
+        total: parseFloat(billData.total || 0),
+        amount_paid: parseFloat(billData.amount_paid || 0),
+      });
+
+      const parsedLines = (billData.bill_lines || []).map((line: any) => ({
+        ...line,
+        quantity: parseFloat(line.quantity || 0),
+        unit_cost: parseFloat(line.unit_cost || 0),
+        line_total: parseFloat(line.line_total || 0),
+        tax_rate: parseFloat(line.tax_rate || 0),
+        tax_amount: parseFloat(line.tax_amount || 0),
+      }));
+      setLines(parsedLines);
 
       // Fetch bill payments
-      const paymentsResponse = await fetch(`/api/bills/${params.id}/payments`);
+      const paymentsResponse = await fetch(`/api/bills/${billId}/payments`, {
+        credentials: 'include',
+      });
       if (paymentsResponse.ok) {
         const paymentsResult = await paymentsResponse.json();
-        setPayments(paymentsResult.data || []);
+        const parsedPayments = (paymentsResult.data || []).map((payment: any) => ({
+          ...payment,
+          amount: parseFloat(payment.amount_applied || 0),
+          reference: payment.reference_number,
+        }));
+        setPayments(parsedPayments);
       }
     } catch (error) {
       console.error('Failed to load bill:', error);

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
@@ -19,7 +18,7 @@ import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Customer } from '@/types/database';
 
 export default function CustomersPage() {
-  const { company, loading: companyLoading } = useCompany();
+  const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,33 +38,33 @@ export default function CustomersPage() {
     
     try {
       setLoading(true);
-      let query = supabase
-        .from('customers')
-        .select('*', { count: 'exact' })
-        .eq('company_id', company.id)
-        .order('name');
-
-      // Apply status filter
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false);
-      }
-      // 'all' shows both active and inactive
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`);
+        params.set('search', searchQuery);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      if (statusFilter !== 'all') {
+        params.set('active', statusFilter === 'active' ? 'true' : 'false');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      const response = await fetch(`/api/customers?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      setCustomers(data || []);
-      setTotalCount(count || 0);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load customers');
+      }
+
+      const payload = await response.json();
+      setCustomers(payload?.data || []);
+      setTotalCount(payload?.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load customers:', error);
     } finally {

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface GeneralLedgerEntry {
   entryId: string;
@@ -28,51 +28,67 @@ interface AccountSummary {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const accountFilter = searchParams.get('accountFilter') || 'all';
     const journalType = searchParams.get('journalType') || 'all';
     const searchTerm = searchParams.get('searchTerm') || '';
 
-    // Fetch journal entries from database
-    let query = supabase
-      .from('journal_entries')
-      .select(`
-        id,
-        entry_number,
-        entry_date,
-        description,
-        memo,
-        source_module,
-        status,
-        lines:journal_lines(
-          id,
-          line_number,
-          account_id,
-          debit,
-          credit,
-          description,
-          account:accounts(
-            id,
-            code,
-            name,
-            account_type
-          )
-        )
-      `)
-      .gte('entry_date', startDate)
-      .lte('entry_date', endDate)
-      .eq('status', 'posted')
-      .order('entry_date', { ascending: true })
-      .order('entry_number', { ascending: true });
+    const journalEntriesResult = await db.query(
+      `SELECT id, entry_number, entry_date, description, memo, source_module, status
+       FROM journal_entries
+       WHERE company_id = $1
+         AND entry_date >= $2::date
+         AND entry_date <= $3::date
+         AND status = 'posted'
+       ORDER BY entry_date ASC, entry_number ASC`,
+      [companyId, startDate, endDate]
+    );
+    const journalEntries = journalEntriesResult.rows;
 
-    const { data: journalEntries, error } = await query;
+    const entryIds = journalEntries.map((entry: any) => entry.id);
+    let linesByEntryId = new Map<string, any[]>();
+    if (entryIds.length > 0) {
+      const linesResult = await db.query(
+        `SELECT jl.id,
+                jl.journal_entry_id,
+                jl.line_number,
+                jl.account_id,
+                jl.debit,
+                jl.credit,
+                jl.description,
+                a.id AS account_ref_id,
+                a.code AS account_code,
+                a.name AS account_name,
+                a.account_type
+         FROM journal_lines jl
+         LEFT JOIN accounts a ON a.id = jl.account_id
+         WHERE jl.journal_entry_id = ANY($1::uuid[])
+         ORDER BY jl.line_number ASC`,
+        [entryIds]
+      );
 
-    if (error) {
-      console.error('Error fetching journal entries:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      for (const line of linesResult.rows) {
+        const current = linesByEntryId.get(line.journal_entry_id) || [];
+        current.push(line);
+        linesByEntryId.set(line.journal_entry_id, current);
+      }
     }
 
     // Transform journal entries into general ledger entries
@@ -112,14 +128,15 @@ export async function GET(request: NextRequest) {
     };
 
     journalEntries?.forEach((entry: any) => {
-      entry.lines?.forEach((line: any) => {
-        if (line.account) {
+      const lines = linesByEntryId.get(entry.id) || [];
+      lines.forEach((line: any) => {
+        if (line.account_ref_id) {
           entries.push({
             entryId: `${entry.entry_number}-${line.line_number}`,
             date: entry.entry_date,
-            accountCode: line.account.code,
-            accountName: line.account.name,
-            accountType: mapAccountType(line.account.account_type),
+            accountCode: line.account_code,
+            accountName: line.account_name,
+            accountType: mapAccountType(line.account_type),
             description: line.description || entry.description || '',
             reference: entry.memo || entry.entry_number,
             debit: parseFloat(line.debit) || 0,
@@ -271,3 +288,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

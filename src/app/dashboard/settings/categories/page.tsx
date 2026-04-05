@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   PencilIcon,
@@ -25,6 +25,7 @@ interface Category {
 
 export default function CategoriesPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -37,20 +38,33 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [company?.id]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_categories')
-        .select(`
-          *,
-          parent:product_categories!parent_id(name)
-        `)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      const data = await response.json();
+      const rows: any[] = Array.isArray(data) ? data : data.data || [];
+      const byId = new Map<string, any>(rows.map((row: any) => [row.id, row]));
+
+      setCategories(
+        rows.map((row: any) => ({
+          ...row,
+          parent: row.parent_id && byId.get(row.parent_id)
+            ? { name: byId.get(row.parent_id).name }
+            : undefined,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
@@ -70,19 +84,30 @@ export default function CategoriesPage() {
       };
 
       if (editingCategory) {
-        const { error } = await supabase
-          .from('product_categories')
-          .update(payload)
-          .eq('id', editingCategory.id);
-
-        if (error) throw error;
+        const response = await fetch(`/api/product-categories/${editingCategory.id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to update category');
+        }
         toast.success('Category updated successfully');
       } else {
-        const { error } = await supabase
-          .from('product_categories')
-          .insert([payload]);
+        if (!company?.id) {
+          throw new Error('No company selected');
+        }
 
-        if (error) throw error;
+        const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to create category');
+        }
         toast.success('Category created successfully');
       }
 
@@ -112,12 +137,13 @@ export default function CategoriesPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/product-categories/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete category');
+      }
       toast.success('Category deleted successfully');
       fetchCategories();
     } catch (error) {

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface TaxDeduction {
   category: string;
@@ -67,9 +67,23 @@ interface TaxSummaryData {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
+    const companyId = getCompanyIdFromRequest(request);
     const taxYear = parseInt(searchParams.get('taxYear') || new Date().getFullYear().toString());
+
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     // Validate tax year
     const currentYear = new Date().getFullYear();
@@ -81,37 +95,53 @@ export async function GET(request: NextRequest) {
     const endDate = `${taxYear}-12-31`;
 
     // Fetch invoices for revenue (paid and partial)
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('total_amount, amount_paid, status, issue_date')
-      .gte('issue_date', startDate)
-      .lte('issue_date', endDate)
-      .in('status', ['paid', 'partial']);
+    const invoicesResult = await db.query(
+      `SELECT total_amount, amount_paid, status, issue_date
+       FROM invoices
+       WHERE company_id = $1
+         AND issue_date >= $2::date
+         AND issue_date <= $3::date
+         AND status = ANY($4::text[])`,
+      [companyId, startDate, endDate, ['paid', 'partial']]
+    );
+    const invoices = invoicesResult.rows;
 
     // Calculate gross revenue from invoices
     const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
 
     // Fetch expenses for deductions
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select('amount, category, description, expense_date')
-      .gte('expense_date', startDate)
-      .lte('expense_date', endDate);
+    const expensesResult = await db.query(
+      `SELECT amount, category, description, expense_date
+       FROM expenses
+       WHERE company_id = $1
+         AND expense_date >= $2::date
+         AND expense_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const expenses = expensesResult.rows;
 
     // Fetch bills for additional deductions
-    const { data: bills } = await supabase
-      .from('bills')
-      .select('total_amount, amount_paid, category, description, bill_date')
-      .gte('bill_date', startDate)
-      .lte('bill_date', endDate)
-      .in('status', ['paid', 'partial']);
+    const billsResult = await db.query(
+      `SELECT total_amount, amount_paid, category, description, bill_date
+       FROM bills
+       WHERE company_id = $1
+         AND bill_date >= $2::date
+         AND bill_date <= $3::date
+         AND status = ANY($4::text[])`,
+      [companyId, startDate, endDate, ['paid', 'partial']]
+    );
+    const bills = billsResult.rows;
 
     // Fetch assets for depreciation calculation
-    const { data: assets } = await supabase
-      .from('assets')
-      .select('purchase_price, depreciation_method, useful_life_months, accumulated_depreciation, purchase_date')
-      .lte('purchase_date', endDate)
-      .eq('status', 'active');
+    const assetsResult = await db.query(
+      `SELECT purchase_price, depreciation_method, useful_life_months, accumulated_depreciation, purchase_date
+       FROM assets
+       WHERE company_id = $1
+         AND purchase_date <= $2::date
+         AND status = 'active'`,
+      [companyId, endDate]
+    );
+    const assets = assetsResult.rows;
 
     // Calculate depreciation for the year
     const currentDate = new Date(endDate);

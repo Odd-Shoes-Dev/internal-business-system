@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { MagnifyingGlassIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
@@ -33,15 +32,15 @@ export default function ChartOfAccountsPage() {
     if (!company) return;
     
     try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('company_id', company.id)
-        .eq('is_active', true)
-        .order('code');
+      const response = await fetch(`/api/accounts?company_id=${company.id}&active=true&limit=500`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load accounts');
+      }
 
-      if (error) throw error;
-      setAccounts(data || []);
+      const result = await response.json();
+      setAccounts(result.data || []);
     } catch (error) {
       console.error('Failed to load accounts:', error);
     } finally {
@@ -70,6 +69,10 @@ export default function ChartOfAccountsPage() {
   }, {} as Record<string, Account[]>);
 
   const formatAccountType = (type: string) => {
+    if (!type) {
+      return 'Unspecified';
+    }
+
     return type
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

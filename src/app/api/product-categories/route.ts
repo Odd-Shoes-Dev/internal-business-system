@@ -1,37 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (companyError || !userCompany) {
-      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
-    const { data, error } = await supabase
-      .from('product_categories')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('name');
+    const result = await db.query(
+      `SELECT *
+       FROM product_categories
+       WHERE company_id = $1
+       ORDER BY name ASC`,
+      [companyId]
+    );
 
-    if (error) throw error;
-
-    return NextResponse.json(data);
+    return NextResponse.json(result.rows);
   } catch (error: any) {
     console.error('Error fetching product categories:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -40,11 +35,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     const body = await request.json();
@@ -58,16 +51,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
-      .from('product_categories')
-      .insert({
-        name,
-        description: description || null,
-      })
-      .select()
-      .single();
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
 
-    if (error) throw error;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const result = await db.query(
+      `INSERT INTO product_categories (
+         company_id, name, description, created_by
+       ) VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [companyId, name, description || null, user.id]
+    );
+
+    const data = result.rows[0];
 
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {

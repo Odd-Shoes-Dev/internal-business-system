@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorAging {
   vendorId: string;
@@ -22,39 +22,48 @@ interface VendorAging {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const reportDate = searchParams.get('reportDate') || new Date().toISOString().split('T')[0];
     const vendorType = searchParams.get('vendorType') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalAmount';
     const showCriticalOnly = searchParams.get('showCriticalOnly') === 'true';
 
-    // Fetch bills from database
-    const { data: bills, error } = await supabase
-      .from('bills')
-      .select(`
-        id,
-        bill_number,
-        bill_date,
-        due_date,
-        total,
-        amount_paid,
-        currency,
-        status,
-        payment_terms,
-        vendor:vendors(
-          id,
-          name,
-          company_name
-        )
-      `)
-      .in('status', ['pending_approval', 'approved', 'partial'])
-      .order('vendor_id');
-
-    if (error) {
-      console.error('Error fetching bills:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const billsResult = await db.query(
+      `SELECT b.id,
+              b.bill_number,
+              b.bill_date,
+              b.due_date,
+              b.total,
+              b.amount_paid,
+              b.currency,
+              b.status,
+              b.payment_terms,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.company_name AS vendor_company_name
+       FROM bills b
+       LEFT JOIN vendors v ON v.id = b.vendor_id
+       WHERE b.company_id = $1
+         AND b.status = ANY($2::text[])
+       ORDER BY b.vendor_id ASC`,
+      [companyId, ['pending_approval', 'approved', 'partial']]
+    );
+    const bills = billsResult.rows;
 
     // Group bills by vendor and calculate aging
     const vendorMap = new Map<string, VendorAging>();
@@ -62,20 +71,31 @@ export async function GET(request: NextRequest) {
 
     // Process bills with currency conversion
     for (const bill of bills || []) {
-      if (!bill.vendor) continue;
+      if (!bill.vendor_ref_id) continue;
 
-      const vendor: any = bill.vendor;
-      const vendorId = vendor.id;
-      const balance = parseFloat(bill.total) - parseFloat(bill.amount_paid || 0);
+      const vendorId = bill.vendor_ref_id;
+      const balance = parseFloat(bill.total || '0') - parseFloat(bill.amount_paid || '0');
       
       if (balance <= 0) continue; // Skip fully paid bills
 
       // Convert balance to USD for reporting
       const balanceUSD = await convertCurrency(
-        supabase,
+        {
+          rpc: async (fn: string, args: any) => {
+            if (fn !== 'convert_currency') {
+              return { data: null, error: new Error('Unsupported RPC function') };
+            }
+            const result = await db.query<{ value: number }>(
+              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+            );
+            return { data: result.rows[0]?.value ?? null, error: null };
+          },
+        },
         balance,
         (bill.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency
+        'USD' as SupportedCurrency,
+        reportDate
       ) || balance;
 
       const dueDate = new Date(bill.due_date);
@@ -84,7 +104,7 @@ export async function GET(request: NextRequest) {
       if (!vendorMap.has(vendorId)) {
         vendorMap.set(vendorId, {
           vendorId: vendorId,
-          vendorName: vendor.company_name || vendor.name,
+          vendorName: bill.vendor_company_name || bill.vendor_name,
           vendorType: 'Supplier',
           totalAmount: 0,
           current: 0,
@@ -202,3 +222,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

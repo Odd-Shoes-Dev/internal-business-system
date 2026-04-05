@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = getDbProvider();
     const { searchParams } = new URL(request.url);
     
     // Verify API key authentication
@@ -22,14 +22,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify the API key and get company access
-    const { data: integration, error: authError } = await supabase
-      .from('api_integrations')
-      .select('company_id, is_active, permissions')
-      .eq('api_key', apiKey.replace('Bearer ', ''))
-      .eq('external_system_id', systemId)
-      .single();
+    const integrationResult = await db.query(
+      `SELECT company_id, is_active, permissions
+       FROM api_integrations
+       WHERE api_key = $1
+         AND external_system_id = $2
+       LIMIT 1`,
+      [apiKey.replace('Bearer ', ''), systemId]
+    );
+    const integration = integrationResult.rows[0] as any;
 
-    if (authError || !integration || !integration.is_active) {
+    if (!integration || !integration.is_active) {
       return NextResponse.json(
         { error: 'Invalid authentication credentials' },
         { status: 401 }
@@ -49,12 +52,20 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
     const companyId = integration.company_id;
 
+    await db.query(
+      `UPDATE api_integrations
+       SET last_used_at = NOW(),
+           updated_at = NOW()
+       WHERE api_key = $1`,
+      [apiKey.replace('Bearer ', '')]
+    );
+
     // Fetch financial summary data
     const [revenueData, expenseData, cashData, customerData] = await Promise.all([
-      getRevenueData(supabase, companyId, startDate, endDate),
-      getExpenseData(supabase, companyId, startDate, endDate),
-      getCashData(supabase, companyId),
-      getCustomerData(supabase, companyId, startDate, endDate)
+      getRevenueData(db, companyId, startDate, endDate),
+      getExpenseData(db, companyId, startDate, endDate),
+      getCashData(db, companyId),
+      getCustomerData(db, companyId, startDate, endDate)
     ]);
 
     const summary = {
@@ -94,87 +105,101 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getRevenueData(supabase: any, companyId: string, startDate: string, endDate: string) {
-  const { data: revenue } = await supabase
-    .from('journal_lines')
-    .select(`
-      credit,
-      journal_entry:journal_entries!inner (
-        entry_date,
-        status,
-        account:accounts!inner (
-          account_type
-        )
-      )
-    `)
-    .eq('journal_entry.status', 'posted')
-    .eq('journal_entry.account.account_type', 'revenue')
-    .gte('journal_entry.entry_date', startDate)
-    .lte('journal_entry.entry_date', endDate);
-
-  const total = revenue?.reduce((sum: number, entry: any) => sum + (entry.credit || 0), 0) || 0;
-  const count = revenue?.length || 0;
+async function getRevenueData(db: any, companyId: string, startDate: string, endDate: string) {
+  const result = await db.query(
+    `SELECT COALESCE(SUM(jl.credit), 0)::numeric AS total,
+            COUNT(*)::int AS count
+     FROM journal_lines jl
+     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+     INNER JOIN accounts a ON a.id = jl.account_id
+     WHERE je.company_id = $1
+       AND je.status = 'posted'
+       AND je.entry_date >= $2::date
+       AND je.entry_date <= $3::date
+       AND LOWER(COALESCE(a.account_type, '')) = 'revenue'`,
+    [companyId, startDate, endDate]
+  );
+  const row = result.rows[0] as any;
+  const total = Number(row?.total || 0);
+  const count = Number(row?.count || 0);
   
   return { total, count };
 }
 
-async function getExpenseData(supabase: any, companyId: string, startDate: string, endDate: string) {
-  const { data: expenses } = await supabase
-    .from('journal_lines')
-    .select(`
-      debit,
-      journal_entry:journal_entries!inner (
-        entry_date,
-        status,
-        account:accounts!inner (
-          account_type
-        )
-      )
-    `)
-    .eq('journal_entry.status', 'posted')
-    .eq('journal_entry.account.account_type', 'expense')
-    .gte('journal_entry.entry_date', startDate)
-    .lte('journal_entry.entry_date', endDate);
-
-  const total = expenses?.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0) || 0;
-  const count = expenses?.length || 0;
+async function getExpenseData(db: any, companyId: string, startDate: string, endDate: string) {
+  const result = await db.query(
+    `SELECT COALESCE(SUM(jl.debit), 0)::numeric AS total,
+            COUNT(*)::int AS count
+     FROM journal_lines jl
+     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+     INNER JOIN accounts a ON a.id = jl.account_id
+     WHERE je.company_id = $1
+       AND je.status = 'posted'
+       AND je.entry_date >= $2::date
+       AND je.entry_date <= $3::date
+       AND LOWER(COALESCE(a.account_type, '')) = 'expense'`,
+    [companyId, startDate, endDate]
+  );
+  const row = result.rows[0] as any;
+  const total = Number(row?.total || 0);
+  const count = Number(row?.count || 0);
   
   return { total, count };
 }
 
-async function getCashData(supabase: any, companyId: string) {
-  const { data: cashAccounts } = await supabase
-    .from('accounts')
-    .select('id, name, current_balance')
-    .eq('company_id', companyId)
-    .in('account_subtype', ['cash', 'bank'])
-    .eq('is_active', true);
+async function getCashData(db: any, companyId: string) {
+  const accountsResult = await db.query(
+    `SELECT id, name, current_balance
+     FROM accounts
+     WHERE company_id = $1
+       AND is_active = true
+       AND LOWER(COALESCE(account_subtype, '')) IN ('cash', 'bank')
+     ORDER BY name ASC`,
+    [companyId]
+  );
+  const cashAccounts = accountsResult.rows as any[];
 
-  const balance = cashAccounts?.reduce((sum: number, account: any) => sum + (account.current_balance || 0), 0) || 0;
+  const balance = cashAccounts.reduce((sum: number, account: any) => sum + Number(account.current_balance || 0), 0);
   
   return { 
     balance, 
-    accounts: cashAccounts?.map((acc: any) => ({
+    accounts: cashAccounts.map((acc: any) => ({
       id: acc.id,
       name: acc.name,
       balance: acc.current_balance
-    })) || []
+    }))
   };
 }
 
-async function getCustomerData(supabase: any, companyId: string, startDate: string, endDate: string) {
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, created_at, last_activity_date')
-    .eq('company_id', companyId);
+async function getCustomerData(db: any, companyId: string, startDate: string, endDate: string) {
+  const totalResult = await db.query(
+    `SELECT COUNT(*)::int AS total
+     FROM customers
+     WHERE company_id = $1`,
+    [companyId]
+  );
 
-  const total = customers?.length || 0;
-  const new_count = customers?.filter((c: any) => 
-    c.created_at >= startDate && c.created_at <= endDate
-  ).length || 0;
-  const active_count = customers?.filter((c: any) => 
-    c.last_activity_date && c.last_activity_date >= startDate
-  ).length || 0;
+  const newResult = await db.query(
+    `SELECT COUNT(*)::int AS new_count
+     FROM customers
+     WHERE company_id = $1
+       AND created_at >= $2::date
+       AND created_at <= ($3::date + INTERVAL '1 day' - INTERVAL '1 second')`,
+    [companyId, startDate, endDate]
+  );
+
+  const activeResult = await db.query(
+    `SELECT COUNT(DISTINCT customer_id)::int AS active_count
+     FROM invoices
+     WHERE company_id = $1
+       AND invoice_date >= $2::date
+       AND invoice_date <= $3::date`,
+    [companyId, startDate, endDate]
+  );
+
+  const total = Number((totalResult.rows[0] as any)?.total || 0);
+  const new_count = Number((newResult.rows[0] as any)?.new_count || 0);
+  const active_count = Number((activeResult.rows[0] as any)?.active_count || 0);
   
   return { total, new_count, active_count };
 }

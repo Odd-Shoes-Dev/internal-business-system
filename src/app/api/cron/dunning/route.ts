@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDbProvider } from '@/lib/provider';
 import { getStripe } from '@/lib/stripe';
 
 // This endpoint handles dunning (failed payment retries)
@@ -13,29 +13,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const db = getDbProvider();
 
     const now = new Date();
 
     // Get all past_due subscriptions
-    const { data: pastDueSubscriptions, error } = await supabase
-      .from('subscriptions')
-      .select('*, companies!inner(name, email), company_settings!inner(stripe_subscription_id)')
-      .eq('status', 'past_due');
-
-    if (error) {
-      console.error('Error fetching past_due subscriptions:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const pastDueResult = await db.query(
+      `SELECT s.*, c.name AS company_name, c.email AS company_email,
+              cs.stripe_subscription_id
+       FROM subscriptions s
+       INNER JOIN companies c ON c.id = s.company_id
+       LEFT JOIN company_settings cs ON cs.company_id = s.company_id
+       WHERE s.status = 'past_due'`
+    );
+    const pastDueSubscriptions = pastDueResult.rows as any[];
 
     if (!pastDueSubscriptions || pastDueSubscriptions.length === 0) {
       return NextResponse.json({ 
@@ -50,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     for (const subscription of pastDueSubscriptions) {
       try {
-        const stripeSubId = subscription.company_settings?.stripe_subscription_id;
+        const stripeSubId = subscription.stripe_subscription_id;
         
         if (!stripeSubId) {
           console.log(`No Stripe subscription for company ${subscription.company_id}`);
@@ -77,41 +68,57 @@ export async function POST(request: NextRequest) {
           });
 
           // Update database
-          await supabase
-            .from('subscriptions')
-            .update({
-              status: 'cancelled',
-              cancellation_reason: 'payment_failed',
-              cancelled_at: now.toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq('id', subscription.id);
+          await db.query(
+            `UPDATE subscriptions
+             SET status = 'cancelled',
+                 cancellation_reason = 'payment_failed',
+                 cancelled_at = $2,
+                 updated_at = $2
+             WHERE id = $1`,
+            [subscription.id, now.toISOString()]
+          );
 
-          await supabase
-            .from('companies')
-            .update({
-              subscription_status: 'cancelled',
-              updated_at: now.toISOString(),
-            })
-            .eq('id', subscription.company_id);
+          await db.query(
+            `UPDATE companies
+             SET subscription_status = 'cancelled',
+                 updated_at = $2
+             WHERE id = $1`,
+            [subscription.company_id, now.toISOString()]
+          );
+
+          await db.query(
+            `UPDATE company_settings
+             SET subscription_status = 'cancelled',
+                 updated_at = $2
+             WHERE company_id = $1`,
+            [subscription.company_id, now.toISOString()]
+          );
 
           // Log activity
-          await supabase
-            .from('activity_logs')
-            .insert({
-              company_id: subscription.company_id,
-              user_id: null,
-              action: 'subscription_cancelled',
-              entity_type: 'subscription',
-              entity_id: subscription.id,
-              metadata: {
+          await db.query(
+            `INSERT INTO activity_logs (
+               company_id,
+               user_id,
+               action,
+               entity_type,
+               entity_id,
+               metadata,
+               created_at
+             ) VALUES (
+               $1, NULL, 'subscription_cancelled', 'subscription', $2, $3::jsonb, NOW()
+             )`,
+            [
+              subscription.company_id,
+              subscription.id,
+              JSON.stringify({
                 reason: 'payment_failed_max_retries',
                 retry_count: retryCount,
                 plan_tier: subscription.plan_tier,
-              },
-            });
+              }),
+            ]
+          );
 
-          cancelled.push(subscription.companies?.name || subscription.company_id);
+          cancelled.push(subscription.company_name || subscription.company_id);
 
           // TODO: Send subscription cancelled email
           
@@ -140,22 +147,30 @@ export async function POST(request: NextRequest) {
                 },
               });
 
-              retried.push(subscription.companies?.name || subscription.company_id);
+              retried.push(subscription.company_name || subscription.company_id);
 
               // Log activity
-              await supabase
-                .from('activity_logs')
-                .insert({
-                  company_id: subscription.company_id,
-                  user_id: null,
-                  action: 'payment_retry',
-                  entity_type: 'subscription',
-                  entity_id: subscription.id,
-                  metadata: {
+              await db.query(
+                `INSERT INTO activity_logs (
+                   company_id,
+                   user_id,
+                   action,
+                   entity_type,
+                   entity_id,
+                   metadata,
+                   created_at
+                 ) VALUES (
+                   $1, NULL, 'payment_retry', 'subscription', $2, $3::jsonb, NOW()
+                 )`,
+                [
+                  subscription.company_id,
+                  subscription.id,
+                  JSON.stringify({
                     retry_count: retryCount + 1,
                     invoice_id: invoice.id,
-                  },
-                });
+                  }),
+                ]
+              );
             }
           } catch (paymentError: any) {
             console.error(`Payment retry failed for ${subscription.company_id}:`, paymentError.message);
@@ -171,7 +186,7 @@ export async function POST(request: NextRequest) {
             });
 
             errors.push({
-              company: subscription.companies?.name || subscription.company_id,
+              company: subscription.company_name || subscription.company_id,
               error: paymentError.message,
               retry_count: retryCount + 1,
             });
@@ -180,7 +195,7 @@ export async function POST(request: NextRequest) {
       } catch (err: any) {
         console.error(`Error processing subscription ${subscription.id}:`, err);
         errors.push({
-          company: subscription.companies?.name || subscription.company_id,
+          company: subscription.company_name || subscription.company_id,
           subscription_id: subscription.id,
           error: err.message,
         });

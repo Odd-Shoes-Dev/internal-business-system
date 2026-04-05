@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   ArrowUpIcon,
@@ -20,6 +20,7 @@ type TransactionWithAccount = BankTransaction & {
 
 export default function BankTransactionsPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [transactions, setTransactions] = useState<TransactionWithAccount[]>([]);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,23 +35,28 @@ export default function BankTransactionsPage() {
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [company?.id]);
 
   useEffect(() => {
     loadTransactions();
     loadStats();
-  }, [selectedAccount, selectedType, reconcileFilter]);
+  }, [selectedAccount, selectedType, reconcileFilter, company?.id]);
 
   const loadAccounts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setAccounts(data || []);
+      const response = await fetch(`/api/bank-accounts?company_id=${company.id}&active=true`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load accounts');
+      }
+
+      const result = await response.json();
+      setAccounts(result.data || []);
     } catch (error) {
       console.error('Error loading accounts:', error);
     }
@@ -58,39 +64,26 @@ export default function BankTransactionsPage() {
 
   const loadTransactions = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
+      const params = new URLSearchParams();
+      params.append('company_id', company.id);
+      if (selectedAccount !== 'all') params.append('account_id', selectedAccount);
+      if (selectedType !== 'all') params.append('type', selectedType);
+      if (reconcileFilter !== 'all') params.append('reconciled', reconcileFilter);
 
-      let query = supabase
-        .from('bank_transactions')
-        .select(`
-          *,
-          bank_accounts:bank_account_id (
-            id,
-            name,
-            bank_name
-          )
-        `)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (selectedAccount !== 'all') {
-        query = query.eq('bank_account_id', selectedAccount);
+      const response = await fetch(`/api/bank-transactions?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load transactions');
       }
 
-      if (selectedType !== 'all') {
-        query = query.eq('transaction_type', selectedType);
-      }
-
-      if (reconcileFilter === 'reconciled') {
-        query = query.eq('is_reconciled', true);
-      } else if (reconcileFilter === 'unreconciled') {
-        query = query.eq('is_reconciled', false);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setTransactions(data || []);
+      const result = await response.json();
+      setTransactions(result.data || []);
     } catch (error) {
       console.error('Error loading transactions:', error);
     } finally {
@@ -100,12 +93,19 @@ export default function BankTransactionsPage() {
 
   const loadStats = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       const params = new URLSearchParams();
+      params.append('company_id', company.id);
       if (selectedAccount !== 'all') params.append('account_id', selectedAccount);
       if (selectedType !== 'all') params.append('type', selectedType);
       if (reconcileFilter !== 'all') params.append('reconciled', reconcileFilter);
 
-      const response = await fetch(`/api/bank-transactions/stats?${params.toString()}`);
+      const response = await fetch(`/api/bank-transactions/stats?${params.toString()}`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);

@@ -1,34 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+
     const stripe = await getStripe();
-    
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
+
     const body = await request.json();
     const { module_id } = body;
 
@@ -36,35 +16,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Module ID required' }, { status: 400 });
     }
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Get user's company and check permissions
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id, role')
-      .eq('id', user.id)
-      .single();
+    const profile = await db.query<{ company_id: string; role: string }>(
+      'SELECT company_id, role FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
+    const profileRow = profile.rows[0];
 
-    if (!profile?.company_id) {
+    if (!profileRow?.company_id) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    if (profile.role !== 'owner' && profile.role !== 'admin') {
+    if (profileRow.role !== 'owner' && profileRow.role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     // Get module subscription
-    const { data: module } = await supabase
-      .from('subscription_modules')
-      .select('*')
-      .eq('company_id', profile.company_id)
-      .eq('module_id', module_id)
-      .eq('is_active', true)
-      .single();
+    const moduleResult = await db.query(
+      `SELECT *
+       FROM subscription_modules
+       WHERE company_id = $1
+         AND module_id = $2
+         AND is_active = TRUE
+       LIMIT 1`,
+      [profileRow.company_id, module_id]
+    );
+    const module = moduleResult.rows[0];
 
     if (!module) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
@@ -85,13 +62,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Deactivate in database
-    await supabaseAdmin
-      .from('subscription_modules')
-      .update({
-        is_active: false,
-        removed_at: new Date().toISOString(),
-      })
-      .eq('id', module.id);
+    await db.query(
+      `UPDATE subscription_modules
+       SET is_active = FALSE,
+           removed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [module.id]
+    );
 
     return NextResponse.json({
       success: true,
@@ -106,3 +84,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

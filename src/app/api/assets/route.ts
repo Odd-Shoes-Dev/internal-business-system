@@ -1,28 +1,69 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+
+async function resolveCompanyId(db: any, userId: string, request: NextRequest, bodyCompanyId?: string | null) {
+  const requestedCompanyId = bodyCompanyId || getCompanyIdFromRequest(request);
+  if (requestedCompanyId) {
+    return requestedCompanyId;
+  }
+
+  const userCompany = await db.query(
+    `SELECT company_id
+     FROM user_companies
+     WHERE user_id = $1
+     ORDER BY is_primary DESC, joined_at ASC
+     LIMIT 1`,
+    [userId]
+  );
+
+  return userCompany.rows[0]?.company_id || null;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
+    const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = supabase
-      .from('fixed_assets')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const companyId = await resolveCompanyId(db, user.id, request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const params: any[] = [companyId];
+    const where: string[] = ['fa.company_id = $1'];
 
     if (status) {
-      query = query.eq('status', status);
+      params.push(status);
+      where.push(`fa.status = $${params.length}`);
     }
 
-    const { data, error } = await query;
+    const result = await db.query(
+      `SELECT fa.*, ac.name AS asset_category_name
+       FROM fixed_assets fa
+       LEFT JOIN asset_categories ac ON ac.id = fa.category_id
+       WHERE ${where.join(' AND ')}
+       ORDER BY fa.created_at DESC`,
+      params
+    );
 
-    if (error) {
-      console.error('Error fetching assets:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const data = result.rows.map((row: any) => ({
+      ...row,
+      asset_categories: row.asset_category_name
+        ? {
+            name: row.asset_category_name,
+          }
+        : null,
+    }));
 
     return NextResponse.json(data);
   } catch (error) {
@@ -33,8 +74,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
+    const companyId = await resolveCompanyId(db, user.id, request, body.company_id);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     const {
       name,
@@ -51,45 +105,55 @@ export async function POST(request: NextRequest) {
       location,
       notes,
       vendor_id,
+      currency,
     } = body;
+
+    if (!name || !purchase_date || !useful_life_months) {
+      return NextResponse.json({ error: 'Missing required fields: name, purchase_date, useful_life_months' }, { status: 400 });
+    }
 
     const generatedNumber = asset_number || `ASSET-${Date.now().toString().slice(-6)}`;
     const purchasePrice = Number(purchase_price) || 0;
     const salvageValue = Number(residual_value) || 0;
 
-    const { data, error } = await supabase
-      .from('fixed_assets')
-      .insert([
-        {
-          name,
-          description,
-          category_id: category_id || null,
-          asset_number: generatedNumber,
-          serial_number,
-          purchase_date,
-          purchase_price: purchasePrice,
-          residual_value: salvageValue,
-          depreciation_start_date: depreciation_start_date || purchase_date,
-          useful_life_months,
-          depreciation_method,
-          accumulated_depreciation: 0,
-          location,
-          vendor_id: vendor_id || null,
-          notes,
-          status: 'active',
-        },
-      ])
-      .select()
-      .single();
+    const insertResult = await db.query(
+      `INSERT INTO fixed_assets (
+         company_id, name, description, category_id, asset_number, serial_number,
+         purchase_date, purchase_price, residual_value, depreciation_start_date,
+         useful_life_months, depreciation_method, accumulated_depreciation,
+         location, vendor_id, notes, status, currency, created_by
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6,
+         $7::date, $8, $9, $10::date,
+         $11, $12, 0,
+         $13, $14, $15, 'active', $16, $17
+       )
+       RETURNING *`,
+      [
+        companyId,
+        name,
+        description || null,
+        category_id || null,
+        generatedNumber,
+        serial_number || null,
+        purchase_date,
+        purchasePrice,
+        salvageValue,
+        depreciation_start_date || purchase_date,
+        Number(useful_life_months),
+        depreciation_method || 'straight_line',
+        location || null,
+        vendor_id || null,
+        notes || null,
+        currency || 'USD',
+        user.id,
+      ]
+    );
 
-    if (error) {
-      console.error('Error creating asset:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(insertResult.rows[0], { status: 201 });
   } catch (error) {
     console.error('Error in assets POST:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

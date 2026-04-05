@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
-import { formatCurrency as currencyFormatter, convertCurrency } from '@/lib/currency';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
@@ -96,7 +95,7 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [company?.id]);
 
   // Pre-fill form when coming from booking page
   useEffect(() => {
@@ -127,13 +126,25 @@ export default function NewInvoicePage() {
 
   const loadData = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
+      const query = `?company_id=${company.id}&active=true&limit=500`;
       const [customersRes, productsRes] = await Promise.all([
-        supabase.from('customers').select('*').eq('is_active', true).order('name'),
-        supabase.from('products').select('*').eq('is_active', true).order('name'),
+        fetch(`/api/customers${query}`, { credentials: 'include' }),
+        fetch(`/api/products${query}`, { credentials: 'include' }),
       ]);
 
-      setCustomers(customersRes.data || []);
-      setProducts(productsRes.data || []);
+      if (!customersRes.ok || !productsRes.ok) {
+        throw new Error('Failed to load customers/products');
+      }
+
+      const customersResult = await customersRes.json();
+      const productsResult = await productsRes.json();
+
+      setCustomers(customersResult.data || []);
+      setProducts(productsResult.data || []);
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -151,13 +162,19 @@ export default function NewInvoicePage() {
       let convertedPrice = product.unit_price;
       
       if (productCurrency !== invoiceCurrency) {
-        // Convert the product price to invoice currency
-        const converted = await convertCurrency(
-          supabase,
-          product.unit_price,
-          productCurrency as any,
-          invoiceCurrency as any
-        );
+        const conversionResponse = await fetch('/api/currency/convert', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: product.unit_price,
+            from_currency: productCurrency,
+            to_currency: invoiceCurrency,
+          }),
+        });
+
+        const conversionResult = conversionResponse.ok ? await conversionResponse.json() : null;
+        const converted = conversionResult?.data?.converted_amount ?? null;
         
         if (converted !== null) {
           convertedPrice = converted;
@@ -221,6 +238,7 @@ export default function NewInvoicePage() {
 
       const response = await fetch('/api/invoices', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
-import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -44,43 +42,38 @@ export default function VendorsPage() {
     
     try {
       setLoading(true);
-      let query = supabase
-        .from('vendors')
-        .select('*', { count: 'exact' })
-        .eq('company_id', company.id)
-        .order('name');
-
-      // Apply status filter
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false);
-      }
-      // 'all' shows both active and inactive
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`);
+        params.set('search', searchQuery);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      if (statusFilter !== 'all') {
+        params.set('active', statusFilter === 'active' ? 'true' : 'false');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      const response = await fetch(`/api/vendors?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      setVendors(data || []);
-      setTotalCount(count || 0);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load vendors');
+      }
+
+      const payload = await response.json();
+      setVendors(payload?.data || []);
+      setTotalCount(payload?.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load vendors:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (amount: number | null, currency: string = 'USD') => {
-    if (!amount) return currencyFormatter(0, currency as any);
-    return currencyFormatter(amount, currency as any);
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);

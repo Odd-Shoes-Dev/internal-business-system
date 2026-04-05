@@ -1,62 +1,75 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+
+async function resolveCompanyId(db: any, userId: string, request: NextRequest): Promise<string | null> {
+  const requested = getCompanyIdFromRequest(request);
+  if (requested) {
+    return requested;
+  }
+
+  const result = await db.query(
+    `SELECT company_id
+     FROM user_companies
+     WHERE user_id = $1
+     ORDER BY is_primary DESC, joined_at ASC
+     LIMIT 1`,
+    [userId]
+  );
+
+  return result.rows[0]?.company_id || null;
+}
 
 // GET /api/fleet - List all vehicles with optional filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (companyError || !userCompany) {
+    const companyId = await resolveCompanyId(db, user.id, request);
+    if (!companyId) {
       return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     const { searchParams } = new URL(request.url);
-    
     const searchQuery = searchParams.get('search');
     const status = searchParams.get('status');
     const vehicleType = searchParams.get('vehicle_type');
 
-    let query = supabase
-      .from('vehicles')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('registration_number', { ascending: true });
+    const where: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
-    // Apply filters
     if (searchQuery) {
-      query = query.or(`registration_number.ilike.%${searchQuery}%,make.ilike.%${searchQuery}%,model.ilike.%${searchQuery}%`);
+      params.push(`%${searchQuery}%`);
+      const i = params.length;
+      where.push(`(registration_number ILIKE $${i} OR make ILIKE $${i} OR model ILIKE $${i})`);
     }
 
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      params.push(status);
+      where.push(`status = $${params.length}`);
     }
 
     if (vehicleType && vehicleType !== 'all') {
-      query = query.eq('vehicle_type', vehicleType);
+      params.push(vehicleType);
+      where.push(`vehicle_type = $${params.length}`);
     }
 
-    const { data, error } = await query;
+    const result = await db.query(
+      `SELECT *
+       FROM vehicles
+       WHERE ${where.join(' AND ')}
+       ORDER BY registration_number ASC`,
+      params
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 200 });
+    return NextResponse.json({ data: result.rows }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -65,10 +78,13 @@ export async function GET(request: NextRequest) {
 // POST /api/fleet - Create a new vehicle
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
-    // Validate required fields
     if (!body.registration_number || !body.make || !body.model || !body.vehicle_type) {
       return NextResponse.json(
         { error: 'Missing required fields: registration_number, make, model, vehicle_type' },
@@ -76,40 +92,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyId = body.company_id || getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Check for duplicate registration number
-    const { data: existing } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('registration_number', body.registration_number)
-      .single();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Vehicle with this registration number already exists' },
-        { status: 409 }
-      );
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
-    // Create the vehicle
-    const { data, error } = await supabase
-      .from('vehicles')
-      .insert({
-        ...body,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const existing = await db.query(
+      'SELECT id FROM vehicles WHERE registration_number = $1 AND company_id = $2 LIMIT 1',
+      [body.registration_number, companyId]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (existing.rowCount) {
+      return NextResponse.json({ error: 'Vehicle with this registration number already exists' }, { status: 409 });
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    const insertResult = await db.query(
+      `INSERT INTO vehicles (
+         company_id, registration_number, make, model, vehicle_type,
+         status, seating_capacity, daily_rate_usd, purchase_price,
+         year, color, mileage, notes, created_by
+       ) VALUES (
+         $1, $2, $3, $4, $5,
+         $6, $7, $8, $9,
+         $10, $11, $12, $13, $14
+       )
+       RETURNING *`,
+      [
+        companyId,
+        body.registration_number,
+        body.make,
+        body.model,
+        body.vehicle_type,
+        body.status || 'available',
+        body.seating_capacity || null,
+        body.daily_rate_usd || null,
+        body.purchase_price || null,
+        body.year || null,
+        body.color || null,
+        body.mileage || null,
+        body.notes || null,
+        user.id,
+      ]
+    );
+
+    return NextResponse.json({ data: insertResult.rows[0] }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

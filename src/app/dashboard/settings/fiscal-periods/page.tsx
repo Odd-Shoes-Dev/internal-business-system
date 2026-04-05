@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import {
   LockClosedIcon,
   LockOpenIcon,
@@ -21,24 +21,31 @@ interface FiscalPeriod {
 }
 
 export default function FiscalPeriodsPage() {
+  const { company } = useCompany();
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadPeriods();
-  }, []);
+  }, [company?.id]);
 
   const loadPeriods = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('fiscal_periods')
-        .select('*')
-        .order('start_date', { ascending: false });
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setPeriods(data || []);
+      setLoading(true);
+      const response = await fetch(`/api/fiscal-periods?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load fiscal periods');
+      }
+
+      const result = await response.json();
+      setPeriods(result.data || []);
     } catch (error) {
       console.error('Error loading periods:', error);
     } finally {
@@ -55,6 +62,7 @@ export default function FiscalPeriodsPage() {
       setActionLoading(periodId);
       const response = await fetch('/api/fiscal-periods/close', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ period_id: periodId }),
       });
@@ -82,6 +90,7 @@ export default function FiscalPeriodsPage() {
       setActionLoading(periodId);
       const response = await fetch('/api/fiscal-periods/reopen', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ period_id: periodId }),
       });

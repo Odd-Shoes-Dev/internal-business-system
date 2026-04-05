@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorTransaction {
   id: string;
@@ -44,8 +44,22 @@ interface VendorStatementData {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const vendorId = searchParams.get('vendorId');
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
@@ -55,13 +69,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch vendor data
-    const { data: vendor, error: vendorError } = await supabase
-      .from('vendors')
-      .select('id, name, company_name, email, phone, address_line1, address_line2, city, state, zip_code')
-      .eq('id', vendorId)
-      .single();
-
-    if (vendorError || !vendor) {
+    const vendorResult = await db.query(
+      `SELECT id, name, company_name, email, phone, address_line1, address_line2, city, state, zip_code
+       FROM vendors
+       WHERE id = $1 AND company_id = $2
+       LIMIT 1`,
+      [vendorId, companyId]
+    );
+    const vendor = vendorResult.rows[0];
+    if (!vendor) {
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
     }
 
@@ -81,24 +97,32 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate beginning balance (bills before start date minus payments before start date)
-    const { data: beforeBills } = await supabase
-      .from('bills')
-      .select('total, amount_paid')
-      .eq('vendor_id', vendorId)
-      .lt('bill_date', startDate);
+    const beforeBillsResult = await db.query(
+      `SELECT total, amount_paid
+       FROM bills
+       WHERE vendor_id = $1
+         AND company_id = $2
+         AND bill_date < $3::date`,
+      [vendorId, companyId, startDate]
+    );
+    const beforeBills = beforeBillsResult.rows;
 
     const beginningBalance = (beforeBills || []).reduce((sum, bill) => 
       sum + (parseFloat(bill.total) - parseFloat(bill.amount_paid || '0')), 0
     );
 
     // Fetch bills in the period
-    const { data: bills } = await supabase
-      .from('bills')
-      .select('id, bill_number, bill_date, due_date, total, amount_paid, status, notes, vendor_invoice_number')
-      .eq('vendor_id', vendorId)
-      .gte('bill_date', startDate)
-      .lte('bill_date', endDate)
-      .order('bill_date', { ascending: true });
+    const billsResult = await db.query(
+      `SELECT id, bill_number, bill_date, due_date, total, amount_paid, status, notes, vendor_invoice_number
+       FROM bills
+       WHERE vendor_id = $1
+         AND company_id = $2
+         AND bill_date >= $3::date
+         AND bill_date <= $4::date
+       ORDER BY bill_date ASC`,
+      [vendorId, companyId, startDate, endDate]
+    );
+    const bills = billsResult.rows;
 
     // Fetch payments in the period (we'd need a bill_payments table for this)
     // For now, we'll track payments through the amount_paid field on bills
@@ -163,12 +187,16 @@ export async function GET(request: NextRequest) {
     const endingBalance = runningBalance;
 
     // Calculate aging (for unpaid bills as of end date)
-    const { data: unpaidBills } = await supabase
-      .from('bills')
-      .select('bill_date, due_date, total, amount_paid')
-      .eq('vendor_id', vendorId)
-      .lte('bill_date', endDate)
-      .neq('status', 'paid');
+    const unpaidBillsResult = await db.query(
+      `SELECT bill_date, due_date, total, amount_paid
+       FROM bills
+       WHERE vendor_id = $1
+         AND company_id = $2
+         AND bill_date <= $3::date
+         AND status <> 'paid'`,
+      [vendorId, companyId, endDate]
+    );
+    const unpaidBills = unpaidBillsResult.rows;
 
     const endDateObj = new Date(endDate);
     const aging = {
@@ -225,3 +253,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

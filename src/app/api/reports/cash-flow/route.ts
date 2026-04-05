@@ -1,35 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
 
-    // Get bank transactions for the period to calculate cash flow
-    const { data: bankAccounts } = await supabase
-      .from('bank_accounts')
-      .select('id, name, currency');
+    const currencyRpc = {
+      rpc: async (fn: string, args: any) => {
+        if (fn !== 'convert_currency') {
+          return { data: null, error: new Error('Unsupported RPC function') };
+        }
+        const result = await db.query<{ value: number }>(
+          `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+          [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+        );
+        return { data: result.rows[0]?.value ?? null, error: null };
+      },
+    };
 
-    // Get beginning cash balance (transactions before start date)
+    const bankAccountsResult = await db.query(
+      `SELECT id, name, currency
+       FROM bank_accounts
+       WHERE company_id = $1`,
+      [companyId]
+    );
+    const bankAccounts = bankAccountsResult.rows;
+
     let beginningCash = 0;
-    for (const account of bankAccounts || []) {
-      const { data: beginningTransactions } = await supabase
-        .from('bank_transactions')
-        .select('amount, transaction_date')
-        .eq('bank_account_id', account.id)
-        .lt('transaction_date', startDate);
+    for (const account of bankAccounts) {
+      const beginningTransactionsResult = await db.query(
+        `SELECT amount, transaction_date
+         FROM bank_transactions
+         WHERE company_id = $1
+           AND bank_account_id = $2
+           AND transaction_date < $3::date`,
+        [companyId, account.id, startDate]
+      );
+      const beginningTransactions = beginningTransactionsResult.rows;
+      const accountBeginningBalance = beginningTransactions?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
 
-      const accountBeginningBalance = beginningTransactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
-      
-      // Convert to USD
       let balanceInUSD = accountBeginningBalance;
       const currency = account.currency || 'USD';
       if (currency !== 'USD' && accountBeginningBalance !== 0) {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: Math.abs(accountBeginningBalance),
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -40,23 +70,24 @@ export async function GET(request: NextRequest) {
       beginningCash += balanceInUSD;
     }
 
-    // Get period transactions for cash flow calculation
     let netChangeInCash = 0;
-    for (const account of bankAccounts || []) {
-      const { data: periodTransactions } = await supabase
-        .from('bank_transactions')
-        .select('amount, transaction_date')
-        .eq('bank_account_id', account.id)
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate);
+    for (const account of bankAccounts) {
+      const periodTransactionsResult = await db.query(
+        `SELECT amount, transaction_date
+         FROM bank_transactions
+         WHERE company_id = $1
+           AND bank_account_id = $2
+           AND transaction_date >= $3::date
+           AND transaction_date <= $4::date`,
+        [companyId, account.id, startDate, endDate]
+      );
+      const periodTransactions = periodTransactionsResult.rows;
+      const accountPeriodChange = periodTransactions?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
 
-      const accountPeriodChange = periodTransactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
-      
-      // Convert to USD
       let changeInUSD = accountPeriodChange;
       const currency = account.currency || 'USD';
       if (currency !== 'USD' && accountPeriodChange !== 0) {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: Math.abs(accountPeriodChange),
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -67,19 +98,22 @@ export async function GET(request: NextRequest) {
       netChangeInCash += changeInUSD;
     }
 
-    // Get revenue for period (from invoices)
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('total, currency, invoice_date')
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate);
+    const invoicesResult = await db.query(
+      `SELECT total, currency, invoice_date
+       FROM invoices
+       WHERE company_id = $1
+         AND invoice_date >= $2::date
+         AND invoice_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const invoices = invoicesResult.rows;
 
     let totalRevenue = 0;
-    for (const invoice of invoices || []) {
+    for (const invoice of invoices) {
       let amountInUSD = invoice.total;
       const currency = invoice.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: invoice.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -90,25 +124,32 @@ export async function GET(request: NextRequest) {
       totalRevenue += amountInUSD;
     }
 
-    // Get expenses for period (from bills and expenses)
-    const { data: bills } = await supabase
-      .from('bills')
-      .select('total, currency, bill_date')
-      .gte('bill_date', startDate)
-      .lte('bill_date', endDate);
+    const billsResult = await db.query(
+      `SELECT total, currency, bill_date
+       FROM bills
+       WHERE company_id = $1
+         AND bill_date >= $2::date
+         AND bill_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const bills = billsResult.rows;
 
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select('amount, currency, date')
-      .gte('date', startDate)
-      .lte('date', endDate);
+    const expensesResult = await db.query(
+      `SELECT amount, currency, date
+       FROM expenses
+       WHERE company_id = $1
+         AND date >= $2::date
+         AND date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const expenses = expensesResult.rows;
 
     let totalExpenses = 0;
-    for (const bill of bills || []) {
+    for (const bill of bills) {
       let amountInUSD = bill.total;
       const currency = bill.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: bill.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -119,11 +160,11 @@ export async function GET(request: NextRequest) {
       totalExpenses += amountInUSD;
     }
 
-    for (const expense of expenses || []) {
+    for (const expense of expenses) {
       let amountInUSD = expense.amount;
       const currency = expense.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: expense.amount,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -136,16 +177,18 @@ export async function GET(request: NextRequest) {
 
     const netIncome = totalRevenue - totalExpenses;
 
-    // Get depreciation from fixed assets
-    const { data: assets } = await supabase
-      .from('fixed_assets')
-      .select('accumulated_depreciation, depreciation_start_date, useful_life_months, purchase_price, residual_value')
-      .eq('status', 'active')
-      .lte('depreciation_start_date', endDate);
+    const assetsResult = await db.query(
+      `SELECT accumulated_depreciation, depreciation_start_date, useful_life_months, purchase_price, residual_value
+       FROM fixed_assets
+       WHERE company_id = $1
+         AND status = 'active'
+         AND depreciation_start_date <= $2::date`,
+      [companyId, endDate]
+    );
+    const assets = assetsResult.rows;
 
-    // Calculate depreciation for the period
     let depreciation = 0;
-    for (const asset of assets || []) {
+    for (const asset of assets) {
       const monthlyDepreciation = (asset.purchase_price - asset.residual_value) / asset.useful_life_months;
       const startMonth = new Date(Math.max(new Date(startDate).getTime(), new Date(asset.depreciation_start_date).getTime()));
       const endMonth = new Date(endDate);
@@ -153,19 +196,22 @@ export async function GET(request: NextRequest) {
       depreciation += monthlyDepreciation * Math.min(monthsInPeriod, asset.useful_life_months);
     }
 
-    // Get changes in AR (from invoices)
-    const { data: beginningInvoices } = await supabase
-      .from('invoices')
-      .select('total, currency, invoice_date')
-      .lt('invoice_date', startDate)
-      .neq('status', 'paid');
+    const beginningInvoicesResult = await db.query(
+      `SELECT total, currency, invoice_date
+       FROM invoices
+       WHERE company_id = $1
+         AND invoice_date < $2::date
+         AND status <> 'paid'`,
+      [companyId, startDate]
+    );
+    const beginningInvoices = beginningInvoicesResult.rows;
 
     let beginningAR = 0;
-    for (const invoice of beginningInvoices || []) {
+    for (const invoice of beginningInvoices) {
       let amountInUSD = invoice.total;
       const currency = invoice.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: invoice.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -176,18 +222,22 @@ export async function GET(request: NextRequest) {
       beginningAR += amountInUSD;
     }
 
-    const { data: endingInvoices } = await supabase
-      .from('invoices')
-      .select('total, currency, invoice_date')
-      .lte('invoice_date', endDate)
-      .neq('status', 'paid');
+    const endingInvoicesResult = await db.query(
+      `SELECT total, currency, invoice_date
+       FROM invoices
+       WHERE company_id = $1
+         AND invoice_date <= $2::date
+         AND status <> 'paid'`,
+      [companyId, endDate]
+    );
+    const endingInvoices = endingInvoicesResult.rows;
 
     let endingAR = 0;
-    for (const invoice of endingInvoices || []) {
+    for (const invoice of endingInvoices) {
       let amountInUSD = invoice.total;
       const currency = invoice.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: invoice.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -200,19 +250,22 @@ export async function GET(request: NextRequest) {
 
     const arChange = endingAR - beginningAR;
 
-    // Get changes in AP (from bills)
-    const { data: beginningBills } = await supabase
-      .from('bills')
-      .select('total, currency, bill_date')
-      .lt('bill_date', startDate)
-      .neq('status', 'paid');
+    const beginningBillsResult = await db.query(
+      `SELECT total, currency, bill_date
+       FROM bills
+       WHERE company_id = $1
+         AND bill_date < $2::date
+         AND status <> 'paid'`,
+      [companyId, startDate]
+    );
+    const beginningBills = beginningBillsResult.rows;
 
     let beginningAP = 0;
-    for (const bill of beginningBills || []) {
+    for (const bill of beginningBills) {
       let amountInUSD = bill.total;
       const currency = bill.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: bill.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -223,18 +276,22 @@ export async function GET(request: NextRequest) {
       beginningAP += amountInUSD;
     }
 
-    const { data: endingBills } = await supabase
-      .from('bills')
-      .select('total, currency, bill_date')
-      .lte('bill_date', endDate)
-      .neq('status', 'paid');
+    const endingBillsResult = await db.query(
+      `SELECT total, currency, bill_date
+       FROM bills
+       WHERE company_id = $1
+         AND bill_date <= $2::date
+         AND status <> 'paid'`,
+      [companyId, endDate]
+    );
+    const endingBills = endingBillsResult.rows;
 
     let endingAP = 0;
-    for (const bill of endingBills || []) {
+    for (const bill of endingBills) {
       let amountInUSD = bill.total;
       const currency = bill.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: bill.total,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -247,19 +304,22 @@ export async function GET(request: NextRequest) {
 
     const apChange = endingAP - beginningAP;
 
-    // Get fixed asset purchases
-    const { data: assetPurchases } = await supabase
-      .from('fixed_assets')
-      .select('purchase_price, currency, purchase_date')
-      .gte('purchase_date', startDate)
-      .lte('purchase_date', endDate);
+    const assetPurchasesResult = await db.query(
+      `SELECT purchase_price, currency, purchase_date
+       FROM fixed_assets
+       WHERE company_id = $1
+         AND purchase_date >= $2::date
+         AND purchase_date <= $3::date`,
+      [companyId, startDate, endDate]
+    );
+    const assetPurchases = assetPurchasesResult.rows;
 
     let assetPurchaseTotal = 0;
-    for (const asset of assetPurchases || []) {
+    for (const asset of assetPurchases) {
       let amountInUSD = asset.purchase_price;
       const currency = asset.currency || 'USD';
       if (currency !== 'USD') {
-        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: asset.purchase_price,
           p_from_currency: currency,
           p_to_currency: 'USD',
@@ -270,7 +330,6 @@ export async function GET(request: NextRequest) {
       assetPurchaseTotal += amountInUSD;
     }
 
-    // Build the response
     const cashFlowStatement = {
       period: {
         startDate,
@@ -278,9 +337,7 @@ export async function GET(request: NextRequest) {
       },
       operatingActivities: {
         netIncome,
-        adjustments: [
-          { label: 'Depreciation', amount: depreciation },
-        ],
+        adjustments: [{ label: 'Depreciation', amount: depreciation }],
         changesInWorkingCapital: [
           { label: 'Increase in Accounts Receivable', amount: -arChange },
           { label: 'Increase in Accounts Payable', amount: apChange },
@@ -288,9 +345,7 @@ export async function GET(request: NextRequest) {
         netCashFromOperating: netIncome + depreciation - arChange + apChange,
       },
       investingActivities: {
-        items: [
-          { label: 'Purchase of Fixed Assets', amount: -assetPurchaseTotal },
-        ],
+        items: [{ label: 'Purchase of Fixed Assets', amount: -assetPurchaseTotal }],
         netCashFromInvesting: -assetPurchaseTotal,
       },
       financingActivities: {
@@ -311,3 +366,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

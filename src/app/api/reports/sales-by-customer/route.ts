@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface CustomerSale {
   customerId: string;
@@ -44,57 +44,66 @@ interface SalesByCustomerData {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const searchParams = request.nextUrl.searchParams;
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const customerType = searchParams.get('customerType') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalSales';
 
-    // Fetch invoices with customer data for the period
-    const { data: invoices, error: invoicesError } = await supabase
-      .from('invoices')
-      .select(`
-        id,
-        customer_id,
-        invoice_date,
-        total,
-        currency,
-        customers (
-          id,
-          name,
-          company_name,
-          customer_type
-        )
-      `)
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate)
-      .neq('status', 'void')
-      .order('invoice_date');
-
-    if (invoicesError) {
-      console.error('Error fetching invoices:', invoicesError);
-      return NextResponse.json({ error: invoicesError.message }, { status: 500 });
-    }
+    const invoicesResult = await db.query(
+      `SELECT i.id,
+              i.customer_id,
+              i.invoice_date,
+              i.total,
+              i.currency,
+              c.id AS customer_ref_id,
+              c.name AS customer_name,
+              c.company_name AS customer_company_name,
+              c.customer_type
+       FROM invoices i
+       LEFT JOIN customers c ON c.id = i.customer_id
+       WHERE i.company_id = $1
+         AND i.invoice_date >= $2::date
+         AND i.invoice_date <= $3::date
+         AND i.status <> 'void'
+       ORDER BY i.invoice_date ASC`,
+      [companyId, startDate, endDate]
+    );
+    const invoices = invoicesResult.rows;
 
     // Fetch invoice lines to get product details
     const invoiceIds = (invoices || []).map(inv => inv.id);
     let productData: any = {};
 
     if (invoiceIds.length > 0) {
-      const { data: lines } = await supabase
-        .from('invoice_lines')
-        .select(`
-          invoice_id,
-          product_id,
-          description,
-          quantity,
-          line_total,
-          products (
-            name
-          )
-        `)
-        .in('invoice_id', invoiceIds);
+      const linesResult = await db.query(
+        `SELECT il.invoice_id,
+                il.product_id,
+                il.description,
+                il.quantity,
+                il.line_total,
+                p.name AS product_name
+         FROM invoice_lines il
+         LEFT JOIN products p ON p.id = il.product_id
+         WHERE il.invoice_id = ANY($1::uuid[])`,
+        [invoiceIds]
+      );
+      const lines = linesResult.rows;
 
       // Group products by invoice
       (lines || []).forEach((line: any) => {
@@ -102,7 +111,7 @@ export async function GET(request: NextRequest) {
           productData[line.invoice_id] = [];
         }
         productData[line.invoice_id].push({
-          name: line.products?.name || line.description || 'Product',
+          name: line.product_name || line.description || 'Product',
           quantity: parseFloat(line.quantity) || 0,
           revenue: parseFloat(line.line_total) || 0
         });
@@ -113,14 +122,11 @@ export async function GET(request: NextRequest) {
     const customerMap = new Map<string, CustomerSale>();
 
     for (const invoice of invoices || []) {
-      if (!invoice.customers) continue;
-
-      const customerData: any = Array.isArray(invoice.customers) ? invoice.customers[0] : invoice.customers;
-      if (!customerData) continue;
+      if (!invoice.customer_ref_id) continue;
 
       const customerId = invoice.customer_id;
-      const customerName = customerData.company_name || customerData.name;
-      const customerTypeRaw = customerData.customer_type || 'Individual';
+      const customerName = invoice.customer_company_name || invoice.customer_name;
+      const customerTypeRaw = invoice.customer_type || 'Individual';
       
       // Map customer type to expected format
       let customerType: 'Individual' | 'Business' | 'Government' = 'Individual';
@@ -150,10 +156,22 @@ export async function GET(request: NextRequest) {
       // Convert total to USD for reporting
       const total = parseFloat(invoice.total);
       const totalUSD = await convertCurrency(
-        supabase,
+        {
+          rpc: async (fn: string, args: any) => {
+            if (fn !== 'convert_currency') {
+              return { data: null, error: new Error('Unsupported RPC function') };
+            }
+            const result = await db.query<{ value: number }>(
+              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+            );
+            return { data: result.rows[0]?.value ?? null, error: null };
+          },
+        },
         total,
         (invoice.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency
+        'USD' as SupportedCurrency,
+        endDate
       ) || total;
       
       customer.totalSales += totalUSD;
@@ -263,3 +281,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

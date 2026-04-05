@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 
 interface StartTrialRequest {
   tier: 'starter' | 'professional' | 'enterprise';
@@ -12,14 +11,9 @@ interface StartTrialRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = await createClient();
-    const supabaseAdmin = createServiceClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    const db = getDbProvider();
+    const user = await db.getSessionUser();
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -36,27 +30,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's primary company (created by auth trigger during signup)
-    const { data: userCompanies, error: fetchError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('is_primary', true)
-      .single();
+    // Get user's company created during signup trigger flow.
+    const profileResult = await db.query(
+      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
+    const existingCompanyId = profileResult.rows[0]?.company_id as string | undefined;
 
     let companyId: string | undefined;
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 30);
+    const currency = region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD';
 
-    if (fetchError || !userCompanies) {
+    if (!existingCompanyId) {
       // No company yet (e.g. trigger didn't run or failed). Create one – name is REQUIRED (DB NOT NULL).
-      const metaCompany = (user.user_metadata?.company_name as string)?.trim();
-      const metaFullName = (user.user_metadata?.full_name as string)?.trim();
       const emailPrefix = user.email?.split('@')[0] || 'user';
       const companyName =
         bodyName?.trim() ||
-        metaCompany ||
-        (metaFullName ? metaFullName + "'s Company" : emailPrefix + "'s Company");
+        (user.full_name ? user.full_name + "'s Company" : emailPrefix + "'s Company");
 
       if (!companyName) {
         return NextResponse.json(
@@ -67,125 +58,85 @@ export async function POST(request: NextRequest) {
 
       const subdomain = companyName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + (user.id as string).slice(0, 8);
 
-      const { data: newCompany, error: createError } = await supabaseAdmin
-        .from('companies')
-        .insert({
-          name: companyName,
-          subdomain,
-          email: user.email ?? null,
-          region,
-          currency: region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD',
-          subscription_plan: `${tier}-trial`,
-          subscription_status: 'trial',
-          trial_ends_at: trialEndDate.toISOString(),
-        })
-        .select()
-        .single();
+      const createdCompany = await db.query(
+        `INSERT INTO companies (
+           name, subdomain, email, region, currency, subscription_plan, subscription_status, trial_ends_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, 'trial', $7)
+         RETURNING id`,
+        [companyName, subdomain, user.email ?? null, region, currency, `${tier}-trial`, trialEndDate.toISOString()]
+      );
 
-      if (createError) {
-        console.error('Company creation error:', createError);
-        return NextResponse.json(
-          { error: 'Failed to create company: ' + (createError.message || 'Unknown error') },
-          { status: 500 }
-        );
-      }
+      companyId = createdCompany.rows[0]?.id;
 
-      companyId = newCompany.id;
+      await db.query(
+        `INSERT INTO user_companies (user_id, company_id, is_primary, role)
+         VALUES ($1, $2, TRUE, 'admin')
+         ON CONFLICT (user_id, company_id) DO UPDATE
+         SET is_primary = EXCLUDED.is_primary,
+             role = EXCLUDED.role`,
+        [user.id, companyId]
+      );
 
-      const { error: linkError } = await supabaseAdmin
-        .from('user_companies')
-        .insert({
-          user_id: user.id,
-          company_id: companyId,
-          is_primary: true,
-          role: 'admin',
-        });
-
-      if (linkError) {
-        console.error('User company link error:', linkError);
-        return NextResponse.json(
-          { error: 'Failed to link user to company' },
-          { status: 500 }
-        );
-      }
+      await db.query(
+        `INSERT INTO user_profiles (id, email, full_name, is_active, company_id)
+         VALUES ($1, $2, $3, TRUE, $4)
+         ON CONFLICT (id) DO UPDATE
+         SET email = EXCLUDED.email,
+             full_name = EXCLUDED.full_name,
+             is_active = TRUE,
+             company_id = EXCLUDED.company_id,
+             updated_at = NOW()`,
+        [user.id, user.email || '', user.full_name || '', companyId]
+      );
     } else {
-      companyId = userCompanies.company_id;
+      companyId = existingCompanyId;
 
-      const { error: updateError } = await supabaseAdmin
-        .from('companies')
-        .update({
-          subscription_plan: `${tier}-trial`,
-          subscription_status: 'trial',
-          region,
-          trial_ends_at: trialEndDate.toISOString(),
-          ...(bodyName?.trim() ? { name: bodyName.trim() } : {}),
-        })
-        .eq('id', companyId);
-
-      if (updateError) {
-        console.error('Company update error:', updateError);
-        return NextResponse.json(
-          { error: 'Failed to start trial' },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Ensure user profile exists with company_id using service client
-    const { error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .upsert({
-        id: user.id,
-        email: user.email || '',
-        full_name: user.user_metadata?.full_name || '',
-        is_active: true,
-        company_id: companyId,
-      }, {
-        onConflict: 'id'
-      });
-
-    if (profileError) {
-      console.error('User profile upsert error:', profileError);
-      // Don't fail - profile might already exist
+      await db.query(
+        `UPDATE companies
+         SET subscription_plan = $2,
+             subscription_status = 'trial',
+             region = $3,
+             currency = $4,
+             trial_ends_at = $5,
+             name = COALESCE($6, name),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [companyId, `${tier}-trial`, region, currency, trialEndDate.toISOString(), bodyName?.trim() || null]
+      );
     }
 
     // Sync company_settings so dashboard and middleware see subscription_status and trial_end_date
-    const { data: existingSettings } = await supabaseAdmin
-      .from('company_settings')
-      .select('id')
-      .eq('company_id', companyId)
-      .maybeSingle();
+    const existingSettings = await db.query(
+      'SELECT id FROM company_settings WHERE company_id = $1 LIMIT 1',
+      [companyId]
+    );
 
     const trialStartDate = new Date();
-    if (existingSettings) {
-      await supabaseAdmin
-        .from('company_settings')
-        .update({
-          subscription_status: 'trial',
-          plan_tier: tier,
-          billing_period: billingPeriod,
-          trial_end_date: trialEndDate.toISOString(),
-        })
-        .eq('company_id', companyId);
+    if (existingSettings.rowCount) {
+      await db.query(
+        `UPDATE company_settings
+         SET subscription_status = 'trial',
+             plan_tier = $2,
+             billing_period = $3,
+             trial_end_date = $4,
+             updated_at = NOW()
+         WHERE company_id = $1`,
+        [companyId, tier, billingPeriod, trialEndDate.toISOString()]
+      );
     } else {
-      await supabaseAdmin
-        .from('company_settings')
-        .insert({
-          company_id: companyId,
-          subscription_status: 'trial',
-          plan_tier: tier,
-          billing_period: billingPeriod,
-          trial_start_date: trialStartDate.toISOString(),
-          trial_end_date: trialEndDate.toISOString(),
-        });
+      await db.query(
+        `INSERT INTO company_settings (
+           company_id, subscription_status, plan_tier, billing_period, trial_start_date, trial_end_date
+         )
+         VALUES ($1, 'trial', $2, $3, $4, $5)`,
+        [companyId, tier, billingPeriod, trialStartDate.toISOString(), trialEndDate.toISOString()]
+      );
     }
 
     // Get the updated company
-    const { data: company } = await supabaseAdmin
-      .from('companies')
-      .select('*')
-      .eq('id', companyId)
-      .single();
+    const companyResult = await db.query('SELECT * FROM companies WHERE id = $1 LIMIT 1', [companyId]);
+    const company = companyResult.rows[0] ?? null;
 
     return NextResponse.json({
       success: true,

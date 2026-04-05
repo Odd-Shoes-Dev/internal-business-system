@@ -1,38 +1,34 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (companyError || !userCompany) {
-      return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
-    const { data: allItems, error } = await supabase
-      .from('products')
-      .select('quantity_on_hand, cost_price, currency, reorder_point')
-      .eq('company_id', companyId)
-      .eq('track_inventory', true);
+    const itemsResult = await db.query(
+      `SELECT quantity_on_hand, cost_price, currency, reorder_point
+       FROM products
+       WHERE company_id = $1
+         AND track_inventory = true`,
+      [companyId]
+    );
 
-    if (error) throw error;
+    const allItems = itemsResult.rows || [];
 
-    if (!allItems) {
+    if (allItems.length === 0) {
       return NextResponse.json({
         totalItems: 0,
         totalValue: 0,
@@ -45,9 +41,9 @@ export async function GET() {
     let totalValue = 0;
 
     // Convert each item's value to USD
-    for (const item of allItems) {
-      const quantity = item.quantity_on_hand || 0;
-      const cost = item.cost_price || 0;
+    for (const item of allItems as any[]) {
+      const quantity = Number(item.quantity_on_hand || 0);
+      const cost = Number(item.cost_price || 0);
       const itemValue = quantity * cost;
 
       if (itemValue > 0) {
@@ -55,19 +51,13 @@ export async function GET() {
 
         // Convert to USD if not already
         if (item.currency && item.currency !== 'USD') {
-          const { data: converted, error: conversionError } = await supabase.rpc('convert_currency', {
-            p_amount: itemValue,
-            p_from_currency: item.currency,
-            p_to_currency: 'USD',
-            p_date: new Date().toISOString().split('T')[0],
-          });
+          const conversionResult = await db.query(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [itemValue, item.currency, 'USD', new Date().toISOString().split('T')[0]]
+          );
+          const converted = conversionResult.rows[0]?.converted;
 
-          if (conversionError) {
-            console.error('Currency conversion error:', conversionError);
-            valueInUSD = itemValue; // Fallback
-          } else {
-            valueInUSD = converted || itemValue;
-          }
+          valueInUSD = Number(converted || itemValue);
         }
 
         totalValue += valueInUSD;
@@ -75,10 +65,10 @@ export async function GET() {
     }
 
     const lowStock = allItems.filter(
-      item => (item.quantity_on_hand || 0) <= (item.reorder_point || 0) && (item.quantity_on_hand || 0) > 0
+      (item: any) => Number(item.quantity_on_hand || 0) <= Number(item.reorder_point || 0) && Number(item.quantity_on_hand || 0) > 0
     ).length;
-    
-    const outOfStock = allItems.filter(item => (item.quantity_on_hand || 0) === 0).length;
+
+    const outOfStock = allItems.filter((item: any) => Number(item.quantity_on_hand || 0) === 0).length;
 
     return NextResponse.json({
       totalItems,

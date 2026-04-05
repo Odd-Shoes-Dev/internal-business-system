@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import {
   GlobeAltIcon,
@@ -80,21 +79,31 @@ export default function SelectModulesPage() {
   const router = useRouter();
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   const MAX_MODULES = 3;
 
   useEffect(() => {
-    checkAuth();
+    void checkAuth();
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        router.push('/login');
+        return;
+      }
+    } catch {
       router.push('/login');
       return;
     }
-    setUser(session.user);
+
+    setIsAuthChecked(true);
   };
 
   const toggleModule = (moduleId: string) => {
@@ -115,51 +124,21 @@ export default function SelectModulesPage() {
   };
 
   const handleContinue = async () => {
-    if (!user) return;
+    if (!isAuthChecked) return;
 
     setLoading(true);
     try {
-      // Get user's company
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
+      const response = await fetch('/api/onboarding/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ modules: selectedModules }),
+      });
 
-      if (profileError) throw profileError;
-
-      // Save selected modules to subscription_modules table
-      if (selectedModules.length > 0) {
-        const moduleRecords = selectedModules.map(moduleId => {
-          const module = INDUSTRY_MODULES.find(m => m.id === moduleId);
-          return {
-            company_id: profileData.company_id,
-            module_id: moduleId,
-            monthly_price: module!.price,
-            setup_fee: 0,
-            currency: 'USD',
-            is_active: true,
-            is_trial_module: true,
-          };
-        });
-
-        const { error: modulesError } = await supabase
-          .from('subscription_modules')
-          .insert(moduleRecords);
-
-        if (modulesError) throw modulesError;
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save module selection');
       }
-
-      // Update company_settings with trial modules list
-      const { error: settingsError } = await supabase
-        .from('company_settings')
-        .update({
-          trial_modules: selectedModules,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('company_id', profileData.company_id);
-
-      if (settingsError) throw settingsError;
 
       toast.success(`${selectedModules.length > 0 ? 'Modules activated!' : 'Starting with core platform'} Welcome to BlueOx!`);
       
@@ -174,29 +153,21 @@ export default function SelectModulesPage() {
   };
 
   const handleSkip = async () => {
-    if (!user) return;
+    if (!isAuthChecked) return;
 
     setLoading(true);
     try {
-      // Get user's company
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
+      const response = await fetch('/api/onboarding/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ modules: [] }),
+      });
 
-      if (profileError) throw profileError;
-
-      // Save empty modules array
-      const { error: settingsError } = await supabase
-        .from('company_settings')
-        .update({
-          trial_modules: [],
-          updated_at: new Date().toISOString(),
-        })
-        .eq('company_id', profileData.company_id);
-
-      if (settingsError) throw settingsError;
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to continue');
+      }
 
       toast.success('Starting with core platform. You can add modules later!');
       router.push('/dashboard');
@@ -208,7 +179,7 @@ export default function SelectModulesPage() {
     }
   };
 
-  if (!user) {
+  if (!isAuthChecked) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>

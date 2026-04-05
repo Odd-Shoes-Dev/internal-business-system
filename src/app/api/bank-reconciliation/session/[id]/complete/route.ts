@@ -1,27 +1,35 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/bank-reconciliation/session/[id]/complete - Complete reconciliation
-export async function POST(request: NextRequest, context: any) {
-  const { params } = context || {};
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get reconciliation with current totals
-    const { data: reconciliation, error: reconError } = await supabase
-      .from('bank_reconciliations')
-      .select('*, bank_account:bank_accounts(account_name)')
-      .eq('id', params.id)
-      .single();
+    const { id } = await context.params;
+    const body = await request.json();
 
-    if (reconError || !reconciliation) {
+    // Get reconciliation with current totals
+    const reconciliationResult = await db.query(
+      `SELECT br.*, ba.name AS bank_account_name, ba.company_id
+       FROM bank_reconciliations br
+       JOIN bank_accounts ba ON ba.id = br.bank_account_id
+       WHERE br.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const reconciliation = reconciliationResult.rows[0];
+
+    if (!reconciliation) {
       return NextResponse.json({ error: 'Reconciliation not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, reconciliation.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (reconciliation.status !== 'in_progress') {
@@ -46,30 +54,56 @@ export async function POST(request: NextRequest, context: any) {
     }
 
     // Complete the reconciliation (trigger will mark transactions as reconciled)
-    const { data, error: updateError } = await supabase
-      .from('bank_reconciliations')
-      .update({
-        status: 'completed',
-        completed_by: user.id,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .select(`
-        *,
-        bank_account:bank_accounts(id, account_name, account_number),
-        completed_by_user:user_profiles!bank_reconciliations_completed_by_fkey(id, full_name, email)
-      `)
-      .single();
+    await db.query(
+      `UPDATE bank_reconciliations
+       SET status = 'completed',
+           completed_by = $2,
+           completed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id, user.id]
+    );
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
+    const dataResult = await db.query(
+      `SELECT br.*,
+              ba.id AS bank_account_ref_id,
+              ba.name AS bank_account_name,
+              up.id AS completed_by_user_id,
+              up.full_name AS completed_by_user_full_name,
+              up.email AS completed_by_user_email
+       FROM bank_reconciliations br
+       LEFT JOIN bank_accounts ba ON ba.id = br.bank_account_id
+       LEFT JOIN user_profiles up ON up.id = br.completed_by
+       WHERE br.id = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    const row = dataResult.rows[0];
+    const data = {
+      ...row,
+      bank_account: row.bank_account_ref_id
+        ? {
+            id: row.bank_account_ref_id,
+            account_name: row.bank_account_name,
+            account_number: null,
+          }
+        : null,
+      completed_by_user: row.completed_by_user_id
+        ? {
+            id: row.completed_by_user_id,
+            full_name: row.completed_by_user_full_name,
+            email: row.completed_by_user_email,
+          }
+        : null,
+    };
 
     // Get count of reconciled transactions
-    const { count } = await supabase
-      .from('bank_reconciliation_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('reconciliation_id', params.id);
+    const countResult = await db.query(
+      'SELECT COUNT(*)::int AS total FROM bank_reconciliation_items WHERE reconciliation_id = $1',
+      [id]
+    );
+    const count = Number(countResult.rows[0]?.total || 0);
 
     return NextResponse.json({
       data,

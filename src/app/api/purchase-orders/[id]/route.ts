@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/purchase-orders/[id] - Get PO details
@@ -7,23 +7,71 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await context.params;
 
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select(`
-        *,
-        vendor:vendors(id, name, email, phone, address_line1, city, country),
-        purchase_order_lines(*),
-        goods_receipts(*)
-      `)
-      .eq('id', id)
-      .single();
+    const poResult = await db.query(
+      `SELECT po.*,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.email AS vendor_email,
+              v.phone AS vendor_phone,
+              v.address_line1,
+              v.city,
+              v.country
+       FROM purchase_orders po
+       LEFT JOIN vendors v ON v.id = po.vendor_id
+       WHERE po.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const po = poResult.rows[0];
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (!po) {
+      return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 });
     }
+
+    const companyAccessError = await requireCompanyAccess(user.id, po.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const linesResult = await db.query(
+      `SELECT *
+       FROM purchase_order_lines
+       WHERE purchase_order_id = $1
+       ORDER BY line_number ASC, created_at ASC`,
+      [id]
+    );
+
+    const receiptsResult = await db.query(
+      `SELECT *
+       FROM goods_receipts
+       WHERE purchase_order_id = $1
+       ORDER BY received_date DESC, created_at DESC`,
+      [id]
+    );
+
+    const data = {
+      ...po,
+      vendor: po.vendor_ref_id
+        ? {
+            id: po.vendor_ref_id,
+            name: po.vendor_name,
+            email: po.vendor_email,
+            phone: po.vendor_phone,
+            address_line1: po.address_line1,
+            city: po.city,
+            country: po.country,
+          }
+        : null,
+      purchase_order_lines: linesResult.rows,
+      goods_receipts: receiptsResult.rows,
+    };
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -37,24 +85,27 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await context.params;
     const body = await request.json();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if PO exists and is editable
-    const { data: existing } = await supabase
-      .from('purchase_orders')
-      .select('status')
-      .eq('id', id)
-      .single();
+    const existingResult = await db.query(
+      'SELECT id, company_id, status, vendor_id FROM purchase_orders WHERE id = $1 LIMIT 1',
+      [id]
+    );
+    const existing = existingResult.rows[0];
 
     if (!existing) {
       return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, existing.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (existing.status === 'received' || existing.status === 'closed') {
@@ -64,21 +115,54 @@ export async function PATCH(
       );
     }
 
-    // Update PO
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .update(body)
-      .eq('id', id)
-      .select(`
-        *,
-        vendor:vendors(id, name, email),
-        purchase_order_lines(*)
-      `)
-      .single();
+    const allowedFields = ['po_date', 'expected_delivery_date', 'status', 'notes', 'currency', 'exchange_rate', 'tax_rate'];
+    const updates: string[] = [];
+    const params: any[] = [id];
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        params.push(body[field]);
+        updates.push(`${field} = $${params.length}`);
+      }
     }
+
+    if (updates.length > 0) {
+      await db.query(
+        `UPDATE purchase_orders
+         SET ${updates.join(', ')}, updated_at = NOW()
+         WHERE id = $1`,
+        params
+      );
+    }
+
+    const poResult = await db.query(
+      `SELECT po.*,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.email AS vendor_email
+       FROM purchase_orders po
+       LEFT JOIN vendors v ON v.id = po.vendor_id
+       WHERE po.id = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    const linesResult = await db.query(
+      'SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1 ORDER BY line_number ASC, created_at ASC',
+      [id]
+    );
+
+    const data = {
+      ...poResult.rows[0],
+      vendor: poResult.rows[0]?.vendor_ref_id
+        ? {
+            id: poResult.rows[0].vendor_ref_id,
+            name: poResult.rows[0].vendor_name,
+            email: poResult.rows[0].vendor_email,
+          }
+        : null,
+      purchase_order_lines: linesResult.rows,
+    };
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -92,23 +176,23 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-    const { id } = await context.params;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Check if PO can be cancelled
-    const { data: po } = await supabase
-      .from('purchase_orders')
-      .select('status')
-      .eq('id', id)
-      .single();
+    const { id } = await context.params;
+
+    const poResult = await db.query('SELECT id, company_id, status FROM purchase_orders WHERE id = $1 LIMIT 1', [id]);
+    const po = poResult.rows[0];
 
     if (!po) {
       return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, po.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (po.status === 'received' || po.status === 'closed') {
@@ -118,15 +202,12 @@ export async function DELETE(
       );
     }
 
-    // Update status to cancelled instead of deleting
-    const { error } = await supabase
-      .from('purchase_orders')
-      .update({ status: 'cancelled' })
-      .eq('id', id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    await db.query(
+      `UPDATE purchase_orders
+       SET status = 'cancelled', updated_at = NOW()
+       WHERE id = $1`,
+      [id]
+    );
 
     return NextResponse.json({ message: 'Purchase order cancelled successfully' });
   } catch (error: any) {

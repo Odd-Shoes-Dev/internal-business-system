@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
@@ -54,22 +53,20 @@ export default function DashboardPage() {
     
     try {
       // Get recent invoices
-      const { data: invoices } = await supabase
-        .from('invoices')
-        .select('*, customers(name)')
-        .eq('company_id', company.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const invoiceResponse = await fetch(
+        `/api/invoices?company_id=${encodeURIComponent(company.id)}&page=1&limit=5`
+      );
+      const invoicePayload = invoiceResponse.ok ? await invoiceResponse.json() : { data: [] };
+      const invoices = invoicePayload?.data || [];
 
       setRecentInvoices(invoices || []);
 
       // Get recent bills
-      const { data: bills } = await supabase
-        .from('bills')
-        .select('*, vendors(name)')
-        .eq('company_id', company.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const billResponse = await fetch(
+        `/api/bills?company_id=${encodeURIComponent(company.id)}&page=1&limit=5`
+      );
+      const billPayload = billResponse.ok ? await billResponse.json() : { data: [] };
+      const bills = billPayload?.data || [];
 
       setRecentBills(bills || []);
 
@@ -80,12 +77,12 @@ export default function DashboardPage() {
         
         // Calculate overdue counts
         const now = new Date();
-        const overdueInvoices = (invoices || []).filter(inv => 
+        const overdueInvoices = (invoices || []).filter((inv: any) => 
           inv.status !== 'paid' && inv.status !== 'void' && 
           inv.status !== 'cancelled' && new Date(inv.due_date) < now
         ).length;
 
-        const overdueBills = (bills || []).filter(bill =>
+        const overdueBills = (bills || []).filter((bill: any) =>
           bill.status !== 'paid' && bill.status !== 'void' &&
           new Date(bill.due_date) < now
         ).length;

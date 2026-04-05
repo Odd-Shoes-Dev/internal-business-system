@@ -1,58 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { sendTrialReminderEmail, formatCurrencyForEmail, formatDateForEmail } from '@/lib/email/send';
+import { sendTrialReminderEmail, formatCurrencyForEmail } from '@/lib/email/send';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     // Get user's company
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single();
+    const profileResult = await db.query<{ company_id: string | null }>(
+      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
+    const profile = profileResult.rows[0];
 
     if (!profile?.company_id) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     // Get company subscription
-    const { data: subscription } = await supabase
-      .from('subscriptions')
-      .select('*, companies!inner(name, email)')
-      .eq('company_id', profile.company_id)
-      .eq('status', 'trial')
-      .single();
+    const subscriptionResult = await db.query(
+      `SELECT s.*, c.name AS company_name, c.email AS company_email
+       FROM subscriptions s
+       INNER JOIN companies c ON c.id = s.company_id
+       WHERE s.company_id = $1
+         AND s.status = 'trial'
+       ORDER BY s.created_at DESC
+       LIMIT 1`,
+      [profile.company_id]
+    );
+    const subscription = subscriptionResult.rows[0] as any;
 
     if (!subscription) {
       return NextResponse.json({ error: 'No active trial found' }, { status: 404 });
     }
 
-    if (!subscription.companies?.email) {
+    if (!subscription.company_email) {
       return NextResponse.json({ error: 'No email address on file' }, { status: 400 });
     }
 
@@ -74,8 +59,8 @@ export async function POST(request: NextRequest) {
 
     // Send reminder email
     const result = await sendTrialReminderEmail({
-      to: subscription.companies.email,
-      companyName: subscription.companies.name,
+      to: subscription.company_email,
+      companyName: subscription.company_name,
       daysRemaining,
       planName,
       monthlyPrice,

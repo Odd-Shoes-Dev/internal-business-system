@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { 
@@ -33,25 +32,36 @@ export default function InvoicesPage() {
     if (!company) return;
     
     try {
-      let query = supabase
-        .from('invoices')
-        .select('*, customers(*)')
-        .eq('company_id', company.id)
-        .neq('document_type', 'receipt') // Exclude receipts
-        .order('created_at', { ascending: false });
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: '1',
+        limit: '200',
+      });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.set('status', statusFilter);
       }
 
-      if (typeFilter !== 'all') {
-        query = query.eq('document_type', typeFilter);
+      const response = await fetch(`/api/invoices?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load invoices');
       }
 
-      const { data, error } = await query;
+      const payload = await response.json();
+      const allInvoices = payload?.data || [];
+      const filteredByType = allInvoices.filter((invoice: any) => {
+        const docType = invoice.document_type || 'invoice';
+        if (docType === 'receipt') return false;
+        if (typeFilter === 'all') return true;
+        return docType === typeFilter;
+      });
 
-      if (error) throw error;
-      setInvoices(data || []);
+      setInvoices(filteredByType);
     } catch (error) {
       console.error('Failed to load invoices:', error);
     } finally {

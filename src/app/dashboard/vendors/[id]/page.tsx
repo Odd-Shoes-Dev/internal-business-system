@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
@@ -72,21 +71,26 @@ export default function VendorDetailPage({ params }: PageProps) {
   const [outstandingBalance, setOutstandingBalance] = useState(0);
 
   useEffect(() => {
-    loadVendor();
-    loadBills();
+    loadVendorAndBills();
     loadBalance();
   }, [id]);
 
-  const loadVendor = async () => {
+  const loadVendorAndBills = async () => {
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/vendors/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
-      setVendor(data);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to load vendor');
+      }
+
+      const payload = await response.json();
+      const vendorData = payload?.data || null;
+      setVendor(vendorData);
+      setBills(vendorData?.recent_bills || []);
     } catch (error) {
       console.error('Failed to load vendor:', error);
     } finally {
@@ -94,25 +98,12 @@ export default function VendorDetailPage({ params }: PageProps) {
     }
   };
 
-  const loadBills = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bills')
-        .select('id, bill_number, bill_date, due_date, total, amount_paid, currency, status')
-        .eq('vendor_id', id)
-        .order('bill_date', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setBills(data || []);
-    } catch (error) {
-      console.error('Failed to load bills:', error);
-    }
-  };
-
   const loadBalance = async () => {
     try {
-      const response = await fetch(`/api/vendors/${id}/balance`);
+      const response = await fetch(`/api/vendors/${id}/balance`, {
+        method: 'GET',
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setOutstandingBalance(data.outstandingBalance || 0);
@@ -129,18 +120,21 @@ export default function VendorDetailPage({ params }: PageProps) {
 
     try {
       setDeleting(true);
-      const { error } = await supabase
-        .from('vendors')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/vendors/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete vendor');
+      }
 
-      alert('Vendor deleted successfully');
+      alert(payload?.message || 'Vendor deleted successfully');
       router.push('/dashboard/vendors');
     } catch (error) {
       console.error('Failed to delete vendor:', error);
-      alert('Failed to delete vendor. They may have associated bills.');
+      alert(error instanceof Error ? error.message : 'Failed to delete vendor');
     } finally {
       setDeleting(false);
     }

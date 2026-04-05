@@ -1,81 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export const dynamic = 'force-dynamic';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
 
     const { status, inspection_notes } = await request.json();
     const { id } = await params;
 
-    const { data: gr, error: grError } = await supabase
-      .from('goods_receipts')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const grResult = await db.query('SELECT * FROM goods_receipts WHERE id = $1 LIMIT 1', [id]);
+    const gr = grResult.rows[0];
 
-    if (grError || !gr) {
+    if (!gr) {
       return NextResponse.json({ error: 'Goods receipt not found' }, { status: 404 });
     }
 
-    // Update goods receipt status
-    const { error: updateError } = await supabase
-      .from('goods_receipts')
-      .update({
-        status,
-        inspection_notes,
-      })
-      .eq('id', id);
+    const companyAccessError = await requireCompanyAccess(user.id, gr.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
-    if (updateError) throw updateError;
+    await db.query(
+      `UPDATE goods_receipts
+       SET status = $2,
+           inspection_notes = $3,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id, status, inspection_notes ?? null]
+    );
 
-    // If accepted, update inventory
     if (status === 'accepted') {
-      const { data: grLines, error: linesError } = await supabase
-        .from('goods_receipt_lines')
-        .select('*')
-        .eq('goods_receipt_id', id);
+      const linesResult = await db.query('SELECT * FROM goods_receipt_lines WHERE goods_receipt_id = $1', [id]);
 
-      if (linesError) throw linesError;
-
-      for (const line of grLines || []) {
-        if (line.product_id) {
-          // Get current quantity
-          const { data: product } = await supabase
-            .from('products')
-            .select('quantity_in_stock')
-            .eq('id', line.product_id)
-            .single();
-
-          const newQuantity = (product?.quantity_in_stock || 0) + line.quantity_received;
-
-          // Update product quantity
-          await supabase
-            .from('products')
-            .update({ quantity_in_stock: newQuantity })
-            .eq('id', line.product_id);
-
-          // Record inventory movement
-          await supabase.from('inventory_movements').insert({
-            product_id: line.product_id,
-            company_id: gr.company_id,
-            movement_type: 'purchase',
-            quantity: line.quantity_received,
-            unit_cost: line.unit_cost,
-            reference_type: 'goods_receipt',
-            reference_id: id,
-            movement_date: gr.received_date,
-            notes: `Goods Receipt ${gr.gr_number}`,
-          });
+      for (const line of linesResult.rows || []) {
+        if (!line.product_id) {
+          continue;
         }
+
+        const productResult = await db.query('SELECT quantity_on_hand FROM products WHERE id = $1 LIMIT 1', [line.product_id]);
+        const currentQty = Number(productResult.rows[0]?.quantity_on_hand || 0);
+        const newQty = currentQty + Number(line.quantity_received || 0);
+
+        await db.query('UPDATE products SET quantity_on_hand = $2, updated_at = NOW() WHERE id = $1', [line.product_id, newQty]);
+
+        await db.query(
+          `INSERT INTO inventory_movements (
+             product_id, movement_type, quantity, unit_cost,
+             total_cost, reference_type, reference_id, notes, created_by
+           ) VALUES ($1, 'purchase', $2, $3, $4, 'goods_receipt', $5, $6, $7)`,
+          [
+            line.product_id,
+            Number(line.quantity_received || 0),
+            Number(line.unit_cost || 0),
+            Number(line.quantity_received || 0) * Number(line.unit_cost || 0),
+            id,
+            `Goods Receipt ${gr.receipt_number}`,
+            user.id,
+          ]
+        );
       }
     }
 

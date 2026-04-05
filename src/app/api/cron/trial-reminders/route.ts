@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDbProvider } from '@/lib/provider';
 import { sendTrialReminderEmail, formatCurrencyForEmail } from '@/lib/email/send';
 
 // This endpoint should be protected and called by a cron job
@@ -11,29 +11,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Use service role key for server-side operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
+    const db = getDbProvider();
+
+    const subscriptionsResult = await db.query(
+      `SELECT s.*, c.name AS company_name, c.email AS company_email
+       FROM subscriptions s
+       INNER JOIN companies c ON c.id = s.company_id
+       WHERE s.status = 'trial'
+         AND s.trial_end_date IS NOT NULL`
     );
-
-    // Get all trial subscriptions
-    const { data: subscriptions, error } = await supabase
-      .from('subscriptions')
-      .select('*, companies!inner(name, email)')
-      .eq('status', 'trial')
-      .not('trial_end_date', 'is', null);
-
-    if (error) {
-      console.error('Error fetching trial subscriptions:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const subscriptions = subscriptionsResult.rows as any[];
 
     if (!subscriptions || subscriptions.length === 0) {
       return NextResponse.json({ message: 'No trial subscriptions found' });
@@ -53,20 +40,23 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        if (!subscription.companies?.email) {
+        if (!subscription.company_email) {
           console.log(`No email for company: ${subscription.company_id}`);
           continue;
         }
 
         // Check if we already sent a reminder today
         const today = now.toISOString().split('T')[0];
-        const { data: existingLog } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('company_id', subscription.company_id)
-          .eq('email_type', 'trial_reminder')
-          .gte('sent_at', today)
-          .single();
+        const existingLogResult = await db.query(
+          `SELECT id
+           FROM email_logs
+           WHERE company_id = $1
+             AND email_type = 'trial_reminder'
+             AND sent_at >= $2::date
+           LIMIT 1`,
+          [subscription.company_id, today]
+        );
+        const existingLog = existingLogResult.rows[0];
 
         if (existingLog) {
           console.log(`Already sent reminder today for company: ${subscription.company_id}`);
@@ -80,29 +70,40 @@ export async function POST(request: NextRequest) {
         );
 
         const result = await sendTrialReminderEmail({
-          to: subscription.companies.email,
-          companyName: subscription.companies.name,
+          to: subscription.company_email,
+          companyName: subscription.company_name,
           daysRemaining,
           planName,
           monthlyPrice,
         });
 
         if (result.success) {
-          emailsSent.push(subscription.companies.email);
+          emailsSent.push(subscription.company_email);
 
           // Log the email
-          await supabase.from('email_logs').insert({
-            company_id: subscription.company_id,
-            email_type: 'trial_reminder',
-            recipient: subscription.companies.email,
-            subject: `Your BlueOx trial ends in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`,
-            sent_at: now.toISOString(),
-            external_id: result.id,
-            status: 'sent',
-          });
+          await db.query(
+            `INSERT INTO email_logs (
+               company_id,
+               email_type,
+               recipient,
+               subject,
+               sent_at,
+               external_id,
+               status
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              subscription.company_id,
+              'trial_reminder',
+              subscription.company_email,
+              `Your BlueOx trial ends in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`,
+              now.toISOString(),
+              result.id || null,
+              'sent',
+            ]
+          );
         } else {
           errors.push({
-            company: subscription.companies.name,
+            company: subscription.company_name,
             error: result.error,
           });
         }

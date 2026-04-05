@@ -1,66 +1,61 @@
-import { createClient } from '@/lib/supabase/server';
+import {
+  getCompanyIdFromRequest,
+  requireCompanyAccess,
+  requireSessionUser,
+} from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/employees - List all employees with optional filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
-    
-    // Multi-tenant: Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Multi-tenant: Get company_id from query params
-    const companyId = searchParams.get('company_id');
+    const { searchParams } = new URL(request.url);
+
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
     }
-    
+
     const status = searchParams.get('status');
     const department = searchParams.get('department');
     const isActive = searchParams.get('is_active');
 
-    let query = supabase
-      .from('employees')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('first_name', { ascending: true });
+    const conditions: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
-    // Apply filters
     if (status && status !== 'all') {
-      query = query.eq('employment_status', status);
+      params.push(status);
+      conditions.push(`employment_status = $${params.length}`);
     }
 
     if (department && department !== 'all') {
-      query = query.eq('department', department);
+      params.push(department);
+      conditions.push(`department = $${params.length}`);
     }
 
     if (isActive !== null && isActive !== undefined) {
-      query = query.eq('is_active', isActive === 'true');
+      params.push(isActive === 'true');
+      conditions.push(`is_active = $${params.length}`);
     }
 
-    const { data, error } = await query;
+    const result = await db.query(
+      `SELECT *
+       FROM employees
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY first_name ASC`,
+      params
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 200 });
+    return NextResponse.json({ data: result.rows }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -69,7 +64,11 @@ export async function GET(request: NextRequest) {
 // POST /api/employees - Create a new employee
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
     const { company_id, ...employeeData } = body;
@@ -87,31 +86,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', company_id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
+    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     // Check for duplicate employee number
-    const { data: existing } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('employee_number', employeeData.employee_number)
-      .single();
+    const existing = await db.query<{ id: string }>(
+      'SELECT id FROM employees WHERE employee_number = $1 LIMIT 1',
+      [employeeData.employee_number]
+    );
 
-    if (existing) {
+    if (existing.rows.length > 0) {
       return NextResponse.json(
         { error: 'Employee number already exists' },
         { status: 409 }
@@ -119,48 +105,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the employee
-    const { data, error } = await supabase
-      .from('employees')
-      .insert({
+    const insertResult = await db.query(
+      `INSERT INTO employees (
+         company_id, employee_number, first_name, last_name, other_names,
+         email, phone, national_id, nssf_number, tin,
+         date_of_birth, gender, nationality, address,
+         emergency_contact_name, emergency_contact_phone,
+         job_title, department, employment_type, employment_status,
+         hire_date, basic_salary, salary_currency, pay_frequency,
+         bank_name, bank_branch, bank_account_number, bank_account_name,
+         is_active, notes
+       ) VALUES (
+         $1, $2, $3, $4, $5,
+         $6, $7, $8, $9, $10,
+         $11, $12, $13, $14,
+         $15, $16,
+         $17, $18, $19, $20,
+         $21, $22, $23, $24,
+         $25, $26, $27, $28,
+         $29, $30
+       )
+       RETURNING *`,
+      [
         company_id,
-        employee_number: employeeData.employee_number,
-        first_name: employeeData.first_name,
-        last_name: employeeData.last_name,
-        other_names: employeeData.other_names || null,
-        email: employeeData.email || null,
-        phone: employeeData.phone || null,
-        national_id: employeeData.national_id || null,
-        nssf_number: employeeData.nssf_number || null,
-        tin: employeeData.tin || null,
-        date_of_birth: employeeData.date_of_birth || null,
-        gender: employeeData.gender || null,
-        nationality: employeeData.nationality || 'Ugandan',
-        address: employeeData.address || null,
-        emergency_contact_name: employeeData.emergency_contact_name || null,
-        emergency_contact_phone: employeeData.emergency_contact_phone || null,
-        job_title: employeeData.job_title,
-        department: employeeData.department || null,
-        employment_type: employeeData.employment_type || 'full_time',
-        employment_status: 'active', // New employees are always active
-        hire_date: employeeData.hire_date,
-        basic_salary: employeeData.basic_salary,
-        salary_currency: employeeData.salary_currency || 'UGX',
-        pay_frequency: employeeData.pay_frequency || 'monthly',
-        bank_name: employeeData.bank_name || null,
-        bank_branch: employeeData.bank_branch || null,
-        bank_account_number: employeeData.bank_account_number || null,
-        bank_account_name: employeeData.bank_account_name || null,
-        is_active: true,
-        notes: employeeData.notes || null,
-      })
-      .select()
-      .single();
+        employeeData.employee_number,
+        employeeData.first_name,
+        employeeData.last_name,
+        employeeData.other_names || null,
+        employeeData.email || null,
+        employeeData.phone || null,
+        employeeData.national_id || null,
+        employeeData.nssf_number || null,
+        employeeData.tin || null,
+        employeeData.date_of_birth || null,
+        employeeData.gender || null,
+        employeeData.nationality || 'Ugandan',
+        employeeData.address || null,
+        employeeData.emergency_contact_name || null,
+        employeeData.emergency_contact_phone || null,
+        employeeData.job_title,
+        employeeData.department || null,
+        employeeData.employment_type || 'full_time',
+        'active',
+        employeeData.hire_date,
+        employeeData.basic_salary,
+        employeeData.salary_currency || 'UGX',
+        employeeData.pay_frequency || 'monthly',
+        employeeData.bank_name || null,
+        employeeData.bank_branch || null,
+        employeeData.bank_account_number || null,
+        employeeData.bank_account_name || null,
+        true,
+        employeeData.notes || null,
+      ]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: insertResult.rows[0] }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/purchase-orders/[id]/approve - Approve purchase order
@@ -7,23 +7,30 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-    const { id } = await context.params;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get PO
-    const { data: po, error: fetchError } = await supabase
-      .from('purchase_orders')
-      .select('*, vendor:vendors(name)')
-      .eq('id', id)
-      .single();
+    const { id } = await context.params;
 
-    if (fetchError || !po) {
+    const poResult = await db.query(
+      `SELECT po.*, v.name AS vendor_name
+       FROM purchase_orders po
+       LEFT JOIN vendors v ON v.id = po.vendor_id
+       WHERE po.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const po = poResult.rows[0];
+
+    if (!po) {
       return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, po.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (po.status !== 'draft' && po.status !== 'pending_approval') {
@@ -33,25 +40,45 @@ export async function POST(
       );
     }
 
-    // Approve PO
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .update({
-        status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select(`
-        *,
-        vendor:vendors(id, name, email),
-        purchase_order_lines(*)
-      `)
-      .single();
+    await db.query(
+      `UPDATE purchase_orders
+       SET status = 'approved',
+           approved_by = $2,
+           approved_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id, user.id]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const approvedResult = await db.query(
+      `SELECT po.*,
+              v.id AS vendor_ref_id,
+              v.name AS vendor_name,
+              v.email AS vendor_email
+       FROM purchase_orders po
+       LEFT JOIN vendors v ON v.id = po.vendor_id
+       WHERE po.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const approvedPo = approvedResult.rows[0];
+
+    const linesResult = await db.query(
+      'SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1 ORDER BY line_number ASC, created_at ASC',
+      [id]
+    );
+
+    const data = {
+      ...approvedPo,
+      vendor: approvedPo.vendor_ref_id
+        ? {
+            id: approvedPo.vendor_ref_id,
+            name: approvedPo.vendor_name,
+            email: approvedPo.vendor_email,
+          }
+        : null,
+      purchase_order_lines: linesResult.rows,
+    };
 
     return NextResponse.json({
       message: 'Purchase order approved successfully',

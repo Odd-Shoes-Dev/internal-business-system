@@ -1,22 +1,17 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/assets/[id]/dispose - Dispose/sell fixed asset
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { id } = await context.params;
     const body = await request.json();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Validate required fields
     if (!body.disposal_date || !body.disposal_method) {
       return NextResponse.json(
         { error: 'Missing required fields: disposal_date, disposal_method' },
@@ -24,155 +19,163 @@ export async function POST(
       );
     }
 
-    // Get asset details
-    const { data: asset, error: assetError } = await supabase
-      .from('fixed_assets')
-      .select('*, account:accounts(*)')
-      .eq('id', id)
-      .single();
+    const assetResult = await db.query<any>(
+      `SELECT id, company_id, name, status, purchase_price, accumulated_depreciation, asset_account_id
+       FROM fixed_assets
+       WHERE id = $1
+       LIMIT 1`,
+      [id]
+    );
 
-    if (assetError || !asset) {
+    const asset = assetResult.rows[0];
+    if (!asset) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, asset.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (asset.status === 'disposed') {
       return NextResponse.json({ error: 'Asset already disposed' }, { status: 400 });
     }
 
-    // Calculate current book value (cost - accumulated depreciation)
-    const bookValue = asset.cost - (asset.accumulated_depreciation || 0);
-    const disposalAmount = body.disposal_amount || 0;
+    const bookValue = Number(asset.purchase_price || 0) - Number(asset.accumulated_depreciation || 0);
+    const disposalAmount = Number(body.disposal_amount || 0);
     const gainLoss = disposalAmount - bookValue;
 
-    // Get accounts needed for disposal
-    const { data: accounts } = await supabase
-      .from('accounts')
-      .select('*')
-      .in('code', ['1800', '1900', '4500', '5500']); // Cash, Accum Depr, Gain on Sale, Loss on Sale
+    const accountsResult = await db.query<any>(
+      `SELECT id, code
+       FROM accounts
+       WHERE code = ANY($1::text[])`,
+      [['1800', '1900', '4500', '5500']]
+    );
 
-    const cashAccount = accounts?.find(a => a.code === '1800');
-    const accumDeprAccount = accounts?.find(a => a.code === '1900');
-    const gainAccount = accounts?.find(a => a.code === '4500');
-    const lossAccount = accounts?.find(a => a.code === '5500');
+    const cashAccount = accountsResult.rows.find((a: any) => a.code === '1800');
+    const accumDeprAccount = accountsResult.rows.find((a: any) => a.code === '1900');
+    const gainAccount = accountsResult.rows.find((a: any) => a.code === '4500');
+    const lossAccount = accountsResult.rows.find((a: any) => a.code === '5500');
 
-    if (!cashAccount || !accumDeprAccount) {
+    if (!accumDeprAccount || !asset.asset_account_id) {
       return NextResponse.json(
-        { error: 'Required accounts not found (1800, 1900)' },
+        { error: 'Required accounts not found for disposal' },
         { status: 400 }
       );
     }
 
-    // Create journal entry for disposal
-    const description = `Asset disposal - ${asset.name} (${body.disposal_method})`;
-    const { data: journalEntry, error: jeError } = await supabase
-      .from('journal_entries')
-      .insert({
-        entry_date: body.disposal_date,
-        description,
-        reference_type: 'asset_disposal',
-        reference_id: id,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const response = await db.transaction(async (tx) => {
+      const entryNumberResult = await tx.query<{ entry_number: string }>(
+        'SELECT generate_journal_entry_number() AS entry_number'
+      );
+      const entryNumber = entryNumberResult.rows[0]?.entry_number;
+      if (!entryNumber) {
+        throw new Error('Failed to generate journal entry number');
+      }
 
-    if (jeError) {
-      return NextResponse.json({ error: jeError.message }, { status: 400 });
-    }
+      const description = `Asset disposal - ${asset.name} (${body.disposal_method})`;
+      const journalEntryResult = await tx.query<{ id: string }>(
+        `INSERT INTO journal_entries (
+           entry_number, entry_date, description, source_module, source_document_id, status, created_by
+         ) VALUES ($1, $2::date, $3, 'asset_disposal', $4, 'posted', $5)
+         RETURNING id`,
+        [entryNumber, body.disposal_date, description, id, user.id]
+      );
 
-    // Create journal lines
-    const lines: any[] = [];
+      const journalEntryId = journalEntryResult.rows[0]?.id;
+      if (!journalEntryId) {
+        throw new Error('Failed to create journal entry');
+      }
 
-    // 1. DR Cash (if sold)
-    if (disposalAmount > 0) {
+      const lines: Array<{ account_id: string; debit: number; credit: number; description: string }> = [];
+
+      if (disposalAmount > 0 && cashAccount) {
+        lines.push({
+          account_id: cashAccount.id,
+          debit: disposalAmount,
+          credit: 0,
+          description: 'Cash received from disposal',
+        });
+      }
+
+      if (Number(asset.accumulated_depreciation || 0) > 0) {
+        lines.push({
+          account_id: accumDeprAccount.id,
+          debit: Number(asset.accumulated_depreciation),
+          credit: 0,
+          description: 'Remove accumulated depreciation',
+        });
+      }
+
+      if (gainLoss < 0 && lossAccount) {
+        lines.push({
+          account_id: lossAccount.id,
+          debit: Math.abs(gainLoss),
+          credit: 0,
+          description: 'Loss on asset disposal',
+        });
+      } else if (gainLoss > 0 && gainAccount) {
+        lines.push({
+          account_id: gainAccount.id,
+          debit: 0,
+          credit: gainLoss,
+          description: 'Gain on asset disposal',
+        });
+      }
+
       lines.push({
-        journal_entry_id: journalEntry.id,
-        account_id: cashAccount.id,
-        debit: disposalAmount,
-        credit: 0,
-        description: 'Cash received from disposal',
-      });
-    }
-
-    // 2. DR Accumulated Depreciation
-    if (asset.accumulated_depreciation > 0) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        account_id: accumDeprAccount.id,
-        debit: asset.accumulated_depreciation,
-        credit: 0,
-        description: 'Remove accumulated depreciation',
-      });
-    }
-
-    // 3. DR Loss on Sale OR CR Gain on Sale
-    if (gainLoss < 0 && lossAccount) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        account_id: lossAccount.id,
-        debit: Math.abs(gainLoss),
-        credit: 0,
-        description: 'Loss on asset disposal',
-      });
-    } else if (gainLoss > 0 && gainAccount) {
-      lines.push({
-        journal_entry_id: journalEntry.id,
-        account_id: gainAccount.id,
+        account_id: asset.asset_account_id,
         debit: 0,
-        credit: gainLoss,
-        description: 'Gain on asset disposal',
+        credit: Number(asset.purchase_price || 0),
+        description: 'Remove asset from books',
       });
-    }
 
-    // 4. CR Asset (at cost)
-    lines.push({
-      journal_entry_id: journalEntry.id,
-      account_id: asset.account_id,
-      debit: 0,
-      credit: asset.cost,
-      description: 'Remove asset from books',
+      let lineNumber = 1;
+      for (const line of lines) {
+        await tx.query(
+          `INSERT INTO journal_lines (
+             journal_entry_id, line_number, account_id, debit, credit, description
+           ) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [journalEntryId, lineNumber, line.account_id, line.debit, line.credit, line.description]
+        );
+        lineNumber += 1;
+      }
+
+      const updatedAssetResult = await tx.query<any>(
+        `UPDATE fixed_assets
+         SET status = 'disposed',
+             disposal_date = $2::date,
+             disposal_method = $3,
+             disposal_amount = $4,
+             disposal_journal_entry_id = $5,
+             disposal_notes = $6,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          body.disposal_date,
+          body.disposal_method,
+          disposalAmount,
+          journalEntryId,
+          body.disposal_notes || null,
+        ]
+      );
+
+      return {
+        asset: updatedAssetResult.rows[0],
+        disposal_summary: {
+          original_cost: Number(asset.purchase_price || 0),
+          accumulated_depreciation: Number(asset.accumulated_depreciation || 0),
+          book_value: bookValue,
+          disposal_amount: disposalAmount,
+          gain_loss: gainLoss,
+          journal_entry_id: journalEntryId,
+        },
+      };
     });
 
-    const { error: linesError } = await supabase
-      .from('journal_entry_lines')
-      .insert(lines);
-
-    if (linesError) {
-      // Rollback journal entry
-      await supabase.from('journal_entries').delete().eq('id', journalEntry.id);
-      return NextResponse.json({ error: linesError.message }, { status: 400 });
-    }
-
-    // Update asset status
-    const { data: updatedAsset, error: updateError } = await supabase
-      .from('fixed_assets')
-      .update({
-        status: 'disposed',
-        disposal_date: body.disposal_date,
-        disposal_method: body.disposal_method,
-        disposal_amount: disposalAmount,
-        disposal_journal_entry_id: journalEntry.id,
-        disposal_notes: body.disposal_notes,
-      })
-      .eq('id', id)
-      .select('*, account:accounts(*)')
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      asset: updatedAsset,
-      disposal_summary: {
-        original_cost: asset.cost,
-        accumulated_depreciation: asset.accumulated_depreciation,
-        book_value: bookValue,
-        disposal_amount: disposalAmount,
-        gain_loss: gainLoss,
-        journal_entry_id: journalEntry.id,
-      },
-    });
+    return NextResponse.json(response);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

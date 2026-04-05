@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase/client';
 import { SparklesIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -62,37 +61,29 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      // Step 1: Create auth user
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            company_name: companyName,
-          },
-        },
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          companyName,
+        }),
       });
 
-      if (error) throw error;
-
-      if (data.user && !data.session) {
-        // Email confirmation required
-        toast.success('Check your email to confirm your account!');
-        router.push('/login');
-      } else {
-        // Auto-confirmed (for development)
-        toast.success(`Welcome! Let's set up your subscription.`);
-        
-        // Store company name for later use in payment flow
-        localStorage.setItem('companyName', companyName);
-        
-        // Wait for session and trigger to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Redirect to plan selection
-        router.push('/signup/select-plan');
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to create account');
       }
+
+      toast.success(`Welcome! Let's set up your subscription.`);
+
+      // Store company name for later use in payment flow
+      localStorage.setItem('companyName', companyName);
+
+      // Redirect to plan selection
+      router.push('/signup/select-plan');
     } catch (error: any) {
       console.error('Signup error:', error);
       toast.error(error.message || 'Failed to create account');

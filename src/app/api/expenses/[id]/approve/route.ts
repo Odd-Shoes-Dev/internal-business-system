@@ -1,64 +1,58 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/expenses/[id]/approve - Approve expense
 export async function POST(request: NextRequest, context: any) {
   const { params } = context || {};
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get expense
-    const { data: expense, error: fetchError } = await supabase
-      .from('expenses')
-      .select('*, created_by')
-      .eq('id', params.id)
-      .single();
+    const expenseResult = await db.query('SELECT * FROM expenses WHERE id = $1 LIMIT 1', [params.id]);
+    const expense = expenseResult.rows[0];
 
-    if (fetchError) {
+    if (!expense) {
       return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
     }
 
-    // Check if expense is in pending status
+    const companyAccessError = await requireCompanyAccess(user.id, expense.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     if (expense.status !== 'pending') {
-      return NextResponse.json(
-        { error: `Cannot approve expense with status: ${expense.status}` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `Cannot approve expense with status: ${expense.status}` }, { status: 400 });
     }
 
-    // Update expense to approved
-    const { data: updatedExpense, error: updateError } = await supabase
-      .from('expenses')
-      .update({
-        status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .select(`
-        *,
-        approved_by_user:user_profiles!expenses_approved_by_fkey(id, full_name, email)
-      `)
-      .single();
+    const updatedResult = await db.query(
+      `UPDATE expenses
+       SET status = 'approved',
+           approved_by = $2,
+           approved_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [params.id, user.id]
+    );
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
+    const updated = updatedResult.rows[0];
 
-    // TODO: Send notification to expense creator
-    // await sendExpenseApprovalNotification(expense.created_by, updatedExpense);
+    const approverResult = await db.query(
+      `SELECT up.id, up.full_name, up.email
+       FROM user_profiles up
+       WHERE up.id = $1
+       LIMIT 1`,
+      [updated.approved_by]
+    );
 
-    return NextResponse.json({
-      data: updatedExpense,
-      message: 'Expense approved successfully',
-    });
+    const data = {
+      ...updated,
+      approved_by_user: approverResult.rows[0] || null,
+    };
+
+    return NextResponse.json({ data, message: 'Expense approved successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

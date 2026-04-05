@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase/client';
 import { SparklesIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -36,32 +35,22 @@ export default function LoginPage() {
         localStorage.removeItem('rememberedEmail');
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) throw error;
+      const payload = await response.json();
 
-      const userId = data.user?.id;
-      if (!userId) {
-        throw new Error('Sign-in succeeded but no user id returned');
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to sign in');
       }
-
-      // Ensure session is attached to the client before making authenticated requests
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Check if THIS user has any companies (onboarding completed = has company + profile)
-      const { data: userCompanies } = await supabase
-        .from('user_companies')
-        .select('company_id')
-        .eq('user_id', userId)
-        .limit(1);
 
       const urlParams = new URLSearchParams(window.location.search);
       let redirectTo = urlParams.get('redirectTo') || '/dashboard';
 
-      if (!userCompanies || userCompanies.length === 0) {
+      if (payload?.needsOnboarding) {
         redirectTo = '/signup/select-plan';
       }
 

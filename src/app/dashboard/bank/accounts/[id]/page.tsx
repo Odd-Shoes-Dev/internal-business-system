@@ -2,8 +2,8 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -42,6 +42,7 @@ interface Transaction {
 
 export default function BankAccountDetailPage({ params }: PageProps) {
   const { id } = use(params);
+  const { company } = useCompany();
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,18 +51,20 @@ export default function BankAccountDetailPage({ params }: PageProps) {
   useEffect(() => {
     loadAccount();
     loadTransactions();
-  }, [id]);
+  }, [id, company?.id]);
 
   const loadAccount = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/bank-accounts/${id}`, {
+        credentials: 'include',
+      });
 
-      if (error) throw error;
-      setAccount(data);
+      if (!response.ok) {
+        throw new Error('Failed to load bank account');
+      }
+
+      const result = await response.json();
+      setAccount(result.data || null);
     } catch (error) {
       console.error('Failed to load bank account:', error);
     } finally {
@@ -71,15 +74,20 @@ export default function BankAccountDetailPage({ params }: PageProps) {
 
   const loadTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('bank_transactions')
-        .select('*')
-        .eq('bank_account_id', id)
-        .order('transaction_date', { ascending: false })
-        .limit(50);
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setTransactions(data || []);
+      const response = await fetch(
+        `/api/bank-transactions?company_id=${company.id}&account_id=${id}&limit=50`,
+        { credentials: 'include' }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load transactions');
+      }
+
+      const result = await response.json();
+      setTransactions(result.data || []);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     }
@@ -91,7 +99,11 @@ export default function BankAccountDetailPage({ params }: PageProps) {
 
   const calculateBalance = () => {
     return transactions.reduce((balance, transaction) => {
-      return balance + (transaction.transaction_type === 'credit' ? transaction.amount : -transaction.amount);
+      const isIncoming =
+        transaction.transaction_type === 'deposit' ||
+        transaction.transaction_type === 'transfer_in' ||
+        transaction.transaction_type === 'credit';
+      return balance + (isIncoming ? Number(transaction.amount || 0) : -Number(transaction.amount || 0));
     }, 0);
   };
 
@@ -102,12 +114,13 @@ export default function BankAccountDetailPage({ params }: PageProps) {
 
     try {
       setDeleting(true);
-      const { error } = await supabase
-        .from('bank_accounts')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/bank-accounts/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete bank account');
+      }
 
       alert('Bank account deleted successfully');
       window.location.href = '/dashboard/bank/accounts';
@@ -262,9 +275,11 @@ export default function BankAccountDetailPage({ params }: PageProps) {
                     <td className="px-6 py-4 text-sm text-gray-900">{transaction.description}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{transaction.reference_number}</td>
                     <td className={`px-6 py-4 text-sm font-medium text-right ${
-                      transaction.transaction_type === 'credit' ? 'text-green-600' : 'text-red-600'
+                      transaction.transaction_type === 'deposit' || transaction.transaction_type === 'transfer_in' || transaction.transaction_type === 'credit'
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }`}>
-                      {transaction.transaction_type === 'credit' ? '+' : '-'}
+                      {transaction.transaction_type === 'deposit' || transaction.transaction_type === 'transfer_in' || transaction.transaction_type === 'credit' ? '+' : '-'}
                       {formatCurrency(transaction.amount)}
                     </td>
                     <td className="px-6 py-4 text-center">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDbProvider } from '@/lib/provider';
 
 // This endpoint cleans up cancelled/expired subscriptions after grace period
 export async function POST(request: NextRequest) {
@@ -10,16 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const db = getDbProvider();
 
     const now = new Date();
     const gracePeriodDays = 30; // Keep data for 30 days after cancellation/expiration
@@ -35,62 +26,72 @@ export async function POST(request: NextRequest) {
     };
 
     // Step 1: Deactivate modules for cancelled/expired subscriptions past grace period
-    const { data: oldSubscriptions } = await supabase
-      .from('subscriptions')
-      .select('id, company_id, status, cancelled_at, companies!inner(name)')
-      .in('status', ['cancelled', 'expired'])
-      .or(`cancelled_at.lt.${cutoffStr},updated_at.lt.${cutoffStr}`)
-      .eq('is_archived', false);
+    const oldSubscriptionsResult = await db.query(
+      `SELECT s.id, s.company_id, s.status, s.cancelled_at, c.name AS company_name
+       FROM subscriptions s
+       INNER JOIN companies c ON c.id = s.company_id
+       WHERE s.status IN ('cancelled', 'expired')
+         AND s.is_archived = false
+         AND (s.cancelled_at < $1 OR s.updated_at < $1)`,
+      [cutoffStr]
+    );
+    const oldSubscriptions = oldSubscriptionsResult.rows as any[];
 
     if (oldSubscriptions && oldSubscriptions.length > 0) {
       for (const subscription of oldSubscriptions) {
         try {
           // Deactivate all modules
-          const { error: moduleError } = await supabase
-            .from('subscription_modules')
-            .update({
-              is_active: false,
-              updated_at: now.toISOString(),
-            })
-            .eq('subscription_id', subscription.id);
-
-          if (moduleError) {
-            throw moduleError;
-          }
+          await db.query(
+            `UPDATE subscription_modules
+             SET is_active = false,
+                 removed_at = $2,
+                 updated_at = $2
+             WHERE company_id = $1
+               AND is_active = true`,
+            [subscription.company_id, now.toISOString()]
+          );
 
           results.deactivatedModules += 1;
 
           // Mark subscription as archived
-          await supabase
-            .from('subscriptions')
-            .update({
-              is_archived: true,
-              updated_at: now.toISOString(),
-            })
-            .eq('id', subscription.id);
+          await db.query(
+            `UPDATE subscriptions
+             SET is_archived = true,
+                 updated_at = $2
+             WHERE id = $1`,
+            [subscription.id, now.toISOString()]
+          );
 
           results.archivedSubscriptions += 1;
 
           // Log activity
-          await supabase
-            .from('activity_logs')
-            .insert({
-              company_id: subscription.company_id,
-              user_id: null,
-              action: 'subscription_archived',
-              entity_type: 'subscription',
-              entity_id: subscription.id,
-              metadata: {
+          await db.query(
+            `INSERT INTO activity_logs (
+               company_id,
+               user_id,
+               action,
+               entity_type,
+               entity_id,
+               metadata,
+               created_at
+             ) VALUES (
+               $1, NULL, 'subscription_archived', 'subscription', $2, $3::jsonb, NOW()
+             )`,
+            [
+              subscription.company_id,
+              subscription.id,
+              JSON.stringify({
                 status: subscription.status,
                 archived_at: now.toISOString(),
                 grace_period_days: gracePeriodDays,
-              },
-            });
+              }),
+            ]
+          );
 
         } catch (err: any) {
           console.error(`Error archiving subscription ${subscription.id}:`, err);
           results.errors.push({
-            company: (subscription.companies as any)?.name,
+            company: subscription.company_name,
             subscription_id: subscription.id,
             error: err.message,
           });
@@ -103,43 +104,58 @@ export async function POST(request: NextRequest) {
     warnDate.setDate(warnDate.getDate() - (gracePeriodDays - 3)); // 27 days ago
     const warnDateStr = warnDate.toISOString();
 
-    const { data: warningSubscriptions } = await supabase
-      .from('subscriptions')
-      .select('id, company_id, status, companies!inner(name, email)')
-      .in('status', ['cancelled', 'expired'])
-      .lt('cancelled_at', warnDateStr)
-      .gt('cancelled_at', cutoffStr)
-      .eq('is_archived', false);
+    const warningSubscriptionsResult = await db.query(
+      `SELECT s.id, s.company_id, s.status, c.name AS company_name, c.email AS company_email
+       FROM subscriptions s
+       INNER JOIN companies c ON c.id = s.company_id
+       WHERE s.status IN ('cancelled', 'expired')
+         AND s.cancelled_at < $1
+         AND s.cancelled_at > $2
+         AND s.is_archived = false`,
+      [warnDateStr, cutoffStr]
+    );
+    const warningSubscriptions = warningSubscriptionsResult.rows as any[];
 
     if (warningSubscriptions && warningSubscriptions.length > 0) {
       for (const subscription of warningSubscriptions) {
         // Check if we already sent a warning
-        const { data: existingWarning } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('company_id', subscription.company_id)
-          .eq('email_type', 'data_deletion_warning')
-          .gte('sent_at', cutoffStr)
-          .single();
+        const existingWarningResult = await db.query(
+          `SELECT id
+           FROM email_logs
+           WHERE company_id = $1
+             AND email_type = 'data_deletion_warning'
+             AND sent_at >= $2
+           LIMIT 1`,
+          [subscription.company_id, cutoffStr]
+        );
+        const existingWarning = existingWarningResult.rows[0];
 
-        if (!existingWarning && (subscription.companies as any)?.email) {
-          results.warned.push((subscription.companies as any)?.name || subscription.company_id);
+        if (!existingWarning && subscription.company_email) {
+          results.warned.push(subscription.company_name || subscription.company_id);
 
           // TODO: Send warning email about upcoming data deletion
           // For now, just log the activity
-          await supabase
-            .from('activity_logs')
-            .insert({
-              company_id: subscription.company_id,
-              user_id: null,
-              action: 'grace_period_warning',
-              entity_type: 'subscription',
-              entity_id: subscription.id,
-              metadata: {
+          await db.query(
+            `INSERT INTO activity_logs (
+               company_id,
+               user_id,
+               action,
+               entity_type,
+               entity_id,
+               metadata,
+               created_at
+             ) VALUES (
+               $1, NULL, 'grace_period_warning', 'subscription', $2, $3::jsonb, NOW()
+             )`,
+            [
+              subscription.company_id,
+              subscription.id,
+              JSON.stringify({
                 days_remaining: 3,
                 deletion_date: cutoffDate.toISOString(),
-              },
-            });
+              }),
+            ]
+          );
         }
       }
     }
@@ -148,13 +164,14 @@ export async function POST(request: NextRequest) {
     const activityCutoff = new Date(now);
     activityCutoff.setFullYear(activityCutoff.getFullYear() - 1);
     
-    const { error: logCleanupError } = await supabase
-      .from('activity_logs')
-      .delete()
-      .lt('created_at', activityCutoff.toISOString())
-      .not('action', 'in', '("subscription_created","subscription_cancelled","payment_failed")'); // Keep important events
-
-    if (logCleanupError) {
+    try {
+      await db.query(
+        `DELETE FROM activity_logs
+         WHERE created_at < $1
+           AND action NOT IN ('subscription_created', 'subscription_cancelled', 'payment_failed')`,
+        [activityCutoff.toISOString()]
+      );
+    } catch (logCleanupError) {
       console.error('Error cleaning up activity logs:', logCleanupError);
     }
 

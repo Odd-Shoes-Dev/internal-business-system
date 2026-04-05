@@ -1,51 +1,70 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+
     const { searchParams } = new URL(request.url);
+    const companyId = getCompanyIdFromRequest(request);
     const accountId = searchParams.get('account_id');
     const type = searchParams.get('type');
     const reconciled = searchParams.get('reconciled');
 
-    let query = supabase
-      .from('bank_transactions')
-      .select('amount, currency, transaction_date, transaction_type, is_reconciled');
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
+
+    const where: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
     if (accountId && accountId !== 'all') {
-      query = query.eq('bank_account_id', accountId);
+      params.push(accountId);
+      where.push(`bank_account_id = $${params.length}`);
     }
 
     if (type && type !== 'all') {
-      query = query.eq('transaction_type', type);
+      params.push(type);
+      where.push(`transaction_type = $${params.length}`);
     }
 
     if (reconciled && reconciled !== 'all') {
-      query = query.eq('is_reconciled', reconciled === 'reconciled');
+      params.push(reconciled === 'reconciled');
+      where.push(`is_reconciled = $${params.length}`);
     }
 
-    const { data: transactions, error } = await query;
-
-    if (error) throw error;
+    const transactions = await db.query<{
+      amount: number | string;
+      currency: string;
+      transaction_date: string;
+      transaction_type: string;
+      is_reconciled: boolean;
+    }>(
+      `SELECT amount, currency, transaction_date, transaction_type, is_reconciled
+       FROM bank_transactions
+       WHERE ${where.join(' AND ')}`,
+      params
+    );
 
     let totalDeposits = 0;
     let totalWithdrawals = 0;
     let unreconciledCount = 0;
 
-    for (const tx of transactions || []) {
-      const amount = Math.abs(parseFloat(tx.amount) || 0);
+    for (const tx of transactions.rows || []) {
+      const amount = Math.abs(Number(tx.amount) || 0);
       let amountUSD = amount;
 
       // Convert to USD if not already
       if (tx.currency && tx.currency !== 'USD') {
-        const { data: converted } = await supabase.rpc('convert_currency', {
-          p_amount: amount,
-          p_from_currency: tx.currency,
-          p_to_currency: 'USD',
-          p_date: tx.transaction_date,
-        });
-        amountUSD = converted || amount;
+        const converted = await db.query<{ converted: number | null }>(
+          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+          [amount, tx.currency, 'USD', tx.transaction_date]
+        );
+        amountUSD = converted.rows[0]?.converted || amount;
       }
 
       // Sum deposits and withdrawals

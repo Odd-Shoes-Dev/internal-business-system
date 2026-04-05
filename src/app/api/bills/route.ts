@@ -1,15 +1,35 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
-import { createBillJournalEntry } from '@/lib/accounting/journal-entry-helpers';
-import { increaseInventoryForBill } from '@/lib/accounting/inventory-server';
-import { validatePeriodLock } from '@/lib/accounting/period-lock';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import {
+  asQueryExecutor,
+  createBillJournalEntryWithDb,
+  increaseInventoryForBillWithDb,
+  validatePeriodLockWithDb,
+} from '@/lib/accounting/provider-accounting';
+import {
+  getCompanyIdFromRequest,
+  requireCompanyAccess,
+  requireSessionUser,
+} from '@/lib/provider/route-guards';
 
 // GET /api/bills - List bills
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
-    
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     const status = searchParams.get('status');
     const vendorId = searchParams.get('vendor_id');
     const search = searchParams.get('search');
@@ -17,36 +37,56 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    let query = supabase
-      .from('bills')
-      .select(
-        `
-        *,
-        vendors (id, name, company_name)
-      `,
-        { count: 'exact' }
-      )
-      .order('bill_date', { ascending: false });
+    const where: string[] = ['b.company_id = $1'];
+    const params: any[] = [companyId];
 
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      params.push(status);
+      where.push(`b.status = $${params.length}`);
     }
 
     if (vendorId) {
-      query = query.eq('vendor_id', vendorId);
+      params.push(vendorId);
+      where.push(`b.vendor_id = $${params.length}`);
     }
 
     if (search) {
-      query = query.ilike('bill_number', `%${search}%`);
+      params.push(`%${search}%`);
+      where.push(`b.bill_number ILIKE $${params.length}`);
     }
 
-    query = query.range(offset, offset + limit - 1);
+    const whereSql = `WHERE ${where.join(' AND ')}`;
+    const countResult = await db.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total
+       FROM bills b
+       ${whereSql}`,
+      params
+    );
 
-    const { data, count, error } = await query;
+    const listParams = [...params, limit, offset];
+    const dataResult = await db.query(
+      `SELECT b.*, v.id AS vendor_ref_id, v.name AS vendor_name, v.company_name AS vendor_company_name
+       FROM bills b
+       LEFT JOIN vendors v ON v.id = b.vendor_id
+       ${whereSql}
+       ORDER BY b.bill_date DESC
+       LIMIT $${listParams.length - 1}
+       OFFSET $${listParams.length}`,
+      listParams
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const data = dataResult.rows.map((row) => ({
+      ...row,
+      vendors: row.vendor_ref_id
+        ? {
+            id: row.vendor_ref_id,
+            name: row.vendor_name,
+            company_name: row.vendor_company_name,
+          }
+        : null,
+    }));
+
+    const count = Number(countResult.rows[0]?.total || 0);
 
     return NextResponse.json({
       data,
@@ -65,9 +105,12 @@ export async function GET(request: NextRequest) {
 // POST /api/bills - Create bill
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
-    
     const { company_id } = body;
 
     if (!company_id) {
@@ -81,63 +124,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
-    // Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', company_id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Check if period is closed
-    const periodError = await validatePeriodLock(supabase, body.bill_date, company_id);
+    const periodError = await validatePeriodLockWithDb(asQueryExecutor(db), body.bill_date, company_id);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 403 });
     }
 
-    // Generate bill number
-    const { data: billNumber, error: numError } = await supabase.rpc('generate_bill_number');
-    if (numError) {
+    const billNumberResult = await db.query<{ bill_number: string }>('SELECT generate_bill_number() AS bill_number');
+    const billNumber = billNumberResult.rows[0]?.bill_number;
+    if (!billNumber) {
       return NextResponse.json({ error: 'Failed to generate bill number' }, { status: 500 });
     }
 
-    // Get AP account
-    const { data: apAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '2000')
-      .single();
+    const apAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', ['2000']);
 
-    // Calculate totals
     const lines = body.line_items || body.lines || [];
     let subtotal = 0;
     let taxAmount = 0;
 
-    // Get account IDs from codes if needed
     const accountCodes = lines
       .map((line: any) => line.account_code)
       .filter((code: any) => code);
-    
+
     let accountMap: Record<string, string> = {};
     if (accountCodes.length > 0) {
-      const { data: accounts } = await supabase
-        .from('accounts')
-        .select('id, code')
-        .in('code', accountCodes);
-      
-      if (accounts) {
-        accountMap = Object.fromEntries(
-          accounts.map((acc: any) => [acc.code, acc.id])
-        );
+      const accounts = await db.query<{ id: string; code: string }>(
+        'SELECT id, code FROM accounts WHERE code = ANY($1::text[])',
+        [accountCodes]
+      );
+
+      if (accounts.rows.length > 0) {
+        accountMap = Object.fromEntries(accounts.rows.map((acc) => [acc.code, acc.id]));
       }
     }
 
@@ -153,50 +174,55 @@ export async function POST(request: NextRequest) {
 
     const total = subtotal + taxAmount;
 
-    console.log('Bill creation totals:', { subtotal, taxAmount, total, linesCount: lines.length });
+    const createdBill = await db.transaction(async (tx) => {
+      const billInsert = await tx.query<any>(
+        `INSERT INTO bills (
+           company_id, bill_number, vendor_id, bill_date, due_date,
+           vendor_invoice_number, notes, subtotal, tax_amount, total,
+           amount_paid, status, currency, exchange_rate, payment_terms,
+           ap_account_id, created_by
+         ) VALUES (
+           $1, $2, $3, $4, $5,
+           $6, $7, $8, $9, $10,
+           0, $11, $12, $13, $14,
+           $15, $16
+         )
+         RETURNING *`,
+        [
+          company_id,
+          billNumber,
+          body.vendor_id,
+          body.bill_date,
+          body.due_date,
+          body.vendor_invoice_number || null,
+          body.notes || null,
+          subtotal,
+          taxAmount,
+          total,
+          body.status || 'draft',
+          body.currency || 'USD',
+          body.exchange_rate || 1,
+          body.payment_terms || 30,
+          apAccount.rows[0]?.id || null,
+          user.id,
+        ]
+      );
 
-    const { data: bill, error: billError } = await supabase
-      .from('bills')
-      .insert({
-        company_id,
-        bill_number: billNumber,
-        vendor_id: body.vendor_id,
-        bill_date: body.bill_date,
-        due_date: body.due_date,
-        vendor_invoice_number: body.vendor_invoice_number || null,
-        notes: body.notes || null,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-        amount_paid: 0,
-        status: body.status || 'draft',
-        currency: body.currency || 'USD',
-        exchange_rate: body.exchange_rate || 1,
-        payment_terms: body.payment_terms || 30,
-        ap_account_id: apAccount?.id,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+      const bill = billInsert.rows[0];
 
-    if (billError) {
-      return NextResponse.json({ error: billError.message }, { status: 400 });
-    }
-
-    // Create bill lines
-    if (lines.length > 0) {
       const billLines = lines
         .filter((line: any) => {
           const unitCost = parseFloat(line.unit_cost || line.unit_price || 0);
           const quantity = parseFloat(line.quantity || 0);
           const hasDescription = line.description && line.description.trim();
-          return hasDescription && (quantity * unitCost) > 0;
+          return hasDescription && quantity * unitCost > 0;
         })
         .map((line: any, index: number) => {
           const unitCost = parseFloat(line.unit_cost || line.unit_price || 0);
           const quantity = parseFloat(line.quantity || 0);
           const taxRate = parseFloat(line.tax_rate || 0);
-          const expenseAccountId = line.expense_account_id || (line.account_code ? accountMap[line.account_code] : null);
+          const expenseAccountId =
+            line.expense_account_id || (line.account_code ? accountMap[line.account_code] : null);
           return {
             bill_id: bill.id,
             line_number: index + 1,
@@ -205,28 +231,46 @@ export async function POST(request: NextRequest) {
             project_id: line.project_id || null,
             department: line.department || null,
             description: line.description || '',
-            quantity: quantity,
+            quantity,
             unit_cost: unitCost,
             tax_rate: taxRate,
             tax_amount: quantity * unitCost * taxRate,
             line_total: quantity * unitCost,
+            account_code: line.account_code || null,
           };
         });
 
-      const { error: linesError } = await supabase
-        .from('bill_lines')
-        .insert(billLines);
-
-      if (linesError) {
-        await supabase.from('bills').delete().eq('id', bill.id);
-        return NextResponse.json({ error: linesError.message }, { status: 400 });
+      if (billLines.length > 0) {
+        for (const line of billLines) {
+          await tx.query(
+            `INSERT INTO bill_lines (
+               bill_id, line_number, expense_account_id, product_id, project_id,
+               department, description, quantity, unit_cost, tax_rate, tax_amount, line_total
+             ) VALUES (
+               $1, $2, $3, $4, $5,
+               $6, $7, $8, $9, $10, $11, $12
+             )`,
+            [
+              line.bill_id,
+              line.line_number,
+              line.expense_account_id,
+              line.product_id,
+              line.project_id,
+              line.department,
+              line.description,
+              line.quantity,
+              line.unit_cost,
+              line.tax_rate,
+              line.tax_amount,
+              line.line_total,
+            ]
+          );
+        }
       }
 
-      // Create journal entry and update inventory for the bill
-      if (bill.status === 'posted' || bill.status === 'approved') {
-        // Update inventory for posted/approved bills
-        const inventoryResult = await increaseInventoryForBill(
-          supabase,
+      if ((bill.status === 'posted' || bill.status === 'approved') && billLines.length > 0) {
+        const inventoryResult = await increaseInventoryForBillWithDb(
+          tx,
           bill.id,
           bill.bill_date,
           billLines.map((line: any) => ({
@@ -241,25 +285,17 @@ export async function POST(request: NextRequest) {
 
         if (!inventoryResult.success) {
           console.error('Failed to update inventory for bill:', inventoryResult.error);
-          // Don't fail bill creation for inventory errors, just log
         }
 
-        // Prepare bill lines for journal entry
-        const journalBillLines = billLines.map((line: any) => {
-          // Get account code from the line
-          const accountCode = Object.keys(accountMap).find(
-            key => accountMap[key] === line.expense_account_id
-          ) || '5000'; // Default to general expense
-          
-          return {
-            account_code: accountCode,
-            amount: line.line_total + line.tax_amount,
-            description: line.description,
-          };
-        });
+        const journalBillLines = billLines.map((line: any) => ({
+          account_code:
+            Object.keys(accountMap).find((key) => accountMap[key] === line.expense_account_id) || '5000',
+          amount: line.line_total + line.tax_amount,
+          description: line.description,
+        }));
 
-        const journalResult = await createBillJournalEntry(
-          supabase,
+        const journalResult = await createBillJournalEntryWithDb(
+          tx,
           {
             id: bill.id,
             bill_number: bill.bill_number,
@@ -272,13 +308,20 @@ export async function POST(request: NextRequest) {
 
         if (!journalResult.success) {
           console.error('Failed to create journal entry for bill:', journalResult.error);
-          // Don't fail the bill creation, just log the error
+        } else if (journalResult.journalEntryId) {
+          await tx.query('UPDATE bills SET journal_entry_id = $2 WHERE id = $1', [
+            bill.id,
+            journalResult.journalEntryId,
+          ]);
         }
       }
-    }
 
-    return NextResponse.json({ data: bill }, { status: 201 });
+      return bill;
+    });
+
+    return NextResponse.json({ data: createdBill }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

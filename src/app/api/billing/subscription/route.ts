@@ -1,66 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     // Get user's company
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single();
+    const profile = await db.query<{ company_id: string }>(
+      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
+    const companyId = profile.rows[0]?.company_id;
 
-    if (!profile?.company_id) {
+    if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     // Get subscription details
-    const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('company_id', profile.company_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const subResult = await db.query(
+      `SELECT *
+       FROM subscriptions
+       WHERE company_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [companyId]
+    );
+
+    const subscription = subResult.rows[0] ?? null;
 
     // If no subscription in subscriptions table, check/create company_settings for trial
-    if (subError || !subscription) {
+    if (!subscription) {
       // Fetch the authoritative trial end date from the companies table first
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('trial_ends_at, subscription_status, created_at')
-        .eq('id', profile.company_id)
-        .single();
+      const companyResult = await db.query<{
+        trial_ends_at: string | null;
+        subscription_status: string | null;
+        created_at: string | null;
+      }>(
+        'SELECT trial_ends_at, subscription_status, created_at FROM companies WHERE id = $1 LIMIT 1',
+        [companyId]
+      );
+      const companyData = companyResult.rows[0] ?? null;
 
       // First check if company_settings exists
-      let { data: settings, error: settingsError } = await supabase
-        .from('company_settings')
-        .select(`
+      const settingsResult = await db.query(
+        `SELECT
           subscription_status,
           plan_tier,
           billing_period,
@@ -70,13 +54,18 @@ export async function GET(request: NextRequest) {
           current_period_end,
           stripe_customer_id,
           stripe_subscription_id,
+          included_modules_quota,
           company_id
-        `)
-        .eq('company_id', profile.company_id)
-        .single();
+         FROM company_settings
+         WHERE company_id = $1
+         LIMIT 1`,
+        [companyId]
+      );
+
+      let settings = settingsResult.rows[0] ?? null;
 
       // If company_settings doesn't exist, create it using the real trial end from companies table
-      if (settingsError || !settings) {
+      if (!settings) {
         const now = new Date();
         // Use companies.trial_ends_at as the authoritative end date.
         // Fall back to created_at + 30 days only if trial_ends_at is missing.
@@ -84,25 +73,21 @@ export async function GET(request: NextRequest) {
           ? new Date(companyData.trial_ends_at)
           : new Date((companyData?.created_at ? new Date(companyData.created_at).getTime() : now.getTime()) + 30 * 24 * 60 * 60 * 1000);
 
-        const { data: newSettings, error: insertError } = await supabase
-          .from('company_settings')
-          .insert({
-            company_id: profile.company_id,
-            subscription_status: companyData?.subscription_status || 'trial',
-            plan_tier: 'professional',
-            billing_period: 'monthly',
-            trial_start_date: companyData?.created_at || now.toISOString(),
-            trial_end_date: trialEnd.toISOString(),
-          })
-          .select()
-          .single();
+        const newSettings = await db.query(
+          `INSERT INTO company_settings (
+             company_id, subscription_status, plan_tier, billing_period, trial_start_date, trial_end_date
+           )
+           VALUES ($1, $2, 'professional', 'monthly', $3, $4)
+           RETURNING *`,
+          [
+            companyId,
+            companyData?.subscription_status || 'trial',
+            companyData?.created_at || now.toISOString(),
+            trialEnd.toISOString(),
+          ]
+        );
 
-        if (insertError || !newSettings) {
-          console.error('Failed to create company_settings:', insertError);
-          return NextResponse.json({ error: 'Failed to initialize subscription' }, { status: 500 });
-        }
-
-        settings = newSettings;
+        settings = newSettings.rows[0] ?? null;
       }
 
       // At this point settings should exist, but check to be safe
@@ -123,24 +108,31 @@ export async function GET(request: NextRequest) {
 
       // Sync company_settings.trial_end_date if it differs from companies.trial_ends_at
       if (companyData?.trial_ends_at && settings.trial_end_date !== companyData.trial_ends_at) {
-        await supabase
-          .from('company_settings')
-          .update({ trial_end_date: companyData.trial_ends_at })
-          .eq('company_id', profile.company_id);
+        await db.query(
+          'UPDATE company_settings SET trial_end_date = $2 WHERE company_id = $1',
+          [companyId, companyData.trial_ends_at]
+        );
       }
 
       // If no subscription_status is set, update it
       if (!settings.subscription_status || settings.subscription_status !== effectiveStatus || !settings.trial_start_date) {
-        await supabase
-          .from('company_settings')
-          .update({
-            subscription_status: effectiveStatus,
-            trial_start_date: trialStart.toISOString(),
-            trial_end_date: trialEnd.toISOString(),
-            plan_tier: settings.plan_tier || 'professional',
-            billing_period: settings.billing_period || 'monthly',
-          })
-          .eq('company_id', profile.company_id);
+        await db.query(
+          `UPDATE company_settings
+           SET subscription_status = $2,
+               trial_start_date = $3,
+               trial_end_date = $4,
+               plan_tier = $5,
+               billing_period = $6
+           WHERE company_id = $1`,
+          [
+            companyId,
+            effectiveStatus,
+            trialStart.toISOString(),
+            trialEnd.toISOString(),
+            settings.plan_tier || 'professional',
+            settings.billing_period || 'monthly',
+          ]
+        );
       }
 
       // Return trial subscription data
@@ -157,19 +149,22 @@ export async function GET(request: NextRequest) {
       };
 
       // Get trial modules
-      const { data: modules } = await supabase
-        .from('subscription_modules')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true)
-        .order('added_at', { ascending: true });
+      const modulesResult = await db.query(
+        `SELECT *
+         FROM subscription_modules
+         WHERE company_id = $1
+           AND is_active = TRUE
+         ORDER BY added_at ASC`,
+        [companyId]
+      );
+      const modules = modulesResult.rows;
 
       // Get module quota from company_settings
-      const { data: quotaData } = await supabase
-        .from('company_settings')
-        .select('included_modules_quota')
-        .eq('company_id', profile.company_id)
-        .single();
+      const quotaResult = await db.query<{ included_modules_quota: number | null }>(
+        'SELECT included_modules_quota FROM company_settings WHERE company_id = $1 LIMIT 1',
+        [companyId]
+      );
+      const quotaData = quotaResult.rows[0] ?? null;
 
       const moduleQuota = quotaData?.included_modules_quota || (settings.plan_tier === 'professional' ? 3 : 1);
       const includedModules = (modules || []).filter(m => m.is_included);
@@ -190,19 +185,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Get active modules
-    const { data: modules } = await supabase
-      .from('subscription_modules')
-      .select('*')
-      .eq('company_id', profile.company_id)
-      .eq('is_active', true)
-      .order('added_at', { ascending: true });
+    const modulesResult = await db.query(
+      `SELECT *
+       FROM subscription_modules
+       WHERE company_id = $1
+         AND is_active = TRUE
+       ORDER BY added_at ASC`,
+      [companyId]
+    );
+    const modules = modulesResult.rows;
 
     // Get module quota
-    const { data: quotaData } = await supabase
-      .from('company_settings')
-      .select('included_modules_quota')
-      .eq('company_id', profile.company_id)
-      .single();
+    const quotaResult = await db.query<{ included_modules_quota: number | null }>(
+      'SELECT included_modules_quota FROM company_settings WHERE company_id = $1 LIMIT 1',
+      [companyId]
+    );
+    const quotaData = quotaResult.rows[0] ?? null;
 
     const moduleQuota = quotaData?.included_modules_quota || (subscription.plan_tier === 'professional' ? 3 : 1);
     const includedModules = (modules || []).filter(m => m.is_included);
@@ -228,3 +226,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

@@ -1,17 +1,15 @@
-import { createClient } from '@/lib/supabase/server';
-import { createJournalEntry } from '@/lib/accounting/journal-entry-helpers';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/revenue/recognize - Recognize deferred revenue for completed services
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
+
+    const body = await request.json();
 
     const {
       invoice_id,
@@ -24,18 +22,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Get invoice details
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(id, name),
-        booking:bookings(id, booking_number, status)
-      `)
-      .eq('id', invoice_id)
-      .single();
+    const invoiceResult = await db.query(
+      `SELECT i.*,
+              c.id AS customer_ref_id,
+              c.name AS customer_name,
+              b.id AS booking_ref_id,
+              b.booking_number,
+              b.status AS booking_status
+       FROM invoices i
+       LEFT JOIN customers c ON c.id = i.customer_id
+       LEFT JOIN bookings b ON b.id = i.booking_id
+       WHERE i.id = $1
+       LIMIT 1`,
+      [invoice_id]
+    );
+    const invoice = invoiceResult.rows[0];
 
-    if (invoiceError || !invoice) {
+    if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, invoice.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     // Validation checks
@@ -65,12 +74,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Get accounts
-    const { data: accounts } = await supabase
-      .from('accounts')
-      .select('id, code')
-      .in('code', ['2100', '4100']); // Unearned Revenue, Tour Revenue
+    const accountsResult = await db.query(
+      `SELECT id, code
+       FROM accounts
+       WHERE code = ANY($1)
+         AND (company_id = $2 OR company_id IS NULL)
+       ORDER BY (company_id = $2) DESC`,
+      [['2100', '4100'], invoice.company_id]
+    );
+    const accountMap = new Map<string, string>();
+    for (const row of accountsResult.rows as any[]) {
+      if (!accountMap.has(row.code)) {
+        accountMap.set(row.code, row.id);
+      }
+    }
 
-    const accountMap = new Map(accounts?.map(a => [a.code, a.id]));
     const unearnedRevenueId = accountMap.get('2100');
     const tourRevenueId = accountMap.get('4100');
 
@@ -81,53 +99,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create journal entry for revenue recognition
-    // DR: Unearned Revenue (2100)
-    // CR: Tour Revenue (4100)
-    const journalResult = await createJournalEntry({
-      supabase,
-      entry_date: recognition_date || new Date().toISOString().split('T')[0],
-      description: `Revenue recognition for Invoice ${invoice.invoice_number}`,
-      source_module: 'revenue_recognition',
-      lines: [
-        {
-          account_id: unearnedRevenueId,
-          debit: recognitionAmount,
-          credit: 0,
-          description: `Recognize revenue - Invoice ${invoice.invoice_number}`,
-        },
-        {
-          account_id: tourRevenueId,
-          debit: 0,
-          credit: recognitionAmount,
-          description: `Earned revenue - Invoice ${invoice.invoice_number}`,
-        },
-      ],
-      created_by: user.id,
+    const journalEntryId = await db.transaction(async (tx) => {
+      const entryNumberResult = await tx.query('SELECT generate_journal_entry_number() AS entry_number');
+      const entryNumber = entryNumberResult.rows[0]?.entry_number;
+      if (!entryNumber) {
+        throw new Error('Failed to generate journal entry number');
+      }
+
+      const entryDate = recognition_date || new Date().toISOString().split('T')[0];
+
+      const entryResult = await tx.query(
+        `INSERT INTO journal_entries (
+           company_id, entry_number, entry_date, description,
+           source_module, source_document_id, status, created_by,
+           posted_by, posted_at
+         ) VALUES (
+           $1, $2, $3::date, $4,
+           'revenue_recognition', $5, 'posted', $6,
+           $6, NOW()
+         )
+         RETURNING id`,
+        [
+          invoice.company_id,
+          entryNumber,
+          entryDate,
+          `Revenue recognition for Invoice ${invoice.invoice_number}`,
+          invoice.id,
+          user.id,
+        ]
+      );
+
+      const journalEntryId = entryResult.rows[0]?.id;
+      if (!journalEntryId) {
+        throw new Error('Failed to create journal entry');
+      }
+
+      await tx.query(
+        `INSERT INTO journal_lines (
+           company_id, journal_entry_id, line_number, account_id, debit, credit, description
+         ) VALUES
+           ($1, $2, 1, $3, $4, 0, $5),
+           ($1, $2, 2, $6, 0, $4, $7)`,
+        [
+          invoice.company_id,
+          journalEntryId,
+          unearnedRevenueId,
+          recognitionAmount,
+          `Recognize revenue - Invoice ${invoice.invoice_number}`,
+          tourRevenueId,
+          `Earned revenue - Invoice ${invoice.invoice_number}`,
+        ]
+      );
+
+      const newRecognizedAmount = Number(invoice.revenue_recognized_amount || 0) + Number(recognitionAmount);
+      const isFullyRecognized = newRecognizedAmount >= Number(invoice.total || 0);
+
+      await tx.query(
+        `UPDATE invoices
+         SET revenue_recognized_amount = $2,
+             revenue_recognition_date = $3,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          invoice_id,
+          newRecognizedAmount,
+          isFullyRecognized ? (recognition_date || new Date().toISOString().split('T')[0]) : invoice.revenue_recognition_date,
+        ]
+      );
+
+      return journalEntryId;
     });
 
-    if (!journalResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to create journal entry', details: journalResult.error },
-        { status: 400 }
-      );
-    }
-
-    // Update invoice with recognized amount
-    const newRecognizedAmount = (invoice.revenue_recognized_amount || 0) + recognitionAmount;
+    // Update response values
+    const newRecognizedAmount = Number(invoice.revenue_recognized_amount || 0) + Number(recognitionAmount);
     const isFullyRecognized = newRecognizedAmount >= invoice.total;
-
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({
-        revenue_recognized_amount: newRecognizedAmount,
-        revenue_recognition_date: isFullyRecognized ? (recognition_date || new Date().toISOString().split('T')[0]) : invoice.revenue_recognition_date,
-      })
-      .eq('id', invoice_id);
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
 
     return NextResponse.json({
       message: 'Revenue recognized successfully',
@@ -135,7 +180,7 @@ export async function POST(request: NextRequest) {
       total_recognized: newRecognizedAmount,
       remaining: invoice.total - newRecognizedAmount,
       fully_recognized: isFullyRecognized,
-      journal_entry_id: journalResult.journalEntry.id,
+      journal_entry_id: journalEntryId,
     });
 
   } catch (error: any) {
@@ -147,33 +192,43 @@ export async function POST(request: NextRequest) {
 // POST /api/revenue/recognize-batch - Automatically recognize revenue for completed tours
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
     const { searchParams } = new URL(request.url);
     const asOf = searchParams.get('as_of') || new Date().toISOString().split('T')[0];
     const autoRecognize = searchParams.get('auto_recognize') === 'true';
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
     // Find invoices with unrecognized revenue where service has been completed
-    const { data: invoices, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        customer:customers(name),
-        booking:bookings(booking_number, status, travel_end_date)
-      `)
-      .eq('is_advance_payment', true)
-      .lte('service_end_date', asOf)
-      .or(`revenue_recognition_date.is.null,revenue_recognized_amount.lt.total`)
-      .order('service_end_date');
+    const invoicesResult = await db.query(
+      `SELECT i.*,
+              c.name AS customer_name,
+              b.booking_number,
+              b.status AS booking_status,
+              b.travel_end_date
+       FROM invoices i
+       LEFT JOIN customers c ON c.id = i.customer_id
+       LEFT JOIN bookings b ON b.id = i.booking_id
+       WHERE i.company_id = $1
+         AND i.is_advance_payment = true
+         AND i.service_end_date <= $2::date
+         AND (i.revenue_recognition_date IS NULL OR COALESCE(i.revenue_recognized_amount, 0) < i.total)
+       ORDER BY i.service_end_date ASC`,
+      [companyId, asOf]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const invoices = invoicesResult.rows;
 
     const eligible = invoices?.filter(inv => 
       (inv.revenue_recognized_amount || 0) < inv.total
@@ -209,12 +264,12 @@ export async function GET(request: NextRequest) {
       invoices: eligible.map(inv => ({
         invoice_id: inv.id,
         invoice_number: inv.invoice_number,
-        customer_name: (inv.customer as any)?.name,
+        customer_name: inv.customer_name,
         total: inv.total,
         recognized: inv.revenue_recognized_amount || 0,
         unrecognized: inv.total - (inv.revenue_recognized_amount || 0),
         service_end_date: inv.service_end_date,
-        booking_number: (inv.booking as any)?.booking_number,
+        booking_number: inv.booking_number,
       })),
     });
 

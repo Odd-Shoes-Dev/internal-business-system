@@ -1,57 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    // Verify user is admin (you can implement proper role checking)
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+    if (user.role !== 'admin') {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     // Get subscription stats
-    const { data: subscriptions, error } = await supabase
-      .from('subscriptions')
-      .select('status, base_price_amount, currency');
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const subscriptions = await db.query<{ status: string; base_price_amount: number; currency: string }>(
+      'SELECT status, base_price_amount, currency FROM subscriptions'
+    );
+    const rows = subscriptions.rows || [];
 
     const stats = {
-      totalSubscriptions: subscriptions?.length || 0,
-      activeSubscriptions: subscriptions?.filter((s) => s.status === 'active').length || 0,
-      trialSubscriptions: subscriptions?.filter((s) => s.status === 'trial').length || 0,
-      expiredSubscriptions: subscriptions?.filter((s) => s.status === 'expired').length || 0,
-      pastDueSubscriptions: subscriptions?.filter((s) => s.status === 'past_due').length || 0,
-      cancelledSubscriptions: subscriptions?.filter((s) => s.status === 'cancelled').length || 0,
+      totalSubscriptions: rows.length,
+      activeSubscriptions: rows.filter((s) => s.status === 'active').length,
+      trialSubscriptions: rows.filter((s) => s.status === 'trial').length,
+      expiredSubscriptions: rows.filter((s) => s.status === 'expired').length,
+      pastDueSubscriptions: rows.filter((s) => s.status === 'past_due').length,
+      cancelledSubscriptions: rows.filter((s) => s.status === 'cancelled').length,
       totalRevenue: 0,
       monthlyRecurringRevenue: 0,
     };
 
     // Calculate MRR (convert to cents)
-    stats.monthlyRecurringRevenue = subscriptions
-      ?.filter((s) => s.status === 'active')
-      .reduce((sum, s) => sum + (s.base_price_amount * 100), 0) || 0;
+    stats.monthlyRecurringRevenue = rows
+      .filter((s) => s.status === 'active')
+      .reduce((sum, s) => sum + (Number(s.base_price_amount || 0) * 100), 0);
 
     return NextResponse.json(stats);
   } catch (error) {

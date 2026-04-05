@@ -1,6 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { getDbProvider } from '@/lib/provider';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface StartTrialRequest {
@@ -11,36 +9,10 @@ interface StartTrialRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    
-    // Create authenticated client to get user
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: any[]) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const db = getDbProvider();
+    const user = await db.getSessionUser();
 
-    // Create admin client with SERVICE ROLE to bypass RLS
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -58,12 +30,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's primary company (created by auth trigger during signup)
-    const { data: userCompanies } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('is_primary', true)
-      .single();
+    const userCompaniesResult = await db.query<{ company_id: string }>(
+      `SELECT company_id
+       FROM user_companies
+       WHERE user_id = $1
+         AND is_primary = true
+       LIMIT 1`,
+      [user.id]
+    );
+    const userCompanies = userCompaniesResult.rows[0];
 
     let companyId: string;
 
@@ -72,95 +47,89 @@ export async function POST(request: NextRequest) {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-      const { data: newCompany, error: createError } = await adminClient
-        .from('companies')
-        .insert({
-          name,
-          subscription_plan: `${tier}-trial`,
-          subscription_status: 'trial',
-          region,
-          currency: 'USD',
-          trial_ends_at: trialEndDate.toISOString(),
-        })
-        .select()
-        .single();
+      const currency = region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD';
+      const subdomain =
+        name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') +
+        '-' +
+        user.id.slice(0, 8);
 
-      if (createError) {
-        console.error('Company creation error:', createError);
-        return NextResponse.json(
-          { error: 'Failed to create company' },
-          { status: 500 }
-        );
-      }
+      const companyResult = await db.query(
+        `INSERT INTO companies (
+           name,
+           subdomain,
+           email,
+           subscription_plan,
+           subscription_status,
+           region,
+           currency,
+           trial_ends_at
+         ) VALUES (
+           $1, $2, $3, $4, 'trial', $5, $6, $7
+         )
+         RETURNING *`,
+        [name, subdomain, user.email || null, `${tier}-trial`, region, currency, trialEndDate.toISOString()]
+      );
+      const newCompany = companyResult.rows[0] as any;
 
       companyId = newCompany.id;
 
       // Link user to company using admin client
-      const { error: linkError } = await adminClient
-        .from('user_companies')
-        .insert({
-          user_id: user.id,
-          company_id: newCompany.id,
-          is_primary: true,
-          role: 'owner',
-        });
-
-      if (linkError) {
-        console.error('User company link error:', linkError);
-        return NextResponse.json(
-          { error: 'Failed to link user to company' },
-          { status: 500 }
-        );
-      }
+      await db.query(
+        `INSERT INTO user_companies (
+           user_id,
+           company_id,
+           is_primary,
+           role
+         ) VALUES ($1, $2, true, 'owner')
+         ON CONFLICT (user_id, company_id)
+         DO UPDATE SET is_primary = EXCLUDED.is_primary, role = EXCLUDED.role`,
+        [user.id, newCompany.id]
+      );
     } else {
       // Update existing company with trial info
       companyId = userCompanies.company_id;
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-      const { error: updateError } = await adminClient
-        .from('companies')
-        .update({
-          name,
-          subscription_plan: `${tier}-trial`,
-          subscription_status: 'trial',
-          region,
-          trial_ends_at: trialEndDate.toISOString(),
-        })
-        .eq('id', companyId);
-
-      if (updateError) {
-        console.error('Company update error:', updateError);
-        return NextResponse.json(
-          { error: 'Failed to update company' },
-          { status: 500 }
-        );
-      }
+      const currency = region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD';
+      await db.query(
+        `UPDATE companies
+         SET name = $2,
+             subscription_plan = $3,
+             subscription_status = 'trial',
+             region = $4,
+             currency = $5,
+             trial_ends_at = $6,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [companyId, name, `${tier}-trial`, region, currency, trialEndDate.toISOString()]
+      );
     }
 
     // Ensure user profile exists using admin client
-    const { error: profileError } = await adminClient
-      .from('user_profiles')
-      .upsert({
-        id: user.id,
-        email: user.email || '',
-        full_name: user.user_metadata?.full_name || '',
-        is_active: true,
-        company_id: companyId,
-      }, {
-        onConflict: 'id'
-      });
-
-    if (profileError) {
-      console.error('User profile upsert error:', profileError);
-    }
+    await db.query(
+      `INSERT INTO user_profiles (
+         id,
+         email,
+         full_name,
+         is_active,
+         company_id
+       ) VALUES (
+         $1, $2, $3, true, $4
+       )
+       ON CONFLICT (id)
+       DO UPDATE SET
+         email = EXCLUDED.email,
+         full_name = EXCLUDED.full_name,
+         is_active = true,
+         company_id = EXCLUDED.company_id,
+         updated_at = NOW()`,
+      [user.id, user.email || '', user.full_name || '', companyId]
+    );
 
     // Get the updated/created company
-    const { data: company } = await adminClient
-      .from('companies')
-      .select('*')
-      .eq('id', companyId)
-      .single();
+    const companyResult = await db.query('SELECT * FROM companies WHERE id = $1 LIMIT 1', [companyId]);
+    const company = companyResult.rows[0] || null;
 
     return NextResponse.json({
       success: true,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   BanknotesIcon,
@@ -13,6 +13,7 @@ import type { BankAccount } from '@/types/database';
 
 export default function BankAccountsPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
@@ -23,23 +24,26 @@ export default function BankAccountsPage() {
 
   const loadAccounts = async () => {
     try {
-      setLoading(true);
-
-      let query = supabase
-        .from('bank_accounts')
-        .select('*')
-        .order('name');
-
-      if (filter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (filter === 'inactive') {
-        query = query.eq('is_active', false);
+      if (!company?.id) {
+        return;
       }
 
-      const { data, error } = await query;
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.append('company_id', company.id);
+      if (filter !== 'all') {
+        params.append('active', filter === 'active' ? 'true' : 'false');
+      }
 
-      if (error) throw error;
-      setAccounts(data || []);
+      const response = await fetch(`/api/bank-accounts?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load bank accounts');
+      }
+
+      const result = await response.json();
+      setAccounts(result.data || []);
     } catch (error) {
       console.error('Error loading bank accounts:', error);
     } finally {

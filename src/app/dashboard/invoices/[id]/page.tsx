@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { Button, Badge, LoadingSpinner } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
@@ -88,21 +87,34 @@ export default function InvoiceDetailPage() {
 
   const fetchInvoice = async () => {
     try {
-      // Fetch invoice with customer
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          customer:customers(*)
-        `)
-        .eq('id', params.id)
-        .single();
+      const invoiceId = String(params.id);
 
-      if (invoiceError) throw invoiceError;
-      
-      // Parse numeric fields that come as strings from Supabase
+      const invoiceResponse = await fetch(`/api/invoices/${invoiceId}`, {
+        credentials: 'include',
+      });
+
+      if (!invoiceResponse.ok) {
+        throw new Error('Failed to load invoice');
+      }
+
+      const invoiceResult = await invoiceResponse.json();
+      const invoiceData = invoiceResult.data;
+
       const parsedInvoice = {
         ...invoiceData,
+        customer: invoiceData.customers
+          ? {
+              name: invoiceData.customers.name,
+              email: invoiceData.customers.email,
+              phone: invoiceData.customers.phone,
+              address: [invoiceData.customers.address_line1, invoiceData.customers.address_line2]
+                .filter(Boolean)
+                .join(', ') || null,
+              city: invoiceData.customers.city,
+              state: invoiceData.customers.state,
+              zip_code: invoiceData.customers.zip_code,
+            }
+          : undefined,
         subtotal: parseFloat(invoiceData.subtotal || 0),
         tax_amount: parseFloat(invoiceData.tax_amount || 0),
         discount_amount: parseFloat(invoiceData.discount_amount || 0),
@@ -110,27 +122,19 @@ export default function InvoiceDetailPage() {
         amount_paid: parseFloat(invoiceData.amount_paid || 0),
         tax_rate: parseFloat(invoiceData.tax_rate || 0),
       };
-      
+
       setInvoice(parsedInvoice);
 
-      // Fetch line items
-      const { data: itemsData } = await supabase
-        .from('invoice_lines')
-        .select('*')
-        .eq('invoice_id', params.id)
-        .order('line_number');
-
-      // Parse line item numeric fields
-      const parsedItems = (itemsData || []).map(item => {
+      const parsedItems = (invoiceData.invoice_lines || []).map((item: any) => {
         const quantity = parseFloat(item.quantity || 0);
         const unitPrice = parseFloat(item.unit_price || 0);
         const lineTotal = parseFloat(item.line_total || 0);
         const discountAmount = parseFloat(item.discount_amount || 0);
         const taxAmount = parseFloat(item.tax_amount || 0);
-        
+
         // Calculate amount if line_total is 0 (legacy data)
-        const calculatedAmount = lineTotal || (quantity * unitPrice - discountAmount + taxAmount);
-        
+        const calculatedAmount = lineTotal || quantity * unitPrice - discountAmount + taxAmount;
+
         return {
           ...item,
           quantity,
@@ -142,54 +146,28 @@ export default function InvoiceDetailPage() {
 
       setLineItems(parsedItems);
 
-      // Fetch payments through payment_applications
-      const { data: paymentsData } = await supabase
-        .from('payment_applications')
-        .select(`
-          *,
-          payment:payments_received(*)
-        `)
-        .eq('invoice_id', params.id)
-        .order('created_at', { ascending: false });
-
-      // Parse payment numeric fields and flatten the structure
-      const parsedPayments = (paymentsData || []).map(app => ({
-        id: app.payment.id,
-        payment_number: app.payment.payment_number,
-        payment_date: app.payment.payment_date,
-        amount: parseFloat(app.amount_applied || 0),
-        payment_method: app.payment.payment_method,
-        reference_number: app.payment.reference_number,
-        notes: app.payment.notes,
-      }));
+      const parsedPayments = (invoiceData.payments || [])
+        .filter((app: any) => app.payments_received)
+        .map((app: any) => ({
+          id: app.payments_received.id,
+          payment_date: app.payments_received.payment_date,
+          amount: parseFloat(app.amount_applied || 0),
+          payment_method: app.payments_received.payment_method,
+          reference_number: app.payments_received.reference_number,
+          notes: app.payments_received.notes,
+        }));
 
       setPayments(parsedPayments);
 
       // Fetch related booking if booking_id exists
       if (parsedInvoice.booking_id) {
-        const { data: bookingData } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            booking_number,
-            booking_type,
-            status,
-            travel_start_date,
-            travel_end_date,
-            num_adults,
-            num_children,
-            total,
-            amount_paid,
-            currency,
-            tour_package:tour_packages (id, name, package_code, duration_days, duration_nights),
-            hotel:hotels (id, name, star_rating),
-            vehicle:vehicles!bookings_assigned_vehicle_id_fkey (id, vehicle_type, registration_number)
-          `)
-          .eq('id', parsedInvoice.booking_id)
-          .single();
+        const bookingResponse = await fetch(`/api/bookings/${parsedInvoice.booking_id}`, {
+          credentials: 'include',
+        });
 
-        if (bookingData) {
-          setRelatedBooking(bookingData);
+        if (bookingResponse.ok) {
+          const bookingResult = await bookingResponse.json();
+          setRelatedBooking(bookingResult.data || null);
         }
       }
     } catch (error) {
@@ -640,14 +618,19 @@ export default function InvoiceDetailPage() {
     
     setActionLoading('delete');
     try {
-      await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', params.id);
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to delete invoice');
+      }
       
       router.push('/dashboard/invoices');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting invoice:', error);
+      alert(error?.message || 'Failed to delete invoice');
       setActionLoading(null);
     }
   };

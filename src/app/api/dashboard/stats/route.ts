@@ -1,55 +1,49 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     // Get company_id from query params (required for multi-company users)
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get('company_id');
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
 
     // Get enabled modules to filter data appropriately
-    const { data: enabledModules } = await supabase
-      .from('subscription_modules')
-      .select('module_id')
-      .eq('company_id', companyId)
-      .eq('is_active', true);
+    const enabledModules = await db.query<{ module_id: string }>(
+      'SELECT module_id FROM subscription_modules WHERE company_id = $1 AND is_active = TRUE',
+      [companyId]
+    );
 
-    const moduleIds = enabledModules?.map(m => m.module_id) || [];
+    const moduleIds = enabledModules.rows?.map((m) => m.module_id) || [];
 
     // Fetch all financial data - FILTERED BY COMPANY
-    const [
-      { data: invoices },
-      { data: bills },
-      { data: expenses },
-      { data: bankTransactions },
-    ] = await Promise.all([
-      supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date').eq('company_id', companyId),
-      supabase.from('bills').select('total, amount_paid, status, currency, bill_date').eq('company_id', companyId),
-      supabase.from('expenses').select('total, currency, expense_date').eq('company_id', companyId),
-      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date, bank_accounts(currency)').eq('company_id', companyId),
+    const [invoices, bills, expenses, bankTransactions] = await Promise.all([
+      db.query<{ total: number; amount_paid: number; status: string; currency: string; invoice_date: string }>(
+        'SELECT total, amount_paid, status, currency, invoice_date FROM invoices WHERE company_id = $1',
+        [companyId]
+      ),
+      db.query<{ total: number; amount_paid: number; status: string; currency: string; bill_date: string }>(
+        'SELECT total, amount_paid, status, currency, bill_date FROM bills WHERE company_id = $1',
+        [companyId]
+      ),
+      db.query<{ total: number; currency: string; expense_date: string }>(
+        'SELECT total, currency, expense_date FROM expenses WHERE company_id = $1',
+        [companyId]
+      ),
+      db.query<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
+        `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency
+         FROM bank_transactions bt
+         LEFT JOIN bank_accounts ba ON ba.id = bt.bank_account_id
+         WHERE bt.company_id = $1`,
+        [companyId]
+      ),
     ]);
 
     let totalRevenue = 0;
@@ -59,28 +53,24 @@ export async function GET(request: NextRequest) {
     let cashBalance = 0;
 
     // Process invoices
-    if (invoices) {
-      for (const invoice of invoices) {
+    if (invoices.rows) {
+      for (const invoice of invoices.rows) {
         let amountInUSD = invoice.total;
         let remainingInUSD = invoice.total - (invoice.amount_paid || 0);
 
         if (invoice.currency !== 'USD') {
-          const { data: convertedTotal } = await supabase.rpc('convert_currency', {
-            p_amount: invoice.total,
-            p_from_currency: invoice.currency,
-            p_to_currency: 'USD',
-            p_date: invoice.invoice_date,
-          });
+          const convertedTotal = await db.query<{ converted: number | null }>(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [invoice.total, invoice.currency, 'USD', invoice.invoice_date]
+          );
 
-          const { data: convertedRemaining } = await supabase.rpc('convert_currency', {
-            p_amount: invoice.total - (invoice.amount_paid || 0),
-            p_from_currency: invoice.currency,
-            p_to_currency: 'USD',
-            p_date: invoice.invoice_date,
-          });
+          const convertedRemaining = await db.query<{ converted: number | null }>(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [invoice.total - (invoice.amount_paid || 0), invoice.currency, 'USD', invoice.invoice_date]
+          );
 
-          amountInUSD = convertedTotal || invoice.total;
-          remainingInUSD = convertedRemaining || (invoice.total - (invoice.amount_paid || 0));
+          amountInUSD = convertedTotal.rows[0]?.converted || invoice.total;
+          remainingInUSD = convertedRemaining.rows[0]?.converted || (invoice.total - (invoice.amount_paid || 0));
         }
 
         if (invoice.status === 'paid') {
@@ -94,19 +84,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Process bills
-    if (bills) {
-      for (const bill of bills) {
+    if (bills.rows) {
+      for (const bill of bills.rows) {
         let remainingInUSD = bill.total - (bill.amount_paid || 0);
 
         if (bill.currency !== 'USD') {
-          const { data: convertedRemaining } = await supabase.rpc('convert_currency', {
-            p_amount: bill.total - (bill.amount_paid || 0),
-            p_from_currency: bill.currency,
-            p_to_currency: 'USD',
-            p_date: bill.bill_date,
-          });
+          const convertedRemaining = await db.query<{ converted: number | null }>(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [bill.total - (bill.amount_paid || 0), bill.currency, 'USD', bill.bill_date]
+          );
 
-          remainingInUSD = convertedRemaining || (bill.total - (bill.amount_paid || 0));
+          remainingInUSD = convertedRemaining.rows[0]?.converted || (bill.total - (bill.amount_paid || 0));
         }
 
         if (bill.status !== 'paid' && bill.status !== 'void') {
@@ -116,19 +104,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Process expenses
-    if (expenses) {
-      for (const expense of expenses) {
+    if (expenses.rows) {
+      for (const expense of expenses.rows) {
         let amountInUSD = expense.total;
 
         if (expense.currency !== 'USD') {
-          const { data: converted } = await supabase.rpc('convert_currency', {
-            p_amount: expense.total,
-            p_from_currency: expense.currency,
-            p_to_currency: 'USD',
-            p_date: expense.expense_date,
-          });
+          const converted = await db.query<{ converted: number | null }>(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [expense.total, expense.currency, 'USD', expense.expense_date]
+          );
 
-          amountInUSD = converted || expense.total;
+          amountInUSD = converted.rows[0]?.converted || expense.total;
         }
 
         totalExpenses += amountInUSD;
@@ -136,26 +122,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Process bank transactions for cash balance
-    if (bankTransactions) {
-      for (const transaction of bankTransactions) {
-        const bankAccount = Array.isArray(transaction.bank_accounts) 
-          ? transaction.bank_accounts[0] 
-          : transaction.bank_accounts;
-        const currency = bankAccount?.currency || 'USD';
+    if (bankTransactions.rows) {
+      for (const transaction of bankTransactions.rows) {
+        const currency = transaction.currency || 'USD';
         
         let amountInUSD = transaction.amount || 0;
 
         // Convert to USD if not already
         if (currency !== 'USD') {
-          const { data: converted } = await supabase.rpc('convert_currency', {
-            p_amount: Math.abs(transaction.amount),
-            p_from_currency: currency,
-            p_to_currency: 'USD',
-            p_date: transaction.transaction_date,
-          });
+          const converted = await db.query<{ converted: number | null }>(
+            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+            [Math.abs(transaction.amount), currency, 'USD', transaction.transaction_date]
+          );
+          const convertedValue = converted.rows[0]?.converted || Math.abs(transaction.amount);
 
           // Preserve the sign (positive or negative)
-          amountInUSD = transaction.amount < 0 ? -(converted || Math.abs(transaction.amount)) : (converted || Math.abs(transaction.amount));
+          amountInUSD = transaction.amount < 0 ? -convertedValue : convertedValue;
         }
 
         cashBalance += amountInUSD;
@@ -165,14 +147,13 @@ export async function GET(request: NextRequest) {
     // Calculate inventory value - ONLY IF INVENTORY MODULE ENABLED
     let inventoryValue = 0;
     if (moduleIds.includes('inventory') || moduleIds.includes('retail') || moduleIds.includes('cafe')) {
-      const { data: inventoryItems } = await supabase
-        .from('products')
-        .select('quantity_on_hand, cost_price, currency')
-        .eq('company_id', companyId)
-        .eq('track_inventory', true);
+      const inventoryItems = await db.query<{ quantity_on_hand: number; cost_price: number; currency: string | null }>(
+        'SELECT quantity_on_hand, cost_price, currency FROM products WHERE company_id = $1 AND track_inventory = TRUE',
+        [companyId]
+      );
 
-      if (inventoryItems) {
-        for (const item of inventoryItems) {
+      if (inventoryItems.rows) {
+        for (const item of inventoryItems.rows) {
           const quantity = item.quantity_on_hand || 0;
           const cost = item.cost_price || 0;
           const itemValue = quantity * cost;
@@ -181,14 +162,12 @@ export async function GET(request: NextRequest) {
             let valueInUSD = itemValue;
 
             if (item.currency && item.currency !== 'USD') {
-              const { data: converted } = await supabase.rpc('convert_currency', {
-                p_amount: itemValue,
-                p_from_currency: item.currency,
-                p_to_currency: 'USD',
-                p_date: new Date().toISOString().split('T')[0],
-              });
+              const converted = await db.query<{ converted: number | null }>(
+                'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+                [itemValue, item.currency, 'USD', new Date().toISOString().split('T')[0]]
+              );
 
-              valueInUSD = converted || itemValue;
+              valueInUSD = converted.rows[0]?.converted || itemValue;
             }
 
             inventoryValue += valueInUSD;

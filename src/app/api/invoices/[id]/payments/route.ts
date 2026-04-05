@@ -1,11 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/invoices/[id]/payments - Record payment
 export async function POST(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -16,21 +21,28 @@ export async function POST(request: NextRequest, context: any) {
       );
     }
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get invoice
+    const invoiceResult = await db.query<{
+      id: string;
+      total: number;
+      amount_paid: number;
+      status: string;
+      booking_id: string | null;
+      company_id: string;
+    }>(
+      'SELECT id, total, amount_paid, status, booking_id, company_id FROM invoices WHERE id = $1 LIMIT 1',
+      [resolvedParams.id]
+    );
+
+    const invoice = invoiceResult.rows[0];
+
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Get invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('total, amount_paid, status, booking_id')
-      .eq('id', params.id)
-      .single();
-
-    if (invoiceError) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    const companyAccessError = await requireCompanyAccess(user.id, invoice.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
     }
 
     if (invoice.status === 'void') {
@@ -45,169 +57,138 @@ export async function POST(request: NextRequest, context: any) {
       );
     }
 
-    // Create payment record
-    const { data: payment, error: paymentError } = await supabase
-      .from('invoice_payments')
-      .insert({
-        invoice_id: params.id,
-        payment_date: body.payment_date,
-        amount: body.amount,
-        payment_method: body.payment_method,
-        reference: body.reference || null,
-        notes: body.notes || null,
-        bank_account_id: body.bank_account_id || null,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const outcome = await db.transaction(async (tx) => {
+      const paymentInsert = await tx.query<any>(
+        `INSERT INTO invoice_payments (
+           invoice_id, payment_date, amount, payment_method, reference,
+           notes, bank_account_id, created_by
+         ) VALUES (
+           $1, $2, $3, $4, $5,
+           $6, $7, $8
+         )
+         RETURNING *`,
+        [
+          resolvedParams.id,
+          body.payment_date,
+          body.amount,
+          body.payment_method,
+          body.reference || null,
+          body.notes || null,
+          body.bank_account_id || null,
+          user.id,
+        ]
+      );
 
-    if (paymentError) {
-      return NextResponse.json({ error: paymentError.message }, { status: 400 });
-    }
+      const payment = paymentInsert.rows[0];
+      const newAmountPaid = Number(invoice.amount_paid || 0) + Number(body.amount || 0);
+      const newStatus = newAmountPaid >= Number(invoice.total || 0) ? 'paid' : 'partial';
 
-    // Update invoice amount_paid and status
-    const newAmountPaid = invoice.amount_paid + body.amount;
-    const newStatus = newAmountPaid >= invoice.total ? 'paid' : 'partial';
+      await tx.query(
+        'UPDATE invoices SET amount_paid = $2, status = $3, updated_at = NOW() WHERE id = $1',
+        [resolvedParams.id, newAmountPaid, newStatus]
+      );
 
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({
-        amount_paid: newAmountPaid,
-        status: newStatus,
-      })
-      .eq('id', params.id);
+      const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
+        '1200',
+      ]);
+      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
+        '1000',
+      ]);
 
-    if (updateError) {
-      // Rollback payment
-      await supabase.from('invoice_payments').delete().eq('id', payment.id);
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
-    }
+      if (arAccount.rowCount && cashAccount.rowCount) {
+        const entryNumber = await tx.query<{ entry_number: string }>(
+          'SELECT generate_journal_entry_number() AS entry_number'
+        );
 
-    // Post to General Ledger
-    // Debit Cash/Bank, Credit AR
-    const { data: arAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '1200')
-      .single();
+        const journalEntry = await tx.query<{ id: string }>(
+          `INSERT INTO journal_entries (
+             entry_number, entry_date, description, source_module, source_document_id, status, created_by
+           ) VALUES ($1, $2, $3, 'invoice_payment', $4, 'posted', $5)
+           RETURNING id`,
+          [
+            entryNumber.rows[0]?.entry_number,
+            body.payment_date,
+            `Payment received - ${body.payment_method}`,
+            payment.id,
+            user.id,
+          ]
+        );
 
-    const { data: cashAccount } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('code', '1000')
-      .single();
+        const journalEntryId = journalEntry.rows[0]?.id;
+        if (journalEntryId) {
+          await tx.query(
+            `INSERT INTO journal_lines (
+               journal_entry_id, line_number, account_id, debit, credit, description
+             ) VALUES ($1, 1, $2, $3, 0, $4)`,
+            [journalEntryId, cashAccount.rows[0].id, body.amount, 'Payment received']
+          );
 
-    if (arAccount && cashAccount) {
-      // Create journal entry
-      const { data: journalEntry, error: jeError } = await supabase
-        .from('journal_entries')
-        .insert({
-          entry_date: body.payment_date,
-          reference: `Payment for ${params.id}`,
-          description: `Payment received - ${body.payment_method}`,
-          source_type: 'invoice_payment',
-          source_id: payment.id,
-          status: 'posted',
-          created_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (!jeError && journalEntry) {
-        // Create entry lines
-        await supabase.from('journal_entry_lines').insert([
-          {
-            entry_id: journalEntry.id,
-            account_id: cashAccount.id,
-            debit: body.amount,
-            credit: 0,
-            description: 'Payment received',
-          },
-          {
-            entry_id: journalEntry.id,
-            account_id: arAccount.id,
-            debit: 0,
-            credit: body.amount,
-            description: 'AR reduction',
-          },
-        ]);
+          await tx.query(
+            `INSERT INTO journal_lines (
+               journal_entry_id, line_number, account_id, debit, credit, description
+             ) VALUES ($1, 2, $2, 0, $3, $4)`,
+            [journalEntryId, arAccount.rows[0].id, body.amount, 'AR reduction']
+          );
+        }
       }
-    }
+
+      return { payment, newAmountPaid, newStatus };
+    });
 
     // Sync payment to related booking if exists
     if (invoice.booking_id) {
-      // Get all invoices for this booking with currency info
-      const { data: allBookingInvoices } = await supabase
-        .from('invoices')
-        .select('id, total, amount_paid, currency')
-        .eq('booking_id', invoice.booking_id);
+      const allBookingInvoices = await db.query<any>(
+        'SELECT id, total, amount_paid, currency FROM invoices WHERE booking_id = $1',
+        [invoice.booking_id]
+      );
 
-      // Get booking to check currency
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('total, status, currency')
-        .eq('id', invoice.booking_id)
-        .single();
+      const bookingResult = await db.query<any>(
+        'SELECT total, status, currency FROM bookings WHERE id = $1 LIMIT 1',
+        [invoice.booking_id]
+      );
+      const booking = bookingResult.rows[0];
 
-      if (allBookingInvoices && booking) {
-        // Calculate total paid across all invoices, converting to booking currency if needed
+      if (booking) {
         let totalPaidAcrossInvoices = 0;
-        
-        for (const inv of allBookingInvoices) {
-          const invAmountPaid = parseFloat(inv.amount_paid) || 0;
-          
+
+        for (const inv of allBookingInvoices.rows) {
+          const invAmountPaid = Number(inv.amount_paid || 0);
           if (inv.currency === booking.currency) {
-            // Same currency, add directly
             totalPaidAcrossInvoices += invAmountPaid;
           } else {
-            // Different currency, convert using database function
-            const { data: convertedAmount } = await supabase.rpc('convert_currency', {
-              p_amount: invAmountPaid,
-              p_from_currency: inv.currency,
-              p_to_currency: booking.currency,
-              p_date: new Date().toISOString().split('T')[0],
-            });
-            
-            if (convertedAmount !== null) {
-              totalPaidAcrossInvoices += convertedAmount;
-            } else {
-              console.warn(`Could not convert ${inv.currency} to ${booking.currency} for invoice ${inv.id}`);
-              // Fallback: add the amount as-is (not ideal but better than losing data)
-              totalPaidAcrossInvoices += invAmountPaid;
-            }
+            const convertedAmount = await db.query<{ converted: number | null }>(
+              'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+              [invAmountPaid, inv.currency, booking.currency, new Date().toISOString().split('T')[0]]
+            );
+            totalPaidAcrossInvoices += convertedAmount.rows[0]?.converted ?? invAmountPaid;
           }
         }
 
-        // Determine new booking status based on payment
         let newBookingStatus = booking.status;
-        const bookingTotal = parseFloat(booking.total);
-        
+        const bookingTotal = Number(booking.total || 0);
+
         if (totalPaidAcrossInvoices >= bookingTotal) {
           newBookingStatus = 'fully_paid';
         } else if (totalPaidAcrossInvoices > 0) {
-          // Only update to deposit_paid if not already in a later status
           if (!['fully_paid', 'completed'].includes(booking.status)) {
             newBookingStatus = 'deposit_paid';
           }
         }
 
-        // Update booking amount_paid and status (amount is now in booking currency)
-        await supabase
-          .from('bookings')
-          .update({
-            amount_paid: totalPaidAcrossInvoices,
-            status: newBookingStatus,
-          })
-          .eq('id', invoice.booking_id);
+        await db.query('UPDATE bookings SET amount_paid = $2, status = $3 WHERE id = $1', [
+          invoice.booking_id,
+          totalPaidAcrossInvoices,
+          newBookingStatus,
+        ]);
       }
     }
 
     return NextResponse.json({
-      data: payment,
+      data: outcome.payment,
       invoice: {
-        amount_paid: newAmountPaid,
-        status: newStatus,
-        balance: invoice.total - newAmountPaid,
+        amount_paid: outcome.newAmountPaid,
+        status: outcome.newStatus,
+        balance: Number(invoice.total || 0) - outcome.newAmountPaid,
       },
     }, { status: 201 });
   } catch (error: any) {
@@ -218,20 +199,43 @@ export async function POST(request: NextRequest, context: any) {
 // GET /api/invoices/[id]/payments - List payments
 export async function GET(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
-    const supabase = await createClient();
-
-    const { data: payments, error } = await supabase
-      .from('invoice_payments')
-      .select('*, bank_accounts (name)')
-      .eq('invoice_id', params.id)
-      .order('payment_date', { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    return NextResponse.json({ data: payments });
+    const invoiceResult = await db.query<{ company_id: string }>(
+      'SELECT company_id FROM invoices WHERE id = $1 LIMIT 1',
+      [resolvedParams.id]
+    );
+
+    const invoice = invoiceResult.rows[0];
+    if (!invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, invoice.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const payments = await db.query<any>(
+      `SELECT ip.*, ba.name AS bank_account_name
+       FROM invoice_payments ip
+       LEFT JOIN bank_accounts ba ON ba.id = ip.bank_account_id
+       WHERE ip.invoice_id = $1
+       ORDER BY ip.payment_date DESC`,
+      [resolvedParams.id]
+    );
+
+    const data = payments.rows.map((row) => ({
+      ...row,
+      bank_accounts: row.bank_account_name ? { name: row.bank_account_name } : null,
+    }));
+
+    return NextResponse.json({ data });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -1,82 +1,74 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
+    const requestedCompanyId = getCompanyIdFromRequest(request);
+    let companyId = requestedCompanyId;
 
-    if (companyError || !userCompany) {
+    if (!companyId) {
+      const userCompany = await db.query(
+        `SELECT company_id
+         FROM user_companies
+         WHERE user_id = $1
+         ORDER BY is_primary DESC, joined_at ASC
+         LIMIT 1`,
+        [user.id]
+      );
+      companyId = userCompany.rows[0]?.company_id || null;
+    }
+
+    if (!companyId) {
       return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
 
-    // Get current month date range
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    // Get all expenses for calculations - FILTERED BY COMPANY
-    const { data: allExpenses, error } = await supabase
-      .from('expenses')
-      .select('amount, currency, expense_date, status')
-      .eq('company_id', companyId);
-
-    if (error) throw error;
+    const allExpenses = await db.query(
+      'SELECT amount, currency, expense_date, status FROM expenses WHERE company_id = $1',
+      [companyId]
+    );
 
     let thisMonthTotal = 0;
     let pendingCount = 0;
     let approvedCount = 0;
     let paidCount = 0;
 
-    // Process each expense with currency conversion
-    for (const expense of allExpenses || []) {
+    for (const expense of allExpenses.rows || []) {
       const amount = parseFloat(expense.amount) || 0;
-      
-      // Convert to USD if needed
+
       let amountUSD = amount;
       if (expense.currency && expense.currency !== 'USD') {
-        const { data: converted, error: conversionError } = await supabase.rpc('convert_currency', {
-          p_amount: amount,
-          p_from_currency: expense.currency,
-          p_to_currency: 'USD',
-          p_date: expense.expense_date,
-        });
-
-        if (conversionError) {
-          console.error('Currency conversion error:', conversionError);
-          amountUSD = amount; // Fallback
-        } else {
-          amountUSD = converted || amount;
-        }
+        const converted = await db.query<{ converted: number | null }>(
+          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+          [amount, expense.currency, 'USD', expense.expense_date]
+        );
+        amountUSD = converted.rows[0]?.converted || amount;
       }
 
-      // Check if this month
       if (expense.expense_date >= firstDayOfMonth && expense.expense_date <= lastDayOfMonth) {
         thisMonthTotal += amountUSD;
       }
 
-      // Count by status
-      const status = expense.status?.toLowerCase() || 'pending';
+      const status = String(expense.status || 'pending').toLowerCase();
       if (status === 'pending' || status === 'pending_approval') {
-        pendingCount++;
+        pendingCount += 1;
       } else if (status === 'approved') {
-        approvedCount++;
+        approvedCount += 1;
       } else if (status === 'paid') {
-        paidCount++;
+        paidCount += 1;
       }
     }
 
@@ -88,9 +80,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error calculating expense stats:', error);
-    return NextResponse.json(
-      { error: 'Failed to calculate expense stats' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to calculate expense stats' }, { status: 500 });
   }
 }

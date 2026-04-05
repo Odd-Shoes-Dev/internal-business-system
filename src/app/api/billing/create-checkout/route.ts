@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { getDbProvider } from '@/lib/provider';
 import { getWhop } from '@/lib/whop';
 import { getPlanId, getModulePlanId } from '@/lib/whop-config';
 import type { Region } from '@/lib/regional-pricing';
@@ -19,31 +19,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
-    const supabaseAdmin = createServiceClient();
-
-    // Prefer cookie-based session (for select-plan / browser); fallback to Bearer token
-    let user: { id: string; email?: string } | null = null;
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const { data, error } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (!error && data?.user) user = data.user;
-    }
-    if (!user) {
-      const { data: { user: sessionUser } } = await supabase.auth.getUser();
-      user = sessionUser;
-    }
+    const db = getDbProvider();
+    const user = await db.getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single();
+    const profile = await db.query(
+      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
+      [user.id]
+    );
 
-    if (!profile?.company_id) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
-
-    const companyId = profile.company_id;
+    const companyId = profile.rows[0]?.company_id;
+    if (!companyId) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
 
     const displayRegion: Region = region && ['AFRICA', 'ASIA', 'EU', 'GB', 'US', 'DEFAULT'].includes(region)
       ? region

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePayslipHTML, type PayslipData } from '@/lib/pdf/payslip-pdf';
 
@@ -8,43 +8,61 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
-    const { id } = await params;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
     }
 
-    // Fetch payslip with employee and period details
-    const { data: payslip, error: payslipError } = await supabase
-      .from('payslips')
-      .select(`
-        *,
-        employee:employees(*),
-        payroll_period:payroll_periods(period_name, start_date, end_date, payment_date, status)
-      `)
-      .eq('id', id)
-      .single();
+    const { id } = await params;
 
-    if (payslipError || !payslip) {
+    // Fetch payslip with employee and period details
+    const payslipResult = await db.query(
+      `SELECT p.*,
+              row_to_json(e.*) AS employee,
+              json_build_object(
+                'period_name', pp.period_name,
+                'start_date', pp.start_date,
+                'end_date', pp.end_date,
+                'payment_date', pp.payment_date,
+                'status', pp.status
+              ) AS payroll_period
+       FROM payslips p
+       LEFT JOIN employees e ON e.id = p.employee_id
+       LEFT JOIN payroll_periods pp ON pp.id = p.payroll_period_id
+       WHERE p.id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const payslip = payslipResult.rows[0] as any;
+
+    if (!payslip) {
       return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
     }
 
+    const companyAccessError = await requireCompanyAccess(user.id, payslip.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     // Fetch company info
-    const { data: company } = await supabase
-      .from('companies')
-      .select('name, logo_url, email, phone, address, city, country, tax_id, registration_number, website')
-      .eq('id', payslip.company_id)
-      .single();
+    const companyResult = await db.query(
+      `SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, website
+       FROM companies
+       WHERE id = $1
+       LIMIT 1`,
+      [payslip.company_id]
+    );
+    const company = companyResult.rows[0] as any;
 
     // Fetch payslip items
-    const { data: payslipItems } = await supabase
-      .from('payslip_items')
-      .select('*')
-      .eq('payslip_id', id)
-      .order('item_type', { ascending: false })
-      .order('item_name');
+    const payslipItemsResult = await db.query(
+      `SELECT *
+       FROM payslip_items
+       WHERE payslip_id = $1
+       ORDER BY item_type DESC, item_name ASC`,
+      [id]
+    );
+    const payslipItems = payslipItemsResult.rows as any[];
 
     // Prepare payslip data
     const payslipData: PayslipData = {

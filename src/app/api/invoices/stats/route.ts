@@ -1,38 +1,43 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
 
     // Get user's company
-    const { data: userCompany, error: companyError } = await supabase
-      .from('user_companies')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .single();
+    const userCompany = await db.query<{ company_id: string }>(
+      `SELECT company_id
+       FROM user_companies
+       WHERE user_id = $1
+       ORDER BY is_primary DESC, joined_at ASC
+       LIMIT 1`,
+      [user.id]
+    );
 
-    if (companyError || !userCompany) {
+    if (!userCompany.rowCount) {
       return NextResponse.json({ error: 'No company found for user' }, { status: 403 });
     }
 
-    const companyId = userCompany.company_id;
+    const companyId = userCompany.rows[0].company_id;
 
     // Fetch all invoices with their currencies - FILTERED BY COMPANY
-    const { data: invoices, error } = await supabase
-      .from('invoices')
-      .select('total, amount_paid, due_date, status, currency, invoice_date')
-      .eq('company_id', companyId);
+    const invoices = await db.query<{
+      total: number;
+      amount_paid: number;
+      due_date: string;
+      status: string;
+      currency: string;
+      invoice_date: string;
+    }>(
+      `SELECT total, amount_paid, due_date, status, currency, invoice_date
+       FROM invoices
+       WHERE company_id = $1`,
+      [companyId]
+    );
 
-    if (error) throw error;
-
-    if (!invoices || invoices.length === 0) {
+    if (!invoices.rows || invoices.rows.length === 0) {
       return NextResponse.json({
         totalUnpaid: 0,
         dueThisWeek: 0,
@@ -52,7 +57,7 @@ export async function GET() {
     let overdue = 0;
     let paidThisMonth = 0;
 
-    for (const invoice of invoices) {
+    for (const invoice of invoices.rows) {
       const remaining = invoice.total - (invoice.amount_paid || 0);
       const dueDate = new Date(invoice.due_date);
       const invoiceDate = new Date(invoice.invoice_date);
@@ -62,23 +67,18 @@ export async function GET() {
       let remainingInUSD = remaining;
 
       if (invoice.currency !== 'USD') {
-        // Use RPC function to convert
-        const { data: convertedTotal } = await supabase.rpc('convert_currency', {
-          p_amount: invoice.total,
-          p_from_currency: invoice.currency,
-          p_to_currency: 'USD',
-          p_date: invoice.invoice_date,
-        });
+        const convertedTotal = await db.query<{ converted: number | null }>(
+          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+          [invoice.total, invoice.currency, 'USD', invoice.invoice_date]
+        );
 
-        const { data: convertedRemaining } = await supabase.rpc('convert_currency', {
-          p_amount: remaining,
-          p_from_currency: invoice.currency,
-          p_to_currency: 'USD',
-          p_date: invoice.invoice_date,
-        });
+        const convertedRemaining = await db.query<{ converted: number | null }>(
+          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+          [remaining, invoice.currency, 'USD', invoice.invoice_date]
+        );
 
-        amountInUSD = convertedTotal || invoice.total;
-        remainingInUSD = convertedRemaining || remaining;
+        amountInUSD = convertedTotal.rows[0]?.converted || invoice.total;
+        remainingInUSD = convertedRemaining.rows[0]?.converted || remaining;
       }
 
       // Calculate totals in USD

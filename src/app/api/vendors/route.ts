@@ -1,35 +1,20 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/vendors - List vendors
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
     const { searchParams } = new URL(request.url);
-    
-    // Multi-tenant: Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
-    // Multi-tenant: Get company_id from query params
-    const companyId = searchParams.get('company_id');
+    const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
     
     const search = searchParams.get('search');
     const active = searchParams.get('active');
@@ -37,32 +22,40 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    let query = supabase
-      .from('vendors')
-      .select('*', { count: 'exact' })
-      .eq('company_id', companyId)
-      .order('name');
+    const where: string[] = ['company_id = $1'];
+    const params: any[] = [companyId];
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,company_name.ilike.%${search}%`);
+      params.push(`%${search}%`);
+      where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR company_name ILIKE $${params.length})`);
     }
 
-    if (active === 'true') {
-      query = query.eq('is_active', true);
-    } else if (active === 'false') {
-      query = query.eq('is_active', false);
+    if (active === 'true' || active === 'false') {
+      params.push(active === 'true');
+      where.push(`is_active = $${params.length}`);
     }
 
-    query = query.range(offset, offset + limit - 1);
+    const whereSql = `WHERE ${where.join(' AND ')}`;
+    const countResult = await db.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total FROM vendors ${whereSql}`,
+      params
+    );
 
-    const { data, count, error } = await query;
+    const listParams = [...params, limit, offset];
+    const dataResult = await db.query(
+      `SELECT *
+       FROM vendors
+       ${whereSql}
+       ORDER BY name
+       LIMIT $${listParams.length - 1}
+       OFFSET $${listParams.length}`,
+      listParams
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const count = Number(countResult.rows[0]?.total || 0);
 
     return NextResponse.json({
-      data,
+      data: dataResult.rows,
       pagination: {
         page,
         limit,
@@ -78,14 +71,9 @@ export async function GET(request: NextRequest) {
 // POST /api/vendors - Create vendor
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
     const body = await request.json();
-
-    // Multi-tenant: Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { company_id, ...vendorData } = body;
 
@@ -101,58 +89,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Multi-tenant: Verify user has access to this company
-    const { data: membership } = await supabase
-      .from('user_companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('company_id', company_id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, company_id);
+    if (accessError) return accessError;
 
     // Generate vendor number using database function
-    const { data: numberData, error: numberError } = await supabase
-      .rpc('generate_vendor_number');
+    const numberResult = await db.query<{ vendor_number: string }>('SELECT generate_vendor_number() AS vendor_number');
+    const vendorNumber = numberResult.rows[0]?.vendor_number;
 
-    if (numberError) {
-      return NextResponse.json(
-        { error: 'Failed to generate vendor number: ' + numberError.message },
-        { status: 500 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from('vendors')
-      .insert({
+    const data = await db.query(
+      `INSERT INTO vendors (
+         company_id, vendor_number, name, company_name, email, phone, tax_id,
+         address_line1, address_line2, city, state, zip_code, country,
+         payment_terms, default_expense_account_id, notes, is_active
+       )
+       VALUES (
+         $1, $2, $3, $4, $5, $6, $7,
+         $8, $9, $10, $11, $12, $13,
+         $14, $15, $16, $17
+       )
+       RETURNING *`,
+      [
         company_id,
-        vendor_number: numberData,
-        name: vendorData.name,
-        company_name: vendorData.company_name || null,
-        email: vendorData.email || null,
-        phone: vendorData.phone || null,
-        tax_id: vendorData.tax_id || null,
-        address_line1: vendorData.address_line1 || null,
-        address_line2: vendorData.address_line2 || null,
-        city: vendorData.city || null,
-        state: vendorData.state || null,
-        zip_code: vendorData.postal_code || null,
-        country: vendorData.country || 'USA',
-        payment_terms: vendorData.payment_terms || 30,
-        default_expense_account_id: vendorData.default_expense_account_id || null,
-        notes: vendorData.notes || null,
-        is_active: vendorData.is_active !== false,
-      })
-      .select()
-      .single();
+        vendorNumber,
+        vendorData.name,
+        vendorData.company_name || null,
+        vendorData.email || null,
+        vendorData.phone || null,
+        vendorData.tax_id || null,
+        vendorData.address_line1 || null,
+        vendorData.address_line2 || null,
+        vendorData.city || null,
+        vendorData.state || null,
+        vendorData.postal_code || null,
+        vendorData.country || 'USA',
+        vendorData.payment_terms || 30,
+        vendorData.default_expense_account_id || null,
+        vendorData.notes || null,
+        vendorData.is_active !== false,
+      ]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: data.rows[0] }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

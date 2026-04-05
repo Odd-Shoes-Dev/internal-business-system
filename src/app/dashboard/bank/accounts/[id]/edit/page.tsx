@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { CurrencySelect } from '@/components/ui';
 
 interface BankAccount {
@@ -37,13 +36,15 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     async function loadBankAccount() {
       try {
-        const { data, error } = await supabase
-          .from('bank_accounts')
-          .select('*')
-          .eq('id', resolvedParams.id)
-          .single();
+        const response = await fetch(`/api/bank-accounts/${resolvedParams.id}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to load bank account');
+        }
 
-        if (error) throw error;
+        const result = await response.json();
+        const data = result.data;
 
         if (data) {
           setFormData({
@@ -66,7 +67,7 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
     }
 
     loadBankAccount();
-  }, [resolvedParams.id, supabase]);
+  }, [resolvedParams.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -86,6 +87,7 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
     try {
       const response = await fetch(`/api/bank-accounts/${resolvedParams.id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

@@ -1,13 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/bank-transfers - Create a bank transfer
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
     const body = await request.json();
 
-    // Validate required fields
     if (!body.from_account_id || !body.to_account_id || !body.amount || !body.transfer_date) {
       return NextResponse.json(
         { error: 'Missing required fields: from_account_id, to_account_id, amount, transfer_date' },
@@ -16,170 +19,129 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.from_account_id === body.to_account_id) {
-      return NextResponse.json(
-        { error: 'Cannot transfer to the same account' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Cannot transfer to the same account' }, { status: 400 });
     }
 
-    if (body.amount <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than zero' },
-        { status: 400 }
-      );
+    if (Number(body.amount) <= 0) {
+      return NextResponse.json({ error: 'Amount must be greater than zero' }, { status: 400 });
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const fromAccountResult = await db.query(
+      `SELECT id, name, gl_account_id, currency, company_id
+       FROM bank_accounts
+       WHERE id = $1
+       LIMIT 1`,
+      [body.from_account_id]
+    );
+    const toAccountResult = await db.query(
+      `SELECT id, name, gl_account_id, currency, company_id
+       FROM bank_accounts
+       WHERE id = $1
+       LIMIT 1`,
+      [body.to_account_id]
+    );
 
-    // Get account details including GL account IDs
-    const { data: fromAccount } = await supabase
-      .from('bank_accounts')
-      .select('name, gl_account_id, currency')
-      .eq('id', body.from_account_id)
-      .single();
-
-    const { data: toAccount } = await supabase
-      .from('bank_accounts')
-      .select('name, gl_account_id, currency')
-      .eq('id', body.to_account_id)
-      .single();
+    const fromAccount = fromAccountResult.rows[0];
+    const toAccount = toAccountResult.rows[0];
 
     if (!fromAccount || !toAccount) {
       return NextResponse.json({ error: 'One or both accounts not found' }, { status: 404 });
     }
 
+    if (!fromAccount.company_id || fromAccount.company_id !== toAccount.company_id) {
+      return NextResponse.json({ error: 'Both accounts must belong to the same company' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, fromAccount.company_id);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
     if (!fromAccount.gl_account_id || !toAccount.gl_account_id) {
-      return NextResponse.json({ 
-        error: 'Both bank accounts must be linked to GL accounts. Please update the bank account settings.' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Both bank accounts must be linked to GL accounts. Please update the bank account settings.' },
+        { status: 400 }
+      );
     }
 
-    // Generate reference if not provided
-    const reference_number = body.reference_number || `TRF-${Date.now().toString(36).toUpperCase()}`;
+    const referenceNumber = body.reference_number || `TRF-${Date.now().toString(36).toUpperCase()}`;
+    const transferAmount = Math.abs(Number(body.amount));
 
-    // Create two bank transactions: debit from source, credit to destination
-    const transactions = [
+    const response = await db.transaction(async (tx) => {
+      const txResult = await tx.query(
+        `INSERT INTO bank_transactions (
+           company_id, bank_account_id, transaction_date, amount, description,
+           reference_number, transaction_type, is_reconciled
+         ) VALUES
+           ($1, $2, $3::date, $4, $5, $6, 'transfer_out', false),
+           ($1, $7, $3::date, $8, $9, $6, 'transfer_in', false)
+         RETURNING *`,
+        [
+          fromAccount.company_id,
+          body.from_account_id,
+          body.transfer_date,
+          -transferAmount,
+          `Transfer to ${toAccount.name || 'account'}`,
+          referenceNumber,
+          body.to_account_id,
+          transferAmount,
+          `Transfer from ${fromAccount.name || 'account'}`,
+        ]
+      );
+
+      const entryNumberResult = await tx.query('SELECT generate_journal_entry_number() AS entry_number');
+      const entryNumber = entryNumberResult.rows[0]?.entry_number;
+      if (!entryNumber) {
+        throw new Error('Failed to generate journal entry number');
+      }
+
+      const journalEntryResult = await tx.query(
+        `INSERT INTO journal_entries (
+           entry_number, entry_date, description, reference, status,
+           source_module, source_document_id, created_by, posted_by, posted_at
+         ) VALUES ($1, $2::date, $3, $4, 'posted', 'bank', $5, $6, $6, NOW())
+         RETURNING *`,
+        [
+          entryNumber,
+          body.transfer_date,
+          `Bank transfer: ${fromAccount.name} -> ${toAccount.name}`,
+          referenceNumber,
+          txResult.rows[0]?.id,
+          user.id,
+        ]
+      );
+
+      const journalEntry = journalEntryResult.rows[0];
+
+      await tx.query(
+        `INSERT INTO journal_lines (
+           journal_entry_id, line_number, account_id, debit, credit, description
+         ) VALUES
+           ($1, 1, $2, $3, 0, $4),
+           ($1, 2, $5, 0, $3, $6)`,
+        [
+          journalEntry.id,
+          toAccount.gl_account_id,
+          transferAmount,
+          `Transfer from ${fromAccount.name}`,
+          fromAccount.gl_account_id,
+          `Transfer to ${toAccount.name}`,
+        ]
+      );
+
+      return {
+        data: txResult.rows,
+        journal_entry: journalEntry,
+      };
+    });
+
+    return NextResponse.json(
       {
-        bank_account_id: body.from_account_id,
-        transaction_date: body.transfer_date,
-        amount: -Math.abs(body.amount), // Negative for withdrawal
-        description: `Transfer to ${toAccount?.name || 'account'}`,
-        reference_number: reference_number,
-        transaction_type: 'transfer_out',
-        is_reconciled: false,
-      },
-      {
-        bank_account_id: body.to_account_id,
-        transaction_date: body.transfer_date,
-        amount: Math.abs(body.amount), // Positive for deposit
-        description: `Transfer from ${fromAccount?.name || 'account'}`,
-        reference_number: reference_number,
-        transaction_type: 'transfer_in',
-        is_reconciled: false,
-      },
-    ];
-
-    const { data, error } = await supabase
-      .from('bank_transactions')
-      .insert(transactions)
-      .select();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    // Create journal entry for the transfer
-    // Debit destination bank GL account, Credit source bank GL account
-    const transferAmount = Math.abs(body.amount);
-
-    // Generate journal entry number
-    const year = new Date(body.transfer_date).getFullYear();
-    const { data: lastEntry } = await supabase
-      .from('journal_entries')
-      .select('entry_number')
-      .like('entry_number', `JE-${year}-%`)
-      .order('entry_number', { ascending: false })
-      .limit(1)
-      .single();
-
-    let entryNumber;
-    if (lastEntry?.entry_number) {
-      const lastNum = parseInt(lastEntry.entry_number.split('-')[2]);
-      entryNumber = `JE-${year}-${String(lastNum + 1).padStart(4, '0')}`;
-    } else {
-      entryNumber = `JE-${year}-0001`;
-    }
-
-    // Create journal entry
-    const { data: journalEntry, error: jeError } = await supabase
-      .from('journal_entries')
-      .insert({
-        entry_number: entryNumber,
-        entry_date: body.transfer_date,
-        description: `Bank transfer: ${fromAccount.name} → ${toAccount.name}`,
-        reference: reference_number,
-        status: 'posted',
-        source_module: 'bank',
-        source_document_id: data[0]?.id, // Link to the withdrawal transaction
-        created_by: user.id,
-        posted_by: user.id,
-        posted_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (jeError) {
-      console.error('Failed to create journal entry:', jeError);
-      return NextResponse.json({ 
-        data,
+        ...response,
         message: 'Transfer completed successfully',
-        warning: 'Journal entry creation failed'
-      }, { status: 201 });
-    }
-
-    // Create journal lines
-    const journalLines = [
-      // Debit destination bank account (money coming in)
-      {
-        journal_entry_id: journalEntry.id,
-        account_id: toAccount.gl_account_id,
-        debit: transferAmount,
-        credit: 0,
-        description: `Transfer from ${fromAccount.name}`,
-        created_by: user.id,
       },
-      // Credit source bank account (money going out)
-      {
-        journal_entry_id: journalEntry.id,
-        account_id: fromAccount.gl_account_id,
-        debit: 0,
-        credit: transferAmount,
-        description: `Transfer to ${toAccount.name}`,
-        created_by: user.id,
-      },
-    ];
-
-    const { error: jlError } = await supabase
-      .from('journal_lines')
-      .insert(journalLines);
-
-    if (jlError) {
-      console.error('Failed to create journal lines:', jlError);
-      return NextResponse.json({ 
-        data,
-        message: 'Transfer completed successfully',
-        warning: 'Journal lines creation failed'
-      }, { status: 201 });
-    }
-
-    return NextResponse.json({ 
-      data,
-      journal_entry: journalEntry,
-      message: 'Transfer completed successfully' 
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
