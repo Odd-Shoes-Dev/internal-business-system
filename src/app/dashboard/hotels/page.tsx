@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import type { Hotel, Destination } from '@/types/breco';
 import {
   PlusIcon,
@@ -35,6 +36,7 @@ interface HotelWithDestination extends Hotel {
 }
 
 export default function HotelsPage() {
+  const { company } = useCompany();
   const [hotels, setHotels] = useState<HotelWithDestination[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +44,20 @@ export default function HotelsPage() {
   const [destinationFilter, setDestinationFilter] = useState<string>('all');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchHotels();
     fetchDestinations();
-  }, []);
+  }, [company?.id]);
 
   const fetchHotels = async () => {
+    if (!company?.id) return;
+
     try {
-      const response = await fetch('/api/hotels');
+      const response = await fetch(`/api/hotels?company_id=${company.id}`, {
+        credentials: 'include',
+      });
       const result = await response.json();
       
       if (!response.ok) {
@@ -58,7 +67,9 @@ export default function HotelsPage() {
       // Fetch images for all hotels
       const imagesPromises = (result.data || []).map(async (hotel: Hotel) => {
         try {
-          const detailResponse = await fetch(`/api/hotels/${hotel.id}`);
+          const detailResponse = await fetch(`/api/hotels/${hotel.id}`, {
+            credentials: 'include',
+          });
           const detailResult = await detailResponse.json();
           return {
             ...hotel,
@@ -81,10 +92,16 @@ export default function HotelsPage() {
   };
 
   const fetchDestinations = async () => {
+    if (!company?.id) return;
+
     try {
-      // Destinations can be fetched from tours API for now
-      // TODO: Create dedicated destinations API endpoint
-      setDestinations([]);
+      const response = await fetch(`/api/destinations?company_id=${company.id}&is_active=true`, {
+        credentials: 'include',
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setDestinations(result.data || []);
+      }
     } catch (error) {
       console.error('Error fetching destinations:', error);
     }
@@ -96,6 +113,7 @@ export default function HotelsPage() {
     try {
       const response = await fetch(`/api/hotels/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       const result = await response.json();
@@ -116,6 +134,7 @@ export default function HotelsPage() {
       const response = await fetch(`/api/hotels/${hotel.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !hotel.is_active }),
       });
       
