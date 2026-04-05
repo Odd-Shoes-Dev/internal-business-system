@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
@@ -19,6 +19,7 @@ import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types/database';
 
 export default function InventoryPage() {
+  const { company } = useCompany();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,38 +35,49 @@ export default function InventoryPage() {
   const pageSize = 20;
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadInventory();
     loadStats();
-  }, [searchQuery, stockFilter, currentPage]);
+  }, [searchQuery, stockFilter, currentPage, company?.id]);
 
   const loadInventory = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' })
-        .eq('track_inventory', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
+        params.set('search', searchQuery);
       }
-
       if (stockFilter === 'low') {
-        query = query.gt('quantity_on_hand', 0).lte('quantity_on_hand', 10); // Low stock threshold
-      } else if (stockFilter === 'out') {
-        query = query.eq('quantity_on_hand', 0);
+        params.set('low_stock', 'true');
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/inventory?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load inventory');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      let inventoryItems = (result.data || []) as Product[];
+      if (stockFilter === 'out') {
+        inventoryItems = inventoryItems.filter((item) => Number(item.quantity_on_hand || 0) === 0);
+      }
 
-      setItems(data || []);
-      setTotalCount(count || 0);
+      setItems(inventoryItems);
+      setTotalCount(
+        stockFilter === 'out' ? inventoryItems.length : Number(result.pagination?.total || inventoryItems.length)
+      );
     } catch (error) {
       console.error('Failed to load inventory:', error);
     } finally {
@@ -75,7 +87,13 @@ export default function InventoryPage() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/inventory/stats');
+      if (!company?.id) {
+        return;
+      }
+
+      const response = await fetch(`/api/inventory/stats?company_id=${company.id}`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { PlusIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -35,34 +35,38 @@ interface EmployeeReimbursement {
 }
 
 export default function ReimbursementsPage() {
+  const { company } = useCompany();
   const [reimbursements, setReimbursements] = useState<EmployeeReimbursement[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchReimbursements();
-  }, [statusFilter]);
+  }, [statusFilter, company?.id]);
 
   const fetchReimbursements = async () => {
     try {
-      let query = supabase
-        .from('employee_reimbursements')
-        .select(`
-          *,
-          employee:employees(first_name, last_name, employee_number),
-          approver:user_profiles!approved_by(full_name),
-          payroll_period:payroll_periods!paid_in_payroll_id(period_name)
-        `)
-        .order('reimbursement_date', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (!company?.id) {
+        return;
       }
 
-      const { data, error } = await query;
+      const params = new URLSearchParams({ company_id: company.id });
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
 
-      if (error) throw error;
-      setReimbursements(data || []);
+      const response = await fetch(`/api/employee-reimbursements?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load reimbursements');
+      }
+
+      setReimbursements(result.data || []);
     } catch (error) {
       console.error('Error fetching reimbursements:', error);
       toast.error('Failed to load reimbursements');
@@ -73,19 +77,16 @@ export default function ReimbursementsPage() {
 
   const handleApprove = async (reimbursementId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('employee_reimbursements')
-        .update({
-          status: 'approved',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', reimbursementId);
-
-      if (error) throw error;
+      const response = await fetch(`/api/employee-reimbursements/${reimbursementId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to approve reimbursement');
+      }
 
       toast.success('Reimbursement approved');
       fetchReimbursements();
@@ -97,19 +98,16 @@ export default function ReimbursementsPage() {
 
   const handleReject = async (reimbursementId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('employee_reimbursements')
-        .update({
-          status: 'rejected',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', reimbursementId);
-
-      if (error) throw error;
+      const response = await fetch(`/api/employee-reimbursements/${reimbursementId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'rejected' }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reject reimbursement');
+      }
 
       toast.success('Reimbursement rejected');
       fetchReimbursements();

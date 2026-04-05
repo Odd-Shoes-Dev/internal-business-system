@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
@@ -76,7 +75,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const fetchEmployeeDetails = async (id: string) => {
     try {
       // Fetch employee using API
-      const response = await fetch(`/api/employees/${id}`);
+      const response = await fetch(`/api/employees/${id}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Employee not found');
       
       const result = await response.json();
@@ -84,15 +85,13 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
       setAllowances(result.data.allowances || []);
       setDeductions(result.data.deductions || []);
 
-      // Fetch recent payslips
-      const { data: payslips } = await supabase
-        .from('payslips')
-        .select('*, payroll_period:payroll_periods(period_name, payment_date)')
-        .eq('employee_id', id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      setRecentPayslips(payslips || []);
+      const payslipResponse = await fetch(`/api/employees/${id}/payslips`, {
+        credentials: 'include',
+      });
+      const payslipResult = await payslipResponse.json().catch(() => ({}));
+      if (payslipResponse.ok) {
+        setRecentPayslips(payslipResult.data || []);
+      }
     } catch (error) {
       console.error('Error fetching employee:', error);
       toast.error('Failed to load employee details');
@@ -110,6 +109,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     try {
       const response = await fetch(`/api/employees/${employeeId}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
 
       const result = await response.json();

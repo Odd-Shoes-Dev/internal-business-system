@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
@@ -18,8 +17,10 @@ import {
 interface PurchaseOrder {
   id: string;
   po_number: string;
-  order_date: string;
-  expected_date: string | null;
+  order_date?: string;
+  po_date?: string;
+  expected_date?: string | null;
+  expected_delivery_date?: string | null;
   subtotal: number;
   tax_amount: number;
   total: number;
@@ -30,7 +31,7 @@ interface PurchaseOrder {
   approved_by: string | null;
   approved_at: string | null;
   received_date: string | null;
-  vendors?: {
+  vendor?: {
     id: string;
     name: string;
     company_name: string | null;
@@ -47,7 +48,7 @@ interface POLine {
   quantity_received: number;
   unit_cost: number;
   line_total: number;
-  products?: {
+  product?: {
     name: string;
     sku: string | null;
   } | null;
@@ -68,38 +69,22 @@ export default function PurchaseOrderDetailPage() {
   const loadPO = async () => {
     try {
       setLoading(true);
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .select(`
-          *,
-          vendors (
-            id,
-            name,
-            company_name,
-            email,
-            phone
-          )
-        `)
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/purchase-orders/${params.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (poError) throw poError;
-      setPO(poData);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load purchase order');
+      }
 
-      const { data: linesData, error: linesError } = await supabase
-        .from('purchase_order_lines')
-        .select(`
-          *,
-          products (
-            name,
-            sku
-          )
-        `)
-        .eq('purchase_order_id', params.id)
-        .order('line_number');
-
-      if (linesError) throw linesError;
-      setLines(linesData || []);
+      setPO(result);
+      setLines((result.purchase_order_lines || []).map((line: any) => ({
+        ...line,
+        quantity_ordered: Number(line.quantity_ordered ?? line.quantity ?? 0),
+        unit_cost: Number(line.unit_cost ?? line.unit_price ?? 0),
+        line_total: Number(line.line_total ?? (Number(line.quantity_ordered ?? line.quantity ?? 0) * Number(line.unit_cost ?? line.unit_price ?? 0))),
+      })));
     } catch (error) {
       console.error('Failed to load PO:', error);
       toast.error('Failed to load purchase order');
@@ -115,6 +100,7 @@ export default function PurchaseOrderDetailPage() {
     try {
       const response = await fetch(`/api/purchase-orders/${params.id}/approve`, {
         method: 'POST',
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -139,6 +125,7 @@ export default function PurchaseOrderDetailPage() {
     try {
       const response = await fetch(`/api/purchase-orders/${params.id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -213,7 +200,7 @@ export default function PurchaseOrderDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               Purchase Order {po.po_number}
             </h1>
-            <p className="text-gray-500 mt-1">{po.vendors?.company_name || po.vendors?.name}</p>
+            <p className="text-gray-500 mt-1">{po.vendor?.company_name || po.vendor?.name}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -302,12 +289,12 @@ export default function PurchaseOrderDetailPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Order Date:</span>
-                  <span className="font-medium">{formatDate(po.order_date)}</span>
+                  <span className="font-medium">{formatDate(po.order_date || po.po_date || new Date().toISOString())}</span>
                 </div>
-                {po.expected_date && (
+                {(po.expected_date || po.expected_delivery_date) && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Expected Date:</span>
-                    <span className="font-medium">{formatDate(po.expected_date)}</span>
+                    <span className="font-medium">{formatDate(po.expected_date || po.expected_delivery_date || new Date().toISOString())}</span>
                   </div>
                 )}
                 {po.received_date && (
@@ -364,9 +351,9 @@ export default function PurchaseOrderDetailPage() {
                     <td>{line.line_number}</td>
                     <td>
                       <div>
-                        {line.products?.name || line.description}
-                        {line.products?.sku && (
-                          <div className="text-xs text-gray-500">SKU: {line.products.sku}</div>
+                        {line.product?.name || line.description}
+                        {line.product?.sku && (
+                          <div className="text-xs text-gray-500">SKU: {line.product.sku}</div>
                         )}
                       </div>
                     </td>

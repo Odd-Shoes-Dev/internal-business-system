@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,7 @@ interface Employee {
 
 export default function NewSalaryAdvancePage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,19 +28,27 @@ export default function NewSalaryAdvancePage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchEmployees();
-  }, []);
+  }, [company?.id]);
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('id, first_name, last_name, employee_number')
-        .eq('is_active', true)
-        .order('first_name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setEmployees(data || []);
+      const response = await fetch(`/api/employees?company_id=${company.id}&is_active=true`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load employees');
+      }
+
+      setEmployees(result.data || []);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
@@ -51,22 +60,24 @@ export default function NewSalaryAdvancePage() {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('salary_advances')
-        .insert({
+      const response = await fetch('/api/salary-advances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           employee_id: formData.employee_id,
           advance_date: formData.advance_date,
           amount: parseFloat(formData.amount),
           reason: formData.reason || null,
           repayment_months: parseInt(formData.repayment_months),
-          status: 'pending',
-          created_by: user.id,
-        });
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create salary advance');
+      }
 
       toast.success('Salary advance request created successfully');
       router.push('/dashboard/employees/advances');

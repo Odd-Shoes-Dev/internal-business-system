@@ -13,7 +13,6 @@ import {
   ArrowTrendingDownIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface Product {
@@ -76,32 +75,26 @@ export default function InventoryDetailPage() {
     try {
       setLoading(true);
 
-      const { data, error} = await supabase
-        .from('products')
-        .select(`
-          *,
-          product_category:category_id (
-            id,
-            name
-          ),
-          revenue_account:revenue_account_id (
-            name,
-            code
-          ),
-          cogs_account:cogs_account_id (
-            name,
-            code
-          ),
-          inventory_account:inventory_account_id (
-            name,
-            code
-          )
-        `)
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/products/${params.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load item');
+      }
 
-      if (error) throw error;
-      setItem(data);
+      const mapped = {
+        ...result.data,
+        quantity_available:
+          Number(result.data?.quantity_on_hand || 0) - Number(result.data?.quantity_reserved || 0),
+        product_category: result.data?.product_categories
+          ? {
+              id: String(result.data.category_id || ''),
+              name: result.data.product_categories.name,
+            }
+          : null,
+      };
+      setItem(mapped as Product);
     } catch (error) {
       console.error('Failed to load item:', error);
     } finally {
@@ -116,12 +109,14 @@ export default function InventoryDetailPage() {
 
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', params.id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/products/${params.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete item');
+      }
 
       router.push('/dashboard/inventory');
     } catch (error) {
@@ -246,7 +241,7 @@ export default function InventoryDetailPage() {
           <div className="card-body">
             <p className="text-sm text-gray-500">Available</p>
             <p className="text-2xl font-bold text-green-600 mt-1">
-              {item.quantity_available} {item.unit_of_measure}
+              {(item.quantity_on_hand || 0) - (item.quantity_reserved || 0)} {item.unit_of_measure}
             </p>
           </div>
         </div>

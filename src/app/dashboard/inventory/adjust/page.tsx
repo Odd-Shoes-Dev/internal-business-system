@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -15,7 +15,7 @@ interface Product {
   id: string;
   name: string;
   sku: string;
-  quantity_in_stock: number;
+  quantity_on_hand: number;
 }
 
 interface AdjustmentLine {
@@ -30,6 +30,7 @@ interface AdjustmentLine {
 
 export default function InventoryAdjustmentPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [lines, setLines] = useState<AdjustmentLine[]>([]);
@@ -37,19 +38,27 @@ export default function InventoryAdjustmentPage() {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadProducts();
-  }, []);
+  }, [company?.id]);
 
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, sku, quantity_in_stock')
-        .eq('track_inventory', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setProducts(data || []);
+      const response = await fetch(`/api/inventory?company_id=${company.id}&limit=500`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load products');
+      }
+
+      setProducts((result.data || []).filter((p: any) => p.track_inventory !== false));
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
@@ -79,8 +88,8 @@ export default function InventoryAdjustmentPage() {
       const product = products.find((p) => p.id === value);
       if (product) {
         newLines[index].product_name = product.name;
-        newLines[index].current_quantity = product.quantity_in_stock;
-        newLines[index].new_quantity = product.quantity_in_stock + newLines[index].adjustment_quantity;
+        newLines[index].current_quantity = Number(product.quantity_on_hand || 0);
+        newLines[index].new_quantity = Number(product.quantity_on_hand || 0) + newLines[index].adjustment_quantity;
       }
     }
 
@@ -110,35 +119,31 @@ export default function InventoryAdjustmentPage() {
 
     setLoading(true);
     try {
-      // Create adjustments and update inventory
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
+
       for (const line of lines) {
         if (line.adjustment_quantity === 0) continue;
 
-        // Update product quantity
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({
-            quantity_in_stock: line.new_quantity,
-          })
-          .eq('id', line.product_id);
-
-        if (updateError) throw updateError;
-
-        // Record inventory movement
-        const { error: movementError } = await supabase
-          .from('inventory_movements')
-          .insert({
+        const movementResponse = await fetch(`/api/inventory-adjustments?company_id=${company.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
             product_id: line.product_id,
-            movement_type: 'adjustment',
-            quantity: line.adjustment_quantity,
-            unit_cost: 0,
-            movement_date: adjustmentDate,
+            adjustment_date: adjustmentDate,
+            quantity_change: line.adjustment_quantity,
+            reason: 'adjustment',
             reference_type: 'adjustment',
             reference_id: Math.random().toString(),
             notes: `${line.reason}: ${notes}`,
-          });
-
-        if (movementError) throw movementError;
+          }),
+        });
+        const movementResult = await movementResponse.json().catch(() => ({}));
+        if (!movementResponse.ok) {
+          throw new Error(movementResult.error || 'Failed to process adjustment');
+        }
       }
 
       toast.success('Inventory adjusted successfully');

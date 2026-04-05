@@ -3,6 +3,75 @@ import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-g
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: NextRequest) {
+  try {
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) {
+      return errorResponse!;
+    }
+
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('company_id');
+    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) {
+      return companyAccessError;
+    }
+
+    const where: string[] = ['p.company_id = $1'];
+    const params: any[] = [companyId];
+
+    if (status) {
+      params.push(status);
+      where.push(`it.status = $${params.length}`);
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`it.transfer_number ILIKE $${params.length}`);
+    }
+
+    const result = await db.query(
+      `SELECT it.*,
+              fl.name AS from_location_name,
+              fl.code AS from_location_code,
+              tl.name AS to_location_name,
+              tl.code AS to_location_code,
+              p.name AS product_name,
+              p.sku AS product_sku,
+              p.company_id
+       FROM inventory_transfers it
+       LEFT JOIN locations fl ON fl.id = it.from_location_id
+       LEFT JOIN locations tl ON tl.id = it.to_location_id
+       LEFT JOIN products p ON p.id = it.product_id
+       WHERE ${where.join(' AND ')}
+       ORDER BY it.transfer_date DESC, it.created_at DESC`,
+      params
+    );
+
+    return NextResponse.json({
+      data: result.rows.map((row: any) => ({
+        ...row,
+        from_location: row.from_location_name
+          ? { name: row.from_location_name, code: row.from_location_code }
+          : null,
+        to_location: row.to_location_name
+          ? { name: row.to_location_name, code: row.to_location_code }
+          : null,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Error loading transfers:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();

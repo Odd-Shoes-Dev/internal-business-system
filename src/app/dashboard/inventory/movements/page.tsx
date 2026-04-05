@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
@@ -31,6 +31,7 @@ interface InventoryMovement {
 }
 
 export default function StockMovementsPage() {
+  const { company } = useCompany();
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,55 +41,48 @@ export default function StockMovementsPage() {
   const pageSize = 50;
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadMovements();
-  }, [searchQuery, typeFilter, currentPage]);
+  }, [searchQuery, typeFilter, currentPage, company?.id]);
 
   const loadMovements = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('inventory_movements')
-        .select(`
-          *,
-          products (
-            name,
-            sku
-          )
-        `, { count: 'exact' })
-        .order('created_at', { ascending: false });
-
-      if (typeFilter !== 'all') {
-        query = query.eq('movement_type', typeFilter);
+      if (!company?.id) {
+        return;
       }
 
+      const params = new URLSearchParams({ company_id: company.id });
+      if (typeFilter !== 'all') {
+        params.set('reason', typeFilter);
+      }
+
+      const response = await fetch(`/api/inventory-adjustments?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load movements');
+      }
+
+      let filtered = Array.isArray(result) ? result : [];
       if (searchQuery) {
-        // Search by product name through the join
-        const { data: products } = await supabase
-          .from('products')
-          .select('id')
-          .or(`name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
-        
-        if (products && products.length > 0) {
-          const productIds = products.map(p => p.id);
-          query = query.in('product_id', productIds);
-        } else {
-          // No products found, return empty
-          setMovements([]);
-          setTotalCount(0);
-          setLoading(false);
-          return;
-        }
+        const search = searchQuery.toLowerCase();
+        filtered = filtered.filter((row: any) => {
+          const name = String(row.products?.name || '').toLowerCase();
+          const sku = String(row.products?.sku || '').toLowerCase();
+          return name.includes(search) || sku.includes(search);
+        });
       }
 
       const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const to = from + pageSize;
+      const paged = filtered.slice(from, to);
 
-      const { data, count, error } = await query;
-      if (error) throw error;
-
-      setMovements(data || []);
-      setTotalCount(count || 0);
+      setMovements(paged || []);
+      setTotalCount(filtered.length || 0);
     } catch (error) {
       console.error('Failed to load movements:', error);
     } finally {

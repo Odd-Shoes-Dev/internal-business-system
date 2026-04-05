@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
@@ -20,18 +20,21 @@ import {
 interface PurchaseOrder {
   id: string;
   po_number: string;
-  order_date: string;
-  expected_date: string | null;
+  order_date?: string;
+  po_date?: string;
+  expected_date?: string | null;
+  expected_delivery_date?: string | null;
   total: number;
   currency: string;
   status: string;
-  vendors?: {
+  vendor?: {
     name: string;
     company_name: string | null;
   };
 }
 
 export default function PurchaseOrdersPage() {
+  const { company } = useCompany();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,41 +51,44 @@ export default function PurchaseOrdersPage() {
   const pageSize = 20;
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadOrders();
     loadStats();
-  }, [searchQuery, statusFilter, currentPage]);
+  }, [searchQuery, statusFilter, currentPage, company?.id]);
 
   const loadOrders = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
-      let query = supabase
-        .from('purchase_orders')
-        .select(`
-          *,
-          vendors (
-            name,
-            company_name
-          )
-        `, { count: 'exact' })
-        .order('order_date', { ascending: false });
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.or(`po_number.ilike.%${searchQuery}%`);
+        params.append('search', searchQuery);
       }
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.append('status', statusFilter);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/purchase-orders?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load purchase orders');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
-
-      setOrders(data || []);
-      setTotalCount(count || 0);
+      setOrders(result.data || []);
+      setTotalCount(result.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load purchase orders:', error);
     } finally {
@@ -92,18 +98,26 @@ export default function PurchaseOrdersPage() {
 
   const loadStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('purchase_orders')
-        .select('status, total, currency');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
+      const response = await fetch(`/api/purchase-orders?company_id=${company.id}&page=1&limit=500`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load stats');
+      }
+
+      const data = result.data || [];
 
       const stats = {
-        draft: data?.filter(o => o.status === 'draft').length || 0,
-        sent: data?.filter(o => o.status === 'sent').length || 0,
-        partial: data?.filter(o => o.status === 'partial').length || 0,
-        received: data?.filter(o => o.status === 'received').length || 0,
-        totalValue: data?.reduce((sum, o) => sum + Number(o.total || 0), 0) || 0,
+        draft: data.filter((o: any) => o.status === 'draft').length || 0,
+        sent: data.filter((o: any) => o.status === 'sent').length || 0,
+        partial: data.filter((o: any) => o.status === 'partial').length || 0,
+        received: data.filter((o: any) => o.status === 'received').length || 0,
+        totalValue: data.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0) || 0,
       };
       setStats(stats);
     } catch (error) {
@@ -291,11 +305,11 @@ export default function PurchaseOrdersPage() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-sm text-gray-900 font-medium">
-                          {order.vendors?.company_name || order.vendors?.name || 'N/A'}
+                          {order.vendor?.company_name || order.vendor?.name || 'N/A'}
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-gray-900">{formatDate(order.order_date)}</td>
-                      <td className="py-4 px-6 text-gray-900">{order.expected_date ? formatDate(order.expected_date) : '-'}</td>
+                      <td className="py-4 px-6 text-gray-900">{formatDate(order.order_date || order.po_date || '')}</td>
+                      <td className="py-4 px-6 text-gray-900">{(order.expected_date || order.expected_delivery_date) ? formatDate(order.expected_date || order.expected_delivery_date || '') : '-'}</td>
                       <td className="py-4 px-6">
                         <span className="font-semibold text-gray-900">
                           {formatCurrency(order.total, order.currency)}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
@@ -40,6 +40,7 @@ interface POLine {
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [loading, setLoading] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,20 +68,28 @@ export default function NewPurchaseOrderPage() {
   ]);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadVendors();
     loadProducts();
-  }, []);
+  }, [company?.id]);
 
   const loadVendors = async () => {
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('id, name, company_name, email')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setVendors(data || []);
+      const response = await fetch(`/api/vendors?company_id=${company.id}&active=true&limit=200`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load vendors');
+      }
+
+      setVendors(result.data || []);
     } catch (error) {
       console.error('Failed to load vendors:', error);
       toast.error('Failed to load vendors');
@@ -89,17 +98,24 @@ export default function NewPurchaseOrderPage() {
 
   const loadProducts = async () => {
     try {
-      const { data, error} = await supabase
-        .from('products')
-        .select('id, name, sku, cost_price, unit_of_measure')
-        .eq('is_active', true)
-        .order('name')
-        .limit(100);
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setProducts(data || []);
+      setSearchingProducts(true);
+      const response = await fetch(`/api/products?company_id=${company.id}&active=true&limit=200`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load products');
+      }
+
+      setProducts(result.data || []);
     } catch (error) {
       console.error('Failed to load products:', error);
+    } finally {
+      setSearchingProducts(false);
     }
   };
 
@@ -174,9 +190,13 @@ export default function NewPurchaseOrderPage() {
       const response = await fetch('/api/purchase-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          ...formData,
-          expected_date: formData.expected_date || null,
+          vendor_id: formData.vendor_id,
+          po_date: formData.order_date,
+          expected_delivery_date: formData.expected_date || null,
+          notes: formData.notes,
+          currency: formData.currency,
           subtotal: totals.subtotal,
           tax_amount: totals.tax,
           total: totals.total,
@@ -198,7 +218,7 @@ export default function NewPurchaseOrderPage() {
       }
 
       toast.success('Purchase order created successfully');
-      router.push(`/dashboard/purchase-orders/${result.id}`);
+      router.push(`/dashboard/purchase-orders/${result.id || result?.data?.id}`);
     } catch (error: any) {
       console.error('Error creating PO:', error);
       toast.error(error.message || 'Failed to create purchase order');

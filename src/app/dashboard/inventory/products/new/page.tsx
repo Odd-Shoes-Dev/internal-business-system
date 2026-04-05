@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function NewProductPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
 
@@ -33,15 +34,22 @@ export default function NewProductPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadCategories();
-  }, []);
+  }, [company?.id]);
 
   const loadCategories = async () => {
-    const { data } = await supabase
-      .from('product_categories')
-      .select('*')
-      .order('name');
-    setCategories(data || []);
+    if (!company?.id) {
+      return;
+    }
+
+    const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+      credentials: 'include',
+    });
+    const result = await response.json().catch(() => ([]));
+    setCategories(Array.isArray(result) ? result : []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,23 +57,31 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert({
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
+
+      const response = await fetch(`/api/inventory?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           ...formData,
           unit_price: parseFloat(formData.unit_price) || 0,
-          cost: parseFloat(formData.cost) || 0,
-          quantity_in_stock: parseFloat(formData.quantity_in_stock) || 0,
+          unit_cost: parseFloat(formData.cost) || 0,
+          quantity_on_hand: parseFloat(formData.quantity_in_stock) || 0,
           reorder_point: formData.reorder_point ? parseFloat(formData.reorder_point) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
-        })
-        .select()
-        .single();
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create product');
+      }
 
       toast.success('Product created successfully');
-      router.push(`/dashboard/inventory/products/${data.id}`);
+      router.push(`/dashboard/inventory/products/${result?.data?.id || result?.id}`);
     } catch (error: any) {
       console.error('Error creating product:', error);
       toast.error(error.message || 'Failed to create product');

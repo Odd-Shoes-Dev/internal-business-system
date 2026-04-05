@@ -3,13 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
   PencilIcon,
   TrashIcon,
-  ChartBarIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
 
@@ -22,8 +20,8 @@ interface Product {
   category_id: string | null;
   unit_of_measure: string;
   unit_price: number;
-  cost: number;
-  quantity_in_stock: number;
+  cost_price: number;
+  quantity_on_hand: number;
   reorder_point: number | null;
   manufacturer: string | null;
   brand: string | null;
@@ -63,24 +61,23 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
 
   useEffect(() => {
     loadProduct();
-    loadMovements();
   }, [productId]);
 
   const loadProduct = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          product_categories (name)
-        `)
-        .eq('id', productId)
-        .single();
+      const response = await fetch(`/api/products/${productId}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (error) throw error;
-      setProduct(data);
-      setFormData(data);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load product');
+      }
+
+      setProduct(result.data);
+      setFormData(result.data);
+      setMovements(result.movements || []);
     } catch (error) {
       console.error('Failed to load product:', error);
       toast.error('Failed to load product');
@@ -89,39 +86,28 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
     }
   };
 
-  const loadMovements = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select('*')
-        .eq('product_id', productId)
-        .order('movement_date', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setMovements(data || []);
-    } catch (error) {
-      console.error('Failed to load movements:', error);
-    }
-  };
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           ...formData,
           unit_price: parseFloat(formData.unit_price) || 0,
-          cost: parseFloat(formData.cost) || 0,
-          quantity_in_stock: parseFloat(formData.quantity_in_stock) || 0,
+          cost: parseFloat(formData.cost_price) || 0,
+          quantity_in_stock: parseFloat(formData.quantity_on_hand) || 0,
           reorder_point: formData.reorder_point ? parseFloat(formData.reorder_point) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
-        })
-        .eq('id', productId);
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update product');
+      }
 
       toast.success('Product updated successfully');
       setEditing(false);
@@ -138,12 +124,14 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete product');
+      }
 
       toast.success('Product deleted successfully');
       router.push('/dashboard/inventory/products');
@@ -172,8 +160,8 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
     );
   }
 
-  const stockValue = product.quantity_in_stock * product.unit_price;
-  const isLowStock = product.reorder_point && product.quantity_in_stock <= product.reorder_point;
+  const stockValue = Number(product.quantity_on_hand || 0) * Number(product.unit_price || 0);
+  const isLowStock = product.reorder_point && Number(product.quantity_on_hand || 0) <= Number(product.reorder_point || 0);
 
   const movementTypeLabels: Record<string, string> = {
     purchase: 'Purchase',
@@ -186,7 +174,6 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/inventory/products" className="btn-ghost p-2">
@@ -259,8 +246,8 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
                   <label className="label">Cost</label>
                   <input
                     type="number"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                    value={formData.cost_price}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
                     className="input"
                     step="0.01"
                   />
@@ -301,13 +288,12 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
         </form>
       ) : (
         <>
-          {/* Stats */}
           <div className="grid md:grid-cols-4 gap-4">
             <div className="card">
               <div className="card-body">
                 <div className="text-sm text-gray-500">In Stock</div>
                 <div className={`text-2xl font-bold mt-1 ${isLowStock ? 'text-yellow-600' : 'text-gray-900'}`}>
-                  {product.quantity_in_stock} {product.unit_of_measure}
+                  {product.quantity_on_hand} {product.unit_of_measure}
                 </div>
                 {isLowStock && (
                   <div className="text-xs text-yellow-600 mt-1">Low Stock</div>
@@ -346,108 +332,15 @@ function ProductDetailPageClient({ productId }: { productId: string }) {
                   {new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: 'USD',
-                  }).format(product.cost)}
+                  }).format(product.cost_price)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Margin: {((product.unit_price - product.cost) / product.unit_price * 100).toFixed(1)}%
+                  Margin: {product.unit_price > 0 ? (((product.unit_price - product.cost_price) / product.unit_price) * 100).toFixed(1) : '0.0'}%
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Details */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card">
-              <div className="card-header">
-                <h2 className="text-lg font-semibold">Product Information</h2>
-              </div>
-              <div className="card-body space-y-3">
-                <div>
-                  <div className="text-sm text-gray-500">Category</div>
-                  <div className="mt-1">{product.product_categories?.name || 'Uncategorized'}</div>
-                </div>
-
-                {product.barcode && (
-                  <div>
-                    <div className="text-sm text-gray-500">Barcode</div>
-                    <div className="mt-1 font-mono">{product.barcode}</div>
-                  </div>
-                )}
-
-                {product.description && (
-                  <div>
-                    <div className="text-sm text-gray-500">Description</div>
-                    <div className="mt-1 text-gray-700">{product.description}</div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-sm text-gray-500">Unit of Measure</div>
-                  <div className="mt-1">{product.unit_of_measure}</div>
-                </div>
-
-                {product.reorder_point && (
-                  <div>
-                    <div className="text-sm text-gray-500">Reorder Point</div>
-                    <div className="mt-1">{product.reorder_point}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="card-header">
-                <h2 className="text-lg font-semibold">Product Details</h2>
-              </div>
-              <div className="card-body space-y-3">
-                {product.manufacturer && (
-                  <div>
-                    <div className="text-sm text-gray-500">Manufacturer</div>
-                    <div className="mt-1">{product.manufacturer}</div>
-                  </div>
-                )}
-
-                {product.brand && (
-                  <div>
-                    <div className="text-sm text-gray-500">Brand</div>
-                    <div className="mt-1">{product.brand}</div>
-                  </div>
-                )}
-
-                {product.model_number && (
-                  <div>
-                    <div className="text-sm text-gray-500">Model Number</div>
-                    <div className="mt-1">{product.model_number}</div>
-                  </div>
-                )}
-
-                {product.weight && (
-                  <div>
-                    <div className="text-sm text-gray-500">Weight</div>
-                    <div className="mt-1">{product.weight} kg</div>
-                  </div>
-                )}
-
-                {product.dimensions && (
-                  <div>
-                    <div className="text-sm text-gray-500">Dimensions</div>
-                    <div className="mt-1">{product.dimensions}</div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-sm text-gray-500">Status</div>
-                  <div className="mt-1">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {product.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Inventory Movements */}
           <div className="card">
             <div className="card-header flex items-center justify-between">
               <div className="flex items-center gap-2">

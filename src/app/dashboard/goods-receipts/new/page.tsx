@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -43,6 +43,7 @@ interface GRLine {
 
 export default function NewGoodsReceiptPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const searchParams = useSearchParams();
   const poId = searchParams.get('po_id');
 
@@ -61,8 +62,11 @@ export default function NewGoodsReceiptPage() {
   const [lines, setLines] = useState<GRLine[]>([]);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadApprovedPOs();
-  }, []);
+  }, [company?.id]);
 
   useEffect(() => {
     if (formData.po_id) {
@@ -72,30 +76,33 @@ export default function NewGoodsReceiptPage() {
 
   const loadApprovedPOs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('purchase_orders')
-        .select(`
-          id,
-          po_number,
-          order_date,
-          vendor_id,
-          vendors (
-            name,
-            company_name
-          )
-        `)
-        .in('status', ['approved', 'partial'])
-        .order('order_date', { ascending: false });
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      
-      // Transform vendors from array to single object
-      const transformedData = (data || []).map(po => ({
-        ...po,
-        vendors: Array.isArray(po.vendors) ? po.vendors[0] : po.vendors
-      }));
-      
-      setPurchaseOrders(transformedData);
+      const response = await fetch(`/api/purchase-orders?company_id=${company.id}&limit=200`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load purchase orders');
+      }
+
+      const filtered = (result.data || [])
+        .filter((po: any) => ['approved', 'partial'].includes(String(po.status || '').toLowerCase()))
+        .map((po: any) => ({
+          id: po.id,
+          po_number: po.po_number,
+          order_date: po.order_date,
+          vendors: po.vendor
+            ? {
+                name: po.vendor.name,
+                company_name: po.vendor.company_name || null,
+              }
+            : null,
+        }));
+      setPurchaseOrders(filtered);
     } catch (error) {
       console.error('Failed to load POs:', error);
       toast.error('Failed to load purchase orders');
@@ -105,33 +112,59 @@ export default function NewGoodsReceiptPage() {
   const loadPODetails = async (po_id: string) => {
     try {
       setLoadingPO(true);
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .select(`
-          *,
-          vendors (
-            name,
-            company_name
-          )
-        `)
-        .eq('id', po_id)
-        .single();
+      if (!company?.id) {
+        return;
+      }
 
-      if (poError) throw poError;
-      setSelectedPO(poData);
+      const [poResponse, receiptsResponse] = await Promise.all([
+        fetch(`/api/purchase-orders/${po_id}`, { credentials: 'include' }),
+        fetch(`/api/goods-receipts?company_id=${company.id}&purchase_order_id=${po_id}&limit=200`, {
+          credentials: 'include',
+        }),
+      ]);
 
-      const { data: linesData, error: linesError } = await supabase
-        .from('purchase_order_lines')
-        .select('*')
-        .eq('purchase_order_id', po_id)
-        .order('line_number');
+      const poResult = await poResponse.json().catch(() => ({}));
+      if (!poResponse.ok) {
+        throw new Error(poResult.error || 'Failed to load purchase order details');
+      }
+      setSelectedPO({
+        id: poResult.id,
+        po_number: poResult.po_number,
+        order_date: poResult.order_date,
+        vendors: poResult.vendor
+          ? {
+              name: poResult.vendor.name,
+              company_name: poResult.vendor.company_name || null,
+            }
+          : null,
+      });
 
-      if (linesError) throw linesError;
+      const receiptsResult = await receiptsResponse.json().catch(() => ({}));
+      const receiptLines = (receiptsResult.data || [])
+        .filter((gr: any) => !['rejected', 'returned'].includes(String(gr.status || '').toLowerCase()))
+        .flatMap((gr: any) => gr.goods_receipt_lines || []);
 
-      const linesWithRemaining = (linesData || []).map(line => ({
-        ...line,
-        quantity_remaining: line.quantity_ordered - (line.quantity_received || 0),
-      }));
+      const receivedByLine = new Map<string, number>();
+      for (const rl of receiptLines) {
+        const key = String(rl.po_line_id || '');
+        if (!key) continue;
+        receivedByLine.set(key, (receivedByLine.get(key) || 0) + Number(rl.quantity_received || 0));
+      }
+
+      const linesWithRemaining = (poResult.purchase_order_lines || []).map((line: any) => {
+        const orderedQty = Number(line.quantity || 0);
+        const alreadyReceived = Number(receivedByLine.get(String(line.id)) || 0);
+        return {
+          id: line.id,
+          line_number: line.line_number,
+          description: line.description,
+          quantity_ordered: orderedQty,
+          quantity_received: alreadyReceived,
+          quantity_remaining: Math.max(0, orderedQty - alreadyReceived),
+          unit_cost: Number(line.unit_price || 0),
+          product_id: line.product_id || null,
+        };
+      });
 
       setPOLines(linesWithRemaining);
 
@@ -184,12 +217,13 @@ export default function NewGoodsReceiptPage() {
       const response = await fetch('/api/goods-receipts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          po_id: formData.po_id,
-          received_date: formData.received_date,
+          purchase_order_id: formData.po_id,
+          receipt_date: formData.received_date,
           notes: formData.notes,
           lines: lines.map(line => ({
-            po_line_id: line.po_line_id,
+            purchase_order_line_id: line.po_line_id,
             product_id: line.product_id,
             quantity_received: line.quantity_to_receive,
             unit_cost: line.unit_cost,
@@ -204,7 +238,7 @@ export default function NewGoodsReceiptPage() {
       }
 
       toast.success('Goods receipt created successfully');
-      router.push(`/dashboard/goods-receipts/${result.id}`);
+      router.push(`/dashboard/goods-receipts/${result.id || result?.data?.id}`);
     } catch (error: any) {
       console.error('Error creating GR:', error);
       toast.error(error.message || 'Failed to create goods receipt');

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import type { Employee } from '@/types/breco';
 import { CurrencySelect } from '@/components/ui';
@@ -75,7 +74,9 @@ export default function EmployeesPage() {
     if (!company) return;
     
     try {
-      const response = await fetch(`/api/employees?company_id=${company.id}`);
+      const response = await fetch(`/api/employees?company_id=${company.id}`, {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch employees');
       
       const result = await response.json();
@@ -97,6 +98,7 @@ export default function EmployeesPage() {
       const response = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           ...formData,
           company_id: company.id,
@@ -148,6 +150,7 @@ export default function EmployeesPage() {
       const response = await fetch(`/api/employees/${employee.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ employment_status: newStatus }),
       });
 
@@ -173,6 +176,7 @@ export default function EmployeesPage() {
     try {
       const response = await fetch(`/api/employees/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
 
       const result = await response.json();

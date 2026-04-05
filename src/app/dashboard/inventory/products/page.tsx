@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -16,15 +16,17 @@ interface Product {
   name: string;
   sku: string;
   barcode: string | null;
-  quantity_in_stock: number;
+  quantity_on_hand: number;
   reorder_point: number | null;
   unit_price: number;
+  category_id?: string | null;
   product_categories?: {
     name: string;
   };
 }
 
 export default function ProductsPage() {
+  const { company } = useCompany();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -33,19 +35,27 @@ export default function ProductsPage() {
   const [showLowStock, setShowLowStock] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadCategories();
     loadProducts();
-  }, [search, categoryFilter, showLowStock]);
+  }, [search, categoryFilter, showLowStock, company?.id]);
 
   const loadCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_categories')
-        .select('*')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load categories');
+      }
+      setCategories(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Failed to load categories:', error);
     }
@@ -54,36 +64,47 @@ export default function ProductsPage() {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      if (!company?.id) {
+        return;
+      }
 
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          product_categories (name)
-        `)
-        .order('name');
-
+      const params = new URLSearchParams({ company_id: company.id, limit: '300' });
       if (search) {
-        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,barcode.ilike.%${search}%`);
+        params.set('search', search);
       }
-
       if (categoryFilter) {
-        query = query.eq('category_id', categoryFilter);
+        params.set('category', categoryFilter);
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      let filteredData = data || [];
-
       if (showLowStock) {
-        filteredData = filteredData.filter(
-          p => p.reorder_point && p.quantity_in_stock <= p.reorder_point
-        );
+        params.set('low_stock', 'true');
       }
 
-      setProducts(filteredData);
+      const [productRes, categoryRes] = await Promise.all([
+        fetch(`/api/inventory?${params.toString()}`, { credentials: 'include' }),
+        fetch(`/api/product-categories?company_id=${company.id}`, { credentials: 'include' }),
+      ]);
+      const productJson = await productRes.json().catch(() => ({}));
+      const categoryJson = await categoryRes.json().catch(() => ([]));
+
+      if (!productRes.ok) {
+        throw new Error(productJson.error || 'Failed to load products');
+      }
+
+      const categoryMap = new Map<string, string>();
+      if (Array.isArray(categoryJson)) {
+        for (const c of categoryJson) {
+          categoryMap.set(c.id, c.name);
+        }
+      }
+
+      const mapped = (productJson.data || []).map((p: any) => ({
+        ...p,
+        quantity_on_hand: Number(p.quantity_on_hand || 0),
+        unit_price: Number(p.unit_price || 0),
+        product_categories: p.category_id ? { name: categoryMap.get(p.category_id) || '' } : null,
+      }));
+
+      setProducts(mapped);
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
@@ -93,7 +114,7 @@ export default function ProductsPage() {
   };
 
   const lowStockCount = products.filter(
-    p => p.reorder_point && p.quantity_in_stock <= p.reorder_point
+    p => p.reorder_point && p.quantity_on_hand <= p.reorder_point
   ).length;
 
   return (
@@ -130,6 +151,7 @@ export default function ProductsPage() {
                 currency: 'USD',
               }).format(
                 products.reduce((sum, p) => sum + p.quantity_in_stock * p.unit_price, 0)
+                products.reduce((sum, p) => sum + p.quantity_on_hand * p.unit_price, 0)
               )}
             </div>
           </div>
@@ -231,8 +253,8 @@ export default function ProductsPage() {
                 </thead>
                 <tbody>
                   {products.map((product) => {
-                    const isLowStock = product.reorder_point && product.quantity_in_stock <= product.reorder_point;
-                    const stockValue = product.quantity_in_stock * product.unit_price;
+                    const isLowStock = product.reorder_point && product.quantity_on_hand <= product.reorder_point;
+                    const stockValue = product.quantity_on_hand * product.unit_price;
 
                     return (
                       <tr key={product.id} className={isLowStock ? 'bg-yellow-50' : ''}>
@@ -260,6 +282,7 @@ export default function ProductsPage() {
                             }
                           >
                             {product.quantity_in_stock}
+                            {product.quantity_on_hand}
                           </span>
                         </td>
                         <td className="text-right text-gray-500">

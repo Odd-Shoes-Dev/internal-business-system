@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -34,6 +34,7 @@ interface TransferLine {
 
 export default function NewInventoryTransferPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -47,20 +48,27 @@ export default function NewInventoryTransferPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadLocations();
     loadProducts();
-  }, []);
+  }, [company?.id]);
 
   const loadLocations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setLocations(data || []);
+      const response = await fetch(`/api/locations?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load locations');
+      }
+      setLocations(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Failed to load locations:', error);
       toast.error('Failed to load locations');
@@ -69,15 +77,28 @@ export default function NewInventoryTransferPage() {
 
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, sku, quantity_in_stock')
-        .eq('track_inventory', true)
-        .gt('quantity_in_stock', 0)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setProducts(data || []);
+      const response = await fetch(`/api/inventory?company_id=${company.id}&limit=500`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load products');
+      }
+
+      setProducts(
+        (result.data || [])
+          .filter((p: any) => Number(p.quantity_on_hand || 0) > 0 && p.track_inventory !== false)
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            quantity_in_stock: Number(p.quantity_on_hand || 0),
+          }))
+      );
     } catch (error) {
       console.error('Failed to load products:', error);
     }
@@ -154,6 +175,7 @@ export default function NewInventoryTransferPage() {
       const response = await fetch('/api/inventory-transfers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           from_location_id: formData.from_location_id,
           to_location_id: formData.to_location_id,
@@ -173,7 +195,8 @@ export default function NewInventoryTransferPage() {
       }
 
       toast.success('Transfer created successfully');
-      router.push(`/dashboard/inventory/transfers/${result.id}`);
+      const firstTransfer = Array.isArray(result.transfers) ? result.transfers[0] : null;
+      router.push(`/dashboard/inventory/transfers/${firstTransfer?.id || ''}`);
     } catch (error: any) {
       console.error('Error creating transfer:', error);
       toast.error(error.message || 'Failed to create transfer');

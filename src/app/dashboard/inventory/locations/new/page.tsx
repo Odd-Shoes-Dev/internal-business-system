@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function NewLocationPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -30,9 +31,15 @@ export default function NewLocationPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('locations')
-        .insert({
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
+
+      const response = await fetch(`/api/locations?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           name: formData.name,
           code: formData.code,
           type: formData.type,
@@ -45,9 +52,13 @@ export default function NewLocationPage() {
           email: formData.email || null,
           manager_name: formData.manager_name || null,
           is_active: formData.is_active,
-        });
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create location');
+      }
 
       toast.success('Location created successfully');
       router.push('/dashboard/inventory/locations');

@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -16,29 +14,31 @@ import {
 interface GoodsReceipt {
   id: string;
   gr_number: string;
-  received_date: string;
+  receipt_number?: string;
+  received_date?: string;
+  receipt_date?: string;
   status: string;
   notes: string | null;
   inspection_notes: string | null;
-  purchase_orders: {
+  purchase_order?: {
     po_number: string;
-    vendors: {
-      name: string;
-      company_name: string | null;
-    };
-  };
+    vendor?: {
+      name?: string;
+      company_name?: string | null;
+    } | null;
+  } | null;
 }
 
 interface GRLine {
   id: string;
+  po_line_id?: string;
   description: string;
   quantity_received: number;
   unit_cost: number;
-  line_total: number;
-  purchase_order_lines: {
-    quantity_ordered: number;
-    quantity_received: number;
-  };
+  line_total?: number;
+  purchase_order_line?: {
+    quantity?: number;
+  } | null;
 }
 
 export default async function GoodsReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +47,6 @@ export default async function GoodsReceiptDetailPage({ params }: { params: Promi
 }
 
 function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
-  const router = useRouter();
   const [goodsReceipt, setGoodsReceipt] = useState<GoodsReceipt | null>(null);
   const [lines, setLines] = useState<GRLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,40 +60,18 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
   const loadGoodsReceipt = async () => {
     try {
       setLoading(true);
+      const response = await fetch(`/api/goods-receipts/${grId}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
 
-      const { data: grData, error: grError } = await supabase
-        .from('goods_receipts')
-        .select(`
-          *,
-          purchase_orders (
-            po_number,
-            vendors (
-              name,
-              company_name
-            )
-          )
-        `)
-        .eq('id', grId)
-        .single();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load goods receipt');
+      }
 
-      if (grError) throw grError;
-      setGoodsReceipt(grData);
-      setInspectionNotes(grData.inspection_notes || '');
-
-      const { data: linesData, error: linesError } = await supabase
-        .from('goods_receipt_lines')
-        .select(`
-          *,
-          purchase_order_lines (
-            quantity_ordered,
-            quantity_received
-          )
-        `)
-        .eq('goods_receipt_id', grId)
-        .order('id');
-
-      if (linesError) throw linesError;
-      setLines(linesData || []);
+      setGoodsReceipt(result);
+      setInspectionNotes(result.inspection_notes || '');
+      setLines(result.goods_receipt_lines || []);
     } catch (error) {
       console.error('Failed to load goods receipt:', error);
       toast.error('Failed to load goods receipt');
@@ -112,13 +89,14 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
       const response = await fetch(`/api/goods-receipts/${grId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           status: newStatus,
           inspection_notes: inspectionNotes,
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to update status');
@@ -153,7 +131,10 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
     );
   }
 
-  const total = lines.reduce((sum, line) => sum + line.line_total, 0);
+  const total = lines.reduce(
+    (sum, line) => sum + Number(line.line_total ?? Number(line.quantity_received || 0) * Number(line.unit_cost || 0)),
+    0
+  );
 
   const statusColor: Record<string, string> = {
     received: 'bg-blue-100 text-blue-800',
@@ -169,22 +150,19 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/goods-receipts" className="btn-ghost p-2">
             <ArrowLeftIcon className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{goodsReceipt.gr_number}</h1>
-            <p className="text-gray-500 mt-1">
-              PO: {goodsReceipt.purchase_orders.po_number}
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{goodsReceipt.gr_number || goodsReceipt.receipt_number}</h1>
+            <p className="text-gray-500 mt-1">PO: {goodsReceipt.purchase_order?.po_number || 'N/A'}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor[goodsReceipt.status]}`}>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor[goodsReceipt.status] || 'bg-gray-100 text-gray-800'}`}>
             {goodsReceipt.status.charAt(0).toUpperCase() + goodsReceipt.status.slice(1)}
           </span>
           <button className="btn-secondary flex items-center gap-2">
@@ -194,7 +172,6 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
         </div>
       </div>
 
-      {/* Details */}
       <div className="card">
         <div className="card-header">
           <h2 className="text-lg font-semibold">Receipt Details</h2>
@@ -204,15 +181,14 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Vendor</h3>
               <p className="mt-1">
-                {goodsReceipt.purchase_orders.vendors.company_name ||
-                  goodsReceipt.purchase_orders.vendors.name}
+                {goodsReceipt.purchase_order?.vendor?.company_name || goodsReceipt.purchase_order?.vendor?.name || 'N/A'}
               </p>
             </div>
 
             <div>
               <h3 className="text-sm font-medium text-gray-500">Received Date</h3>
               <p className="mt-1">
-                {new Date(goodsReceipt.received_date).toLocaleDateString()}
+                {new Date(goodsReceipt.received_date || goodsReceipt.receipt_date || new Date().toISOString()).toLocaleDateString()}
               </p>
             </div>
 
@@ -226,7 +202,6 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
         </div>
       </div>
 
-      {/* Line Items */}
       <div className="card">
         <div className="card-header">
           <h2 className="text-lg font-semibold">Received Items</h2>
@@ -247,19 +222,19 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
                 {lines.map((line) => (
                   <tr key={line.id}>
                     <td>{line.description}</td>
-                    <td className="text-right">{line.purchase_order_lines.quantity_ordered}</td>
-                    <td className="text-right">{line.quantity_received}</td>
+                    <td className="text-right">{Number(line.purchase_order_line?.quantity || 0).toFixed(2)}</td>
+                    <td className="text-right">{Number(line.quantity_received || 0).toFixed(2)}</td>
                     <td className="text-right">
                       {new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'USD',
-                      }).format(line.unit_cost)}
+                      }).format(Number(line.unit_cost || 0))}
                     </td>
                     <td className="text-right">
                       {new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'USD',
-                      }).format(line.line_total)}
+                      }).format(Number(line.line_total ?? Number(line.quantity_received || 0) * Number(line.unit_cost || 0)))}
                     </td>
                   </tr>
                 ))}
@@ -282,7 +257,6 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
         </div>
       </div>
 
-      {/* Inspection Section */}
       {canInspect && (
         <div className="card">
           <div className="card-header">
@@ -314,7 +288,6 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
         </div>
       )}
 
-      {/* Acceptance Section */}
       {goodsReceipt.status !== 'received' && goodsReceipt.inspection_notes && (
         <div className="card">
           <div className="card-header">
@@ -326,7 +299,6 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
         </div>
       )}
 
-      {/* Actions */}
       {(canAccept || canReject) && (
         <div className="card">
           <div className="card-header">

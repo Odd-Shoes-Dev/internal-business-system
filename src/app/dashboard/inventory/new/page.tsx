@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
 import {
@@ -19,6 +19,7 @@ interface Category {
 
 export default function NewInventoryItemPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,18 +42,27 @@ export default function NewInventoryItemPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchCategories();
-  }, []);
+  }, [company?.id]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_categories')
-        .select('id, name, description')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load categories');
+      }
+
+      setCategories(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -76,14 +86,19 @@ export default function NewInventoryItemPage() {
     setError(null);
 
     try {
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
+
       const payload = {
         ...formData,
         unit_price: formData.selling_price, // Map selling_price to unit_price for API
       };
       
-      const response = await fetch('/api/inventory', {
+      const response = await fetch(`/api/inventory?company_id=${company.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 

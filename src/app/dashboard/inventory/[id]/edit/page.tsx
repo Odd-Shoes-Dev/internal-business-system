@@ -7,7 +7,7 @@ import {
   ArrowLeftIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
 
@@ -38,6 +38,7 @@ interface Product {
 export default function EditInventoryItemPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,21 +62,29 @@ export default function EditInventoryItemPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchCategories();
     if (params.id) {
       loadItem();
     }
-  }, [params.id]);
+  }, [params.id, company?.id]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_categories')
-        .select('id, name, description')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load categories');
+      }
+      setCategories(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -85,13 +94,14 @@ export default function EditInventoryItemPage() {
     try {
       setLoading(true);
 
-      const { data, error: itemError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', params.id)
-        .single();
-
-      if (itemError) throw itemError;
+      const response = await fetch(`/api/products/${params.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load item');
+      }
+      const data = result.data;
 
       setItem(data);
       setFormData({
@@ -141,22 +151,26 @@ export default function EditInventoryItemPage() {
         description: formData.description || null,
         category_id: formData.category_id || null,
         unit_of_measure: formData.unit_of_measure,
-        cost_price: formData.unit_cost,
+        cost: formData.unit_cost,
         unit_price: formData.selling_price,
         currency: formData.currency,
-        quantity_on_hand: formData.quantity_on_hand,
+        quantity_in_stock: formData.quantity_on_hand,
         reorder_point: formData.reorder_point,
         reorder_quantity: formData.reorder_quantity,
         is_taxable: formData.is_taxable,
         is_active: formData.is_active,
       };
 
-      const { error: updateError } = await supabase
-        .from('products')
-        .update(payload)
-        .eq('id', params.id);
-
-      if (updateError) throw updateError;
+      const response = await fetch(`/api/products/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update item');
+      }
 
       router.push(`/dashboard/inventory/${params.id}`);
     } catch (err) {

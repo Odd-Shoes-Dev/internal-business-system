@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -23,22 +23,31 @@ interface Location {
 }
 
 export default function LocationsPage() {
+  const { company } = useCompany();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadLocations();
-  }, []);
+  }, [company?.id]);
 
   const loadLocations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('*')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setLocations(data || []);
+      const response = await fetch(`/api/locations?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load locations');
+      }
+      setLocations(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Failed to load locations:', error);
       toast.error('Failed to load locations');
@@ -49,12 +58,16 @@ export default function LocationsPage() {
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('locations')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-
-      if (error) throw error;
+      const response = await fetch(`/api/locations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_active: !currentStatus }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update location');
+      }
 
       toast.success(`Location ${!currentStatus ? 'activated' : 'deactivated'}`);
       loadLocations();

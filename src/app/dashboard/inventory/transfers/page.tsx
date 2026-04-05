@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -27,40 +27,39 @@ interface Transfer {
 }
 
 export default function InventoryTransfersPage() {
+  const { company } = useCompany();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadTransfers();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, company?.id]);
 
   const loadTransfers = async () => {
     try {
       setLoading(true);
-
-      let query = supabase
-        .from('inventory_transfers')
-        .select(`
-          *,
-          from_location:locations!inventory_transfers_from_location_id_fkey (name, code),
-          to_location:locations!inventory_transfers_to_location_id_fkey (name, code)
-        `)
-        .order('transfer_date', { ascending: false });
-
-      if (search) {
-        query = query.ilike('transfer_number', `%${search}%`);
+      if (!company?.id) {
+        return;
       }
 
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
+      const params = new URLSearchParams({ company_id: company.id });
+      if (search) params.set('search', search);
+      if (statusFilter) params.set('status', statusFilter);
+
+      const response = await fetch(`/api/inventory-transfers?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load transfers');
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setTransfers(data || []);
+      setTransfers(result.data || []);
     } catch (error) {
       console.error('Failed to load transfers:', error);
       toast.error('Failed to load transfers');

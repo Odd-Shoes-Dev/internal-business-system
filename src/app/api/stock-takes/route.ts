@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const stockTakeId = searchParams.get('stock_take_id');
+    const search = searchParams.get('search');
     const companyId = getCompanyIdFromRequest(request);
 
     if (!companyId) {
@@ -33,6 +34,11 @@ export async function GET(request: NextRequest) {
     if (stockTakeId) {
       params.push(stockTakeId);
       where.push(`st.id = $${params.length}`);
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`st.reference_number ILIKE $${params.length}`);
     }
 
     const result = await db.query(

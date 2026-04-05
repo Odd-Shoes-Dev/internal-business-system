@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { PlusIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -31,33 +31,38 @@ interface SalaryAdvance {
 }
 
 export default function SalaryAdvancesPage() {
+  const { company } = useCompany();
   const [advances, setAdvances] = useState<SalaryAdvance[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchAdvances();
-  }, [statusFilter]);
+  }, [statusFilter, company?.id]);
 
   const fetchAdvances = async () => {
     try {
-      let query = supabase
-        .from('salary_advances')
-        .select(`
-          *,
-          employee:employees(first_name, last_name, employee_number),
-          approver:user_profiles!approved_by(full_name)
-        `)
-        .order('advance_date', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (!company?.id) {
+        return;
       }
 
-      const { data, error } = await query;
+      const params = new URLSearchParams({ company_id: company.id });
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
 
-      if (error) throw error;
-      setAdvances(data || []);
+      const response = await fetch(`/api/salary-advances?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load salary advances');
+      }
+
+      setAdvances(result.data || []);
     } catch (error) {
       console.error('Error fetching salary advances:', error);
       toast.error('Failed to load salary advances');
@@ -68,19 +73,16 @@ export default function SalaryAdvancesPage() {
 
   const handleApprove = async (advanceId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('salary_advances')
-        .update({
-          status: 'approved',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', advanceId);
-
-      if (error) throw error;
+      const response = await fetch(`/api/salary-advances/${advanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to approve advance');
+      }
 
       toast.success('Salary advance approved');
       fetchAdvances();
@@ -92,19 +94,16 @@ export default function SalaryAdvancesPage() {
 
   const handleReject = async (advanceId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('salary_advances')
-        .update({
-          status: 'rejected',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', advanceId);
-
-      if (error) throw error;
+      const response = await fetch(`/api/salary-advances/${advanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'rejected' }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reject advance');
+      }
 
       toast.success('Salary advance rejected');
       fetchAdvances();

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -17,9 +17,9 @@ interface GoodsReceipt {
   received_date: string;
   status: string;
   notes: string | null;
-  purchase_orders?: {
+  purchase_order?: {
     po_number: string;
-    vendors?: {
+    vendor?: {
       name: string;
       company_name: string | null;
     };
@@ -27,6 +27,7 @@ interface GoodsReceipt {
 }
 
 export default function GoodsReceiptsPage() {
+  const { company } = useCompany();
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,43 +37,42 @@ export default function GoodsReceiptsPage() {
   const pageSize = 20;
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadReceipts();
-  }, [searchQuery, statusFilter, currentPage]);
+  }, [searchQuery, statusFilter, currentPage, company?.id]);
 
   const loadReceipts = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
-      let query = supabase
-        .from('goods_receipts')
-        .select(`
-          *,
-          purchase_orders (
-            po_number,
-            vendors (
-              name,
-              company_name
-            )
-          )
-        `, { count: 'exact' })
-        .order('received_date', { ascending: false });
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.ilike('receipt_number', `%${searchQuery}%`);
+        params.append('search', searchQuery);
       }
-
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.append('status', statusFilter);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/goods-receipts?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load goods receipts');
+      }
 
-      const { data, count, error } = await query;
-      if (error) throw error;
-
-      setReceipts(data || []);
-      setTotalCount(count || 0);
+      setReceipts(result.data || []);
+      setTotalCount(result.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load goods receipts:', error);
     } finally {
@@ -194,11 +194,11 @@ export default function GoodsReceiptsPage() {
                         </Link>
                       </td>
                       <td>
-                        {receipt.purchase_orders?.po_number || 'N/A'}
+                        {receipt.purchase_order?.po_number || 'N/A'}
                       </td>
                       <td>
                         <div className="text-sm">
-                          {receipt.purchase_orders?.vendors?.company_name || receipt.purchase_orders?.vendors?.name || 'N/A'}
+                          {receipt.purchase_order?.vendor?.company_name || receipt.purchase_order?.vendor?.name || 'N/A'}
                         </div>
                       </td>
                       <td>{formatDate(receipt.received_date)}</td>

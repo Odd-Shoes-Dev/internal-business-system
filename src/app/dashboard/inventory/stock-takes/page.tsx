@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -12,52 +12,52 @@ import {
 
 interface StockTake {
   id: string;
-  stock_take_number: string;
+  reference_number: string;
   type: string;
   status: string;
-  scheduled_date: string;
+  stock_take_date: string;
   started_at: string | null;
-  completed_at: string | null;
-  locations: {
+  approved_at: string | null;
+  inventory_locations: {
     name: string;
-    code: string;
+    type: string;
   } | null;
 }
 
 export default function StockTakesPage() {
+  const { company } = useCompany();
   const [stockTakes, setStockTakes] = useState<StockTake[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadStockTakes();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, company?.id]);
 
   const loadStockTakes = async () => {
     try {
       setLoading(true);
-
-      let query = supabase
-        .from('stock_takes')
-        .select(`
-          *,
-          locations (name, code)
-        `)
-        .order('scheduled_date', { ascending: false });
-
-      if (search) {
-        query = query.ilike('stock_take_number', `%${search}%`);
+      if (!company?.id) {
+        return;
       }
 
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
+      const params = new URLSearchParams({ company_id: company.id });
+      if (search) params.set('search', search);
+      if (statusFilter) params.set('status', statusFilter);
+
+      const response = await fetch(`/api/stock-takes?${params.toString()}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error((result as any)?.error || 'Failed to load stock takes');
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setStockTakes(data || []);
+      setStockTakes(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Failed to load stock takes:', error);
       toast.error('Failed to load stock takes');
@@ -109,6 +109,7 @@ export default function StockTakesPage() {
             <div className="text-sm text-gray-500">Scheduled</div>
             <div className="text-2xl font-bold text-yellow-600 mt-1">
               {stockTakes.filter(st => st.status === 'scheduled').length}
+              {stockTakes.filter(st => st.status === 'draft').length}
             </div>
           </div>
         </div>
@@ -118,6 +119,7 @@ export default function StockTakesPage() {
             <div className="text-sm text-gray-500">In Progress</div>
             <div className="text-2xl font-bold text-blue-600 mt-1">
               {stockTakes.filter(st => st.status === 'in_progress').length}
+              {stockTakes.filter(st => st.status === 'pending').length}
             </div>
           </div>
         </div>
@@ -157,7 +159,7 @@ export default function StockTakesPage() {
               >
                 <option value="">All Statuses</option>
                 <option value="scheduled">Scheduled</option>
-                <option value="in_progress">In Progress</option>
+                <option value="draft">Draft</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -208,7 +210,7 @@ export default function StockTakesPage() {
                           href={`/dashboard/inventory/stock-takes/${stockTake.id}`}
                           className="font-medium text-blue-600 hover:text-blue-800"
                         >
-                          {stockTake.stock_take_number}
+                          {stockTake.reference_number}
                         </Link>
                       </td>
                       <td>
@@ -218,19 +220,19 @@ export default function StockTakesPage() {
                       </td>
                       <td>
                         <div>
-                          <div className="font-medium">{stockTake.locations?.name}</div>
-                          <div className="text-sm text-gray-500">{stockTake.locations?.code}</div>
+                          <div className="font-medium">{stockTake.inventory_locations?.name}</div>
+                          <div className="text-sm text-gray-500">{stockTake.inventory_locations?.type}</div>
                         </div>
                       </td>
-                      <td>{new Date(stockTake.scheduled_date).toLocaleDateString()}</td>
+                      <td>{new Date(stockTake.stock_take_date).toLocaleDateString()}</td>
                       <td>
                         {stockTake.started_at
                           ? new Date(stockTake.started_at).toLocaleDateString()
                           : '-'}
                       </td>
                       <td>
-                        {stockTake.completed_at
-                          ? new Date(stockTake.completed_at).toLocaleDateString()
+                        {stockTake.approved_at
+                          ? new Date(stockTake.approved_at).toLocaleDateString()
                           : '-'}
                       </td>
                       <td>
@@ -243,7 +245,7 @@ export default function StockTakesPage() {
                           href={`/dashboard/inventory/stock-takes/${stockTake.id}`}
                           className="text-blue-600 hover:text-blue-800 text-sm"
                         >
-                          {stockTake.status === 'scheduled' ? 'Start' : 'View'}
+                          {stockTake.status === 'draft' ? 'Start' : 'View'}
                         </Link>
                       </td>
                     </tr>

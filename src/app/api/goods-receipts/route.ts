@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     const purchaseOrderId = searchParams.get('purchase_order_id');
     const status = searchParams.get('status');
+    const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
     if (status) {
       params.push(status);
       where.push(`gr.status = $${params.length}`);
+    }
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`gr.receipt_number ILIKE $${params.length}`);
     }
 
     const whereSql = `WHERE ${where.join(' AND ')}`;

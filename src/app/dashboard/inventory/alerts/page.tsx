@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ExclamationTriangleIcon,
@@ -14,53 +14,45 @@ interface LowStockProduct {
   id: string;
   name: string;
   sku: string;
-  quantity_in_stock: number;
+  quantity_on_hand: number;
   reorder_point: number;
   unit_price: number;
-  cost: number;
-  preferred_vendor_id: string | null;
-  vendors?: {
-    name: string;
-    company_name: string | null;
-  } | null;
+  cost_price: number;
   product_categories?: {
     name: string;
   } | null;
 }
 
 export default function ReorderAlertsPage() {
+  const { company } = useCompany();
   const [products, setProducts] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadLowStockProducts();
-  }, []);
+  }, [company?.id]);
 
   const loadLowStockProducts = async () => {
     try {
       setLoading(true);
-      
-      // Get all products with reorder points
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          vendors (name, company_name),
-          product_categories (name)
-        `)
-        .not('reorder_point', 'is', null)
-        .eq('track_inventory', true)
-        .order('name');
 
-      if (error) throw error;
+      if (!company?.id) {
+        return;
+      }
 
-      // Filter products below reorder point
-      const lowStock = (data || []).filter(
-        (p: any) => p.quantity_in_stock <= p.reorder_point
-      );
+      const response = await fetch(`/api/inventory?company_id=${company.id}&low_stock=true&limit=500`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load low stock products');
+      }
 
-      setProducts(lowStock);
+      setProducts(result.data || []);
     } catch (error) {
       console.error('Failed to load low stock products:', error);
       toast.error('Failed to load alerts');
@@ -101,8 +93,10 @@ export default function ReorderAlertsPage() {
   };
 
   const getStockStatus = (product: LowStockProduct) => {
-    const percentage = (product.quantity_in_stock / product.reorder_point) * 100;
-    if (product.quantity_in_stock === 0) {
+    const onHand = Number(product.quantity_on_hand || 0);
+    const reorder = Number(product.reorder_point || 0);
+    const percentage = reorder > 0 ? (onHand / reorder) * 100 : 0;
+    if (onHand === 0) {
       return { color: 'text-red-600', bg: 'bg-red-100', label: 'Out of Stock' };
     } else if (percentage <= 50) {
       return { color: 'text-red-600', bg: 'bg-red-100', label: 'Critical' };
@@ -111,9 +105,9 @@ export default function ReorderAlertsPage() {
     }
   };
 
-  const outOfStockCount = products.filter((p) => p.quantity_in_stock === 0).length;
+  const outOfStockCount = products.filter((p) => Number(p.quantity_on_hand || 0) === 0).length;
   const criticalCount = products.filter(
-    (p) => p.quantity_in_stock > 0 && p.quantity_in_stock <= p.reorder_point * 0.5
+    (p) => Number(p.quantity_on_hand || 0) > 0 && Number(p.quantity_on_hand || 0) <= Number(p.reorder_point || 0) * 0.5
   ).length;
   const lowStockCount = products.length - outOfStockCount - criticalCount;
 
@@ -230,8 +224,8 @@ export default function ReorderAlertsPage() {
                   {products.map((product) => {
                     const status = getStockStatus(product);
                     const suggestedQty = Math.max(
-                      product.reorder_point * 2 - product.quantity_in_stock,
-                      product.reorder_point
+                      Number(product.reorder_point || 0) * 2 - Number(product.quantity_on_hand || 0),
+                      Number(product.reorder_point || 0)
                     );
 
                     return (
@@ -255,10 +249,10 @@ export default function ReorderAlertsPage() {
                         </td>
                         <td>{product.product_categories?.name || '-'}</td>
                         <td className="text-sm">
-                          {product.vendors?.company_name || product.vendors?.name || 'No vendor'}
+                          No vendor
                         </td>
                         <td className={`text-right font-semibold ${status.color}`}>
-                          {product.quantity_in_stock}
+                          {product.quantity_on_hand}
                         </td>
                         <td className="text-right text-gray-600">
                           {product.reorder_point}

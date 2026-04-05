@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import {
   CubeIcon,
   ArrowDownTrayIcon,
@@ -83,6 +83,7 @@ interface Category {
 }
 
 export default function InventoryValuationPage() {
+  const { company } = useCompany();
   const [data, setData] = useState<InventoryValuationData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
@@ -94,23 +95,34 @@ export default function InventoryValuationPage() {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_categories')
-        .select('*')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setCategories(data || []);
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch categories');
+      }
+
+      setCategories(result.data || result || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
   };
 
   const fetchInventoryData = async () => {
+    if (!company?.id) {
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/inventory-valuation?asOfDate=${asOfDate}&category=${category}&valuationMethod=${valuationMethod}&sortBy=${sortBy}`
+        `/api/reports/inventory-valuation?company_id=${company.id}&asOfDate=${asOfDate}&category=${category}&valuationMethod=${valuationMethod}&sortBy=${sortBy}`,
+        { credentials: 'include' }
       );
       const result = await response.json();
       setData(result);
@@ -122,12 +134,18 @@ export default function InventoryValuationPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchCategories();
-  }, []);
+  }, [company?.id]);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchInventoryData();
-  }, [asOfDate, category, valuationMethod, sortBy]);
+  }, [asOfDate, category, valuationMethod, sortBy, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;
