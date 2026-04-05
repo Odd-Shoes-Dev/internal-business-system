@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -37,9 +37,41 @@ interface TourPackageFormData {
   is_active: boolean;
 }
 
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadTourImage(tourId: string, file: File): Promise<string> {
+  const dataUrl = await fileToDataUrl(file);
+  const response = await fetch('/api/tours/images/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      tour_id: tourId,
+      file_name: file.name,
+      content_type: file.type,
+      data_base64: dataUrl,
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || `Failed to upload ${file.name}`);
+  }
+
+  return result.data.public_url;
+}
+
 export default function EditTourPackagePage() {
   const router = useRouter();
   const params = useParams();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -74,37 +106,33 @@ export default function EditTourPackagePage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadData();
-  }, [params.id]);
+  }, [params.id, company?.id]);
 
   const loadData = async () => {
     try {
-      // Load destinations
-      const { data: destData, error: destError } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (destError) throw destError;
-      setDestinations(destData || []);
-
-      // Load tour package and images
-      const [pkgRes, imagesRes] = await Promise.all([
-        supabase
-          .from('tour_packages')
-          .select('*')
-          .eq('id', params.id)
-          .single(),
-        supabase
-          .from('tour_package_images')
-          .select('*')
-          .eq('tour_package_id', params.id)
-          .order('display_order')
+      const [destRes, pkgRes] = await Promise.all([
+        fetch(`/api/destinations?company_id=${company.id}&is_active=true`, {
+          credentials: 'include',
+        }),
+        fetch(`/api/tours/${params.id}`, { credentials: 'include' }),
       ]);
 
-      if (pkgRes.error) throw pkgRes.error;
-      const pkgData = pkgRes.data;
+      const destJson = await destRes.json().catch(() => ({}));
+      const pkgJson = await pkgRes.json().catch(() => ({}));
+
+      if (!destRes.ok) throw new Error(destJson.error || 'Failed to load destinations');
+      if (!pkgRes.ok) throw new Error(pkgJson.error || 'Failed to load tour package');
+
+      setDestinations(destJson.data || []);
+      const pkgData = pkgJson.data;
 
       setFormData({
         package_code: pkgData.package_code || '',
@@ -129,9 +157,10 @@ export default function EditTourPackagePage() {
       });
 
       // Load existing images
-      if (imagesRes.data && imagesRes.data.length > 0) {
-        setExistingImages(imagesRes.data);
-        const primaryIndex = imagesRes.data.findIndex(img => img.is_primary);
+      const imageRows = pkgData.images || [];
+      if (imageRows.length > 0) {
+        setExistingImages(imageRows);
+        const primaryIndex = imageRows.findIndex((img: any) => img.is_primary);
         if (primaryIndex >= 0) setPrimaryImageIndex(primaryIndex);
       }
     } catch (err) {
@@ -253,35 +282,16 @@ export default function EditTourPackagePage() {
 
       // Delete removed images
       for (const imageId of deletedImageIds) {
-        await supabase
-          .from('tour_package_images')
-          .delete()
-          .eq('id', imageId);
+        await fetch(`/api/tours/${params.id}/images?image_id=${imageId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
       }
 
       // Upload new images
       const newImageUrls: string[] = [];
       for (const file of imageFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${formData.package_code}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `packages/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('tour-images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('tour-images')
-          .getPublicUrl(filePath);
-
+        const publicUrl = await uploadTourImage(String(params.id), file);
         newImageUrls.push(publicUrl);
       }
 
@@ -298,37 +308,45 @@ export default function EditTourPackagePage() {
       }
 
       // Update tour package
-      const { error: updateError } = await supabase
-        .from('tour_packages')
-        .update({
+      const updateResponse = await fetch(`/api/tours/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           ...formData,
           image_url: primaryImageUrl,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
-
-      if (updateError) throw updateError;
+        }),
+      });
+      const updateResult = await updateResponse.json().catch(() => ({}));
+      if (!updateResponse.ok) {
+        throw new Error(updateResult.error || 'Failed to update tour package');
+      }
 
       // Update existing images primary status
       for (let i = 0; i < existingImages.length; i++) {
         const isPrimary = i === primaryImageIndex;
-        await supabase
-          .from('tour_package_images')
-          .update({ is_primary: isPrimary })
-          .eq('id', existingImages[i].id);
+        await fetch(`/api/tours/${params.id}/images`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ image_id: existingImages[i].id, is_primary: isPrimary }),
+        });
       }
 
       // Insert new images
       for (let i = 0; i < newImageUrls.length; i++) {
         const isPrimary = (existingImages.length + i) === primaryImageIndex;
-        await supabase
-          .from('tour_package_images')
-          .insert({
-            tour_package_id: params.id,
+        await fetch(`/api/tours/${params.id}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
             image_url: newImageUrls[i],
             is_primary: isPrimary,
-            display_order: existingImages.length + i + 1
-          });
+            display_order: existingImages.length + i + 1,
+          }),
+        });
       }
 
       // Insert URL images
@@ -338,14 +356,16 @@ export default function EditTourPackagePage() {
           const baseIndex = existingImages.length + newImageUrls.length;
           for (let i = 0; i < validUrls.length; i++) {
             const isPrimary = (baseIndex + i) === primaryImageIndex;
-            await supabase
-              .from('tour_package_images')
-              .insert({
-                tour_package_id: params.id,
+            await fetch(`/api/tours/${params.id}/images`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
                 image_url: validUrls[i].trim(),
                 is_primary: isPrimary,
-                display_order: baseIndex + i + 1
-              });
+                display_order: baseIndex + i + 1,
+              }),
+            });
           }
         }
       }

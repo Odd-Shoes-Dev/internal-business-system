@@ -15,7 +15,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 
 interface CafeStats {
@@ -41,6 +41,7 @@ interface ExpenseBreakdown {
 }
 
 export default function CafeDashboardPage() {
+  const { company } = useCompany();
   const [stats, setStats] = useState<CafeStats>({
     revenue: 0,
     expenses: 0,
@@ -54,161 +55,43 @@ export default function CafeDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadCafeData();
-  }, []);
+  }, [company?.id]);
 
   const loadCafeData = async () => {
     try {
       setLoading(true);
-      
-      // Get current month start and end
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      if (!company?.id) {
+        return;
+      }
 
-      // Fetch cafe revenue accounts (42xx)
-      const { data: cafeAccounts } = await supabase
-        .from('accounts')
-        .select('id')
-        .like('code', '42%');
-
-      const cafeAccountIds = cafeAccounts?.map(a => a.id) || [];
-
-      // Fetch cafe revenue from journal lines
-      const { data: revenueData } = await supabase
-        .from('journal_lines')
-        .select('credit')
-        .in('account_id', cafeAccountIds)
-        .gte('created_at', monthStart.toISOString())
-        .lte('created_at', monthEnd.toISOString())
-        .gt('credit', 0);
-
-      const revenue = revenueData?.reduce((sum, entry) => sum + Number(entry.credit || 0), 0) || 0;
-
-      // Fetch cafe expenses (department = 'Cafe')
-      const { data: expensesData } = await supabase
-        .from('expenses')
-        .select('total')
-        .eq('department', 'Cafe')
-        .gte('expense_date', monthStart.toISOString())
-        .lte('expense_date', monthEnd.toISOString());
-
-      const expenses = expensesData?.reduce((sum, exp) => sum + Number(exp.total || 0), 0) || 0;
-
-      // Fetch cafe employees
-      const { data: employeesData, count: employeeCount } = await supabase
-        .from('employees')
-        .select('id, basic_salary', { count: 'exact' })
-        .eq('department', 'Cafe')
-        .eq('employment_status', 'active');
-
-      const totalPayroll = employeesData?.reduce((sum, emp) => sum + Number(emp.basic_salary || 0), 0) || 0;
-
-      const profit = revenue - expenses;
-      const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
-
-      setStats({
-        revenue,
-        expenses,
-        profit,
-        profitMargin,
-        employeeCount: employeeCount || 0,
-        totalPayroll,
+      const response = await fetch(`/api/cafe/summary?company_id=${company.id}`, {
+        credentials: 'include',
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load cafe summary');
+      }
 
-      // Fetch last 6 months data
-      await loadMonthlyTrend();
-      
-      // Fetch expense breakdown
-      await loadExpenseBreakdown(monthStart, monthEnd, expenses);
+      setStats(result.stats || {
+        revenue: 0,
+        expenses: 0,
+        profit: 0,
+        profitMargin: 0,
+        employeeCount: 0,
+        totalPayroll: 0,
+      });
+      setMonthlyData(result.monthlyData || []);
+      setExpenseBreakdown(result.expenseBreakdown || []);
 
     } catch (error) {
       console.error('Error loading cafe data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMonthlyTrend = async () => {
-    const months: MonthlyData[] = [];
-    const now = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
-
-      // Fetch cafe account IDs (42xx)
-      const { data: cafeAccounts } = await supabase
-        .from('accounts')
-        .select('id')
-        .like('code', '42%');
-
-      const cafeAccountIds = cafeAccounts?.map(a => a.id) || [];
-
-      // Revenue
-      const { data: revenueData } = await supabase
-        .from('journal_lines')
-        .select('credit')
-        .in('account_id', cafeAccountIds)
-        .gte('created_at', monthStart.toISOString())
-        .lte('created_at', monthEnd.toISOString())
-        .gt('credit', 0);
-
-      const revenue = revenueData?.reduce((sum, entry) => sum + Number(entry.credit || 0), 0) || 0;
-
-      // Expenses
-      const { data: expensesData } = await supabase
-        .from('expenses')
-        .select('total')
-        .eq('department', 'Cafe')
-        .gte('expense_date', monthStart.toISOString())
-        .lte('expense_date', monthEnd.toISOString());
-
-      const expenses = expensesData?.reduce((sum, exp) => sum + Number(exp.total || 0), 0) || 0;
-
-      months.push({
-        month: monthDate.toLocaleDateString('en-US', { month: 'short' }),
-        revenue,
-        expenses,
-        profit: revenue - expenses,
-      });
-    }
-
-    setMonthlyData(months);
-  };
-
-  const loadExpenseBreakdown = async (monthStart: Date, monthEnd: Date, totalExpenses: number) => {
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select('category, total')
-      .eq('department', 'Cafe')
-      .gte('expense_date', monthStart.toISOString())
-      .lte('expense_date', monthEnd.toISOString());
-
-    if (!expenses || expenses.length === 0) {
-      setExpenseBreakdown([]);
-      return;
-    }
-
-    // Group by category
-    const categoryTotals: Record<string, number> = {};
-    expenses.forEach(exp => {
-      const category = exp.category || 'Other';
-      categoryTotals[category] = (categoryTotals[category] || 0) + Number(exp.total || 0);
-    });
-
-    // Add payroll to breakdown
-    categoryTotals['Payroll'] = stats.totalPayroll;
-
-    const breakdown = Object.entries(categoryTotals).map(([category, amount]) => ({
-      category,
-      amount,
-      percentage: totalExpenses > 0 ? (amount / (totalExpenses + stats.totalPayroll)) * 100 : 0,
-    }));
-
-    breakdown.sort((a, b) => b.amount - a.amount);
-    setExpenseBreakdown(breakdown);
   };
 
   const formatNumber = (num: number) => {

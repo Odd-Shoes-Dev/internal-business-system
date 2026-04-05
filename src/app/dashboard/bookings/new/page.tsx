@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { CurrencySelect } from '@/components/ui';
 import toast from 'react-hot-toast';
 import {
@@ -57,6 +57,7 @@ interface BookingFormData {
 
 export default function NewBookingPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const searchParams = useSearchParams();
   const packageId = searchParams.get('package');
 
@@ -99,8 +100,11 @@ export default function NewBookingPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadData();
-  }, []);
+  }, [company?.id]);
 
   useEffect(() => {
     if (formData.tour_package_id && tourPackages.length > 0) {
@@ -157,22 +161,31 @@ export default function NewBookingPage() {
 
   const loadData = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       const [customersRes, packagesRes, hotelsRes, vehiclesRes] = await Promise.all([
-        supabase.from('customers').select('*').eq('is_active', true).order('name'),
-        supabase.from('tour_packages').select('*').eq('is_active', true).order('name'),
-        supabase.from('hotels').select('*').eq('is_active', true).order('name'),
-        supabase.from('vehicles').select('*').eq('is_active', true).eq('status', 'available').order('vehicle_type'),
+        fetch(`/api/customers?company_id=${company.id}&active=true&limit=500`, { credentials: 'include' }),
+        fetch(`/api/tours?company_id=${company.id}&is_active=true`, { credentials: 'include' }),
+        fetch(`/api/hotels?company_id=${company.id}&is_active=true`, { credentials: 'include' }),
+        fetch(`/api/fleet?company_id=${company.id}&status=available`, { credentials: 'include' }),
       ]);
 
-      if (customersRes.error) throw customersRes.error;
-      if (packagesRes.error) throw packagesRes.error;
-      if (hotelsRes.error) throw hotelsRes.error;
-      if (vehiclesRes.error) throw vehiclesRes.error;
+      const customersJson = await customersRes.json().catch(() => ({}));
+      const packagesJson = await packagesRes.json().catch(() => ({}));
+      const hotelsJson = await hotelsRes.json().catch(() => ({}));
+      const vehiclesJson = await vehiclesRes.json().catch(() => ({}));
 
-      setCustomers(customersRes.data || []);
-      setTourPackages(packagesRes.data || []);
-      setHotels(hotelsRes.data || []);
-      setVehicles(vehiclesRes.data || []);
+      if (!customersRes.ok) throw new Error(customersJson.error || 'Failed to load customers');
+      if (!packagesRes.ok) throw new Error(packagesJson.error || 'Failed to load tours');
+      if (!hotelsRes.ok) throw new Error(hotelsJson.error || 'Failed to load hotels');
+      if (!vehiclesRes.ok) throw new Error(vehiclesJson.error || 'Failed to load vehicles');
+
+      setCustomers(customersJson.data || []);
+      setTourPackages(packagesJson.data || []);
+      setHotels(hotelsJson.data || []);
+      setVehicles(vehiclesJson.data || []);
     } catch (err) {
       console.error('Failed to load data:', err);
       toast.error('Failed to load data');
@@ -254,32 +267,6 @@ export default function NewBookingPage() {
     return Math.max(1, diff);
   };
 
-  const generateBookingNumber = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('booking_number')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      let nextNumber = 1;
-      if (data && data.length > 0) {
-        const lastNumber = data[0].booking_number;
-        const match = lastNumber.match(/BKG-(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1]) + 1;
-        }
-      }
-
-      return `BKG-${String(nextNumber).padStart(5, '0')}`;
-    } catch (err) {
-      console.error('Failed to generate booking number:', err);
-      return `BKG-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
-    }
-  };
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -320,17 +307,13 @@ export default function NewBookingPage() {
         throw new Error('Please select at least a hotel or vehicle for custom booking');
       }
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      // Generate booking number
-      const bookingNumber = await generateBookingNumber();
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
 
       // Prepare insert data
       const insertData: any = {
-        booking_number: bookingNumber,
+        company_id: company.id,
         customer_id: formData.customer_id,
         booking_type: formData.booking_type,
         booking_date: formData.booking_date,
@@ -344,12 +327,13 @@ export default function NewBookingPage() {
         tax_amount: formData.tax_amount,
         total: formData.total,
         amount_paid: 0,
+        balance_due: formData.total,
+        number_of_people: formData.num_adults + formData.num_children + formData.num_infants,
         currency: formData.currency,
         status: 'inquiry',
         special_requests: formData.special_requests || null,
         dietary_requirements: formData.dietary_requirements || null,
         notes: formData.notes || null,
-        created_by: user?.id,
       };
 
       // Add type-specific fields
@@ -370,17 +354,19 @@ export default function NewBookingPage() {
         insertData.dropoff_location = formData.dropoff_location || null;
       }
 
-      // Insert booking
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(insertData),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create booking');
+      }
 
       toast.success('Booking created successfully!');
-      router.push(`/dashboard/bookings/${data.id}`);
+      router.push(`/dashboard/bookings/${result?.data?.id}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create booking';
       setError(errorMessage);

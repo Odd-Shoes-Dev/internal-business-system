@@ -2,7 +2,7 @@
 // Business Management Platform
 // Core Database Types & Interfaces
 // =====================================================
-// Database Types for Supabase tables
+// Database types for application tables
 // =====================================================
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';

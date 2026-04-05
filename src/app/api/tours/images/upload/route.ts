@@ -26,13 +26,13 @@ export async function POST(request: NextRequest) {
     if (errorResponse || !user) return errorResponse!;
 
     const body = await request.json();
-    const vehicleId = body.vehicle_id as string | undefined;
+    const tourId = body.tour_id as string | undefined;
     const fileName = (body.file_name as string | undefined) || 'image';
     const contentType = (body.content_type as string | undefined) || '';
     const dataBase64 = body.data_base64 as string | undefined;
 
-    if (!vehicleId) {
-      return NextResponse.json({ error: 'vehicle_id is required' }, { status: 400 });
+    if (!tourId) {
+      return NextResponse.json({ error: 'tour_id is required' }, { status: 400 });
     }
 
     if (!dataBase64) {
@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only image uploads are allowed' }, { status: 400 });
     }
 
-    const vehicleResult = await db.query('SELECT id, company_id FROM vehicles WHERE id = $1 LIMIT 1', [vehicleId]);
-    const vehicle = vehicleResult.rows[0];
-    if (!vehicle) {
-      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+    const tourResult = await db.query('SELECT id, company_id FROM tour_packages WHERE id = $1 LIMIT 1', [tourId]);
+    const tour = tourResult.rows[0];
+    if (!tour) {
+      return NextResponse.json({ error: 'Tour package not found' }, { status: 404 });
     }
 
-    const accessError = await requireCompanyAccess(user.id, vehicle.company_id);
+    const accessError = await requireCompanyAccess(user.id, tour.company_id);
     if (accessError) return accessError;
 
     const fileBuffer = parseBase64Data(dataBase64);
@@ -59,11 +59,11 @@ export async function POST(request: NextRequest) {
     }
 
     const extension = getExtension(fileName, contentType);
-    const objectPath = `vehicles/${vehicleId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const objectPath = `packages/${tourId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
 
     const serviceClient = await getStorageServiceClient();
     const { error: uploadError } = await serviceClient.storage
-      .from('fleet-images')
+      .from('tour-images')
       .upload(objectPath, fileBuffer, {
         contentType,
         cacheControl: '3600',
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     const {
       data: { publicUrl },
-    } = serviceClient.storage.from('fleet-images').getPublicUrl(objectPath);
+    } = serviceClient.storage.from('tour-images').getPublicUrl(objectPath);
 
     return NextResponse.json({ data: { path: objectPath, public_url: publicUrl } }, { status: 201 });
   } catch (error: any) {

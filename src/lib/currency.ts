@@ -73,7 +73,7 @@ export async function fetchExchangeRates(baseCurrency: SupportedCurrency = 'USD'
 /**
  * Update exchange rates in database
  */
-export async function updateExchangeRates(supabase: any): Promise<boolean> {
+export async function updateExchangeRates(dbClient: any): Promise<boolean> {
   try {
     // Fetch rates for USD base (most common)
     const rates = await fetchExchangeRates('USD');
@@ -112,7 +112,7 @@ export async function updateExchangeRates(supabase: any): Promise<boolean> {
     }
 
     // Insert/update exchange rates
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('exchange_rates')
       .upsert(exchangeRates, {
         onConflict: 'from_currency,to_currency,effective_date',
@@ -134,7 +134,7 @@ export async function updateExchangeRates(supabase: any): Promise<boolean> {
  * Get exchange rate from database
  */
 export async function getExchangeRate(
-  supabase: any,
+  dbClient: any,
   fromCurrency: SupportedCurrency,
   toCurrency: SupportedCurrency,
   date?: string
@@ -144,7 +144,7 @@ export async function getExchangeRate(
   }
 
   try {
-    const { data, error } = await supabase.rpc('get_exchange_rate', {
+    const { data, error } = await dbClient.rpc('get_exchange_rate', {
       p_from_currency: fromCurrency,
       p_to_currency: toCurrency,
       p_date: date || new Date().toISOString().split('T')[0],
@@ -166,7 +166,7 @@ export async function getExchangeRate(
  * Convert amount between currencies using database rates
  */
 export async function convertCurrency(
-  supabase: any,
+  dbClient: any,
   amount: number,
   fromCurrency: SupportedCurrency,
   toCurrency: SupportedCurrency,
@@ -177,7 +177,7 @@ export async function convertCurrency(
   }
 
   try {
-    const { data, error } = await supabase.rpc('convert_currency', {
+    const { data, error } = await dbClient.rpc('convert_currency', {
       p_amount: amount,
       p_from_currency: fromCurrency,
       p_to_currency: toCurrency,

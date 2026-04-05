@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -37,8 +37,40 @@ interface TourPackageFormData {
   is_active: boolean;
 }
 
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadTourImage(tourId: string, file: File): Promise<string> {
+  const dataUrl = await fileToDataUrl(file);
+  const response = await fetch('/api/tours/images/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      tour_id: tourId,
+      file_name: file.name,
+      content_type: file.type,
+      data_base64: dataUrl,
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || `Failed to upload ${file.name}`);
+  }
+
+  return result.data.public_url;
+}
+
 export default function NewTourPackagePage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -71,20 +103,27 @@ export default function NewTourPackagePage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadDestinations();
     generatePackageCode();
-  }, []);
+  }, [company?.id]);
 
   const loadDestinations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setDestinations(data || []);
+      const response = await fetch(`/api/destinations?company_id=${company.id}&is_active=true`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load destinations');
+      }
+      setDestinations(result.data || []);
     } catch (err) {
       console.error('Failed to load destinations:', err);
       toast.error('Failed to load destinations');
@@ -95,18 +134,28 @@ export default function NewTourPackagePage() {
 
   const generatePackageCode = async () => {
     try {
-      // Generate package code like PKG-001, PKG-002, etc.
-      const { data, error } = await supabase
-        .from('tour_packages')
-        .select('package_code')
-        .order('created_at', { ascending: false })
-        .limit(1);
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
+      const response = await fetch(`/api/tours?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load tour packages');
+      }
+
+      const data = result.data || [];
 
       let nextNumber = 1;
       if (data && data.length > 0) {
-        const lastCode = data[0].package_code;
+        const sorted = [...data].sort((a, b) => {
+          const at = new Date(a.created_at || 0).getTime();
+          const bt = new Date(b.created_at || 0).getTime();
+          return bt - at;
+        });
+        const lastCode = sorted[0]?.package_code || '';
         const match = lastCode.match(/PKG-(\d+)/);
         if (match) {
           nextNumber = parseInt(match[1]) + 1;
@@ -227,23 +276,26 @@ export default function NewTourPackagePage() {
         throw new Error('Base price (USD) must be greater than 0');
       }
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
 
-      // Insert tour package first
-      const { data: packageData, error: packageError } = await supabase
-        .from('tour_packages')
-        .insert({
+      const createResponse = await fetch('/api/tours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
           ...formData,
           image_url: formData.image_url || null,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+        }),
+      });
+      const createResult = await createResponse.json().catch(() => ({}));
+      if (!createResponse.ok) {
+        throw new Error(createResult.error || 'Failed to create tour package');
+      }
 
-      if (packageError) throw packageError;
+      const packageData = createResult.data;
 
       // Upload images if files are selected
       const uploadedImages: Array<{ image_url: string; is_primary: boolean; display_order: number }> = [];
@@ -252,56 +304,39 @@ export default function NewTourPackagePage() {
 
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${formData.package_code}-${Date.now()}-${i}.${fileExt}`;
-          const filePath = `packages/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('tour-images')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: false
+          try {
+            const publicUrl = await uploadTourImage(packageData.id, file);
+            uploadedImages.push({
+              image_url: publicUrl,
+              is_primary: i === primaryImageIndex,
+              display_order: i,
             });
-
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
+          } catch (uploadErr) {
+            console.error('Upload error:', uploadErr);
             continue; // Skip this image but continue with others
           }
-
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('tour-images')
-            .getPublicUrl(filePath);
-
-          uploadedImages.push({
-            image_url: publicUrl,
-            is_primary: i === primaryImageIndex,
-            display_order: i,
-          });
         }
 
         // Insert all images
         if (uploadedImages.length > 0) {
-          const { error: imagesError } = await supabase
-            .from('tour_package_images')
-            .insert(
-              uploadedImages.map((img) => ({
-                tour_package_id: packageData.id,
-                ...img,
-              }))
-            );
-
-          if (imagesError) {
-            console.error('Failed to save some images:', imagesError);
+          for (const img of uploadedImages) {
+            await fetch(`/api/tours/${packageData.id}/images`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(img),
+            });
           }
 
           // Update package with primary image URL
           const primaryImage = uploadedImages.find(img => img.is_primary);
           if (primaryImage) {
-            await supabase
-              .from('tour_packages')
-              .update({ image_url: primaryImage.image_url })
-              .eq('id', packageData.id);
+            await fetch(`/api/tours/${packageData.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ image_url: primaryImage.image_url }),
+            });
           }
         }
       }
@@ -320,26 +355,31 @@ export default function NewTourPackagePage() {
             };
           });
 
-          const { error: urlImagesError } = await supabase
-            .from('tour_package_images')
-            .insert(urlImages);
-
-          if (urlImagesError) {
-            console.error('Failed to save URL images:', urlImagesError);
+          for (const urlImage of urlImages) {
+            await fetch(`/api/tours/${packageData.id}/images`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(urlImage),
+            });
           }
 
           // Update package with primary image URL if it's from URLs
           const primaryUrlImage = urlImages.find(img => img.is_primary);
           if (primaryUrlImage && uploadedImages.length === 0) {
-            await supabase
-              .from('tour_packages')
-              .update({ image_url: primaryUrlImage.image_url })
-              .eq('id', packageData.id);
+            await fetch(`/api/tours/${packageData.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ image_url: primaryUrlImage.image_url }),
+            });
           } else if (primaryUrlImage && primaryImageIndex >= uploadedImages.length) {
-            await supabase
-              .from('tour_packages')
-              .update({ image_url: primaryUrlImage.image_url })
-              .eq('id', packageData.id);
+            await fetch(`/api/tours/${packageData.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ image_url: primaryUrlImage.image_url }),
+            });
           }
         }
       }

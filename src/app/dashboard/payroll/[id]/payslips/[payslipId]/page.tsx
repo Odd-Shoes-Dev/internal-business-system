@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';import { ArrowLeftIcon, PrinterIcon, EnvelopeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
+import { ArrowLeftIcon, PrinterIcon, EnvelopeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 interface Employee {
@@ -88,30 +89,128 @@ export default function PayslipDetailPage({
 
   const fetchPayslipDetails = async (id: string) => {
     try {
-      // Fetch payslip with employee and period details
-      const { data: payslipData, error: payslipError } = await supabase
-        .from('payslips')
-        .select(`
-          *,
-          employee:employees(*),
-          payroll_period:payroll_periods(period_name, start_date, end_date, payment_date, status)
-        `)
-        .eq('id', id)
-        .single();
+      const response = await fetch(`/api/payroll/payslips/${id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load payslip details');
+      }
 
-      if (payslipError) throw payslipError;
-      setPayslip(payslipData);
+      const normalizedPayslip: Payslip = {
+        id: result.id,
+        payslip_number: result.payslip_number || `PS-${String(result.id).slice(0, 8)}`,
+        payroll_period_id: result.payroll_period_id,
+        employee_id: result.employee_id,
+        basic_salary: Number(result.basic_salary || 0),
+        total_allowances: Number(
+          result.total_allowances ??
+            (Number(result.housing_allowance || 0) +
+              Number(result.transport_allowance || 0) +
+              Number(result.other_allowances || 0) +
+              Number(result.allowances || 0))
+        ),
+        overtime_hours: Number(result.overtime_hours || 0),
+        overtime_amount: Number(result.overtime_amount || 0),
+        bonus: Number(result.bonus || 0),
+        commission: Number(result.commission || 0),
+        reimbursements: Number(result.reimbursements || 0),
+        gross_salary: Number(result.gross_salary || 0),
+        paye: Number(result.paye ?? result.tax_deduction ?? 0),
+        nssf_employee: Number(result.nssf_employee ?? result.nssf_deduction ?? 0),
+        loan_deduction: Number(result.loan_deduction || 0),
+        salary_advance: Number(result.salary_advance ?? result.advance_deduction ?? 0),
+        other_deductions: Number(result.other_deductions ?? result.deductions ?? 0),
+        total_deductions: Number(result.total_deductions ?? result.deductions ?? 0),
+        net_salary: Number(result.net_salary || 0),
+        nssf_employer: Number(result.nssf_employer || 0),
+        payment_method: result.payment_method || 'bank_transfer',
+        payment_reference: result.payment_reference || null,
+        paid_at: result.paid_at || null,
+        currency: result.currency || 'UGX',
+        notes: result.notes || null,
+        created_at: result.created_at || new Date().toISOString(),
+        employee: {
+          first_name: result.employee?.first_name || '-',
+          last_name: result.employee?.last_name || '',
+          employee_number: result.employee?.employee_number || result.employee?.employee_id || '-',
+          job_title: result.employee?.job_title || result.employee?.position || '-',
+          department: result.employee?.department || '',
+          email: result.employee?.email || '',
+          phone: result.employee?.phone || '',
+          hire_date: result.employee?.hire_date || '',
+        },
+        payroll_period: {
+          period_name:
+            result.period?.period_name ||
+            `${new Date(result.period?.period_start).toLocaleDateString()} - ${new Date(result.period?.period_end).toLocaleDateString()}`,
+          start_date: result.period?.start_date || result.period?.period_start,
+          end_date: result.period?.end_date || result.period?.period_end,
+          payment_date: result.period?.payment_date,
+          status: result.period?.status || 'draft',
+        },
+      };
 
-      // Fetch payslip items (detailed breakdown)
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('payslip_items')
-        .select('*')
-        .eq('payslip_id', id)
-        .order('item_type', { ascending: false })
-        .order('item_name');
+      setPayslip(normalizedPayslip);
 
-      if (itemsError) throw itemsError;
-      setPayslipItems(itemsData || []);
+      const generatedItems: PayslipItem[] = [];
+      const allowanceAmount = Number(result.allowances || 0);
+      const housingAllowance = Number(result.housing_allowance || 0);
+      const transportAllowance = Number(result.transport_allowance || 0);
+      const otherAllowances = Number(result.other_allowances || 0);
+      const deductionsAmount = Number(result.deductions || 0);
+
+      if (allowanceAmount > 0) {
+        generatedItems.push({
+          id: `${result.id}-allowances`,
+          item_type: 'earning',
+          item_name: 'Allowances',
+          amount: allowanceAmount,
+          is_taxable: true,
+        });
+      }
+
+      if (housingAllowance > 0) {
+        generatedItems.push({
+          id: `${result.id}-housing`,
+          item_type: 'earning',
+          item_name: 'Housing Allowance',
+          amount: housingAllowance,
+          is_taxable: true,
+        });
+      }
+
+      if (transportAllowance > 0) {
+        generatedItems.push({
+          id: `${result.id}-transport`,
+          item_type: 'earning',
+          item_name: 'Transport Allowance',
+          amount: transportAllowance,
+          is_taxable: true,
+        });
+      }
+
+      if (otherAllowances > 0) {
+        generatedItems.push({
+          id: `${result.id}-other-allowances`,
+          item_type: 'earning',
+          item_name: 'Other Allowances',
+          amount: otherAllowances,
+          is_taxable: true,
+        });
+      }
+
+      if (deductionsAmount > 0) {
+        generatedItems.push({
+          id: `${result.id}-other-deductions`,
+          item_type: 'deduction',
+          item_name: 'Other Deductions',
+          amount: deductionsAmount,
+          is_taxable: false,
+        });
+      }
+
+      setPayslipItems(generatedItems);
     } catch (error) {
       console.error('Error fetching payslip details:', error);
       toast.error('Failed to load payslip details');

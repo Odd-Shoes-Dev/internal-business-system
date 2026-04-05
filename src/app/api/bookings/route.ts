@@ -189,12 +189,20 @@ export async function POST(request: NextRequest) {
          company_id, booking_number, customer_id, booking_type,
          travel_start_date, travel_end_date, number_of_people, created_by,
          tour_package_id, hotel_id, assigned_vehicle_id, status,
-         total, amount_paid, balance_due, currency, exchange_rate, notes
+         total, amount_paid, balance_due, currency, exchange_rate, notes,
+         booking_date, num_adults, num_children, num_infants,
+         subtotal, discount_amount, tax_amount,
+         special_requests, dietary_requirements,
+         room_type, num_rooms, rental_type, pickup_location, dropoff_location
        ) VALUES (
          $1, $2, $3, $4,
          $5::date, $6::date, $7, $8,
          $9, $10, $11, $12,
-         $13, $14, $15, $16, $17, $18
+         $13, $14, $15, $16, $17, $18,
+         $19, $20, $21, $22,
+         $23, $24, $25,
+         $26, $27,
+         $28, $29, $30, $31, $32
        )
        RETURNING *`,
       [
@@ -216,6 +224,20 @@ export async function POST(request: NextRequest) {
         bookingData.currency || 'USD',
         bookingData.exchange_rate || 1,
         bookingData.notes || null,
+        bookingData.booking_date || null,
+        bookingData.num_adults ?? null,
+        bookingData.num_children ?? null,
+        bookingData.num_infants ?? null,
+        bookingData.subtotal ?? null,
+        bookingData.discount_amount ?? null,
+        bookingData.tax_amount ?? null,
+        bookingData.special_requests || null,
+        bookingData.dietary_requirements || null,
+        bookingData.room_type || null,
+        bookingData.num_rooms ?? null,
+        bookingData.rental_type || null,
+        bookingData.pickup_location || null,
+        bookingData.dropoff_location || null,
       ]
     );
 

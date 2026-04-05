@@ -9,7 +9,7 @@ interface RateLimitResult {
 }
 
 /**
- * Rate limiter using Supabase as storage backend
+ * Rate limiter using database storage backend
  * Implements sliding window rate limiting per API key
  */
 export class ApiRateLimiter {
