@@ -273,13 +273,13 @@ export default function PurchaseOrderDetailPage() {
               <h3 className="text-sm font-medium text-gray-500 mb-3">Vendor Details</h3>
               <div className="space-y-2">
                 <p className="text-sm">
-                  <span className="font-medium">{po.vendors?.company_name || po.vendors?.name}</span>
+                  <span className="font-medium">{po.vendor?.company_name || po.vendor?.name}</span>
                 </p>
-                {po.vendors?.email && (
-                  <p className="text-sm text-gray-600">{po.vendors.email}</p>
+                {po.vendor?.email && (
+                  <p className="text-sm text-gray-600">{po.vendor.email}</p>
                 )}
-                {po.vendors?.phone && (
-                  <p className="text-sm text-gray-600">{po.vendors.phone}</p>
+                {po.vendor?.phone && (
+                  <p className="text-sm text-gray-600">{po.vendor.phone}</p>
                 )}
               </div>
             </div>

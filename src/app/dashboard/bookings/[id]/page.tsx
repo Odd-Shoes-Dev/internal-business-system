@@ -39,6 +39,7 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 };
 
 interface BookingWithRelations extends Booking {
+  company_id?: string;
   customer?: { id: string; name: string; email: string | null; phone: string | null };
   tour_package?: { 
     id: string; 

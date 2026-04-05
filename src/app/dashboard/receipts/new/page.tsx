@@ -197,10 +197,10 @@ export default function NewReceiptPage() {
 
       console.log('Fetched invoices:', data);
 
-      const invoicesWithBalance = (data || []).map(inv => ({
+      const invoicesWithBalance = (data || []).map((inv: any) => ({
         ...inv,
         balance_due: Number(inv.total) - Number(inv.amount_paid || 0),
-      })).filter(inv => inv.balance_due > 0);
+      })).filter((inv: any) => inv.balance_due > 0);
 
       console.log('Invoices with balance:', invoicesWithBalance);
       setCustomerInvoices(invoicesWithBalance);

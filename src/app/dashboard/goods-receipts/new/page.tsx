@@ -151,7 +151,7 @@ export default function NewGoodsReceiptPage() {
         receivedByLine.set(key, (receivedByLine.get(key) || 0) + Number(rl.quantity_received || 0));
       }
 
-      const linesWithRemaining = (poResult.purchase_order_lines || []).map((line: any) => {
+      const linesWithRemaining: POLine[] = (poResult.purchase_order_lines || []).map((line: any) => {
         const orderedQty = Number(line.quantity || 0);
         const alreadyReceived = Number(receivedByLine.get(String(line.id)) || 0);
         return {

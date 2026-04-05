@@ -150,7 +150,6 @@ export default function ProductsPage() {
                 style: 'currency',
                 currency: 'USD',
               }).format(
-                products.reduce((sum, p) => sum + p.quantity_in_stock * p.unit_price, 0)
                 products.reduce((sum, p) => sum + p.quantity_on_hand * p.unit_price, 0)
               )}
             </div>
@@ -281,7 +280,6 @@ export default function ProductsPage() {
                                 : 'text-gray-900'
                             }
                           >
-                            {product.quantity_in_stock}
                             {product.quantity_on_hand}
                           </span>
                         </td>

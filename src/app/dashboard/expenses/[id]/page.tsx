@@ -297,9 +297,9 @@ export default function ExpenseDetailPage() {
             <!-- Payee -->
             <div class="section">
               <h3>Payee Information</h3>
-              <p><strong>${expense.vendors?.company_name || expense.vendors?.name || expense.payee || 'N/A'}</strong></p>
-              ${expense.vendors?.email ? `<p>${expense.vendors.email}</p>` : ''}
-              ${expense.vendors?.phone ? `<p>${expense.vendors.phone}</p>` : ''}
+              <p><strong>${expense.vendor?.company_name || expense.vendor?.name || expense.payee || 'N/A'}</strong></p>
+              ${expense.vendor?.email ? `<p>${expense.vendor.email}</p>` : ''}
+              ${expense.vendor?.phone ? `<p>${expense.vendor.phone}</p>` : ''}
             </div>
 
             <!-- Payment Details -->
