@@ -12,7 +12,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 
 interface LineItem {
   id: string;
@@ -43,6 +43,7 @@ interface JournalEntryForm {
 export default function EditJournalEntryPage() {
   const router = useRouter();
   const params = useParams();
+  const { company } = useCompany();
   const entryId = params.id as string;
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -55,19 +56,24 @@ export default function EditJournalEntryPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        if (!company?.id) {
+          return;
+        }
+
         // Load accounts
-        const { data: accountsData, error: accountsError } = await supabase
-          .from('accounts')
-          .select('id, code, name, account_type')
-          .eq('is_active', true)
-          .order('code');
-        
-        if (accountsData && !accountsError) {
-          setAccounts(accountsData);
+        const accountsResponse = await fetch(`/api/accounts?company_id=${company.id}&active=true&limit=500`, {
+          credentials: 'include',
+        });
+        const accountsResult = await accountsResponse.json().catch(() => ({}));
+
+        if (accountsResponse.ok) {
+          setAccounts(accountsResult.data || []);
         }
 
         // Load journal entry
-        const response = await fetch(`/api/journal-entries/${entryId}`);
+        const response = await fetch(`/api/journal-entries/${entryId}`, {
+          credentials: 'include',
+        });
         if (!response.ok) {
           throw new Error('Failed to load journal entry');
         }
@@ -108,7 +114,7 @@ export default function EditJournalEntryPage() {
     };
 
     loadData();
-  }, [entryId, router]);
+  }, [entryId, router, company?.id]);
 
   const addLineItem = () => {
     if (!formData) return;
@@ -238,6 +244,7 @@ export default function EditJournalEntryPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(requestData),
       });
 

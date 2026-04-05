@@ -13,7 +13,6 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase/client';
 
 interface LineItem {
   id: string;
@@ -80,20 +79,17 @@ export default function NewJournalEntryPage() {
   useEffect(() => {
     if (company) {
       const fetchAccounts = async () => {
-        const { data, error } = await supabase
-          .from('accounts')
-          .select('id, code, name, account_type')
-          .eq('company_id', company.id)
-          .eq('is_active', true)
-          .order('code');
-      
-        if (data && !error) {
-          setAccounts(data);
+        const response = await fetch(`/api/accounts?company_id=${company.id}&active=true&limit=500`, {
+          credentials: 'include',
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok) {
+          setAccounts(result.data || []);
         }
       };
       fetchAccounts();
     }
-  }, [company, supabase]);
+  }, [company]);
 
   const addLineItem = () => {
     const newLineItem: LineItem = {
@@ -219,6 +215,7 @@ export default function NewJournalEntryPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(requestData),
       });
 
@@ -267,6 +264,7 @@ export default function NewJournalEntryPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(requestData),
       });
 
