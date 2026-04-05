@@ -88,23 +88,33 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    if (!body.name || !body.destination_id) {
+    if (!body.name) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, destination_id' },
+        { error: 'Missing required field: name' },
         { status: 400 }
       );
     }
 
-    const destinationResult = await db.query(
-      'SELECT id, company_id, name, country FROM destinations WHERE id = $1 LIMIT 1',
-      [body.destination_id]
-    );
-    const destination = destinationResult.rows[0];
-    if (!destination) {
-      return NextResponse.json({ error: 'Destination not found' }, { status: 404 });
+    let companyId = body.company_id || getCompanyIdFromRequest(request);
+    let destination: any = null;
+
+    if (body.destination_id) {
+      const destinationResult = await db.query(
+        'SELECT id, company_id, name, country FROM destinations WHERE id = $1 LIMIT 1',
+        [body.destination_id]
+      );
+      destination = destinationResult.rows[0];
+      if (!destination) {
+        return NextResponse.json({ error: 'Destination not found' }, { status: 404 });
+      }
+      companyId = destination.company_id;
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, destination.company_id);
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -113,16 +123,20 @@ export async function POST(request: NextRequest) {
       `INSERT INTO hotels (
          company_id, destination_id, name, address, contact_person,
          phone, email, website, star_rating, check_in_time,
-         check_out_time, amenities, notes, is_active, created_by
+         check_out_time, amenities, notes, is_active, created_by,
+         hotel_type, standard_rate_usd, deluxe_rate_usd, suite_rate_usd,
+         contact_phone, commission_rate, is_partner
        ) VALUES (
          $1, $2, $3, $4, $5,
          $6, $7, $8, $9, $10,
-         $11, $12, $13, $14, $15
+         $11, $12, $13, $14, $15,
+         $16, $17, $18, $19,
+         $20, $21, $22
        )
        RETURNING *`,
       [
-        destination.company_id,
-        body.destination_id,
+        companyId,
+        body.destination_id || null,
         body.name,
         body.address || null,
         body.contact_person || null,
@@ -136,17 +150,26 @@ export async function POST(request: NextRequest) {
         body.notes || null,
         body.is_active !== false,
         user.id,
+        body.hotel_type || null,
+        body.standard_rate_usd || null,
+        body.deluxe_rate_usd || null,
+        body.suite_rate_usd || null,
+        body.contact_phone || null,
+        body.commission_rate || null,
+        body.is_partner !== false,
       ]
     );
 
     const hotel = insertResult.rows[0];
     const data = {
       ...hotel,
-      destination: {
-        id: destination.id,
-        name: destination.name,
-        country: destination.country,
-      },
+      destination: destination
+        ? {
+            id: destination.id,
+            name: destination.name,
+            country: destination.country,
+          }
+        : null,
     };
 
     return NextResponse.json({ data }, { status: 201 });

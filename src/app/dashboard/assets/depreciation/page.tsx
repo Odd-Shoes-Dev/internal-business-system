@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
@@ -25,26 +25,41 @@ interface Asset {
 }
 
 export default function DepreciationPage() {
+  const { company } = useCompany();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [success, setSuccess] = useState(false);
+  const [processedCount, setProcessedCount] = useState(0);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadAssets();
-  }, []);
+  }, [company?.id]);
 
   const loadAssets = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('fixed_assets')
-        .select('*')
-        .eq('status', 'active')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
+      setLoading(true);
+      const params = new URLSearchParams({
+        company_id: company.id,
+        status: 'active',
+      });
+      const response = await fetch(`/api/assets?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load assets');
+      }
+
+      const data = await response.json();
       setAssets(data || []);
     } catch (error) {
       console.error('Failed to load assets:', error);
@@ -66,36 +81,42 @@ export default function DepreciationPage() {
       return;
     }
 
+    if (!company?.id) {
+      alert('No company selected');
+      return;
+    }
+
     setProcessing(true);
     setSuccess(false);
+    setProcessedCount(0);
 
     try {
-      const depreciationDate = `${selectedMonth}-01`;
-      
-      for (const asset of assets) {
-        const monthlyDepreciation = calculateMonthlyDepreciation(asset);
-        
-        if (monthlyDepreciation > 0) {
-          // Update accumulated depreciation
-          const newAccumulatedDepreciation = asset.accumulated_depreciation + monthlyDepreciation;
-          
-          await supabase
-            .from('fixed_assets')
-            .update({
-              accumulated_depreciation: newAccumulatedDepreciation,
-            })
-            .eq('id', asset.id);
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const periodStartDate = new Date(year, month - 1, 1);
+      const periodEndDate = new Date(year, month, 0);
 
-          // Create depreciation entry
-          await supabase
-            .from('depreciation_entries')
-            .insert({
-              asset_id: asset.id,
-              depreciation_date: depreciationDate,
-              amount: monthlyDepreciation,
-            });
-        }
+      const body = {
+        company_id: company.id,
+        period_start: periodStartDate.toISOString().split('T')[0],
+        period_end: periodEndDate.toISOString().split('T')[0],
+        posting_date: periodEndDate.toISOString().split('T')[0],
+      };
+
+      const response = await fetch('/api/depreciation/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to run depreciation');
       }
+
+      const data = await response.json();
+      const count = Number(data?.data?.assets_count || 0);
+      setProcessedCount(count);
 
       setSuccess(true);
       await loadAssets(); // Reload to show updated values
@@ -133,7 +154,7 @@ export default function DepreciationPage() {
             <div>
               <h3 className="text-sm font-semibold text-green-800">Depreciation Run Complete</h3>
               <p className="text-sm text-green-600 mt-1">
-                Successfully processed depreciation for {assets.length} asset(s)
+                Successfully processed depreciation for {processedCount} asset(s)
               </p>
             </div>
           </div>

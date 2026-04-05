@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -40,6 +40,7 @@ interface HotelFormData {
 
 export default function NewHotelPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -70,19 +71,27 @@ export default function NewHotelPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadDestinations();
-  }, []);
+  }, [company?.id]);
 
   const loadDestinations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      setDestinations(data || []);
+      const response = await fetch(`/api/destinations?company_id=${company.id}&is_active=true`, {
+        credentials: 'include',
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load destinations');
+      }
+
+      setDestinations(result.data || []);
     } catch (err) {
       console.error('Failed to load destinations:', err);
       toast.error('Failed to load destinations');
@@ -188,67 +197,33 @@ export default function NewHotelPage() {
         throw new Error('Hotel name is required');
       }
 
+      if (!company?.id) {
+        throw new Error('No company selected');
+      }
+
       // Create hotel record
-      const { data: hotelData, error: hotelError } = await supabase
-        .from('hotels')
-        .insert({
+      const hotelResponse = await fetch('/api/hotels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
           ...formData,
           destination_id: formData.destination_id || null,
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (hotelError) throw hotelError;
+      const hotelResult = await hotelResponse.json().catch(() => ({}));
+      if (!hotelResponse.ok) {
+        throw new Error(hotelResult.error || 'Failed to create hotel');
+      }
+      const hotelData = hotelResult.data;
 
       // Upload images if files are selected
       const uploadedImages: Array<{ image_url: string; is_primary: boolean; display_order: number }> = [];
       
       if (imageFiles.length > 0) {
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${hotelData.id}-${Date.now()}-${i}.${fileExt}`;
-          const filePath = `hotels/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('hotel-images')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            continue;
-          }
-
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('hotel-images')
-            .getPublicUrl(filePath);
-
-          uploadedImages.push({
-            image_url: publicUrl,
-            is_primary: i === primaryImageIndex,
-            display_order: i,
-          });
-        }
-
-        // Insert all images
-        if (uploadedImages.length > 0) {
-          const { error: imagesError } = await supabase
-            .from('hotel_images')
-            .insert(
-              uploadedImages.map((img) => ({
-                hotel_id: hotelData.id,
-                ...img,
-              }))
-            );
-
-          if (imagesError) {
-            console.error('Failed to save some images:', imagesError);
-          }
-        }
+        throw new Error('Hotel image file upload is not configured yet. Use image URLs for now.');
       }
 
       // Process URL images
@@ -258,19 +233,27 @@ export default function NewHotelPage() {
           const urlImages = validUrls.map((url, index) => {
             const actualIndex = uploadedImages.length + index;
             return {
-              hotel_id: hotelData.id,
               image_url: url.trim(),
               is_primary: actualIndex === primaryImageIndex,
               display_order: actualIndex,
             };
           });
 
-          const { error: urlImagesError } = await supabase
-            .from('hotel_images')
-            .insert(urlImages);
+          for (const image of urlImages) {
+            const imageResponse = await fetch('/api/hotel-images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                hotel_id: hotelData.id,
+                ...image,
+              }),
+            });
 
-          if (urlImagesError) {
-            console.error('Failed to save URL images:', urlImagesError);
+            if (!imageResponse.ok) {
+              const imageResult = await imageResponse.json().catch(() => ({}));
+              console.error('Failed to save URL image:', imageResult.error || 'Unknown error');
+            }
           }
         }
       }

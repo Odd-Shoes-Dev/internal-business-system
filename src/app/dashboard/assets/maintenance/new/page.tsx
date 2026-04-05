@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface Asset {
   id: string;
   name: string;
-  asset_tag: string;
+  asset_number: string;
   category_id: string;
 }
 
@@ -23,6 +23,7 @@ interface Employee {
 
 export default function NewAssetMaintenancePage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,32 +44,49 @@ export default function NewAssetMaintenancePage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadData();
-  }, []);
+  }, [company?.id]);
 
   const loadData = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
 
-      // Load assets
-      const { data: assetsData, error: assetsError } = await supabase
-        .from('assets')
-        .select('id, name, asset_tag, category_id')
-        .eq('status', 'active')
-        .order('name');
+      const assetsParams = new URLSearchParams({
+        company_id: company.id,
+        status: 'active',
+      });
+      const assetsResponse = await fetch(`/api/assets?${assetsParams.toString()}`, {
+        credentials: 'include',
+      });
+      if (!assetsResponse.ok) {
+        const data = await assetsResponse.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load assets');
+      }
 
-      if (assetsError) throw assetsError;
+      const assetsData = await assetsResponse.json();
       setAssets(assetsData || []);
 
-      // Load employees
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('employees')
-        .select('id, first_name, last_name, employee_number, department')
-        .eq('status', 'active')
-        .order('first_name');
+      const employeeParams = new URLSearchParams({
+        company_id: company.id,
+        status: 'active',
+      });
+      const employeesResponse = await fetch(`/api/employees?${employeeParams.toString()}`, {
+        credentials: 'include',
+      });
+      if (!employeesResponse.ok) {
+        const data = await employeesResponse.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load employees');
+      }
 
-      if (employeesError) throw employeesError;
-      setEmployees(employeesData || []);
+      const employeesPayload = await employeesResponse.json();
+      setEmployees(employeesPayload.data || []);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load data');
@@ -90,10 +108,16 @@ export default function NewAssetMaintenancePage() {
       return;
     }
 
+    if (!company?.id) {
+      toast.error('No company selected');
+      return;
+    }
+
     try {
       setSaving(true);
 
       const dataToSave = {
+        company_id: company.id,
         asset_id: formData.asset_id,
         maintenance_type: formData.maintenance_type,
         scheduled_date: formData.scheduled_date,
@@ -107,11 +131,17 @@ export default function NewAssetMaintenancePage() {
         next_maintenance_date: formData.next_maintenance_date || null,
       };
 
-      const { error } = await supabase
-        .from('asset_maintenance')
-        .insert(dataToSave);
+      const response = await fetch('/api/asset-maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(dataToSave),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to schedule maintenance');
+      }
 
       toast.success('Maintenance scheduled successfully');
       router.push('/dashboard/assets/maintenance');
@@ -175,7 +205,7 @@ export default function NewAssetMaintenancePage() {
                   <option value="">Select Asset</option>
                   {assets.map((asset) => (
                     <option key={asset.id} value={asset.id}>
-                      {asset.name} - {asset.asset_tag}
+                      {asset.name} - {asset.asset_number || 'No number'}
                     </option>
                   ))}
                 </select>

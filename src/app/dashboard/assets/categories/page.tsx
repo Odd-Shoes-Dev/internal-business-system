@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -20,6 +20,7 @@ interface Category {
 }
 
 export default function AssetCategoriesPage() {
+  const { company } = useCompany();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -32,17 +33,30 @@ export default function AssetCategoriesPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadCategories();
-  }, []);
+  }, [company?.id]);
 
   const loadCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('asset_categories')
-        .select('*')
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
+      setLoading(true);
+      const params = new URLSearchParams({ company_id: company.id });
+      const response = await fetch(`/api/asset-categories?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load categories');
+      }
+
+      const data = await response.json();
       setCategories(data || []);
     } catch (error) {
       console.error('Failed to load categories:', error);
@@ -56,7 +70,13 @@ export default function AssetCategoriesPage() {
     e.preventDefault();
 
     try {
+      if (!company?.id) {
+        toast.error('No company selected');
+        return;
+      }
+
       const categoryData = {
+        company_id: company.id,
         name: formData.name,
         description: formData.description || null,
         depreciation_rate: formData.depreciation_rate ? parseFloat(formData.depreciation_rate) : null,
@@ -64,19 +84,32 @@ export default function AssetCategoriesPage() {
       };
 
       if (editingCategory) {
-        const { error } = await supabase
-          .from('asset_categories')
-          .update(categoryData)
-          .eq('id', editingCategory.id);
+        const response = await fetch(`/api/asset-categories/${editingCategory.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(categoryData),
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to update category');
+        }
+
         toast.success('Category updated successfully');
       } else {
-        const { error } = await supabase
-          .from('asset_categories')
-          .insert(categoryData);
+        const response = await fetch('/api/asset-categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(categoryData),
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to create category');
+        }
+
         toast.success('Category created successfully');
       }
 
@@ -107,12 +140,15 @@ export default function AssetCategoriesPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('asset_categories')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/asset-categories/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete category');
+      }
 
       toast.success('Category deleted successfully');
       loadCategories();

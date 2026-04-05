@@ -2,24 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
   UserIcon,
   ArrowPathIcon,
-  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface Assignment {
   id: string;
-  assigned_date: string;
+  assignment_date: string;
   return_date: string | null;
   status: string;
   condition_at_assignment: string | null;
   condition_at_return: string | null;
-  fixed_assets: {
-    asset_name: string;
+  assets: {
+    name: string;
     asset_tag: string | null;
   } | null;
   employees: {
@@ -29,35 +28,43 @@ interface Assignment {
 }
 
 export default function AssetAssignmentsPage() {
+  const { company } = useCompany();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('assigned');
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadAssignments();
-  }, [statusFilter]);
+  }, [statusFilter, company?.id]);
 
   const loadAssignments = async () => {
     try {
-      setLoading(true);
-
-      let query = supabase
-        .from('asset_assignments')
-        .select(`
-          *,
-          fixed_assets (asset_name, asset_tag),
-          employees (first_name, last_name)
-        `)
-        .order('assigned_date', { ascending: false });
-
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
+      if (!company?.id) {
+        return;
       }
 
-      const { data, error } = await query;
+      setLoading(true);
 
-      if (error) throw error;
+      const params = new URLSearchParams({ company_id: company.id });
+
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+
+      const response = await fetch(`/api/asset-assignments?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load assignments');
+      }
+
+      const data = await response.json();
       setAssignments(data || []);
     } catch (error) {
       console.error('Failed to load assignments:', error);
@@ -74,16 +81,20 @@ export default function AssetAssignmentsPage() {
       const condition = prompt('Enter asset condition at return (good/fair/poor/damaged):');
       if (!condition) return;
 
-      const { error } = await supabase
-        .from('asset_assignments')
-        .update({
-          status: 'returned',
-          return_date: new Date().toISOString(),
+      const response = await fetch(`/api/asset-assignments/${assignmentId}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          return_date: new Date().toISOString().split('T')[0],
           condition_at_return: condition,
-        })
-        .eq('id', assignmentId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to return asset');
+      }
 
       toast.success('Asset marked as returned');
       loadAssignments();
@@ -242,9 +253,9 @@ export default function AssetAssignmentsPage() {
                     <tr key={assignment.id}>
                       <td>
                         <div>
-                          <div className="font-medium">{assignment.fixed_assets?.asset_name}</div>
-                          {assignment.fixed_assets?.asset_tag && (
-                            <div className="text-sm text-gray-500">{assignment.fixed_assets.asset_tag}</div>
+                          <div className="font-medium">{assignment.assets?.name}</div>
+                          {assignment.assets?.asset_tag && (
+                            <div className="text-sm text-gray-500">{assignment.assets.asset_tag}</div>
                           )}
                         </div>
                       </td>
@@ -253,7 +264,7 @@ export default function AssetAssignmentsPage() {
                           ? `${assignment.employees.first_name} ${assignment.employees.last_name}`
                           : 'N/A'}
                       </td>
-                      <td>{new Date(assignment.assigned_date).toLocaleDateString()}</td>
+                      <td>{new Date(assignment.assignment_date).toLocaleDateString()}</td>
                       <td>
                         {assignment.return_date
                           ? new Date(assignment.return_date).toLocaleDateString()

@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
 
     const status = searchParams.get('status');
     const customerId = searchParams.get('customer_id');
+    const documentType = searchParams.get('document_type');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -50,6 +51,11 @@ export async function GET(request: NextRequest) {
     if (customerId) {
       params.push(customerId);
       where.push(`i.customer_id = $${params.length}`);
+    }
+
+    if (documentType) {
+      params.push(documentType);
+      where.push(`i.document_type = $${params.length}`);
     }
 
     if (search) {

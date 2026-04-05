@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -36,31 +35,17 @@ export default function HotelDetailPage() {
 
   const fetchHotel = async () => {
     try {
-      const [hotelRes, imagesRes] = await Promise.all([
-        supabase
-          .from('hotels')
-          .select(`
-            *,
-            destination:destinations(*)
-          `)
-          .eq('id', params.id)
-          .single(),
-        supabase
-          .from('hotel_images')
-          .select('*')
-          .eq('hotel_id', params.id)
-          .order('display_order')
-      ]);
+      const response = await fetch(`/api/hotels/${params.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (hotelRes.error) throw hotelRes.error;
-      setHotel(hotelRes.data);
-      
-      console.log('Fetched images:', imagesRes.data);
-      if (imagesRes.error) {
-        console.error('Images fetch error:', imagesRes.error);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch hotel');
       }
-      
-      setImages(imagesRes.data || []);
+
+      setHotel(result.data || null);
+      setImages(result.data?.images || []);
     } catch (error) {
       console.error('Failed to fetch hotel:', error);
       toast.error('Failed to load hotel');
@@ -74,12 +59,17 @@ export default function HotelDetailPage() {
     if (!hotel) return;
 
     try {
-      const { error } = await supabase
-        .from('hotels')
-        .update({ is_active: !hotel.is_active })
-        .eq('id', hotel.id);
+      const response = await fetch(`/api/hotels/${hotel.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_active: !hotel.is_active }),
+      });
 
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update hotel');
+      }
 
       setHotel({ ...hotel, is_active: !hotel.is_active });
       toast.success(hotel.is_active ? 'Hotel deactivated' : 'Hotel activated');
@@ -97,12 +87,15 @@ export default function HotelDetailPage() {
 
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from('hotels')
-        .delete()
-        .eq('id', hotel.id);
+      const response = await fetch(`/api/hotels/${hotel.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete hotel');
+      }
 
       toast.success('Hotel deleted');
       router.push('/dashboard/hotels');

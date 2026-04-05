@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { PlusIcon, MagnifyingGlassIcon, ReceiptPercentIcon, SparklesIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import type { Invoice, Customer } from '@/types/database';
 
 export default function ReceiptsPage() {
+  const { company } = useCompany();
   const [receipts, setReceipts] = useState<(Invoice & { customers: Customer; related_invoice_id?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,38 +20,37 @@ export default function ReceiptsPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadReceipts();
     loadStats();
-  }, []);
+  }, [company?.id]);
 
   const loadReceipts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('*, customers(*)')
-        .eq('document_type', 'receipt')
-        .order('created_at', { ascending: false });
+      if (!company?.id) {
+        return;
+      }
 
-      if (error) throw error;
-      
-      // Fetch related invoice IDs for receipts that have reference numbers
-      const receiptsWithInvoiceIds = await Promise.all(
-        (data || []).map(async (receipt) => {
-          const refNumber = (receipt as any).reference_invoice_number;
-          if (refNumber) {
-            const { data: invoiceData } = await supabase
-              .from('invoices')
-              .select('id')
-              .eq('invoice_number', refNumber)
-              .eq('document_type', 'invoice')
-              .single();
-            return { ...receipt, related_invoice_id: invoiceData?.id };
-          }
-          return receipt;
-        })
-      );
-      
-      setReceipts(receiptsWithInvoiceIds || []);
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        company_id: company.id,
+        document_type: 'receipt',
+        limit: '200',
+      });
+
+      const response = await fetch(`/api/invoices?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load receipts');
+      }
+
+      const payload = await response.json();
+      const data = payload.data || [];
+      setReceipts(data);
     } catch (error) {
       console.error('Failed to load receipts:', error);
     } finally {
@@ -60,7 +60,13 @@ export default function ReceiptsPage() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/receipts/stats');
+      if (!company?.id) {
+        return;
+      }
+
+      const response = await fetch(`/api/receipts/stats?company_id=${encodeURIComponent(company.id)}`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);

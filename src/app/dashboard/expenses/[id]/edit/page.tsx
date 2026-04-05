@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   CreditCardIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 
 interface Vendor {
   id: string;
@@ -42,6 +42,7 @@ interface Expense {
 export default function EditExpensePage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +69,10 @@ export default function EditExpensePage() {
   });
 
   useEffect(() => {
+    if (!company?.id || !params.id) {
+      return;
+    }
+
     const loadData = async () => {
       await Promise.all([
         fetchVendors(),
@@ -77,11 +82,15 @@ export default function EditExpensePage() {
       await loadExpense();
     };
     loadData();
-  }, [params.id]);
+  }, [params.id, company?.id]);
 
   const fetchVendors = async () => {
+    if (!company?.id) return;
+
     try {
-      const response = await fetch('/api/vendors?active=true');
+      const response = await fetch(`/api/vendors?company_id=${company.id}&active=true`, {
+        credentials: 'include',
+      });
       const result = await response.json();
       setVendors(result.data || []);
     } catch (error) {
@@ -91,8 +100,12 @@ export default function EditExpensePage() {
   };
 
   const fetchExpenseAccounts = async () => {
+    if (!company?.id) return;
+
     try {
-      const response = await fetch('/api/accounts?type=expense&active=true');
+      const response = await fetch(`/api/accounts?company_id=${company.id}&type=expense&active=true`, {
+        credentials: 'include',
+      });
       const result = await response.json();
       setExpenseAccounts(result.data || []);
     } catch (error) {
@@ -102,8 +115,12 @@ export default function EditExpensePage() {
   };
 
   const fetchPaymentAccounts = async () => {
+    if (!company?.id) return;
+
     try {
-      const response = await fetch('/api/accounts?type=asset&active=true');
+      const response = await fetch(`/api/accounts?company_id=${company.id}&type=asset&active=true`, {
+        credentials: 'include',
+      });
       const result = await response.json();
       setPaymentAccounts(result.data || []);
     } catch (error) {
@@ -116,13 +133,16 @@ export default function EditExpensePage() {
     try {
       setLoading(true);
 
-      const { data, error: expenseError } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/expenses/${params.id}`, {
+        credentials: 'include',
+      });
 
-      if (expenseError) throw expenseError;
+      if (!response.ok) {
+        throw new Error('Failed to load expense');
+      }
+
+      const result = await response.json();
+      const data = result.data;
 
       setExpense(data);
       setFormData({
@@ -169,9 +189,11 @@ export default function EditExpensePage() {
     try {
       const total = formData.amount + formData.tax_amount;
 
-      const { error: updateError } = await supabase
-        .from('expenses')
-        .update({
+      const response = await fetch(`/api/expenses/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           vendor_id: formData.vendor_id || null,
           payee: formData.payee || null,
           expense_date: formData.expense_date,
@@ -182,16 +204,18 @@ export default function EditExpensePage() {
           description: formData.description,
           amount: formData.amount,
           tax_amount: formData.tax_amount,
-          total: total,
+          total,
           payment_method: formData.payment_method,
           reference_number: formData.reference_number || null,
           is_reimbursable: formData.is_reimbursable,
           is_billable: formData.is_billable,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+        }),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update expense');
+      }
 
       router.push(`/dashboard/expenses/${params.id}`);
     } catch (err) {

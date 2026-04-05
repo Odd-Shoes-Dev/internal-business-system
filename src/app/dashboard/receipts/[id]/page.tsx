@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
@@ -33,19 +32,31 @@ export default function ReceiptDetailPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     fetchReceipt();
-  }, [params.id]);
+  }, [params.id, company?.id]);
 
   const fetchReceipt = async () => {
     try {
-      const { data: receiptData, error: receiptError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', params.id)
-        .eq('document_type', 'receipt')
-        .single();
+      if (!company?.id) {
+        return;
+      }
 
-      if (receiptError) throw receiptError;
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load receipt');
+      }
+
+      const payload = await response.json();
+      const receiptData = payload?.data;
+
+      if (!receiptData || receiptData.document_type !== 'receipt') {
+        throw new Error('Receipt not found');
+      }
       
       // Ensure numeric fields are properly parsed
       const parsedReceipt = {
@@ -59,34 +70,27 @@ export default function ReceiptDetailPage() {
       };
       
       setReceipt(parsedReceipt);
-
-      // Fetch customer
-      const { data: customerData } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', receiptData.customer_id)
-        .single();
-      setCustomer(customerData);
-
-      // Fetch line items
-      const { data: itemsData } = await supabase
-        .from('invoice_lines')
-        .select('*')
-        .eq('invoice_id', params.id)
-        .order('line_number');
-      setLineItems(itemsData || []);
+      setCustomer(receiptData.customers || null);
+      setLineItems(receiptData.invoice_lines || []);
 
       // Fetch related invoice ID if reference exists
       const refNumber = (receiptData as any).reference_invoice_number;
       if (refNumber) {
-        const { data: invoiceData } = await supabase
-          .from('invoices')
-          .select('id')
-          .eq('invoice_number', refNumber)
-          .eq('document_type', 'invoice')
-          .single();
-        if (invoiceData) {
-          setRelatedInvoiceId(invoiceData.id);
+        const query = new URLSearchParams({
+          company_id: company.id,
+          document_type: 'invoice',
+          search: refNumber,
+          limit: '1',
+        });
+        const invoiceResponse = await fetch(`/api/invoices?${query.toString()}`, {
+          credentials: 'include',
+        });
+        if (invoiceResponse.ok) {
+          const invoicePayload = await invoiceResponse.json();
+          const invoice = invoicePayload?.data?.[0];
+          if (invoice?.invoice_number === refNumber) {
+            setRelatedInvoiceId(invoice.id);
+          }
         }
       }
 
@@ -466,12 +470,15 @@ export default function ReceiptDetailPage() {
     if (!confirm('Are you sure you want to delete this receipt?')) return;
 
     try {
-      const { error } = await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', params.id);
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to delete receipt');
+      }
 
       toast.success('Receipt deleted successfully');
       router.push('/dashboard/receipts');

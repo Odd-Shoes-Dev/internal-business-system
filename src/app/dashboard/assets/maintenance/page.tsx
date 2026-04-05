@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
   WrenchIcon,
-  CalendarIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -15,49 +14,54 @@ interface Maintenance {
   id: string;
   maintenance_type: string;
   scheduled_date: string;
-  completed_date: string | null;
+  performed_date: string | null;
   status: string;
-  cost: number;
+  cost: number | null;
   next_maintenance_date: string | null;
-  fixed_assets: {
-    asset_name: string;
+  assets: {
+    name: string;
     asset_tag: string | null;
   } | null;
-  vendors: {
-    name: string;
-    company_name: string | null;
-  } | null;
+  performed_by_vendor: string | null;
 }
 
 export default function AssetMaintenancePage() {
+  const { company } = useCompany();
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('scheduled');
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadMaintenances();
-  }, [statusFilter]);
+  }, [statusFilter, company?.id]);
 
   const loadMaintenances = async () => {
     try {
-      setLoading(true);
-
-      let query = supabase
-        .from('asset_maintenance')
-        .select(`
-          *,
-          fixed_assets (asset_name, asset_tag),
-          vendors (name, company_name)
-        `)
-        .order('scheduled_date', { ascending: true });
-
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
+      if (!company?.id) {
+        return;
       }
 
-      const { data, error } = await query;
+      setLoading(true);
 
-      if (error) throw error;
+      const params = new URLSearchParams({ company_id: company.id });
+
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+
+      const response = await fetch(`/api/asset-maintenance?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load maintenances');
+      }
+
+      const data = await response.json();
       setMaintenances(data || []);
     } catch (error) {
       console.error('Failed to load maintenances:', error);
@@ -74,16 +78,21 @@ export default function AssetMaintenancePage() {
       const cost = prompt('Enter actual cost:');
       if (cost === null) return;
 
-      const { error } = await supabase
-        .from('asset_maintenance')
-        .update({
+      const response = await fetch(`/api/asset-maintenance/${maintenanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           status: 'completed',
-          completed_date: new Date().toISOString(),
+          performed_date: new Date().toISOString().split('T')[0],
           cost: parseFloat(cost) || 0,
-        })
-        .eq('id', maintenanceId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to complete maintenance');
+      }
 
       toast.success('Maintenance marked as completed');
       loadMaintenances();
@@ -185,7 +194,7 @@ export default function AssetMaintenancePage() {
               }).format(
                 maintenances
                   .filter(m => m.status === 'completed')
-                  .reduce((sum, m) => sum + m.cost, 0)
+                  .reduce((sum, m) => sum + (m.cost || 0), 0)
               )}
             </div>
           </div>
@@ -276,9 +285,9 @@ export default function AssetMaintenancePage() {
                       <tr key={maintenance.id} className={isOverdue ? 'bg-red-50' : ''}>
                         <td>
                           <div>
-                            <div className="font-medium">{maintenance.fixed_assets?.asset_name}</div>
-                            {maintenance.fixed_assets?.asset_tag && (
-                              <div className="text-sm text-gray-500">{maintenance.fixed_assets.asset_tag}</div>
+                            <div className="font-medium">{maintenance.assets?.name}</div>
+                            {maintenance.assets?.asset_tag && (
+                              <div className="text-sm text-gray-500">{maintenance.assets.asset_tag}</div>
                             )}
                           </div>
                         </td>
@@ -294,18 +303,18 @@ export default function AssetMaintenancePage() {
                           </div>
                         </td>
                         <td>
-                          {maintenance.completed_date
-                            ? new Date(maintenance.completed_date).toLocaleDateString()
+                          {maintenance.performed_date
+                            ? new Date(maintenance.performed_date).toLocaleDateString()
                             : '-'}
                         </td>
                         <td>
-                          {maintenance.vendors?.company_name || maintenance.vendors?.name || 'N/A'}
+                          {maintenance.performed_by_vendor || 'N/A'}
                         </td>
                         <td>
                           {new Intl.NumberFormat('en-US', {
                             style: 'currency',
                             currency: 'USD',
-                          }).format(maintenance.cost)}
+                          }).format(maintenance.cost || 0)}
                         </td>
                         <td>
                           {maintenance.next_maintenance_date

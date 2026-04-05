@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const vendorId = searchParams.get('vendor_id');
     const accountId = searchParams.get('account_id');
+    const department = searchParams.get('department');
+    const search = searchParams.get('search');
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -48,6 +50,14 @@ export async function GET(request: NextRequest) {
     if (accountId) {
       params.push(accountId);
       where.push(`e.expense_account_id = $${params.length}`);
+    }
+    if (department && department !== 'all') {
+      params.push(department);
+      where.push(`e.department = $${params.length}`);
+    }
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(e.expense_number ILIKE $${params.length} OR e.description ILIKE $${params.length} OR e.reference ILIKE $${params.length})`);
     }
     if (startDate) {
       params.push(startDate);

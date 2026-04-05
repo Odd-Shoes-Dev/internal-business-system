@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -44,31 +44,37 @@ export default async function MaintenanceDetailPage({ params }: { params: Promis
 
 function MaintenanceDetailPageClient({ maintenanceId }: { maintenanceId: string }) {
   const router = useRouter();
+  const { company } = useCompany();
   const [maintenance, setMaintenance] = useState<AssetMaintenance | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadMaintenance();
-  }, [maintenanceId]);
+  }, [maintenanceId, company?.id]);
 
   const loadMaintenance = async () => {
     try {
+      if (!company?.id) {
+        return;
+      }
+
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('asset_maintenance')
-        .select(
-          `
-          *,
-          assets (id, name, asset_tag),
-          employees:performed_by_employee_id (first_name, last_name, employee_number)
-        `
-        )
-        .eq('id', maintenanceId)
-        .single();
+      const params = new URLSearchParams({ company_id: company.id });
+      const response = await fetch(`/api/asset-maintenance/${maintenanceId}?${params.toString()}`, {
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load maintenance record');
+      }
+
+      const data = await response.json();
       setMaintenance(data);
     } catch (error) {
       console.error('Failed to load maintenance:', error);
@@ -84,15 +90,20 @@ function MaintenanceDetailPageClient({ maintenanceId }: { maintenanceId: string 
     try {
       setUpdating(true);
 
-      const { error } = await supabase
-        .from('asset_maintenance')
-        .update({
+      const response = await fetch(`/api/asset-maintenance/${maintenanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           status: 'completed',
           performed_date: new Date().toISOString().split('T')[0],
-        })
-        .eq('id', maintenanceId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update maintenance');
+      }
 
       toast.success('Maintenance marked as completed');
       loadMaintenance();

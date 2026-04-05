@@ -18,7 +18,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface Expense {
@@ -44,7 +43,7 @@ interface Expense {
   is_billable: boolean;
   status: string;
   created_at: string;
-  vendors?: {
+  vendor?: {
     name: string;
     email: string;
     company_name: string;
@@ -78,31 +77,16 @@ export default function ExpenseDetailPage() {
     try {
       setLoading(true);
 
-      // Fetch expense with related data
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          vendors (
-            name,
-            email,
-            company_name,
-            phone
-          ),
-          expense_account:expense_account_id (
-            name,
-            code
-          ),
-          payment_account:payment_account_id (
-            name,
-            code
-          )
-        `)
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/expenses/${params.id}`, {
+        credentials: 'include',
+      });
 
-      if (error) throw error;
-      setExpense(data);
+      if (!response.ok) {
+        throw new Error('Failed to load expense');
+      }
+
+      const result = await response.json();
+      setExpense(result.data || null);
     } catch (error) {
       console.error('Failed to load expense:', error);
     } finally {
@@ -468,12 +452,15 @@ export default function ExpenseDetailPage() {
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', params.id);
+      const response = await fetch(`/api/expenses/${params.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete expense');
+      }
 
       router.push('/dashboard/expenses');
     } catch (error: any) {
@@ -611,13 +598,13 @@ export default function ExpenseDetailPage() {
             </h3>
             <div className="bg-gray-50 rounded-lg p-3 md:p-4">
               <p className="text-sm md:text-base font-medium text-gray-900">
-                {expense.vendors?.company_name || expense.vendors?.name || expense.payee || 'N/A'}
+                {expense.vendor?.company_name || expense.vendor?.name || expense.payee || 'N/A'}
               </p>
-              {expense.vendors?.email && (
-                <p className="text-xs md:text-sm text-gray-600 mt-1">{expense.vendors.email}</p>
+              {expense.vendor?.email && (
+                <p className="text-xs md:text-sm text-gray-600 mt-1">{expense.vendor.email}</p>
               )}
-              {expense.vendors?.phone && (
-                <p className="text-xs md:text-sm text-gray-600">{expense.vendors.phone}</p>
+              {expense.vendor?.phone && (
+                <p className="text-xs md:text-sm text-gray-600">{expense.vendor.phone}</p>
               )}
             </div>
           </div>

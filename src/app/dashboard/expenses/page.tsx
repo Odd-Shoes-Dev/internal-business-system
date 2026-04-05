@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
@@ -53,37 +52,36 @@ export default function ExpensesPage() {
     
     try {
       setLoading(true);
-      let query = supabase
-        .from('expenses')
-        .select(`
-          *,
-          vendors (name),
-          accounts:expense_account_id (name, code)
-        `, { count: 'exact' })
-        .eq('company_id', company.id)
-        .order('expense_date', { ascending: false });
+
+      const params = new URLSearchParams({
+        company_id: company.id,
+        page: String(currentPage),
+        limit: String(pageSize),
+      });
 
       if (searchQuery) {
-        query = query.or(`expense_number.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        params.append('search', searchQuery);
       }
 
       if (departmentFilter && departmentFilter !== 'all') {
-        query = query.eq('department', departmentFilter);
+        params.append('department', departmentFilter);
       }
 
       if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        params.append('status', statusFilter);
       }
 
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+      const response = await fetch(`/api/expenses?${params.toString()}`, {
+        credentials: 'include',
+      });
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to load expenses');
+      }
 
-      setExpenses(data || []);
-      setTotalCount(count || 0);
+      const result = await response.json();
+      setExpenses(result.data || []);
+      setTotalCount(result.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to load expenses:', error);
     } finally {
@@ -92,8 +90,14 @@ export default function ExpensesPage() {
   };
 
   const loadStats = async () => {
+    if (!company?.id) {
+      return;
+    }
+
     try {
-      const response = await fetch('/api/expenses/stats');
+      const response = await fetch(`/api/expenses/stats?company_id=${company.id}`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setStats(data);

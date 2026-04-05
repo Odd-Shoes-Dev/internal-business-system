@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import {
@@ -40,25 +39,27 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+
+      const response = await fetch('/api/profile/me', {
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
         router.push('/login');
         return;
       }
 
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('full_name')
-        .eq('user_id', user.id)
-        .single();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load profile');
+      }
+
+      const payload = await response.json();
+      const profile = payload.data;
 
       profileForm.reset({
         full_name: profile?.full_name || '',
-        email: user.email || '',
+        email: profile?.email || '',
       });
     } catch (error) {
       console.error('Failed to load profile:', error);
@@ -71,31 +72,22 @@ export default function ProfilePage() {
   const onSaveProfile = async (data: ProfileFormData) => {
     setSavingProfile(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Update user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({ full_name: data.full_name })
-        .eq('user_id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Update email if changed
-      if (data.email !== user.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
+      const response = await fetch('/api/profile/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          full_name: data.full_name,
           email: data.email,
-        });
+        }),
+      });
 
-        if (emailError) throw emailError;
-        
-        toast.success('Profile updated! Please check your new email for confirmation.');
-      } else {
-        toast.success('Profile updated successfully!');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to update profile');
       }
 
+      toast.success('Profile updated successfully!');
       await loadProfile();
     } catch (error: any) {
       console.error('Profile update error:', error);
@@ -118,12 +110,19 @@ export default function ProfilePage() {
 
     setChangingPassword(true);
     try {
-      // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: data.new_password,
+      const response = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          new_password: data.new_password,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to change password');
+      }
 
       toast.success('Password changed successfully!');
       passwordForm.reset();

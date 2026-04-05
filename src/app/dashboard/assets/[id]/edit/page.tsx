@@ -7,7 +7,6 @@ import {
   ArrowLeftIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 
 interface FixedAsset {
   id: string;
@@ -57,13 +56,16 @@ export default function EditAssetPage() {
     try {
       setLoading(true);
 
-      const { data, error: assetError } = await supabase
-        .from('fixed_assets')
-        .select('*')
-        .eq('id', params.id)
-        .single();
+      const response = await fetch(`/api/assets/${params.id}`, {
+        credentials: 'include',
+      });
 
-      if (assetError) throw assetError;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load asset');
+      }
+
+      const data = await response.json();
 
       setAsset(data);
       setFormData({

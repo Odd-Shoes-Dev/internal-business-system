@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { useCompany } from '@/contexts/company-context';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -67,13 +66,17 @@ export default function SettingsPage() {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', company.id)
-        .single();
+      const response = await fetch(`/api/companies/me?company_id=${encodeURIComponent(company.id)}`, {
+        credentials: 'include',
+      });
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to load settings');
+      }
+
+      const payload = await response.json();
+      const data = (payload.companies || []).find((c: any) => c.id === company.id);
 
       if (data) {
         setSettings(data as any);
@@ -108,9 +111,12 @@ export default function SettingsPage() {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('companies')
-        .update({
+      const response = await fetch('/api/companies/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
           name: data.name,
           email: data.email,
           phone: data.phone,
@@ -120,12 +126,18 @@ export default function SettingsPage() {
           tax_id: data.tax_id,
           registration_number: data.registration_number,
           website: data.website,
-        })
-        .eq('id', company.id);
+          logo_url: data.logo_url || logoPreview || null,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to save settings');
+      }
+
       toast.success('Company settings saved!');
       loadSettings();
+      await refreshCompany();
     } catch (error: any) {
       toast.error(error.message || 'Failed to save settings');
     } finally {
@@ -150,32 +162,30 @@ export default function SettingsPage() {
 
     setUploadingLogo(true);
     try {
-      // Create file name with company ID
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${company.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const publicUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(file);
+      });
 
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('company-logos')
-        .upload(filePath, file, { upsert: true });
+      const response = await fetch('/api/companies/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
+          logo_url: publicUrl,
+        }),
+      });
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('company-logos')
-        .getPublicUrl(filePath);
-
-      // Update company record
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({ logo_url: publicUrl })
-        .eq('id', company.id);
-
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to upload logo');
+      }
 
       setLogoPreview(publicUrl);
+      companyForm.setValue('logo_url', publicUrl);
       toast.success('Logo uploaded successfully!');
       
       // Refresh company context to update the logo everywhere
@@ -194,16 +204,36 @@ export default function SettingsPage() {
     
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('companies')
-        .update({
-          fiscal_year_start: data.fiscal_year_start_month.toString().padStart(2, '0') + '-01',
-        })
-        .eq('id', company.id);
+      const fiscalYearStart = `${data.fiscal_year_start_month.toString().padStart(2, '0')}-01`;
+      const response = await fetch('/api/companies/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
+          fiscal_year_start: fiscalYearStart,
+          default_payment_terms: data.default_payment_terms,
+          sales_tax_rate: data.sales_tax_rate,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to save financial settings');
+      }
+
+      setSettings((prev) => (prev
+        ? {
+            ...prev,
+            fiscal_year_start: fiscalYearStart,
+            default_payment_terms: data.default_payment_terms,
+            sales_tax_rate: data.sales_tax_rate,
+          } as CompanySettings
+        : prev));
+
       toast.success('Financial settings saved!');
-      loadSettings();
+      await loadSettings();
+      await refreshCompany();
     } catch (error: any) {
       toast.error(error.message || 'Failed to save settings');
     } finally {

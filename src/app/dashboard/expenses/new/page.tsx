@@ -9,7 +9,6 @@ import {
   CreditCardIcon,
   PaperClipIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/lib/supabase/client';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
 
@@ -120,33 +119,11 @@ export default function NewExpensePage() {
     setError(null);
 
     try {
-      let receiptUrl = null;
+      let receiptUrl: string | null = null;
 
-      // Upload attachment if exists
+      // Receipt uploads are not yet configured in provider mode.
       if (attachments.length > 0) {
-        const file = attachments[0]; // Take the first file
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `expense-receipts/${fileName}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('receipts')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error('Failed to upload receipt');
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('receipts')
-          .getPublicUrl(filePath);
-
-        receiptUrl = publicUrl;
+        throw new Error('Receipt upload is not configured yet. Please save expense without attachment for now.');
       }
 
       // Prepare the payload
@@ -171,6 +148,7 @@ export default function NewExpensePage() {
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
