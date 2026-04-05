@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -41,6 +41,7 @@ interface HotelFormData {
 export default function EditHotelPage() {
   const router = useRouter();
   const params = useParams();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -73,37 +74,39 @@ export default function EditHotelPage() {
   });
 
   useEffect(() => {
+    if (!company?.id) {
+      return;
+    }
     loadData();
-  }, [params.id]);
+  }, [params.id, company?.id]);
 
   const loadData = async () => {
     try {
-      // Load destinations
-      const { data: destData, error: destError } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      if (!company?.id) {
+        return;
+      }
 
-      if (destError) throw destError;
-      setDestinations(destData || []);
-
-      // Load hotel and images
-      const [hotelRes, imagesRes] = await Promise.all([
-        supabase
-          .from('hotels')
-          .select('*')
-          .eq('id', params.id)
-          .single(),
-        supabase
-          .from('hotel_images')
-          .select('*')
-          .eq('hotel_id', params.id)
-          .order('display_order')
+      const [destRes, hotelRes] = await Promise.all([
+        fetch(`/api/destinations?company_id=${company.id}&is_active=true`, {
+          credentials: 'include',
+        }),
+        fetch(`/api/hotels/${params.id}`, {
+          credentials: 'include',
+        }),
       ]);
 
-      if (hotelRes.error) throw hotelRes.error;
-      const hotelData = hotelRes.data;
+      const destResult = await destRes.json().catch(() => ({}));
+      if (!destRes.ok) {
+        throw new Error(destResult.error || 'Failed to load destinations');
+      }
+      setDestinations(destResult.data || []);
+
+      const hotelResult = await hotelRes.json().catch(() => ({}));
+      if (!hotelRes.ok) {
+        throw new Error(hotelResult.error || 'Failed to load hotel');
+      }
+
+      const hotelData = hotelResult.data;
 
       setFormData({
         name: hotelData.name || '',
@@ -126,9 +129,10 @@ export default function EditHotelPage() {
       });
 
       // Load existing images
-      if (imagesRes.data && imagesRes.data.length > 0) {
-        setExistingImages(imagesRes.data);
-        const primaryIndex = imagesRes.data.findIndex(img => img.is_primary);
+      const images = hotelData.images || [];
+      if (images.length > 0) {
+        setExistingImages(images);
+        const primaryIndex = images.findIndex((img: any) => img.is_primary);
         if (primaryIndex >= 0) setPrimaryImageIndex(primaryIndex);
       }
     } catch (err) {
@@ -239,88 +243,65 @@ export default function EditHotelPage() {
         throw new Error('Hotel name is required');
       }
 
-      // Delete removed images
-      for (const imageId of deletedImageIds) {
-        await supabase
-          .from('hotel_images')
-          .delete()
-          .eq('id', imageId);
+      if (imageFiles.length > 0) {
+        throw new Error('Hotel image file upload is not configured yet. Use image URLs for now.');
       }
 
-      // Upload new images
-      const newImageUrls: string[] = [];
-      for (const file of imageFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `hotels/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('hotel-images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('hotel-images')
-          .getPublicUrl(filePath);
-
-        newImageUrls.push(publicUrl);
+      // Delete removed images
+      for (const imageId of deletedImageIds) {
+        await fetch(`/api/hotel-images/${imageId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
       }
 
       // Update hotel
-      const { error: updateError } = await supabase
-        .from('hotels')
-        .update({
+      const updateResponse = await fetch(`/api/hotels/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           ...formData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+        }),
+      });
 
-      if (updateError) throw updateError;
+      const updateResult = await updateResponse.json().catch(() => ({}));
+      if (!updateResponse.ok) {
+        throw new Error(updateResult.error || 'Failed to update hotel');
+      }
 
       // Update existing images primary status
       for (let i = 0; i < existingImages.length; i++) {
         const isPrimary = i === primaryImageIndex;
-        await supabase
-          .from('hotel_images')
-          .update({ is_primary: isPrimary })
-          .eq('id', existingImages[i].id);
-      }
-
-      // Insert new images from files
-      for (let i = 0; i < newImageUrls.length; i++) {
-        const isPrimary = (existingImages.length + i) === primaryImageIndex;
-        await supabase
-          .from('hotel_images')
-          .insert({
-            hotel_id: params.id,
-            image_url: newImageUrls[i],
+        await fetch(`/api/hotel-images/${existingImages[i].id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
             is_primary: isPrimary,
-            display_order: existingImages.length + i + 1
-          });
+            display_order: i,
+          }),
+        });
       }
 
       // Insert URL images
       if (imageUrls.length > 0) {
         const validUrls = imageUrls.filter(url => url.trim() !== '');
         if (validUrls.length > 0) {
-          const baseIndex = existingImages.length + newImageUrls.length;
+          const baseIndex = existingImages.length;
           for (let i = 0; i < validUrls.length; i++) {
             const isPrimary = (baseIndex + i) === primaryImageIndex;
-            await supabase
-              .from('hotel_images')
-              .insert({
+            await fetch('/api/hotel-images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
                 hotel_id: params.id,
                 image_url: validUrls[i].trim(),
                 is_primary: isPrimary,
-                display_order: baseIndex + i + 1
-              });
+                display_order: baseIndex + i,
+              }),
+            });
           }
         }
       }
