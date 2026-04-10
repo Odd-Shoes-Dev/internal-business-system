@@ -16,12 +16,25 @@ export async function GET(request: NextRequest) {
     if (accessError) return accessError;
 
     // Get enabled modules to filter data appropriately
-    const enabledModules = await db.query<{ module_id: string }>(
-      'SELECT module_id FROM subscription_modules WHERE company_id = $1 AND is_active = TRUE',
-      [companyId]
-    );
-
-    const moduleIds = enabledModules.rows?.map((m) => m.module_id) || [];
+    // subscription_modules may not exist yet — fall back to company_modules
+    let moduleIds: string[] = [];
+    try {
+      const enabledModules = await db.query<{ module_id: string }>(
+        'SELECT module_id FROM subscription_modules WHERE company_id = $1 AND is_active = TRUE',
+        [companyId]
+      );
+      moduleIds = enabledModules.rows?.map((m) => m.module_id) || [];
+    } catch {
+      try {
+        const fallback = await db.query<{ module_id: string }>(
+          'SELECT module_id FROM company_modules WHERE company_id = $1 AND is_active = TRUE',
+          [companyId]
+        );
+        moduleIds = fallback.rows?.map((m) => m.module_id) || [];
+      } catch {
+        moduleIds = [];
+      }
+    }
 
     // Fetch all financial data - FILTERED BY COMPANY
     const [invoices, bills, expenses, bankTransactions] = await Promise.all([

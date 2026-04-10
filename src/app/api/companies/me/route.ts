@@ -123,8 +123,6 @@ export async function PUT(request: NextRequest) {
            website = COALESCE($10, website),
            logo_url = COALESCE($11, logo_url),
            fiscal_year_start = COALESCE($12::text, fiscal_year_start),
-           default_payment_terms = COALESCE($13, default_payment_terms),
-           sales_tax_rate = COALESCE($14, sales_tax_rate),
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -141,10 +139,24 @@ export async function PUT(request: NextRequest) {
         website || null,
         logo_url || null,
         fiscal_year_start || null,
-        typeof default_payment_terms === 'number' ? default_payment_terms : null,
-        typeof sales_tax_rate === 'number' ? sales_tax_rate : null,
       ]
     );
+
+    // Also update default_payment_terms and sales_tax_rate in company_settings if provided
+    if (typeof default_payment_terms === 'number' || typeof sales_tax_rate === 'number') {
+      await db.query(
+        `UPDATE company_settings
+         SET default_payment_terms = COALESCE($2, default_payment_terms),
+             sales_tax_rate = COALESCE($3, sales_tax_rate),
+             updated_at = NOW()
+         WHERE company_id = $1`,
+        [
+          companyId,
+          typeof default_payment_terms === 'number' ? default_payment_terms : null,
+          typeof sales_tax_rate === 'number' ? sales_tax_rate : null,
+        ]
+      );
+    }
 
     return NextResponse.json({ data: updateResult.rows[0] });
   } catch (error: any) {
