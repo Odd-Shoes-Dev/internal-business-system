@@ -1,17 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Region } from '@/lib/regional-pricing';
+import { Region, PRICING, formatPrice } from '@/lib/regional-pricing';
 import { getEnterpriseContactInfo, planExceedsWhopLimit } from '@/lib/whop-utils';
 import { 
   CheckIcon, 
+  XMarkIcon,
   ArrowRightIcon,
   GlobeAltIcon,
   SparklesIcon,
   EnvelopeIcon,
   ChatBubbleBottomCenterTextIcon,
-  PhoneIcon
+  PhoneIcon,
+  LockClosedIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -30,22 +33,67 @@ const REGIONS: { id: Region; name: string; description: string }[] = [
 
 const TIERS = [
   {
-    id: 'starter',
+    id: 'starter' as const,
     name: 'Starter',
-    description: 'Perfect for small teams getting started',
-    features: ['Up to 5 users', 'Core modules', 'Email support'],
+    description: 'Perfect for small businesses just getting started',
+    users: 'Up to 3 users',
+    modules: '+ 1 optional module',
+    recommended: false,
+    features: [
+      'Complete platform (accounting, invoicing, CRM, reports)',
+      'Basic reporting & dashboards',
+      'Email support',
+      'Mobile app access',
+      '1 industry module (add-on)',
+    ],
+    notIncluded: [
+      'Multi-currency support',
+      'Advanced reporting & analytics',
+      'API access',
+      'Priority support',
+      'Dedicated account manager',
+    ],
   },
   {
-    id: 'professional',
+    id: 'professional' as const,
     name: 'Professional',
-    description: 'For growing teams',
-    features: ['Up to 20 users', 'All modules', 'Priority support'],
+    description: 'For growing businesses that need more power',
+    users: 'Up to 10 users',
+    modules: '+ Up to 3 modules included',
+    recommended: true,
+    features: [
+      'Everything in Starter',
+      'Up to 3 industry modules included',
+      'Multi-currency support',
+      'Advanced reporting & analytics',
+      'API access',
+      'Priority email support',
+      'Custom fields & bulk operations',
+    ],
+    notIncluded: [
+      'Dedicated account manager',
+      'Phone support',
+      'Custom integrations',
+    ],
   },
   {
-    id: 'enterprise',
+    id: 'enterprise' as const,
     name: 'Enterprise',
-    description: 'Full-featured solution',
-    features: ['Unlimited users', 'All modules + custom', 'Dedicated account manager'],
+    description: 'For large organizations with complex needs',
+    users: 'Unlimited users',
+    modules: '+ All modules unlocked',
+    recommended: false,
+    features: [
+      'Everything in Professional',
+      'All industry modules unlocked',
+      'Dedicated account manager',
+      '24/7 phone support',
+      'Custom integrations & SLA guarantee',
+      'Advanced security features',
+      'Training & onboarding',
+      'Custom contracts',
+    ],
+    notIncluded: [],
   },
 ];
 
@@ -53,9 +101,37 @@ const CONTACT_INFO = getEnterpriseContactInfo();
 
 export default function PlanSelection({ onPlanSelected, showModules }: PlanSelectionProps) {
   const [selectedRegion, setSelectedRegion] = useState<Region>('US');
-  const [selectedTier, setSelectedTier] = useState<'starter' | 'professional' | 'enterprise'>('starter');
+  const [regionLocked, setRegionLocked] = useState(false);
+  const [regionSource, setRegionSource] = useState<'company' | 'ip' | 'default' | 'loading'>('loading');
+  const [selectedTier, setSelectedTier] = useState<'starter' | 'professional' | 'enterprise'>('professional');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
+
+  // Auto-detect region from server on mount
+  useEffect(() => {
+    fetch('/api/auth/detect-region', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.region) setSelectedRegion(data.region);
+        setRegionLocked(!!data.locked);
+        setRegionSource(data.source ?? 'default');
+      })
+      .catch(() => setRegionSource('default'));
+  }, []);
+
+  const getPriceDisplay = (tierId: 'starter' | 'professional' | 'enterprise') => {
+    const pricing = PRICING[tierId][selectedRegion];
+    const price = billingPeriod === 'monthly' ? pricing.monthly : pricing.annually;
+    return formatPrice(price, pricing.currency);
+  };
+
+  const getAnnualSavings = (tierId: 'starter' | 'professional' | 'enterprise') => {
+    const pricing = PRICING[tierId][selectedRegion];
+    const monthlyCost = pricing.monthly * 12;
+    const annualCost = pricing.annually * 12;
+    const savings = Math.round(((monthlyCost - annualCost) / monthlyCost) * 100);
+    return savings;
+  };
 
   const handleSelectPlan = async () => {
     setLoading(true);
@@ -176,25 +252,55 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
 
         {/* Region Selection */}
         <div className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <GlobeAltIcon className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-black">Select Your Region</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <GlobeAltIcon className="w-6 h-6 text-blue-600" />
+              <h2 className="text-2xl font-bold text-black">Your Region</h2>
+            </div>
+            {regionLocked ? (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                <LockClosedIcon className="w-3.5 h-3.5" />
+                Locked to your account
+              </div>
+            ) : regionSource === 'ip' ? (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full">
+                <MapPinIcon className="w-3.5 h-3.5" />
+                Auto-detected from your location
+              </div>
+            ) : regionSource === 'loading' ? (
+              <div className="text-xs text-black/40 px-3 py-1.5">Detecting location…</div>
+            ) : null}
           </div>
+
+          {regionLocked && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+              <strong>Pricing region is locked</strong> to your account for billing consistency.
+              Contact support if you believe this is incorrect.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            {REGIONS.map((region) => (
-              <button
-                key={region.id}
-                onClick={() => setSelectedRegion(region.id)}
-                className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
-                  selectedRegion === region.id
-                    ? 'border-blue-500 bg-white shadow-lg'
-                    : 'border-slate-200 bg-white/60 hover:border-blue-300 hover:shadow-md'
-                }`}
-              >
-                <div className="font-semibold text-black text-sm">{region.name}</div>
-                <div className="text-black/60 text-xs mt-1">{region.description}</div>
-              </button>
-            ))}
+            {REGIONS.map((region) => {
+              const isSelected = selectedRegion === region.id;
+              return (
+                <button
+                  key={region.id}
+                  onClick={() => !regionLocked && setSelectedRegion(region.id)}
+                  disabled={regionLocked}
+                  className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
+                    isSelected
+                      ? 'border-blue-500 bg-white shadow-lg'
+                      : 'border-slate-200 bg-white/60'
+                  } ${regionLocked ? 'cursor-not-allowed opacity-70' : 'hover:border-blue-300 hover:shadow-md cursor-pointer'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-black text-sm">{region.name}</div>
+                    {isSelected && regionLocked && <LockClosedIcon className="w-3 h-3 text-amber-500" />}
+                  </div>
+                  <div className="text-black/50 text-xs mt-0.5">{region.description}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -220,11 +326,11 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
               }`}
             >
               Annual
-              {billingPeriod === 'annual' && (
-                <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-semibold">
-                  Save 15%
-                </span>
-              )}
+              <span className={`text-xs px-2 py-0.5 rounded-lg font-semibold ${
+                billingPeriod === 'annual' ? 'bg-green-400/30 text-green-100' : 'bg-green-100 text-green-700'
+              }`}>
+                Save {getAnnualSavings(selectedTier)}%
+              </span>
             </button>
           </div>
         </div>
@@ -234,33 +340,81 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
           {TIERS.map((tier) => (
             <div
               key={tier.id}
-              onClick={() => setSelectedTier(tier.id as any)}
-              className={`rounded-2xl border-2 transition-all duration-300 cursor-pointer backdrop-blur-sm ${
+              onClick={() => setSelectedTier(tier.id)}
+              className={`relative rounded-2xl border-2 transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col ${
                 selectedTier === tier.id
                   ? 'border-blue-500 bg-white shadow-xl'
                   : 'border-slate-200 bg-white/60 hover:border-blue-300 hover:shadow-lg'
-              }`}
+              } ${tier.recommended ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
             >
-              <div className="p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                    selectedTier === tier.id
-                      ? 'bg-blue-600'
-                      : 'bg-slate-200'
+              {/* Recommended badge */}
+              {tier.recommended && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-md">
+                    Recommended
+                  </span>
+                </div>
+              )}
+
+              <div className="p-8 flex flex-col flex-1">
+                {/* Plan header */}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                    selectedTier === tier.id ? 'bg-blue-600' : 'bg-slate-200'
                   }`}>
-                    {selectedTier === tier.id && (
-                      <CheckIcon className="w-5 h-5 text-white" />
-                    )}
+                    {selectedTier === tier.id && <CheckIcon className="w-5 h-5 text-white" />}
                   </div>
                   <h3 className="text-2xl font-bold text-black">{tier.name}</h3>
                 </div>
 
-                <p className="text-black/70 mb-6 text-sm">{tier.description}</p>
+                <p className="text-black/60 text-sm mb-5 ml-11">{tier.description}</p>
 
-                <ul className="space-y-3 mb-8">
+                {/* Price */}
+                <div className="mb-5">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-black">{getPriceDisplay(tier.id)}</span>
+                    <span className="text-black/50 text-sm">/month</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs bg-slate-100 text-black/50 px-2 py-0.5 rounded font-medium">
+                      {PRICING[tier.id][selectedRegion].currency}
+                    </span>
+                    {billingPeriod === 'annual' && (
+                      <span className="text-xs text-black/40">
+                        Billed annually — save {getAnnualSavings(tier.id)}% vs monthly
+                      </span>
+                    )}
+                    {billingPeriod === 'monthly' && (
+                      <span className="text-xs text-green-600 font-medium">
+                        Save {getAnnualSavings(tier.id)}% with annual billing
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Users & Modules */}
+                <div className="mb-5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="text-black/50">Users</span>
+                    <span className="font-semibold text-black">{tier.users}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-black/50">Modules</span>
+                    <span className="font-semibold text-black">{tier.modules}</span>
+                  </div>
+                </div>
+
+                {/* Included features */}
+                <ul className="space-y-2.5 mb-4 flex-1">
                   {tier.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-black/80 text-sm">
-                      <CheckIcon className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <li key={idx} className="flex items-start gap-2 text-sm text-black/80">
+                      <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      {feature}
+                    </li>
+                  ))}
+                  {tier.notIncluded.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-black/30">
+                      <XMarkIcon className="w-4 h-4 text-slate-300 flex-shrink-0 mt-0.5" />
                       {feature}
                     </li>
                   ))}

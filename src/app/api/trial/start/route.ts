@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
+import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 
 interface StartTrialRequest {
   tier: 'starter' | 'professional' | 'enterprise';
-  region: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
   billingPeriod: 'monthly' | 'annual';
   /** Company name (from signup). Required when creating a new company; optional when updating. */
   name?: string;
+  // region is intentionally NOT read from the body — always detected server-side from IP
 }
 
 export async function POST(request: NextRequest) {
@@ -21,14 +22,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body: StartTrialRequest = await request.json();
-    const { tier, region, billingPeriod, name: bodyName } = body;
+    const { tier, billingPeriod, name: bodyName } = body;
 
-    if (!tier || !region || !billingPeriod) {
+    if (!tier || !billingPeriod) {
       return NextResponse.json(
-        { error: 'Missing required fields: tier, region, billingPeriod' },
+        { error: 'Missing required fields: tier, billingPeriod' },
         { status: 400 }
       );
     }
+
+    // Always detect region server-side — never trust the client-supplied value
+    const region = await detectRegionFromRequest(request);
 
     // Get user's company created during signup trigger flow.
     const profileResult = await db.query(
