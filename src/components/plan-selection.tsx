@@ -13,7 +13,6 @@ import {
   EnvelopeIcon,
   ChatBubbleBottomCenterTextIcon,
   PhoneIcon,
-  LockClosedIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -23,13 +22,14 @@ interface PlanSelectionProps {
   showModules?: boolean;
 }
 
-const REGIONS: { id: Region; name: string; description: string }[] = [
-  { id: 'US', name: 'United States', description: 'USD' },
-  { id: 'EU', name: 'Europe', description: 'EUR' },
-  { id: 'GB', name: 'United Kingdom', description: 'GBP' },
-  { id: 'ASIA', name: 'Asia', description: 'Multi-currency' },
-  { id: 'AFRICA', name: 'Africa', description: 'UGX' },
-];
+const REGION_LABELS: Record<Region, { name: string; currency: string }> = {
+  US: { name: 'United States', currency: 'USD' },
+  EU: { name: 'Europe', currency: 'EUR' },
+  GB: { name: 'United Kingdom', currency: 'GBP' },
+  ASIA: { name: 'Asia', currency: 'USD' },
+  AFRICA: { name: 'Africa', currency: 'UGX' },
+  DEFAULT: { name: 'International', currency: 'USD' },
+};
 
 const TIERS = [
   {
@@ -100,20 +100,18 @@ const TIERS = [
 const CONTACT_INFO = getEnterpriseContactInfo();
 
 export default function PlanSelection({ onPlanSelected, showModules }: PlanSelectionProps) {
-  const [selectedRegion, setSelectedRegion] = useState<Region>('US');
-  const [regionLocked, setRegionLocked] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<Region>('DEFAULT');
   const [regionSource, setRegionSource] = useState<'company' | 'ip' | 'default' | 'loading'>('loading');
   const [selectedTier, setSelectedTier] = useState<'starter' | 'professional' | 'enterprise'>('professional');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
 
-  // Auto-detect region from server on mount
+  // Auto-detect region on mount — user cannot override
   useEffect(() => {
     fetch('/api/auth/detect-region', { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => {
         if (data.region) setSelectedRegion(data.region);
-        setRegionLocked(!!data.locked);
         setRegionSource(data.source ?? 'default');
       })
       .catch(() => setRegionSource('default'));
@@ -250,58 +248,22 @@ export default function PlanSelection({ onPlanSelected, showModules }: PlanSelec
           <p className="text-lg text-black/70">Select the perfect plan for your business needs</p>
         </div>
 
-        {/* Region Selection */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <GlobeAltIcon className="w-6 h-6 text-blue-600" />
-              <h2 className="text-2xl font-bold text-black">Your Region</h2>
+        {/* Region — auto-detected, read-only */}
+        <div className="flex justify-center mb-10">
+          {regionSource === 'loading' ? (
+            <div className="flex items-center gap-2 bg-white/70 border border-slate-200 text-black/40 text-sm px-5 py-2.5 rounded-full">
+              <GlobeAltIcon className="w-4 h-4 animate-pulse" />
+              Detecting region…
             </div>
-            {regionLocked ? (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                <LockClosedIcon className="w-3.5 h-3.5" />
-                Locked to your account
-              </div>
-            ) : regionSource === 'ip' ? (
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full">
-                <MapPinIcon className="w-3.5 h-3.5" />
-                Auto-detected from your location
-              </div>
-            ) : regionSource === 'loading' ? (
-              <div className="text-xs text-black/40 px-3 py-1.5">Detecting location…</div>
-            ) : null}
-          </div>
-
-          {regionLocked && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-              <strong>Pricing region is locked</strong> to your account for billing consistency.
-              Contact support if you believe this is incorrect.
+          ) : (
+            <div className="flex items-center gap-2 bg-white/80 border border-slate-200 text-black/70 text-sm px-5 py-2.5 rounded-full shadow-sm">
+              <MapPinIcon className="w-4 h-4 text-blue-500" />
+              <span>Region:</span>
+              <span className="font-semibold text-black">
+                {REGION_LABELS[selectedRegion]?.name ?? 'International'}
+              </span>
             </div>
           )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            {REGIONS.map((region) => {
-              const isSelected = selectedRegion === region.id;
-              return (
-                <button
-                  key={region.id}
-                  onClick={() => !regionLocked && setSelectedRegion(region.id)}
-                  disabled={regionLocked}
-                  className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
-                    isSelected
-                      ? 'border-blue-500 bg-white shadow-lg'
-                      : 'border-slate-200 bg-white/60'
-                  } ${regionLocked ? 'cursor-not-allowed opacity-70' : 'hover:border-blue-300 hover:shadow-md cursor-pointer'}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-black text-sm">{region.name}</div>
-                    {isSelected && regionLocked && <LockClosedIcon className="w-3 h-3 text-amber-500" />}
-                  </div>
-                  <div className="text-black/50 text-xs mt-0.5">{region.description}</div>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Billing Period Toggle */}

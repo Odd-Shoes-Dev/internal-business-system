@@ -117,15 +117,23 @@ export default function UpgradePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          newPlanTier: selectedPlan,
+          new_plan_tier: selectedPlan,
+          billing_period: billingPeriod,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to change plan');
+        throw new Error(data.error || 'Failed to change plan');
       }
 
-      alert('Plan changed successfully!');
+      // Redirect to Whop checkout to complete the plan change
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
       router.push('/dashboard/billing');
     } catch (error) {
       console.error('Plan change error:', error);

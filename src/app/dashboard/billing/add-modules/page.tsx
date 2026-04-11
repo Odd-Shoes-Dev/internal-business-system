@@ -147,6 +147,7 @@ export default function AddModulesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           module_ids: selectedModules,
+          company_id: company?.id,
         }),
       });
 
@@ -156,19 +157,21 @@ export default function AddModulesPage() {
       }
 
       const result = await response.json();
-      const includedCount = result.breakdown?.included || 0;
-      const paidCount = result.breakdown?.paid || 0;
-      
-      let message = 'Modules added successfully!';
-      if (includedCount > 0 && paidCount > 0) {
-        message = `${includedCount} included module(s) and ${paidCount} paid module(s) added!`;
-      } else if (includedCount > 0) {
-        message = `${includedCount} included module(s) added!`;
-      } else if (paidCount > 0) {
-        message = `${paidCount} paid module(s) added!`;
+
+      // Paid modules require Whop checkout
+      if (result.checkout_url) {
+        if (result.included_added > 0) {
+          alert(`${result.included_added} included module(s) added. Redirecting to payment for additional modules...`);
+        }
+        window.location.href = result.checkout_url;
+        return;
       }
 
-      alert(message);
+      const includedCount = result.breakdown?.included || 0;
+      const trialCount = result.breakdown?.trial || 0;
+      const total = includedCount + trialCount;
+
+      alert(total > 0 ? `${total} module(s) added successfully!` : 'Modules added successfully!');
       router.push('/dashboard/billing');
     } catch (error: any) {
       console.error('Add modules error:', error);

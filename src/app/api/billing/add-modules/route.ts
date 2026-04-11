@@ -1,205 +1,250 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStripe } from '@/lib/stripe';
 import { requireSessionUser } from '@/lib/provider/route-guards';
+import { getModulePlanId } from '@/lib/whop-config';
+import { getWhop } from '@/lib/whop';
+import { Region } from '@/lib/regional-pricing';
 
 export async function POST(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
+
     const body = await request.json();
-    const { module_ids } = body;
+    const { module_ids, company_id: bodyCompanyId } = body;
 
     if (!module_ids || !Array.isArray(module_ids) || module_ids.length === 0) {
       return NextResponse.json({ error: 'Module IDs required' }, { status: 400 });
     }
 
-    // Get user's company and check permissions
-    const profile = await db.query<{ company_id: string; role: string }>(
-      'SELECT company_id, role FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-    const profileRow = profile.rows[0];
+    // Get company_id and role from user_companies (multi-tenant schema)
+    let companyId: string;
+    let userRole: string;
 
-    if (!profileRow?.company_id) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    if (bodyCompanyId) {
+      const ucResult = await db.query<{ role: string }>(
+        'SELECT role FROM user_companies WHERE user_id = $1 AND company_id = $2 LIMIT 1',
+        [user.id, bodyCompanyId]
+      );
+      if (!ucResult.rows[0]) {
+        return NextResponse.json({ error: 'Company not found or access denied' }, { status: 404 });
+      }
+      companyId = bodyCompanyId;
+      userRole = ucResult.rows[0].role;
+    } else {
+      // Fall back to primary company
+      const ucResult = await db.query<{ company_id: string; role: string }>(
+        `SELECT company_id, role FROM user_companies
+         WHERE user_id = $1
+         ORDER BY is_primary DESC, joined_at ASC
+         LIMIT 1`,
+        [user.id]
+      );
+      if (!ucResult.rows[0]) {
+        return NextResponse.json({ error: 'No company found for this user' }, { status: 404 });
+      }
+      companyId = ucResult.rows[0].company_id;
+      userRole = ucResult.rows[0].role;
     }
 
-    if (profileRow.role !== 'owner' && profileRow.role !== 'admin') {
+    // Allow owner, admin (company role) OR if global app_users role is admin
+    const canManage = ['owner', 'admin'].includes(userRole) || user.role === 'admin';
+    if (!canManage) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     const now = new Date();
 
-    const company = await db.query<{ subscription_status: string | null; trial_ends_at: string | null }>(
-      'SELECT subscription_status, trial_ends_at FROM companies WHERE id = $1 LIMIT 1',
-      [profileRow.company_id]
+    // Get company info (subscription status + region)
+    const companyResult = await db.query<{
+      subscription_status: string | null;
+      trial_ends_at: string | null;
+      region: string | null;
+    }>(
+      'SELECT subscription_status, trial_ends_at, region FROM companies WHERE id = $1 LIMIT 1',
+      [companyId]
     );
-    const companyRow = company.rows[0];
+    const companyRow = companyResult.rows[0];
 
-    // Get company settings including module quota
-    const settings = await db.query<{
-      stripe_subscription_id: string | null;
+    // Get company settings
+    const settingsResult = await db.query<{
       subscription_status: string | null;
       currency: string | null;
       included_modules_quota: number | null;
       plan_tier: string | null;
     }>(
-      `SELECT stripe_subscription_id, subscription_status, currency, included_modules_quota, plan_tier
-       FROM company_settings
-       WHERE company_id = $1
-       LIMIT 1`,
-      [profileRow.company_id]
+      'SELECT subscription_status, currency, included_modules_quota, plan_tier FROM company_settings WHERE company_id = $1 LIMIT 1',
+      [companyId]
     );
-    const settingsRow = settings.rows[0];
+    const settingsRow = settingsResult.rows[0];
 
     if (!settingsRow) {
       return NextResponse.json({ error: 'Company settings not found' }, { status: 404 });
     }
 
-    // Get module quota (default based on plan if not set)
-    const moduleQuota = settingsRow.included_modules_quota || (
+    const subscriptionStatus = companyRow?.subscription_status || settingsRow.subscription_status;
+    const trialEndsAt = companyRow?.trial_ends_at ? new Date(companyRow.trial_ends_at) : null;
+    const isTrialActive = subscriptionStatus === 'trial' && (!trialEndsAt || trialEndsAt > now);
+    const isActiveSubscription = subscriptionStatus === 'active';
+
+    if (!isTrialActive && !isActiveSubscription) {
+      return NextResponse.json(
+        { error: 'No active subscription. Please upgrade your plan before adding modules.' },
+        { status: 403 }
+      );
+    }
+
+    // Module quota
+    const moduleQuota = settingsRow.included_modules_quota ?? (
       settingsRow.plan_tier === 'professional' ? 3 :
       settingsRow.plan_tier === 'enterprise' ? 999 :
       1
     );
 
-    // Count current included modules
-    const includedCountResult = await db.query<{ total: string }>(
-      `SELECT COUNT(*)::text AS total
-       FROM subscription_modules
-       WHERE company_id = $1
-         AND is_active = TRUE
-         AND is_included = TRUE`,
-      [profileRow.company_id]
-    );
-    const currentIncludedCount = Number(includedCountResult.rows[0]?.total || 0);
+    // Count current included modules (graceful fallback if table doesn't exist)
+    let currentIncludedCount = 0;
+    try {
+      const countResult = await db.query<{ total: string }>(
+        'SELECT COUNT(*)::text AS total FROM subscription_modules WHERE company_id = $1 AND is_active = TRUE AND is_included = TRUE',
+        [companyId]
+      );
+      currentIncludedCount = Number(countResult.rows[0]?.total || 0);
+    } catch {
+      currentIncludedCount = 0;
+    }
+
     const remainingQuota = Math.max(0, moduleQuota - currentIncludedCount);
 
-    const trialEndsAt = companyRow?.trial_ends_at ? new Date(companyRow.trial_ends_at) : null;
-    const isTrialActive = (companyRow?.subscription_status || settingsRow.subscription_status) === 'trial' && (!trialEndsAt || trialEndsAt > now);
-    const hasActivePaidSubscription = Boolean(settingsRow.stripe_subscription_id) && settingsRow.subscription_status === 'active';
-    
-    if (!isTrialActive && !hasActivePaidSubscription) {
-      return NextResponse.json({ error: 'Your trial has ended. Please upgrade your plan before adding modules.' }, { status: 403 });
-    }
+    // Bucket modules into included (within quota) vs paid (beyond quota)
+    const includedModuleIds: string[] = [];
+    const paidModuleIds: string[] = [];
 
-    if (!hasActivePaidSubscription && module_ids.some((_, index) => index >= remainingQuota)) {
-      return NextResponse.json({ error: 'No active subscription found. Please upgrade to add more modules.' }, { status: 404 });
-    }
-
-    // Module pricing
-    const modulePricing: Record<string, Record<string, number>> = {
-      tours: { usd: 39, eur: 35, gbp: 31, ugx: 145000 },
-      fleet: { usd: 35, eur: 32, gbp: 28, ugx: 130000 },
-      hotels: { usd: 45, eur: 41, gbp: 36, ugx: 167000 },
-      cafe: { usd: 35, eur: 32, gbp: 28, ugx: 130000 },
-      security: { usd: 29, eur: 26, gbp: 23, ugx: 108000 },
-      inventory: { usd: 39, eur: 35, gbp: 31, ugx: 145000 },
-    };
-
-    const currency = (settingsRow.currency || 'usd').toLowerCase();
-    const addedModules: any[] = [];
-    let modulesAddedCount = 0;
-
-    const stripe = await getStripe();
-
-    // Add each module to Stripe subscription
     for (const moduleId of module_ids) {
-      // Check if module already exists
-      const existing = await db.query(
-        `SELECT id
-         FROM subscription_modules
-         WHERE company_id = $1
-           AND module_id = $2
-           AND is_active = TRUE
-         LIMIT 1`,
-        [profileRow.company_id, moduleId]
-      );
+      // Skip already-active modules
+      let alreadyActive = false;
+      try {
+        const existing = await db.query(
+          'SELECT id FROM subscription_modules WHERE company_id = $1 AND module_id = $2 AND is_active = TRUE LIMIT 1',
+          [companyId, moduleId]
+        );
+        alreadyActive = existing.rowCount > 0;
+      } catch { /* table may not exist */ }
 
-      if (existing.rowCount > 0) {
-        continue; // Skip if already active
-      }
+      if (alreadyActive) continue;
 
-      // Determine if this module is included in quota or paid
-      const isIncluded = (currentIncludedCount + modulesAddedCount) < moduleQuota;
-      let stripeSubscriptionItemId = null;
-
-      // Get module price
-      const modulePrice = modulePricing[moduleId]?.[currency];
-      if (!modulePrice) {
-        console.warn(`No pricing found for module ${moduleId} in currency ${currency}`);
-        continue;
-      }
-
-      // Only add to Stripe if it's a paid module and the company has an active paid subscription
-      if (!isIncluded && hasActivePaidSubscription) {
-        // Create a product for this module (Stripe will handle duplicates)
-        const product = await stripe.products.create({
-          name: `${moduleId.charAt(0).toUpperCase() + moduleId.slice(1)} Module`,
-          metadata: { module_id: moduleId },
-        });
-
-        // Create price for the product
-        const price = await stripe.prices.create({
-          product: product.id,
-          currency: currency,
-          unit_amount: Math.round(modulePrice * (currency === 'ugx' ? 1 : 100)),
-          recurring: { interval: 'month' },
-        });
-
-        // Add to Stripe subscription
-        const subscriptionItem = await stripe.subscriptionItems.create({
-          subscription: settingsRow.stripe_subscription_id!,
-          price: price.id,
-          proration_behavior: 'create_prorations',
-        });
-
-        stripeSubscriptionItemId = subscriptionItem.id;
-      }
-
-      // Add to database
-      const newModule = await db.query(
-        `INSERT INTO subscription_modules (
-           company_id, module_id, monthly_price, currency,
-           is_active, is_trial_module, is_included, stripe_subscription_item_id
-         )
-         VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7)
-         RETURNING *`,
-        [
-          profileRow.company_id,
-          moduleId,
-          modulePrice,
-          currency.toUpperCase(),
-          isTrialActive,
-          isIncluded,
-          stripeSubscriptionItemId,
-        ]
-      );
-
-      if (newModule.rowCount > 0) {
-        addedModules.push(newModule.rows[0]);
-        modulesAddedCount++;
+      if (includedModuleIds.length < remainingQuota) {
+        includedModuleIds.push(moduleId);
+      } else {
+        paidModuleIds.push(moduleId);
       }
     }
 
-    const includedModulesAdded = addedModules.filter(m => m.is_included).length;
-    const paidModulesAdded = addedModules.filter(m => !m.is_included && !m.is_trial_module).length;
+    // Add included modules to DB right away
+    const currency = (settingsRow.currency || 'USD').toUpperCase();
+    const addedIncluded = await insertModules(db, companyId, includedModuleIds, currency, isTrialActive, true);
+
+    // Paid (out-of-quota) modules during an active subscription → Whop checkout
+    if (paidModuleIds.length > 0 && isActiveSubscription) {
+      const region = ((companyRow?.region as Region) || 'DEFAULT') as Region;
+      const planIds = paidModuleIds
+        .map((m) => getModulePlanId(m, region))
+        .filter(Boolean) as string[];
+
+      if (planIds.length === 0) {
+        return NextResponse.json(
+          { error: 'No pricing available for selected modules in your region. Please contact support.' },
+          { status: 400 }
+        );
+      }
+
+      const whop = await getWhop();
+      const checkout = await whop.checkoutConfigurations.create({
+        plan_ids: planIds,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+        metadata: {
+          company_id: companyId,
+          module_ids: paidModuleIds.join(','),
+          action: 'add_modules',
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        checkout_url: checkout.checkout_url,
+        included_added: addedIncluded.length,
+        paid_pending: paidModuleIds,
+        message: `${addedIncluded.length} included module(s) added. Redirecting to payment for ${paidModuleIds.length} additional module(s).`,
+      });
+    }
+
+    // During trial, add all (including out-of-quota) as trial modules
+    if (paidModuleIds.length > 0 && isTrialActive) {
+      const addedTrial = await insertModules(db, companyId, paidModuleIds, currency, true, false);
+      const all = [...addedIncluded, ...addedTrial];
+      return NextResponse.json({
+        success: true,
+        added_modules: all,
+        message: `${all.length} module(s) added to your trial`,
+        breakdown: {
+          included: addedIncluded.length,
+          trial: addedTrial.length,
+          remainingQuota: Math.max(0, remainingQuota - addedIncluded.length),
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      added_modules: addedModules,
-      message: `${addedModules.length} module(s) added successfully`,
+      added_modules: addedIncluded,
+      message: `${addedIncluded.length} module(s) added successfully`,
       breakdown: {
-        included: includedModulesAdded,
-        paid: paidModulesAdded,
-        remainingQuota: Math.max(0, moduleQuota - (currentIncludedCount + includedModulesAdded)),
+        included: addedIncluded.length,
+        paid: 0,
+        remainingQuota: Math.max(0, remainingQuota - addedIncluded.length),
       },
     });
   } catch (error) {
     console.error('Error adding modules:', error);
     return NextResponse.json(
-      { error: 'Failed to add modules' },
+      { error: error instanceof Error ? error.message : 'Failed to add modules' },
       { status: 500 }
     );
   }
+}
+
+async function insertModules(
+  db: any,
+  companyId: string,
+  moduleIds: string[],
+  currency: string,
+  isTrialModule: boolean,
+  isIncluded: boolean
+): Promise<any[]> {
+  const added: any[] = [];
+  for (const moduleId of moduleIds) {
+    try {
+      const result = await db.query(
+        `INSERT INTO subscription_modules (company_id, module_id, monthly_price, currency, is_active, is_trial_module, is_included)
+         VALUES ($1, $2, 0, $3, TRUE, $4, $5)
+         ON CONFLICT (company_id, module_id) DO UPDATE SET is_active = TRUE, updated_at = NOW()
+         RETURNING *`,
+        [companyId, moduleId, currency, isTrialModule, isIncluded]
+      );
+      if (result.rowCount > 0) added.push(result.rows[0]);
+    } catch {
+      // Fallback: company_modules (older schema)
+      try {
+        const result = await db.query(
+          `INSERT INTO company_modules (company_id, module_id, is_active)
+           VALUES ($1, $2, TRUE)
+           ON CONFLICT (company_id, module_id) DO UPDATE SET is_active = TRUE
+           RETURNING *`,
+          [companyId, moduleId]
+        );
+        if (result.rowCount > 0) added.push(result.rows[0]);
+      } catch (e) {
+        console.error(`Failed to insert module ${moduleId}:`, e);
+      }
+    }
+  }
+  return added;
 }

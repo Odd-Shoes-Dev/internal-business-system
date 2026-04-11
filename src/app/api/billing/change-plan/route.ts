@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPlanPriceId } from '@/lib/stripe-config';
-import { getStripe } from '@/lib/stripe';
 import { requireSessionUser } from '@/lib/provider/route-guards';
+import { getWhop } from '@/lib/whop';
+import { getPlanId } from '@/lib/whop-config';
+import { detectRegionFromRequest } from '@/lib/detect-ip-region';
+import type { Region } from '@/lib/regional-pricing';
+
+const VALID_REGIONS: Region[] = ['AFRICA', 'ASIA', 'EU', 'GB', 'US', 'DEFAULT'];
 
 export async function POST(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
     const body = await request.json();
-    const { new_plan_tier, billing_period } = body;
+    // Accept both camelCase (upgrade page) and snake_case
+    const new_plan_tier = body.new_plan_tier ?? body.newPlanTier;
+    const billing_period = body.billing_period ?? body.billingPeriod ?? 'monthly';
 
-    if (!new_plan_tier || !billing_period) {
+    if (!new_plan_tier) {
       return NextResponse.json(
-        { error: 'Plan tier and billing period required' },
+        { error: 'Plan tier is required' },
         { status: 400 }
       );
     }
@@ -44,81 +50,53 @@ export async function POST(request: NextRequest) {
     );
     const settingsRow = settings.rows[0];
 
-    if (!settingsRow?.stripe_subscription_id) {
-      return NextResponse.json({ error: 'No active subscription found' }, { status: 404 });
-    }
-
-    if (settingsRow.subscription_status === 'trial') {
-      return NextResponse.json({ error: 'Cannot change plan during trial' }, { status: 400 });
-    }
-
-    const stripe = await getStripe();
-
-    // Get current subscription from Stripe
-    const subscription = await stripe.subscriptions.retrieve(settingsRow.stripe_subscription_id);
-
-    // Find the base plan subscription item
-    const planItem = subscription.items.data.find(
-      (item) => !item.price.metadata?.module_id
+    // Enforce region from DB — never trust client
+    const companyResult = await db.query(
+      'SELECT region FROM companies WHERE id = $1 LIMIT 1',
+      [profileRow.company_id]
     );
-
-    if (!planItem) {
-      return NextResponse.json({ error: 'Base plan not found' }, { status: 404 });
+    const dbRegion = companyResult.rows[0]?.region as Region | null;
+    let region: Region;
+    if (dbRegion && VALID_REGIONS.includes(dbRegion) && dbRegion !== 'DEFAULT') {
+      region = dbRegion;
+    } else {
+      region = await detectRegionFromRequest(request);
+      await db.query('UPDATE companies SET region = $1, updated_at = NOW() WHERE id = $2', [region, profileRow.company_id]);
     }
 
-    // Get new price ID
-    const currencyCode = ((settingsRow.currency || 'USD').toUpperCase() as 'USD' | 'EUR' | 'GBP' | 'UGX');
-    const newPriceId = getPlanPriceId(new_plan_tier, billing_period, currencyCode);
-
-    if (!newPriceId) {
-      return NextResponse.json({ error: 'Invalid plan configuration' }, { status: 400 });
+    // Resolve Whop plan ID for the new plan
+    const whopPlanId = getPlanId(new_plan_tier, billing_period, region);
+    if (!whopPlanId) {
+      return NextResponse.json({ error: 'Plan not available for your region' }, { status: 400 });
     }
 
-    // Update subscription in Stripe
-    await stripe.subscriptions.update(settingsRow.stripe_subscription_id, {
-      items: [
-        {
-          id: planItem.id,
-          price: newPriceId,
-        },
-      ],
-      proration_behavior: 'create_prorations',
-    });
-
-    // Update database
-    await db.query(
-      `UPDATE company_settings
-       SET plan_tier = $2,
-           billing_period = $3,
-           max_users_allowed = $4,
-           updated_at = NOW()
-       WHERE company_id = $1`,
-      [
-        profileRow.company_id,
-        new_plan_tier,
+    // Create a Whop checkout session for the new plan
+    const whop = await getWhop();
+    const checkoutConfig = await whop.checkoutConfigurations.create({
+      company_id: process.env.WHOP_COMPANY_ID!,
+      plan: undefined,
+      plan_ids: [whopPlanId],
+      metadata: {
+        company_id: profileRow.company_id,
+        user_id: user.id,
+        plan_tier: new_plan_tier,
         billing_period,
-        new_plan_tier === 'starter' ? 3 : new_plan_tier === 'professional' ? 10 : 999999,
-      ]
-    );
-
-    await db.query(
-      `UPDATE subscriptions
-       SET plan_tier = $2,
-           billing_period = $3,
-           updated_at = NOW()
-       WHERE stripe_subscription_id = $1`,
-      [settingsRow.stripe_subscription_id, new_plan_tier, billing_period]
-    );
+        display_region: region,
+        action: 'plan_change',
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Plan updated successfully',
-      new_plan: new_plan_tier,
+      url: checkoutConfig.checkout_url,
+      message: 'Redirecting to checkout to complete plan change',
     });
   } catch (error) {
     console.error('Error changing plan:', error);
     return NextResponse.json(
-      { error: 'Failed to change plan' },
+      { error: 'Failed to initiate plan change' },
       { status: 500 }
     );
   }
