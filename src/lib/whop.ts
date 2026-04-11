@@ -2,18 +2,17 @@ let whopClient: any = null;
 
 async function loadWhopSdk() {
   if (whopClient) return whopClient;
-  const apiKey = process.env.WHOP_API_KEY;
+  const apiKey = process.env.WHOP_API_KEY?.trim();
   if (!apiKey) throw new Error('WHOP_API_KEY is not configured');
 
-  // Use runtime require via eval to avoid bundler/static resolution during Next.js build
-  const req = eval('require');
-  let Whop: any;
+  let WhopModule: any;
   try {
-    Whop = req('@whop/sdk');
+    WhopModule = await import('@whop/sdk');
   } catch (err) {
-    throw new Error('@whop/sdk is not installed. Install it or enable Stripe provider.');
+    throw new Error('@whop/sdk is not installed.');
   }
 
+  const Whop = WhopModule.default ?? WhopModule.Whop ?? WhopModule;
   whopClient = new Whop({ apiKey });
   return whopClient;
 }
