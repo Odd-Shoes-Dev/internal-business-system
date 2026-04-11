@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      url: checkoutConfig.checkout_url,
+      url: checkoutConfig.purchase_url,
       message: 'Redirecting to checkout to complete plan change',
     });
   } catch (error) {

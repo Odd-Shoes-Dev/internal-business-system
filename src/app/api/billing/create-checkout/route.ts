@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ sessionId: checkoutConfig.id, url: checkoutConfig.checkout_url });
+    return NextResponse.json({ sessionId: checkoutConfig.id, url: checkoutConfig.purchase_url });
   } catch (error: any) {
     console.error('Whop checkout error:', error);
     return NextResponse.json({ error: error.message || 'Failed to create checkout' }, { status: 500 });

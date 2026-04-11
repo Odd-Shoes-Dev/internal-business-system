@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        checkout_url: checkout.checkout_url,
+        checkout_url: checkout.purchase_url,
         included_added: addedIncluded.length,
         paid_pending: paidModuleIds,
         message: `${addedIncluded.length} included module(s) added. Redirecting to payment for ${paidModuleIds.length} additional module(s).`,
