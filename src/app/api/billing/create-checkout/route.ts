@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
 
     const whop = await getWhop();
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     const checkoutConfig = await whop.checkoutConfigurations.create({
-      company_id: process.env.WHOP_COMPANY_ID!,
-      plan: undefined, // using plan_ids instead
-      plan_ids: [basePlanId, ...modulePlanIds],
+      plan_id: basePlanId,
+      ...(appUrl.startsWith('https://') ? { redirect_url: `${appUrl}/dashboard/billing` } : {}),
       metadata: {
         company_id: companyId,
         user_id: user.id,
@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
         module_ids: JSON.stringify(module_ids),
         display_region: displayRegion,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/upgrade`,
     });
 
     return NextResponse.json({ sessionId: checkoutConfig.id, url: checkoutConfig.checkout_url });

@@ -23,37 +23,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's company and check permissions
-    const profile = await db.query<{ company_id: string; role: string }>(
-      'SELECT company_id, role FROM user_profiles WHERE id = $1 LIMIT 1',
+    // Get user's company and check permissions (multi-tenant schema)
+    const uc = await db.query<{ company_id: string; role: string }>(
+      `SELECT company_id, role FROM user_companies
+       WHERE user_id = $1
+       ORDER BY is_primary DESC, joined_at ASC
+       LIMIT 1`,
       [user.id]
     );
-    const profileRow = profile.rows[0];
+    const userCompanyRow = uc.rows[0];
 
-    if (!profileRow?.company_id) {
+    if (!userCompanyRow?.company_id) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    if (profileRow.role !== 'owner' && profileRow.role !== 'admin') {
+    // Allow owner/admin of company, or global app admin
+    const canManage = ['owner', 'admin'].includes(userCompanyRow.role) || user.role === 'admin';
+    if (!canManage) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
-
-    // Get company settings
-    const settings = await db.query<{
-      stripe_subscription_id: string | null;
-      subscription_status: string | null;
-      plan_tier: string | null;
-      currency: string | null;
-    }>(
-      'SELECT stripe_subscription_id, subscription_status, plan_tier, currency FROM company_settings WHERE company_id = $1 LIMIT 1',
-      [profileRow.company_id]
-    );
-    const settingsRow = settings.rows[0];
 
     // Enforce region from DB — never trust client
     const companyResult = await db.query(
       'SELECT region FROM companies WHERE id = $1 LIMIT 1',
-      [profileRow.company_id]
+      [userCompanyRow.company_id]
     );
     const dbRegion = companyResult.rows[0]?.region as Region | null;
     let region: Region;
@@ -61,7 +54,7 @@ export async function POST(request: NextRequest) {
       region = dbRegion;
     } else {
       region = await detectRegionFromRequest(request);
-      await db.query('UPDATE companies SET region = $1, updated_at = NOW() WHERE id = $2', [region, profileRow.company_id]);
+      await db.query('UPDATE companies SET region = $1, updated_at = NOW() WHERE id = $2', [region, userCompanyRow.company_id]);
     }
 
     // Resolve Whop plan ID for the new plan
@@ -71,21 +64,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a Whop checkout session for the new plan
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     const whop = await getWhop();
     const checkoutConfig = await whop.checkoutConfigurations.create({
-      company_id: process.env.WHOP_COMPANY_ID!,
-      plan: undefined,
-      plan_ids: [whopPlanId],
+      plan_id: whopPlanId,
+      ...(appUrl.startsWith('https://') ? { redirect_url: `${appUrl}/dashboard/billing` } : {}),
       metadata: {
-        company_id: profileRow.company_id,
+        company_id: userCompanyRow.company_id,
         user_id: user.id,
         plan_tier: new_plan_tier,
         billing_period,
         display_region: region,
         action: 'plan_change',
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
     });
 
     return NextResponse.json({

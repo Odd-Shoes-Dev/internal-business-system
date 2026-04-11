@@ -156,10 +156,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
       const whop = await getWhop();
       const checkout = await whop.checkoutConfigurations.create({
-        plan_ids: planIds,
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+        plan_id: planIds[0],
+        ...(appUrl.startsWith('https://') ? { redirect_url: `${appUrl}/dashboard/billing` } : {}),
         metadata: {
           company_id: companyId,
           module_ids: paidModuleIds.join(','),
