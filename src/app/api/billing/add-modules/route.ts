@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
     // Get company settings
     const settingsResult = await db.query<{
       subscription_status: string | null;
-      currency: string | null;
+      base_currency: string | null;
       included_modules_quota: number | null;
       plan_tier: string | null;
     }>(
-      'SELECT subscription_status, currency, included_modules_quota, plan_tier FROM company_settings WHERE company_id = $1 LIMIT 1',
+      'SELECT subscription_status, base_currency, included_modules_quota, plan_tier FROM company_settings WHERE company_id = $1 LIMIT 1',
       [companyId]
     );
     const settingsRow = settingsResult.rows[0];
@@ -139,11 +139,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Add included modules to DB right away
-    const currency = (settingsRow.currency || 'USD').toUpperCase();
+    const currency = (settingsRow.base_currency || 'USD').toUpperCase();
     const addedIncluded = await insertModules(db, companyId, includedModuleIds, currency, isTrialActive, true);
 
-    // Paid (out-of-quota) modules during an active subscription → Whop checkout
-    if (paidModuleIds.length > 0 && isActiveSubscription) {
+    // Any out-of-quota modules → always go to Whop checkout (trial or active)
+    if (paidModuleIds.length > 0) {
       const region = ((companyRow?.region as Region) || 'DEFAULT') as Region;
       const planIds = paidModuleIds
         .map((m) => getModulePlanId(m, region))
@@ -173,23 +173,7 @@ export async function POST(request: NextRequest) {
         checkout_url: checkout.purchase_url,
         included_added: addedIncluded.length,
         paid_pending: paidModuleIds,
-        message: `${addedIncluded.length} included module(s) added. Redirecting to payment for ${paidModuleIds.length} additional module(s).`,
-      });
-    }
-
-    // During trial, add all (including out-of-quota) as trial modules
-    if (paidModuleIds.length > 0 && isTrialActive) {
-      const addedTrial = await insertModules(db, companyId, paidModuleIds, currency, true, false);
-      const all = [...addedIncluded, ...addedTrial];
-      return NextResponse.json({
-        success: true,
-        added_modules: all,
-        message: `${all.length} module(s) added to your trial`,
-        breakdown: {
-          included: addedIncluded.length,
-          trial: addedTrial.length,
-          remainingQuota: Math.max(0, remainingQuota - addedIncluded.length),
-        },
+        message: `${addedIncluded.length} module(s) added. Redirecting to payment for ${paidModuleIds.length} additional module(s).`,
       });
     }
 
@@ -223,28 +207,35 @@ async function insertModules(
   const added: any[] = [];
   for (const moduleId of moduleIds) {
     try {
-      const result = await db.query(
-        `INSERT INTO subscription_modules (company_id, module_id, monthly_price, currency, is_active, is_trial_module, is_included)
-         VALUES ($1, $2, 0, $3, TRUE, $4, $5)
-         ON CONFLICT (company_id, module_id) DO UPDATE SET is_active = TRUE, updated_at = NOW()
-         RETURNING *`,
-        [companyId, moduleId, currency, isTrialModule, isIncluded]
+      // Upsert into subscription_modules — unique constraint is (company_id, module_id, is_active)
+      // First activate any existing inactive row, then insert if needed
+      const updateResult = await db.query(
+        `UPDATE subscription_modules SET is_active = TRUE, updated_at = NOW()
+         WHERE company_id = $1 AND module_id = $2 AND is_active = FALSE`,
+        [companyId, moduleId]
       );
-      if (result.rowCount > 0) added.push(result.rows[0]);
-    } catch {
-      // Fallback: company_modules (older schema)
-      try {
+      if (updateResult.rowCount === 0) {
         const result = await db.query(
-          `INSERT INTO company_modules (company_id, module_id, is_active)
-           VALUES ($1, $2, TRUE)
-           ON CONFLICT (company_id, module_id) DO UPDATE SET is_active = TRUE
+          `INSERT INTO subscription_modules (company_id, module_id, monthly_price, currency, is_active, is_trial_module, is_included)
+           VALUES ($1, $2, 0, $3, TRUE, $4, $5)
+           ON CONFLICT (company_id, module_id, is_active) DO UPDATE SET updated_at = NOW()
            RETURNING *`,
-          [companyId, moduleId]
+          [companyId, moduleId, currency, isTrialModule, isIncluded]
         );
         if (result.rowCount > 0) added.push(result.rows[0]);
-      } catch (e) {
-        console.error(`Failed to insert module ${moduleId}:`, e);
+      } else {
+        added.push({ module_id: moduleId, company_id: companyId, is_active: true });
       }
+      // Also sync into company_modules (enabled column)
+      await db.query(
+        `INSERT INTO company_modules (company_id, module_id, enabled)
+         VALUES ($1, $2, TRUE)
+         ON CONFLICT (company_id, module_id) DO UPDATE SET enabled = TRUE
+         RETURNING *`,
+        [companyId, moduleId]
+      );
+    } catch (e) {
+      console.error(`Failed to insert module ${moduleId}:`, e);
     }
   }
   return added;

@@ -110,35 +110,7 @@ export default function AddModulesPage() {
   };
 
   const handleAddModules = async () => {
-    if (selectedModules.length === 0) {
-      alert('Please select at least one module to add');
-      return;
-    }
-
-    // Confirmation dialog
-    const freeCount = getFreeModulesCount();
-    const paidCount = getPaidModulesCount();
-    const total = calculateTotal();
-    
-    let confirmMessage = `You are about to add ${selectedModules.length} module(s):\n\n`;
-    
-    if (freeCount > 0) {
-      confirmMessage += `✓ ${freeCount} included module(s) (covered by your plan)\n`;
-    }
-    
-    if (paidCount > 0) {
-      confirmMessage += `$ ${paidCount} PAID module(s) - ${currencySymbol} ${total.toLocaleString()}/month\n\n`;
-      confirmMessage += `⚠️ This will require payment and update your subscription.\n\n`;
-    } else {
-      confirmMessage += `\n✓ All selected modules are included in your plan quota\n\n`;
-    }
-    
-    confirmMessage += `Do you want to proceed?`;
-    
-    const confirmed = window.confirm(confirmMessage);
-    if (!confirmed) {
-      return; // User cancelled
-    }
+    if (selectedModules.length === 0) return;
 
     setLoading(true);
     try {
@@ -158,20 +130,13 @@ export default function AddModulesPage() {
 
       const result = await response.json();
 
-      // Paid modules require Whop checkout
+      // Paid modules → redirect directly to Whop checkout
       if (result.checkout_url) {
-        if (result.included_added > 0) {
-          alert(`${result.included_added} included module(s) added. Redirecting to payment for additional modules...`);
-        }
         window.location.href = result.checkout_url;
         return;
       }
 
-      const includedCount = result.breakdown?.included || 0;
-      const trialCount = result.breakdown?.trial || 0;
-      const total = includedCount + trialCount;
-
-      alert(total > 0 ? `${total} module(s) added successfully!` : 'Modules added successfully!');
+      // Free/trial modules added — go back to billing
       router.push('/dashboard/billing');
     } catch (error: any) {
       console.error('Add modules error:', error);
