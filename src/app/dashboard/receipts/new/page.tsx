@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, ComboboxButton } from '@headlessui/react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
@@ -12,6 +13,8 @@ import {
   ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
+  ChevronUpDownIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product } from '@/types/database';
 
@@ -50,8 +53,12 @@ export default function NewReceiptPage() {
   const router = useRouter();
   const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerInvoices, setCustomerInvoices] = useState<CustomerInvoice[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<CustomerInvoice | null>(null);
+  const [invoiceQuery, setInvoiceQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isManualInvoiceEntry, setIsManualInvoiceEntry] = useState(false);
   const [taxRate] = useState(0.0625); // MA sales tax
@@ -210,19 +217,18 @@ export default function NewReceiptPage() {
     }
   };
 
-  // Auto-select currency from customer and load their invoices
+  // Load customer invoices when customer changes; reset invoice selection
   useEffect(() => {
+    setSelectedInvoice(null);
+    setInvoiceQuery('');
+    setIsManualInvoiceEntry(false);
+    setValue('reference_invoice_number', '');
     if (watchCustomerId) {
-      const customer = customers.find(c => c.id === watchCustomerId);
-      if (customer?.currency) {
-        setValue('currency', customer.currency);
-      }
-      // Load customer's unpaid/partial invoices
       fetchCustomerInvoices(watchCustomerId);
     } else {
       setCustomerInvoices([]);
     }
-  }, [watchCustomerId, customers, setValue]);
+  }, [watchCustomerId]);
 
   const handleInvoiceSelect = async (invoiceNumber: string) => {
     if (!invoiceNumber || invoiceNumber === 'MANUAL') {
@@ -486,18 +492,77 @@ export default function NewReceiptPage() {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-group md:col-span-2">
-                <label className="label">Customer *</label>
-                <select
-                  {...register('customer_id', { required: 'Customer is required' })}
-                  className={`input ${errors.customer_id ? 'input-error' : ''}`}
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label mb-0">Customer *</label>
+                  <Link
+                    href={`/dashboard/customers/new?returnTo=${encodeURIComponent('/dashboard/receipts/new')}`}
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    <PlusIcon className="w-3 h-3" />
+                    New Customer
+                  </Link>
+                </div>
+                <input type="hidden" {...register('customer_id', { required: 'Customer is required' })} />
+                <Combobox
+                  value={selectedCustomer}
+                  onChange={(customer: Customer | null) => {
+                    setSelectedCustomer(customer);
+                    setValue('customer_id', customer?.id || '', { shouldValidate: true });
+                    if (customer?.currency) {
+                      setValue('currency', customer.currency);
+                    }
+                  }}
                 >
-                  <option value="">Select a customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+                  <div className="relative">
+                    <ComboboxInput
+                      className={`input pr-10 ${errors.customer_id ? 'input-error' : ''}`}
+                      displayValue={(customer: Customer | null) => customer?.name || ''}
+                      onChange={(e) => setCustomerQuery(e.target.value)}
+                      placeholder="Search customers..."
+                    />
+                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                      <ChevronUpDownIcon className="w-5 h-5 text-gray-400" />
+                    </ComboboxButton>
+                    <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white shadow-lg border border-gray-200 py-1 text-sm">
+                      {customers
+                        .filter((c) =>
+                          customerQuery === '' ||
+                          c.name.toLowerCase().includes(customerQuery.toLowerCase()) ||
+                          (c.email || '').toLowerCase().includes(customerQuery.toLowerCase())
+                        )
+                        .map((customer) => (
+                          <ComboboxOption
+                            key={customer.id}
+                            value={customer}
+                            className="group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-blue-50 data-[focus]:bg-blue-50"
+                          >
+                            <div>
+                              <span className="font-medium text-gray-900">{customer.name}</span>
+                              {customer.email && (
+                                <span className="ml-2 text-xs text-gray-400">{customer.email}</span>
+                              )}
+                            </div>
+                            <CheckIcon className="w-4 h-4 text-blue-600 hidden group-data-[selected]:block" />
+                          </ComboboxOption>
+                        ))}
+                      {customerQuery !== '' && customers.filter((c) =>
+                        c.name.toLowerCase().includes(customerQuery.toLowerCase()) ||
+                        (c.email || '').toLowerCase().includes(customerQuery.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-gray-500 text-sm">No customers found</div>
+                      )}
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <Link
+                          href={`/dashboard/customers/new?returnTo=${encodeURIComponent('/dashboard/receipts/new')}`}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                          Create New Customer
+                        </Link>
+                      </div>
+                    </ComboboxOptions>
+                  </div>
+                </Combobox>
                 {errors.customer_id && (
                   <p className="form-error">{errors.customer_id.message}</p>
                 )}
@@ -559,34 +624,78 @@ export default function NewReceiptPage() {
               <div className="form-group md:col-span-2">
                 <label className="label">Related Invoice Number (Optional)</label>
                 {!isManualInvoiceEntry ? (
-                  <select
-                    {...register('reference_invoice_number')}
-                    onChange={(e) => {
-                      const selectedValue = e.target.value;
-                      if (selectedValue === 'MANUAL') {
-                        setIsManualInvoiceEntry(true);
+                  <Combobox
+                    value={selectedInvoice}
+                    onChange={(invoice: CustomerInvoice | null) => {
+                      setSelectedInvoice(invoice);
+                      if (invoice) {
+                        setValue('reference_invoice_number', invoice.invoice_number);
+                        handleInvoiceSelect(invoice.invoice_number);
+                      } else {
                         setValue('reference_invoice_number', '');
                         handleInvoiceSelect('');
-                      } else {
-                        handleInvoiceSelect(selectedValue);
                       }
                     }}
-                    className="input"
                   >
-                    <option value="">Select an invoice or leave blank</option>
-                    {customerInvoices.length > 0 && (
-                      <optgroup label="Unpaid Invoices">
-                        {customerInvoices.map((invoice) => (
-                          <option key={invoice.id} value={invoice.invoice_number}>
-                            {invoice.invoice_number} - Balance: {formatCurrency(invoice.balance_due)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <optgroup label="Manual Entry">
-                      <option value="MANUAL">Type external invoice number...</option>
-                    </optgroup>
-                  </select>
+                    <div className="relative">
+                      <ComboboxInput
+                        className="input pr-10"
+                        displayValue={(invoice: CustomerInvoice | null) =>
+                          invoice ? `${invoice.invoice_number} — Balance: ${formatCurrency(invoice.balance_due)}` : ''
+                        }
+                        onChange={(e) => setInvoiceQuery(e.target.value)}
+                        placeholder={watchCustomerId ? 'Search invoices...' : 'Select a customer first'}
+                        disabled={!watchCustomerId}
+                      />
+                      <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2" disabled={!watchCustomerId}>
+                        <ChevronUpDownIcon className="w-5 h-5 text-gray-400" />
+                      </ComboboxButton>
+                      <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white shadow-lg border border-gray-200 py-1 text-sm">
+                        {customerInvoices.length === 0 && (
+                          <div className="px-3 py-2 text-gray-400 text-sm italic">No unpaid invoices for this customer</div>
+                        )}
+                        {customerInvoices
+                          .filter((inv) =>
+                            invoiceQuery === '' ||
+                            inv.invoice_number.toLowerCase().includes(invoiceQuery.toLowerCase())
+                          )
+                          .map((invoice) => (
+                            <ComboboxOption
+                              key={invoice.id}
+                              value={invoice}
+                              className="group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-blue-50 data-[focus]:bg-blue-50"
+                            >
+                              <div>
+                                <span className="font-medium text-gray-900">{invoice.invoice_number}</span>
+                                <span className="ml-2 text-xs text-gray-500">
+                                  Due: {formatCurrency(invoice.balance_due)}
+                                </span>
+                              </div>
+                              <CheckIcon className="w-4 h-4 text-blue-600 hidden group-data-[selected]:block" />
+                            </ComboboxOption>
+                          ))}
+                        {invoiceQuery !== '' && customerInvoices.filter((inv) =>
+                          inv.invoice_number.toLowerCase().includes(invoiceQuery.toLowerCase())
+                        ).length === 0 && customerInvoices.length > 0 && (
+                          <div className="px-3 py-2 text-gray-500 text-sm">No invoices match your search</div>
+                        )}
+                        <div className="border-t border-gray-100 mt-1 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsManualInvoiceEntry(true);
+                              setSelectedInvoice(null);
+                              setValue('reference_invoice_number', '');
+                              handleInvoiceSelect('');
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 text-left"
+                          >
+                            Enter external invoice number manually...
+                          </button>
+                        </div>
+                      </ComboboxOptions>
+                    </div>
+                  </Combobox>
                 ) : (
                   <div className="flex gap-2">
                     <input
@@ -601,6 +710,8 @@ export default function NewReceiptPage() {
                         setIsManualInvoiceEntry(false);
                         setValue('reference_invoice_number', '');
                         handleInvoiceSelect('');
+                        setSelectedInvoice(null);
+                        setInvoiceQuery('');
                       }}
                       className="btn-secondary whitespace-nowrap"
                     >
@@ -609,11 +720,11 @@ export default function NewReceiptPage() {
                   </div>
                 )}
                 <p className="text-sm text-gray-500 mt-1">
-                  {customerInvoices.length > 0 
-                    ? `${customerInvoices.length} unpaid invoice(s) available - selecting one will auto-fill items`
-                    : isManualInvoiceEntry 
-                      ? 'Type external/physical invoice number and enter items manually below'
-                      : 'Select customer first to see their invoices, or choose manual entry'}
+                  {isManualInvoiceEntry
+                    ? 'Type external/physical invoice number and enter items manually below'
+                    : customerInvoices.length > 0
+                      ? `${customerInvoices.length} unpaid invoice(s) — select to auto-fill line items`
+                      : 'Select a customer first to see their unpaid invoices'}
                 </p>
               </div>
 
