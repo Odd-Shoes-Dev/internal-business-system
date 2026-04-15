@@ -5,11 +5,11 @@ import { createSessionToken, persistSession } from '@/lib/auth/session';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const db = getDbProvider();
-    const { token } = params;
+    const { token } = await params;
     const body = await request.json();
     const { fullName, password } = body;
 

@@ -4,11 +4,11 @@ import { requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const db = getDbProvider();
-    const { token } = params;
+    const { token } = await params;
 
     const result = await db.query(
       `SELECT i.id, i.email, i.role, i.expires_at, i.accepted_at, i.revoked_at,
@@ -57,13 +57,13 @@ export async function GET(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    const { token } = params;
+    const { token } = await params;
 
     const result = await db.query(
       `UPDATE user_invitations
