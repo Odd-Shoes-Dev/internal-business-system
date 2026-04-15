@@ -29,7 +29,7 @@ export type StockMovementType = 'purchase' | 'sale' | 'adjustment' | 'transfer' 
 export type AssetStatus = 'active' | 'disposed' | 'fully_depreciated';
 export type DepreciationMethod = 'straight_line' | 'reducing_balance' | 'units_of_production';
 
-export type UserRole = 'admin' | 'accountant' | 'operations' | 'guide';
+export type UserRole = 'admin' | 'accountant' | 'operations' | 'sales' | 'guide' | 'viewer';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually';
 
 // =====================================================

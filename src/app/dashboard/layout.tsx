@@ -32,27 +32,31 @@ import {
   CalculatorIcon,
   CakeIcon,
   CreditCardIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
-// Navigation grouped by category - with module requirements
+// Navigation grouped by category - with module and role requirements
 const navigationGroups = [
   {
     name: 'Overview',
-    module: null, // Always visible
+    module: null,
+    roles: null, // all roles
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     ]
   },
   {
     name: 'Cafe Operations',
-    module: 'cafe', // Requires cafe module
+    module: 'cafe',
+    roles: ['admin', 'operations'],
     items: [
       { name: 'Cafe Dashboard', href: '/dashboard/cafe', icon: CakeIcon },
     ]
   },
   {
     name: 'Tour Operations',
-    module: 'tours', // Requires tours module
+    module: 'tours',
+    roles: ['admin', 'operations', 'sales', 'guide'],
     items: [
       { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon },
       { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon },
@@ -60,24 +64,34 @@ const navigationGroups = [
   },
   {
     name: 'Fleet Management',
-    module: 'fleet', // Requires fleet module
+    module: 'fleet',
+    roles: ['admin', 'operations'],
     items: [
       { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon },
     ]
   },
   {
     name: 'Hotels Management',
-    module: 'hotels', // Requires hotels module
+    module: 'hotels',
+    roles: ['admin', 'operations'],
     items: [
       { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon },
     ]
   },
   {
-    name: 'Finance',
-    module: null, // Always visible (core module)
+    name: 'Sales & Revenue',
+    module: null,
+    roles: ['admin', 'accountant', 'sales'],
     items: [
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
+    ]
+  },
+  {
+    name: 'Finance',
+    module: null,
+    roles: ['admin', 'accountant'],
+    items: [
       { name: 'Bills', href: '/dashboard/bills', icon: BanknotesIcon },
       { name: 'Expenses', href: '/dashboard/expenses', icon: CurrencyDollarIcon },
       { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
@@ -85,21 +99,24 @@ const navigationGroups = [
   },
   {
     name: 'People',
-    module: null, // Always visible (core platform)
+    module: null,
+    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Employees', href: '/dashboard/employees', icon: UsersIcon },
     ]
   },
   {
     name: 'Payroll',
-    module: 'payroll', // Requires payroll module
+    module: 'payroll',
+    roles: ['admin', 'accountant'],
     items: [
       { name: 'Payroll Processing', href: '/dashboard/payroll', icon: CalculatorIcon },
     ]
   },
   {
     name: 'Assets & Inventory',
-    module: 'inventory', // Requires inventory module
+    module: 'inventory',
+    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Inventory', href: '/dashboard/inventory', icon: CubeIcon },
       { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
@@ -107,7 +124,8 @@ const navigationGroups = [
   },
   {
     name: 'Relationships',
-    module: null, // Always visible (core module)
+    module: null,
+    roles: ['admin', 'accountant', 'sales', 'operations'],
     items: [
       { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
       { name: 'Vendors', href: '/dashboard/vendors', icon: TruckIcon },
@@ -115,15 +133,62 @@ const navigationGroups = [
   },
   {
     name: 'Accounting',
-    module: null, // Always visible (core module)
+    module: null,
+    roles: ['admin', 'accountant'],
     items: [
       { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
+    ]
+  },
+  {
+    name: 'System',
+    module: null,
+    roles: ['admin'],
+    items: [
       { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
     ]
   },
 ];
+
+// Route-level access control map — longest prefix match wins
+const ROUTE_ACCESS: Record<string, string[]> = {
+  '/dashboard/settings': ['admin'],
+  '/dashboard/billing': ['admin'],
+  '/dashboard/general-ledger': ['admin', 'accountant'],
+  '/dashboard/reports': ['admin', 'accountant'],
+  '/dashboard/bank': ['admin', 'accountant'],
+  '/dashboard/payroll': ['admin', 'accountant'],
+  '/dashboard/payslips': ['admin', 'accountant'],
+  '/dashboard/bills': ['admin', 'accountant'],
+  '/dashboard/expenses': ['admin', 'accountant'],
+  '/dashboard/employees': ['admin', 'accountant', 'operations'],
+  '/dashboard/assets': ['admin', 'accountant', 'operations'],
+  '/dashboard/inventory': ['admin', 'accountant', 'operations'],
+  '/dashboard/fleet': ['admin', 'operations'],
+  '/dashboard/hotels': ['admin', 'operations'],
+  '/dashboard/cafe': ['admin', 'operations'],
+  '/dashboard/destinations': ['admin', 'operations'],
+  '/dashboard/tours': ['admin', 'operations', 'sales', 'guide'],
+  '/dashboard/bookings': ['admin', 'operations', 'sales', 'guide'],
+  '/dashboard/customers': ['admin', 'accountant', 'sales', 'operations'],
+  '/dashboard/vendors': ['admin', 'accountant', 'operations'],
+  '/dashboard/invoices': ['admin', 'accountant', 'sales'],
+  '/dashboard/receipts': ['admin', 'accountant', 'sales'],
+  '/dashboard/payments': ['admin', 'accountant', 'sales'],
+  '/dashboard/proformas': ['admin', 'accountant', 'sales'],
+};
+
+function userHasAccess(pathname: string, userRole: string | null): boolean {
+  if (!userRole || userRole === 'admin') return true;
+  const sortedRoutes = Object.keys(ROUTE_ACCESS).sort((a, b) => b.length - a.length);
+  for (const route of sortedRoutes) {
+    if (pathname === route || pathname.startsWith(route + '/')) {
+      return ROUTE_ACCESS[route].includes(userRole);
+    }
+  }
+  return true; // unspecified routes default to accessible
+}
 
 export default function DashboardLayout({
   children,
@@ -393,6 +458,7 @@ export default function DashboardLayout({
         <nav className="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
           {navigationGroups
             .filter(group => !group.module || enabledModules.includes(group.module))
+            .filter(group => !group.roles || group.roles.includes(user?.role ?? ''))
             .map((group) => (
             <div key={group.name}>
               <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
@@ -583,7 +649,22 @@ export default function DashboardLayout({
             subscriptionStatus={subscriptionStatus}
             trialEndDate={trialEndDate}
           />
-          {children}
+          {!isLoading && user && !userHasAccess(pathname, user.role) ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+              <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
+                <ShieldCheckIcon className="w-10 h-10 text-red-400" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h1>
+              <p className="text-gray-500 max-w-md mb-6">
+                Your role (<span className="font-semibold capitalize">{user.role}</span>) does not have permission to view this page. Contact your administrator if you need access.
+              </p>
+              <Link href="/dashboard" className="btn-primary">
+                Go to Dashboard
+              </Link>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

@@ -41,14 +41,13 @@ export async function GET(request: NextRequest) {
     const result = await db.query(
       `SELECT *
        FROM exchange_rates
-       WHERE company_id = $1
        ORDER BY effective_date DESC
-       LIMIT 100`,
-      [companyId]
+       LIMIT 100`
     );
 
     return NextResponse.json({ data: result.rows });
   } catch (error: any) {
+    console.error('Error fetching exchange rates:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -86,26 +85,26 @@ export async function POST(request: NextRequest) {
 
         await tx.query(
           `INSERT INTO exchange_rates (
-             company_id, from_currency, to_currency, rate, effective_date, source
-           ) VALUES ($1, 'USD', $2, $3, $4::date, $5)
+             from_currency, to_currency, rate, effective_date, source
+           ) VALUES ('USD', $1, $2, $3::date, $4)
            ON CONFLICT (from_currency, to_currency, effective_date)
            DO UPDATE SET
              rate = EXCLUDED.rate,
              source = EXCLUDED.source,
              updated_at = NOW()`,
-          [companyId, currency, rates[currency], today, 'exchangerate-api.com']
+          [currency, rates[currency], today, 'exchangerate-api.com']
         );
 
         await tx.query(
           `INSERT INTO exchange_rates (
-             company_id, from_currency, to_currency, rate, effective_date, source
-           ) VALUES ($1, $2, 'USD', $3, $4::date, $5)
+             from_currency, to_currency, rate, effective_date, source
+           ) VALUES ($1, 'USD', $2, $3::date, $4)
            ON CONFLICT (from_currency, to_currency, effective_date)
            DO UPDATE SET
              rate = EXCLUDED.rate,
              source = EXCLUDED.source,
              updated_at = NOW()`,
-          [companyId, currency, 1 / rates[currency], today, 'exchangerate-api.com']
+          [currency, 1 / rates[currency], today, 'exchangerate-api.com']
         );
       }
     });
@@ -113,10 +112,9 @@ export async function POST(request: NextRequest) {
     const updated = await db.query(
       `SELECT *
        FROM exchange_rates
-       WHERE company_id = $1
-         AND effective_date = $2::date
+       WHERE effective_date = $1::date
        ORDER BY from_currency`,
-      [companyId, today]
+      [today]
     );
 
     return NextResponse.json({

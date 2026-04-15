@@ -33,6 +33,12 @@ interface DashboardStats {
   overdueInvoices: number;
   overdueBills: number;
   inventoryValue: number;
+  trends: {
+    revenue: number | null;
+    expenses: number | null;
+    netIncome: number | null;
+    cashBalance: number | null;
+  };
 }
 
 export default function DashboardPage() {
@@ -278,7 +284,7 @@ export default function DashboardPage() {
             title="Cash Balance"
             value={formatCurrency(stats?.cashBalance || 0)}
             icon={BanknotesIcon}
-            trend={12.5}
+            trend={stats?.trends?.cashBalance ?? undefined}
             color="primary"
             size="medium"
             description="Available funds"
@@ -287,7 +293,7 @@ export default function DashboardPage() {
             title="Net Income"
             value={formatCurrency(stats?.netIncome || 0)}
             icon={ArrowTrendingUpIcon}
-            trend={8.2}
+            trend={stats?.trends?.netIncome ?? undefined}
             color="accent"
             size="medium"
             description="Profit this period"
@@ -324,8 +330,18 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalRevenue || 0)}</p>
               <p className="text-sm text-gray-500">Total Revenue</p>
               <div className="flex items-center justify-center gap-1 mt-1">
-                <ArrowTrendingUpIcon className="w-3 h-3 text-green-600" />
-                <span className="text-xs text-green-600 font-semibold">12.5%</span>
+                {stats?.trends?.revenue !== null && stats?.trends?.revenue !== undefined ? (
+                  <>
+                    {stats.trends.revenue >= 0
+                      ? <ArrowTrendingUpIcon className="w-3 h-3 text-green-600" />
+                      : <ArrowDownIcon className="w-3 h-3 text-red-600" />}
+                    <span className={`text-xs font-semibold ${stats.trends.revenue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {stats.trends.revenue >= 0 ? '+' : ''}{stats.trends.revenue}%
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400">No prior month data</span>
+                )}
               </div>
             </div>
             
@@ -336,8 +352,18 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalExpenses || 0)}</p>
               <p className="text-sm text-gray-500">Total Expenses</p>
               <div className="flex items-center justify-center gap-1 mt-1">
-                <ArrowDownIcon className="w-3 h-3 text-red-600" />
-                <span className="text-xs text-red-600 font-semibold">3.2%</span>
+                {stats?.trends?.expenses !== null && stats?.trends?.expenses !== undefined ? (
+                  <>
+                    {stats.trends.expenses >= 0
+                      ? <ArrowTrendingUpIcon className="w-3 h-3 text-red-600" />
+                      : <ArrowDownIcon className="w-3 h-3 text-green-600" />}
+                    <span className={`text-xs font-semibold ${stats.trends.expenses >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {stats.trends.expenses >= 0 ? '+' : ''}{stats.trends.expenses}%
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400">No prior month data</span>
+                )}
               </div>
             </div>
             

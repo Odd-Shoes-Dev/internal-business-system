@@ -36,8 +36,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Date ranges for current and previous month
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
     // Fetch all financial data - FILTERED BY COMPANY
-    const [invoices, bills, expenses, bankTransactions] = await Promise.all([
+    const [invoices, bills, expenses, bankTransactions,
+      currentMonthInvoices, prevMonthInvoices,
+      currentMonthExpenses, prevMonthExpenses,
+      currentMonthBankTx, prevMonthBankTx,
+    ] = await Promise.all([
       db.query<{ total: number; amount_paid: number; status: string; currency: string; invoice_date: string }>(
         'SELECT total, amount_paid, status, currency, invoice_date FROM invoices WHERE company_id = $1',
         [companyId]
@@ -53,9 +63,49 @@ export async function GET(request: NextRequest) {
       db.query<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
         `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency
          FROM bank_transactions bt
-         LEFT JOIN bank_accounts ba ON ba.id = bt.bank_account_id
-         WHERE bt.company_id = $1`,
+         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
+         WHERE ba.company_id = $1`,
         [companyId]
+      ),
+      // Current month paid invoices
+      db.query<{ total: number; currency: string; invoice_date: string }>(
+        `SELECT total, currency, invoice_date FROM invoices
+         WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2`,
+        [companyId, currentMonthStart]
+      ),
+      // Previous month paid invoices
+      db.query<{ total: number; currency: string; invoice_date: string }>(
+        `SELECT total, currency, invoice_date FROM invoices
+         WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2 AND invoice_date <= $3`,
+        [companyId, prevMonthStart, prevMonthEnd]
+      ),
+      // Current month expenses
+      db.query<{ total: number; currency: string; expense_date: string }>(
+        `SELECT total, currency, expense_date FROM expenses
+         WHERE company_id = $1 AND expense_date >= $2`,
+        [companyId, currentMonthStart]
+      ),
+      // Previous month expenses
+      db.query<{ total: number; currency: string; expense_date: string }>(
+        `SELECT total, currency, expense_date FROM expenses
+         WHERE company_id = $1 AND expense_date >= $2 AND expense_date <= $3`,
+        [companyId, prevMonthStart, prevMonthEnd]
+      ),
+      // Current month bank transactions
+      db.query<{ amount: number; transaction_date: string; currency: string | null }>(
+        `SELECT bt.amount, bt.transaction_date, ba.currency
+         FROM bank_transactions bt
+         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
+         WHERE ba.company_id = $1 AND bt.transaction_date >= $2`,
+        [companyId, currentMonthStart]
+      ),
+      // Previous month bank transactions
+      db.query<{ amount: number; transaction_date: string; currency: string | null }>(
+        `SELECT bt.amount, bt.transaction_date, ba.currency
+         FROM bank_transactions bt
+         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
+         WHERE ba.company_id = $1 AND bt.transaction_date >= $2 AND bt.transaction_date <= $3`,
+        [companyId, prevMonthStart, prevMonthEnd]
       ),
     ]);
 
@@ -191,6 +241,73 @@ export async function GET(request: NextRequest) {
 
     const netIncome = totalRevenue - totalExpenses;
 
+    // Helper: convert a currency amount to USD using the DB function
+    const convertToUSD = async (amount: number, currency: string, date: string): Promise<number> => {
+      if (currency === 'USD') return amount;
+      const result = await db.query<{ converted: number | null }>(
+        'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+        [amount, currency, 'USD', date]
+      );
+      return result.rows[0]?.converted ?? amount;
+    };
+
+    // Helper: sum invoice rows in USD
+    const sumInvoicesUSD = async (rows: { total: number; currency: string; invoice_date: string }[]) => {
+      let total = 0;
+      for (const row of rows) {
+        total += await convertToUSD(row.total, row.currency, row.invoice_date);
+      }
+      return total;
+    };
+
+    // Helper: sum expense rows in USD
+    const sumExpensesUSD = async (rows: { total: number; currency: string; expense_date: string }[]) => {
+      let total = 0;
+      for (const row of rows) {
+        total += await convertToUSD(row.total, row.currency, row.expense_date);
+      }
+      return total;
+    };
+
+    // Helper: sum bank transaction rows in USD (net)
+    const sumBankTxUSD = async (rows: { amount: number; transaction_date: string; currency: string | null }[]) => {
+      let total = 0;
+      for (const row of rows) {
+        const currency = row.currency || 'USD';
+        const abs = await convertToUSD(Math.abs(row.amount), currency, row.transaction_date);
+        total += row.amount < 0 ? -abs : abs;
+      }
+      return total;
+    };
+
+    // Calculate period totals for trend comparison
+    const [
+      currentRevenue, prevRevenue,
+      currentExpensesTotal, prevExpensesTotal,
+      currentCashNet, prevCashNet,
+    ] = await Promise.all([
+      sumInvoicesUSD(currentMonthInvoices.rows || []),
+      sumInvoicesUSD(prevMonthInvoices.rows || []),
+      sumExpensesUSD(currentMonthExpenses.rows || []),
+      sumExpensesUSD(prevMonthExpenses.rows || []),
+      sumBankTxUSD(currentMonthBankTx.rows || []),
+      sumBankTxUSD(prevMonthBankTx.rows || []),
+    ]);
+
+    const currentNetIncome = currentRevenue - currentExpensesTotal;
+    const prevNetIncome = prevRevenue - prevExpensesTotal;
+
+    // Calculate % change: null when no previous data to compare
+    const calcTrend = (current: number, previous: number): number | null => {
+      if (previous === 0) return current > 0 ? 100 : null;
+      return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
+    };
+
+    const revenueTrend = calcTrend(currentRevenue, prevRevenue);
+    const expensesTrend = calcTrend(currentExpensesTotal, prevExpensesTotal);
+    const netIncomeTrend = calcTrend(currentNetIncome, prevNetIncome);
+    const cashBalanceTrend = calcTrend(currentCashNet, prevCashNet);
+
     // Return stats with conditional fields based on enabled modules
     const stats: any = {
       totalRevenue,
@@ -199,6 +316,12 @@ export async function GET(request: NextRequest) {
       accountsReceivable,
       accountsPayable,
       cashBalance,
+      trends: {
+        revenue: revenueTrend,
+        expenses: expensesTrend,
+        netIncome: netIncomeTrend,
+        cashBalance: cashBalanceTrend,
+      },
     };
 
     // Only include inventory value if inventory/retail/cafe module is enabled
