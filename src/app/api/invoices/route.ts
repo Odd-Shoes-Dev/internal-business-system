@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       ar_account_id: arAccount.rows[0]?.id || null,
       created_by: user.id,
       document_type: documentType,
-      ...(invoiceData.booking_id && { booking_id: invoiceData.booking_id }), // Include booking_id if provided
+      booking_id: invoiceData.booking_id || null, // Optional: link to tour booking if provided
     };
 
     // Add the appropriate number field

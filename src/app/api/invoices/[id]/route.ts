@@ -163,6 +163,7 @@ export async function PATCH(request: NextRequest, context: any) {
         'po_number',
         'notes',
         'status',
+        'booking_id',
       ];
 
       allowedFields.forEach((field) => {
