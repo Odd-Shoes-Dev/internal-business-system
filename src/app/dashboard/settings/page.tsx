@@ -17,13 +17,57 @@ import {
   ArrowTopRightOnSquareIcon,
   LockClosedIcon,
   SparklesIcon,
-  CogIcon
+  CogIcon,
+  PlusIcon,
+  TrashIcon,
+  XMarkIcon,
+  ClockIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
 import type { CompanySettings } from '@/types/database';
 
 type SettingsTab = 'company' | 'financial' | 'invoicing' | 'notifications' | 'users' | 'security' | 'branding';
+
+interface TeamMember {
+  id: string;
+  email: string;
+  full_name: string | null;
+  company_role: string;
+  is_primary: boolean;
+  joined_at: string;
+  last_login_at: string | null;
+}
+
+interface PendingInvitation {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  expires_at: string;
+  invited_by_name: string | null;
+  token: string;
+}
+
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'accountant', label: 'Accountant' },
+  { value: 'operations', label: 'Operations' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'guide', label: 'Guide' },
+  { value: 'viewer', label: 'Viewer' },
+];
+
+const ROLE_COLORS: Record<string, string> = {
+  admin: 'bg-purple-100 text-purple-700',
+  accountant: 'bg-blue-100 text-blue-700',
+  operations: 'bg-orange-100 text-orange-700',
+  sales: 'bg-green-100 text-green-700',
+  guide: 'bg-teal-100 text-teal-700',
+  viewer: 'bg-gray-100 text-gray-600',
+  manager: 'bg-indigo-100 text-indigo-700',
+};
 
 interface CompanyFormData {
   name: string;
@@ -54,12 +98,87 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('accountant');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [revokingToken, setRevokingToken] = useState<string | null>(null);
+
   const companyForm = useForm<CompanyFormData>();
   const financialForm = useForm<FinancialFormData>();
 
   useEffect(() => {
     loadSettings();
   }, [company?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'users' && company?.id) {
+      loadTeam();
+    }
+  }, [activeTab, company?.id]);
+
+  const loadTeam = async () => {
+    if (!company?.id) return;
+    setLoadingTeam(true);
+    try {
+      const res = await fetch(`/api/invitations?company_id=${encodeURIComponent(company.id)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to load team');
+      const payload = await res.json();
+      setTeamMembers(payload.members || []);
+      setPendingInvitations(payload.invitations || []);
+    } catch {
+      toast.error('Failed to load team members');
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company?.id) return;
+    setSendingInvite(true);
+    try {
+      const res = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: company.id, email: inviteEmail, role: inviteRole }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to send invitation');
+      toast.success(`Invitation sent to ${inviteEmail}`);
+      setShowInviteModal(false);
+      setInviteEmail('');
+      setInviteRole('accountant');
+      loadTeam();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send invitation');
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const handleRevokeInvitation = async (token: string) => {
+    setRevokingToken(token);
+    try {
+      const res = await fetch(`/api/invitations/${token}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to revoke invitation');
+      toast.success('Invitation revoked');
+      loadTeam();
+    } catch {
+      toast.error('Failed to revoke invitation');
+    } finally {
+      setRevokingToken(null);
+    }
+  };
 
   const loadSettings = async () => {
     if (!company?.id) return;
@@ -891,23 +1010,161 @@ export default function SettingsPage() {
 
           {/* Users */}
           {activeTab === 'users' && (
-            <div className="card">
-              <div className="card-header flex justify-between items-center">
-                <div>
-                  <h2 className="font-semibold text-black">Team Members</h2>
-                  <p className="text-sm text-black mt-1">
-                    Manage user access and permissions
-                  </p>
+            <div className="space-y-6">
+              {/* Invite Modal */}
+              {showInviteModal && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                      <h3 className="text-lg font-semibold text-gray-900">Invite Team Member</h3>
+                      <button onClick={() => setShowInviteModal(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                        <XMarkIcon className="w-5 h-5 text-gray-500" />
+                      </button>
+                    </div>
+                    <form onSubmit={handleSendInvite} className="p-6 space-y-4">
+                      <div className="form-group">
+                        <label className="label">Email Address *</label>
+                        <input
+                          type="email"
+                          required
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="input"
+                          placeholder="colleague@company.com"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="label">Role *</label>
+                        <select
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value)}
+                          className="input"
+                        >
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">This sets what the user can access in your company.</p>
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowInviteModal(false)}
+                          className="btn-secondary flex-1"
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" disabled={sendingInvite} className="btn-primary flex-1">
+                          {sendingInvite ? 'Sending...' : 'Send Invitation'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
-                <button className="btn-primary">Invite User</button>
-              </div>
-              <div className="card-body">
-                <div className="text-center py-8 text-black">
-                  <UserGroupIcon className="w-12 h-12 mx-auto text-black" />
-                  <p className="mt-2">You're the only user</p>
-                  <p className="text-sm">Invite team members to collaborate</p>
+              )}
+
+              {/* Team Members */}
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <div>
+                    <h2 className="font-semibold text-black">Team Members</h2>
+                    <p className="text-sm text-gray-500 mt-1">People with access to your company</p>
+                  </div>
+                  <button onClick={() => setShowInviteModal(true)} className="btn-primary flex items-center gap-2">
+                    <PlusIcon className="w-4 h-4" />
+                    Invite User
+                  </button>
+                </div>
+                <div className="card-body">
+                  {loadingTeam ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />)}
+                    </div>
+                  ) : teamMembers.length === 0 ? (
+                    <div className="text-center py-8">
+                      <UserGroupIcon className="w-12 h-12 mx-auto text-gray-300" />
+                      <p className="mt-2 text-gray-500">No team members yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {teamMembers.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-white text-sm font-semibold">
+                              {(member.full_name || member.email)[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {member.full_name || member.email}
+                                {member.is_primary && (
+                                  <span className="ml-2 text-xs bg-blueox-primary/10 text-blueox-primary px-2 py-0.5 rounded-full">Owner</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-400">{member.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[member.company_role] || 'bg-gray-100 text-gray-600'}`}>
+                              {ROLE_OPTIONS.find(r => r.value === member.company_role)?.label || member.company_role}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {member.last_login_at ? `Last seen ${new Date(member.last_login_at).toLocaleDateString()}` : 'Never logged in'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Pending Invitations */}
+              {(pendingInvitations.length > 0 || loadingTeam) && (
+                <div className="card">
+                  <div className="card-header">
+                    <h2 className="font-semibold text-black">Pending Invitations</h2>
+                    <p className="text-sm text-gray-500 mt-1">Awaiting acceptance</p>
+                  </div>
+                  <div className="card-body">
+                    {loadingTeam ? (
+                      <div className="space-y-3">
+                        <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {pendingInvitations.map((inv) => (
+                          <div key={inv.id} className="flex items-center justify-between py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                                <ClockIcon className="w-5 h-5 text-amber-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{inv.email}</p>
+                                <p className="text-xs text-gray-400">
+                                  Invited by {inv.invited_by_name || 'Admin'} &middot; Expires {new Date(inv.expires_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[inv.role] || 'bg-gray-100 text-gray-600'}`}>
+                                {ROLE_OPTIONS.find(r => r.value === inv.role)?.label || inv.role}
+                              </span>
+                              <button
+                                onClick={() => handleRevokeInvitation(inv.token)}
+                                disabled={revokingToken === inv.token}
+                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                title="Revoke invitation"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -326,3 +326,86 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
     throw error;
   }
 }
+
+interface SendInvitationEmailParams {
+  to: string;
+  invitedByName: string;
+  companyName: string;
+  role: string;
+  inviteLink: string;
+  expiresAt: string;
+}
+
+export async function sendInvitationEmail(params: SendInvitationEmailParams) {
+  const { to, invitedByName, companyName, role, inviteLink, expiresAt } = params;
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0d9488 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 26px;">You're Invited!</h1>
+            <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 15px;">${companyName}</p>
+          </div>
+          <div style="padding: 36px 30px;">
+            <p style="font-size: 16px; color: #333; margin-bottom: 8px;">Hi there,</p>
+            <p style="font-size: 16px; color: #333; margin-bottom: 24px;">
+              <strong>${invitedByName}</strong> has invited you to join <strong>${companyName}</strong> on BlueOx as a <strong>${roleLabel}</strong>.
+            </p>
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+              <p style="margin: 0; font-size: 14px; color: #0369a1;">
+                <strong>Role:</strong> ${roleLabel}<br/>
+                <strong>Company:</strong> ${companyName}<br/>
+                <strong>Invited by:</strong> ${invitedByName}
+              </p>
+            </div>
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0d9488 100%); color: white; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-size: 16px; font-weight: 600;">
+                Accept Invitation
+              </a>
+            </div>
+            <p style="font-size: 13px; color: #888; text-align: center; margin-top: 8px;">
+              Or copy this link: <a href="${inviteLink}" style="color: #0d9488;">${inviteLink}</a>
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 28px 0;" />
+            <p style="font-size: 13px; color: #999; margin: 0;">
+              This invitation expires on <strong>${expiresAt}</strong>. If you did not expect this, you can safely ignore this email.
+            </p>
+          </div>
+          <div style="background: #f9fafb; border-top: 1px solid #eee; padding: 20px 30px; text-align: center;">
+            <p style="margin: 0; font-size: 13px; color: #aaa;">Powered by <strong style="color: #1e3a5f;">BlueOx Business Platform</strong></p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const resend = await getResendClient();
+    const fromEmail = process.env.EMAIL_FROM || 'BlueOx <noreply@blueoxgroup.eu>';
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: `You're invited to join ${companyName} on BlueOx`,
+      html,
+    });
+
+    if (error) {
+      console.error('Invitation email send error:', error);
+      throw new Error(error.message);
+    }
+
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    console.error('Failed to send invitation email:', error);
+    throw error;
+  }
+}
