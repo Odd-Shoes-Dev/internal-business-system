@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, ComboboxButton } from '@headlessui/react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import {
@@ -9,6 +10,8 @@ import {
   DocumentTextIcon,
   PlusIcon,
   TrashIcon,
+  ChevronUpDownIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
@@ -42,6 +45,8 @@ export default function NewBillPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorQuery, setVendorQuery] = useState('');
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
 
   const [formData, setFormData] = useState({
@@ -294,23 +299,74 @@ export default function NewBillPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="vendor_id"
-                value={formData.vendor_id}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Vendor <span className="text-red-500">*</span>
+                </label>
+                <Link
+                  href={`/dashboard/vendors/new?returnTo=${encodeURIComponent('/dashboard/bills/new')}`}
+                  className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                >
+                  <PlusIcon className="w-3 h-3" />
+                  New Vendor
+                </Link>
+              </div>
+              <Combobox
+                value={selectedVendor}
+                onChange={(vendor: Vendor | null) => {
+                  setSelectedVendor(vendor);
+                  const vendorId = vendor?.id || '';
+                  setFormData((prev) => ({ ...prev, vendor_id: vendorId }));
+                  if (vendor && formData.bill_date) {
+                    const billDate = new Date(formData.bill_date);
+                    billDate.setDate(billDate.getDate() + (vendor.payment_terms || 30));
+                    setFormData((prev) => ({ ...prev, vendor_id: vendorId, due_date: billDate.toISOString().split('T')[0] }));
+                  }
+                }}
               >
-                <option value="">Select a vendor...</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.name}
-                  </option>
-                ))}
-              </select>
+                <div className="relative">
+                  <ComboboxInput
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                    displayValue={(vendor: Vendor | null) => vendor?.name || ''}
+                    onChange={(e) => setVendorQuery(e.target.value)}
+                    placeholder="Search vendors..."
+                  />
+                  <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronUpDownIcon className="w-5 h-5 text-gray-400" />
+                  </ComboboxButton>
+                  <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white shadow-lg border border-gray-200 py-1 text-sm">
+                    {vendors
+                      .filter((v) =>
+                        vendorQuery === '' ||
+                        v.name.toLowerCase().includes(vendorQuery.toLowerCase())
+                      )
+                      .map((vendor) => (
+                        <ComboboxOption
+                          key={vendor.id}
+                          value={vendor}
+                          className="group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-blue-50 data-[focus]:bg-blue-50"
+                        >
+                          <span className="font-medium text-gray-900">{vendor.name}</span>
+                          <CheckIcon className="w-4 h-4 text-blue-600 hidden group-data-[selected]:block" />
+                        </ComboboxOption>
+                      ))}
+                    {vendorQuery !== '' && vendors.filter((v) =>
+                      v.name.toLowerCase().includes(vendorQuery.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No vendors found</div>
+                    )}
+                    <div className="border-t border-gray-100 mt-1 pt-1">
+                      <Link
+                        href={`/dashboard/vendors/new?returnTo=${encodeURIComponent('/dashboard/bills/new')}`}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        Create New Vendor
+                      </Link>
+                    </div>
+                  </ComboboxOptions>
+                </div>
+              </Combobox>
             </div>
 
             <div>

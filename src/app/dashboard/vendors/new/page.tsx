@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import {
@@ -11,6 +11,8 @@ import {
 
 export default function NewVendorPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/dashboard/vendors';
   const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export default function NewVendorPage() {
         throw new Error(data.error || 'Failed to create vendor');
       }
 
-      router.push('/dashboard/vendors');
+      router.push(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -83,7 +85,7 @@ export default function NewVendorPage() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href="/dashboard/vendors"
+          href={returnTo}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
@@ -322,7 +324,7 @@ export default function NewVendorPage() {
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
           <Link
-            href="/dashboard/vendors"
+            href={returnTo}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel
