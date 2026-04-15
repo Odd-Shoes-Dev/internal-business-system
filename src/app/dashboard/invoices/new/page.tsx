@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, ComboboxButton } from '@headlessui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CurrencySelect } from '@/components/ui';
@@ -12,6 +13,8 @@ import {
   ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
+  ChevronUpDownIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product, DocumentType } from '@/types/database';
 
@@ -41,6 +44,8 @@ export default function NewInvoicePage() {
   const searchParams = useSearchParams();
   const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [taxRate] = useState(0.0625); // MA sales tax
@@ -90,7 +95,6 @@ export default function NewInvoicePage() {
 
   const watchLines = watch('lines');
   const watchPaymentTerms = watch('payment_terms');
-  const watchCustomerId = watch('customer_id');
   const watchCurrency = watch('currency');
 
   useEffect(() => {
@@ -100,6 +104,8 @@ export default function NewInvoicePage() {
   // Pre-fill form when coming from booking page
   useEffect(() => {
     if (prefilledCustomerId && customers.length > 0) {
+      const found = customers.find(c => c.id === prefilledCustomerId) || null;
+      setSelectedCustomer(found);
       setValue('customer_id', prefilledCustomerId);
     }
   }, [prefilledCustomerId, customers]);
@@ -114,15 +120,6 @@ export default function NewInvoicePage() {
     }
   }, [watchPaymentTerms, watch('invoice_date')]);
 
-  useEffect(() => {
-    // Auto-select customer's preferred currency
-    if (watchCustomerId) {
-      const customer = customers.find(c => c.id === watchCustomerId);
-      if (customer && customer.currency) {
-        setValue('currency', customer.currency as 'USD' | 'EUR' | 'GBP' | 'UGX');
-      }
-    }
-  }, [watchCustomerId, customers]);
 
   const loadData = async () => {
     try {
@@ -302,18 +299,77 @@ export default function NewInvoicePage() {
           <div className="card-body">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="form-group md:col-span-2">
-                <label className="label">Customer *</label>
-                <select
-                  {...register('customer_id', { required: 'Customer is required' })}
-                  className={`input ${errors.customer_id ? 'input-error' : ''}`}
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label mb-0">Customer *</label>
+                  <Link
+                    href={`/dashboard/customers/new?returnTo=${encodeURIComponent('/dashboard/invoices/new')}`}
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    <PlusIcon className="w-3 h-3" />
+                    New Customer
+                  </Link>
+                </div>
+                <input type="hidden" {...register('customer_id', { required: 'Customer is required' })} />
+                <Combobox
+                  value={selectedCustomer}
+                  onChange={(customer: Customer | null) => {
+                    setSelectedCustomer(customer);
+                    setValue('customer_id', customer?.id || '', { shouldValidate: true });
+                    if (customer?.currency) {
+                      setValue('currency', customer.currency as any);
+                    }
+                  }}
                 >
-                  <option value="">Select a customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+                  <div className="relative">
+                    <ComboboxInput
+                      className={`input pr-10 ${errors.customer_id ? 'input-error' : ''}`}
+                      displayValue={(customer: Customer | null) => customer?.name || ''}
+                      onChange={(e) => setCustomerQuery(e.target.value)}
+                      placeholder="Search customers..."
+                    />
+                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                      <ChevronUpDownIcon className="w-5 h-5 text-gray-400" />
+                    </ComboboxButton>
+                    <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white shadow-lg border border-gray-200 py-1 text-sm">
+                      {customers
+                        .filter((c) =>
+                          customerQuery === '' ||
+                          c.name.toLowerCase().includes(customerQuery.toLowerCase()) ||
+                          (c.email || '').toLowerCase().includes(customerQuery.toLowerCase())
+                        )
+                        .map((customer) => (
+                          <ComboboxOption
+                            key={customer.id}
+                            value={customer}
+                            className="group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-blue-50 data-[focus]:bg-blue-50"
+                          >
+                            <div>
+                              <span className="font-medium text-gray-900">{customer.name}</span>
+                              {customer.email && (
+                                <span className="ml-2 text-xs text-gray-400">{customer.email}</span>
+                              )}
+                            </div>
+                            <CheckIcon className="w-4 h-4 text-blue-600 hidden group-data-[selected]:block" />
+                          </ComboboxOption>
+                        ))}
+                      {customerQuery !== '' && customers.filter((c) =>
+                        c.name.toLowerCase().includes(customerQuery.toLowerCase()) ||
+                        (c.email || '').toLowerCase().includes(customerQuery.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-gray-500 text-sm">No customers found</div>
+                      )}
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <Link
+                          href={`/dashboard/customers/new?returnTo=${encodeURIComponent('/dashboard/invoices/new')}`}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                          Create New Customer
+                        </Link>
+                      </div>
+                    </ComboboxOptions>
+                  </div>
+                </Combobox>
                 {errors.customer_id && (
                   <p className="form-error">{errors.customer_id.message}</p>
                 )}
