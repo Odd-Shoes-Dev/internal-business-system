@@ -199,6 +199,9 @@ export default function DashboardLayout({
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email: string; full_name: string | null; role: string | null } | null>(null);
   const [company, setCompany] = useState<any>(null);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [companyRole, setCompanyRole] = useState<string | null>(null);
+  const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('');
   const [trialEndDate, setTrialEndDate] = useState<string | undefined>();
@@ -308,6 +311,8 @@ export default function DashboardLayout({
           companies[0];
 
         setCompany(selectedCompany);
+        setCompanies(companies);
+        setCompanyRole(selectedCompany?.role || null);
         setEnabledModules(companiesPayload?.modules || []);
         setSubscriptionStatus(selectedCompany?.subscription_status || '');
         setTrialEndDate(selectedCompany?.trial_ends_at || undefined);
@@ -326,6 +331,26 @@ export default function DashboardLayout({
 
     getUser();
   }, [router]);
+
+  const switchCompany = async (newCompany: any) => {
+    setCompanySwitcherOpen(false);
+    setCompany(newCompany);
+    setCompanyRole(newCompany.role || null);
+    setSubscriptionStatus(newCompany.subscription_status || '');
+    setTrialEndDate(newCompany.trial_ends_at || undefined);
+    try {
+      const modulesRes = await fetch(`/api/companies/me?company_id=${newCompany.id}`, {
+        credentials: 'include',
+      });
+      if (modulesRes.ok) {
+        const data = await modulesRes.json();
+        setEnabledModules(data.modules || []);
+      }
+    } catch {
+      setEnabledModules([]);
+    }
+    await fetchNotifications(newCompany.id);
+  };
 
   const fetchNotifications = async (companyId: string) => {
     try {
@@ -458,7 +483,7 @@ export default function DashboardLayout({
         <nav className="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
           {navigationGroups
             .filter(group => !group.module || enabledModules.includes(group.module))
-            .filter(group => !group.roles || group.roles.includes(user?.role ?? ''))
+            .filter(group => !group.roles || group.roles.includes(companyRole ?? user?.role ?? ''))
             .map((group) => (
             <div key={group.name}>
               <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
@@ -498,9 +523,53 @@ export default function DashboardLayout({
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-semibold text-blueox-primary-dark hidden sm:block">
-              {company?.name || 'Dashboard'} - Operations
-            </h1>
+            {/* Company Switcher */}
+            <div className="relative hidden sm:block">
+              <button
+                onClick={() => setCompanySwitcherOpen(!companySwitcherOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-blueox-primary/10 transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
+                  <span className="text-black text-xs font-bold">{company?.name?.[0]?.toUpperCase() || 'C'}</span>
+                </div>
+                <span className="text-sm font-semibold text-blueox-primary-dark max-w-[160px] truncate">{company?.name || 'Company'}</span>
+                {companies.length > 1 && (
+                  <ChevronDownIcon className={`w-4 h-4 text-blueox-primary/60 transition-transform ${companySwitcherOpen ? 'rotate-180' : ''}`} />
+                )}
+              </button>
+              {companySwitcherOpen && companies.length > 1 && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setCompanySwitcherOpen(false)} />
+                  <div className="absolute left-0 mt-2 w-64 bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl z-50 overflow-hidden">
+                    <div className="p-3 border-b border-blueox-primary/10">
+                      <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider">Switch Company</p>
+                    </div>
+                    <div className="py-1 max-h-64 overflow-y-auto">
+                      {companies.map((c: any) => (
+                        <button
+                          key={c.id}
+                          onClick={() => switchCompany(c)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blueox-primary/5 transition-colors ${
+                            c.id === company?.id ? 'bg-blueox-primary/10' : ''
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
+                            <span className="text-black text-sm font-bold">{c.name?.[0]?.toUpperCase() || 'C'}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-blueox-primary-dark truncate">{c.name}</p>
+                            <p className="text-xs text-blueox-primary/60 capitalize">{c.role}</p>
+                          </div>
+                          {c.id === company?.id && (
+                            <div className="w-2 h-2 rounded-full bg-blueox-accent flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -592,7 +661,7 @@ export default function DashboardLayout({
                   <p className="text-sm font-medium text-blueox-primary-dark">
                     {user.full_name || user.email || 'User'}
                   </p>
-                  <p className="text-xs text-blueox-primary/60 capitalize">{user.role || 'User'}</p>
+                  <p className="text-xs text-blueox-primary/60 capitalize">{companyRole || user.role || 'User'}</p>
                 </div>
                 <ChevronDownIcon className="w-4 h-4 text-blueox-primary/60" />
               </button>
@@ -649,14 +718,14 @@ export default function DashboardLayout({
             subscriptionStatus={subscriptionStatus}
             trialEndDate={trialEndDate}
           />
-          {!isLoading && user && !userHasAccess(pathname, user.role) ? (
+          {!isLoading && user && !userHasAccess(pathname, companyRole ?? user.role) ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
               <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
                 <ShieldCheckIcon className="w-10 h-10 text-red-400" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h1>
               <p className="text-gray-500 max-w-md mb-6">
-                Your role (<span className="font-semibold capitalize">{user.role}</span>) does not have permission to view this page. Contact your administrator if you need access.
+                Your role (<span className="font-semibold capitalize">{companyRole ?? user.role}</span>) does not have permission to view this page. Contact your administrator if you need access.
               </p>
               <Link href="/dashboard" className="btn-primary">
                 Go to Dashboard
