@@ -42,11 +42,21 @@ export async function GET(request: NextRequest) {
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
 
+    const emptyResult = { rows: [], rowCount: 0 };
+
+    const safeBankQuery = async <T>(sql: string, params: any[]) => {
+      try {
+        return await db.query<T>(sql, params);
+      } catch (e: any) {
+        console.warn('[dashboard/stats] bank_accounts query skipped (schema not ready):', e?.message);
+        return emptyResult as { rows: T[]; rowCount: number };
+      }
+    };
+
     // Fetch all financial data - FILTERED BY COMPANY
-    const [invoices, bills, expenses, bankTransactions,
+    const [invoices, bills, expenses,
       currentMonthInvoices, prevMonthInvoices,
       currentMonthExpenses, prevMonthExpenses,
-      currentMonthBankTx, prevMonthBankTx,
     ] = await Promise.all([
       db.query<{ total: number; amount_paid: number; status: string; currency: string; invoice_date: string }>(
         'SELECT total, amount_paid, status, currency, invoice_date FROM invoices WHERE company_id = $1',
@@ -58,13 +68,6 @@ export async function GET(request: NextRequest) {
       ),
       db.query<{ total: number; currency: string; expense_date: string }>(
         'SELECT total, currency, expense_date FROM expenses WHERE company_id = $1',
-        [companyId]
-      ),
-      db.query<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
-        `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency
-         FROM bank_transactions bt
-         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
-         WHERE ba.company_id = $1`,
         [companyId]
       ),
       // Current month paid invoices
@@ -91,16 +94,25 @@ export async function GET(request: NextRequest) {
          WHERE company_id = $1 AND expense_date >= $2 AND expense_date <= $3`,
         [companyId, prevMonthStart, prevMonthEnd]
       ),
-      // Current month bank transactions
-      db.query<{ amount: number; transaction_date: string; currency: string | null }>(
+    ]);
+
+    // Bank transaction queries isolated — bank_accounts.company_id requires migration 078
+    const [bankTransactions, currentMonthBankTx, prevMonthBankTx] = await Promise.all([
+      safeBankQuery<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
+        `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency
+         FROM bank_transactions bt
+         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
+         WHERE ba.company_id = $1`,
+        [companyId]
+      ),
+      safeBankQuery<{ amount: number; transaction_date: string; currency: string | null }>(
         `SELECT bt.amount, bt.transaction_date, ba.currency
          FROM bank_transactions bt
          JOIN bank_accounts ba ON ba.id = bt.bank_account_id
          WHERE ba.company_id = $1 AND bt.transaction_date >= $2`,
         [companyId, currentMonthStart]
       ),
-      // Previous month bank transactions
-      db.query<{ amount: number; transaction_date: string; currency: string | null }>(
+      safeBankQuery<{ amount: number; transaction_date: string; currency: string | null }>(
         `SELECT bt.amount, bt.transaction_date, ba.currency
          FROM bank_transactions bt
          JOIN bank_accounts ba ON ba.id = bt.bank_account_id
