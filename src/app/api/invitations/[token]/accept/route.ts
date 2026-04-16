@@ -78,31 +78,46 @@ export async function POST(
     );
 
     if (!alreadyMember.rowCount) {
-      await db.query(
-        `INSERT INTO user_companies (user_id, company_id, role, is_primary, joined_at)
-         VALUES ($1, $2, $3, TRUE, NOW())`,
-        [userId, invitation.company_id, invitation.role]
-      );
+      try {
+        await db.query(
+          `INSERT INTO user_companies (user_id, company_id, role, is_primary, joined_at)
+           VALUES ($1, $2, $3, TRUE, NOW())`,
+          [userId, invitation.company_id, invitation.role]
+        );
+      } catch (ucErr: any) {
+        console.error('[accept] user_companies INSERT failed:', ucErr?.message, ucErr?.code, ucErr?.detail);
+        throw ucErr;
+      }
     }
 
-    await db.query(
-      'UPDATE user_invitations SET accepted_at = NOW() WHERE token = $1',
-      [token]
-    );
+    try {
+      await db.query(
+        'UPDATE user_invitations SET accepted_at = NOW() WHERE token = $1',
+        [token]
+      );
+    } catch (updErr: any) {
+      console.error('[accept] user_invitations UPDATE failed:', updErr?.message);
+      throw updErr;
+    }
 
     const sessionToken = createSessionToken();
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : undefined;
-    await persistSession(
-      userId,
-      sessionToken,
-      ipAddress,
-      request.headers.get('user-agent') ?? undefined
-    );
+    try {
+      await persistSession(
+        userId,
+        sessionToken,
+        ipAddress,
+        request.headers.get('user-agent') ?? undefined
+      );
+    } catch (sessErr: any) {
+      console.error('[accept] persistSession failed:', sessErr?.message);
+      throw sessErr;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('POST /api/invitations/[token]/accept error:', error);
+    console.error('POST /api/invitations/[token]/accept error:', error?.message, error?.code, error?.detail);
     return NextResponse.json({ error: 'Failed to accept invitation' }, { status: 500 });
   }
 }

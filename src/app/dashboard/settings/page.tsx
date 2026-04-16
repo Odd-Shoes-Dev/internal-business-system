@@ -443,6 +443,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
       {/* Floating Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1011,58 +1012,6 @@ export default function SettingsPage() {
           {/* Users */}
           {activeTab === 'users' && (
             <div className="space-y-6">
-              {/* Invite Modal */}
-              {showInviteModal && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                      <h3 className="text-lg font-semibold text-gray-900">Invite Team Member</h3>
-                      <button onClick={() => setShowInviteModal(false)} className="p-1 rounded-lg hover:bg-gray-100">
-                        <XMarkIcon className="w-5 h-5 text-gray-500" />
-                      </button>
-                    </div>
-                    <form onSubmit={handleSendInvite} className="p-6 space-y-4">
-                      <div className="form-group">
-                        <label className="label">Email Address *</label>
-                        <input
-                          type="email"
-                          required
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          className="input"
-                          placeholder="colleague@company.com"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="label">Role *</label>
-                        <select
-                          value={inviteRole}
-                          onChange={(e) => setInviteRole(e.target.value)}
-                          className="input"
-                        >
-                          {ROLE_OPTIONS.map((r) => (
-                            <option key={r.value} value={r.value}>{r.label}</option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1">This sets what the user can access in your company.</p>
-                      </div>
-                      <div className="flex gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowInviteModal(false)}
-                          className="btn-secondary flex-1"
-                        >
-                          Cancel
-                        </button>
-                        <button type="submit" disabled={sendingInvite} className="btn-primary flex-1">
-                          {sendingInvite ? 'Sending...' : 'Send Invitation'}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
               {/* Team Members */}
               <div className="card">
                 <div className="card-header flex justify-between items-center">
@@ -1232,6 +1181,59 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+
+    {/* Invite Modal — rendered outside overflow-hidden/backdrop-blur containers */}
+    {showInviteModal && (
+      <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900">Invite Team Member</h3>
+            <button onClick={() => setShowInviteModal(false)} className="p-1 rounded-lg hover:bg-gray-100">
+              <XMarkIcon className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <form onSubmit={handleSendInvite} className="p-6 space-y-4">
+            <div className="form-group">
+              <label className="label">Email Address *</label>
+              <input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="input"
+                placeholder="colleague@company.com"
+              />
+            </div>
+            <div className="form-group">
+              <label className="label">Role *</label>
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="input"
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">This sets what the user can access in your company.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={sendingInvite} className="btn-primary flex-1">
+                {sendingInvite ? 'Sending...' : 'Send Invitation'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
