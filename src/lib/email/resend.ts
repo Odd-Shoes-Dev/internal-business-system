@@ -1,3 +1,5 @@
+import { EMAIL_CONFIG } from './client';
+
 // Lazily construct Resend client inside functions so missing API keys don't throw during
 // module import (which can break builds when environment variables are not provided).
 async function getResendClient() {
@@ -390,9 +392,8 @@ export async function sendInvitationEmail(params: SendInvitationEmailParams) {
 
   try {
     const resend = await getResendClient();
-    const fromEmail = process.env.EMAIL_FROM || 'BlueOx <noreply@blueoxgroup.eu>';
     const { data, error } = await resend.emails.send({
-      from: fromEmail,
+      from: EMAIL_CONFIG.from,
       to: [to],
       subject: `You're invited to join ${companyName} on BlueOx`,
       html,
