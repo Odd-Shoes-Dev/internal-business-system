@@ -8,6 +8,8 @@ interface Company {
   id: string;
   name: string;
   subdomain: string | null;
+  role?: string;
+  is_primary?: boolean;
   email: string | null;
   phone: string | null;
   address: string | null;
