@@ -16,7 +16,7 @@ There are two layers of enforcement:
 |---|---|
 | **admin** | Full access to everything — company settings, billing, all financial data, all modules |
 | **accountant** | Full access to finance, accounting, reports, payroll, employees, inventory |
-| **operations** | Access to operational modules — tours, fleet, hotels, cafe, inventory, employees |
+| **operations** | Full access to all modules except Settings and Billing — invoices, finance, accounting, payroll, tours, fleet, hotels, cafe, inventory, employees |
 | **sales** | Access to customer-facing revenue — invoices, receipts, customers, tours, bookings |
 | **guide** | Minimal access — tour packages and bookings only |
 | **viewer** | Dashboard home only — read-only observer with no module access |
@@ -25,38 +25,38 @@ There are two layers of enforcement:
 
 ## Role Permission Matrix
 
-| Section / Page | admin | accountant | operations | sales | guide | viewer |
+| Section / Page | admin | operations | accountant | sales | guide | viewer |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Dashboard (home) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Sales & Revenue** | | | | | | |
-| Invoices | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Receipts | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Payments | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Proformas | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Invoices | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Receipts | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Payments | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Proformas | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Finance** | | | | | | |
-| Bills | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Expenses | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Bank & Cash | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Bills | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Expenses | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Bank & Cash | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Accounting** | | | | | | |
-| General Ledger | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Reports | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| General Ledger | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Reports | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Relationships** | | | | | | |
 | Customers | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Vendors | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **People & Payroll** | | | | | | |
 | Employees | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Payroll Processing | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Payroll Processing | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Assets & Inventory** | | | | | | |
 | Inventory | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Fixed Assets | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Tour Operations** | | | | | | |
-| Tour Packages | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| Bookings | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Tour Packages | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Bookings | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | **Operational Modules** | | | | | | |
-| Fleet Management | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Hotels Management | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Cafe Operations | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Destinations | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Fleet Management | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Hotels Management | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cafe Operations | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Destinations | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **System** | | | | | | |
 | Settings | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Billing & Subscription | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |

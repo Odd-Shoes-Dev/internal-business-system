@@ -81,7 +81,7 @@ const navigationGroups = [
   {
     name: 'Sales & Revenue',
     module: null,
-    roles: ['admin', 'accountant', 'sales'],
+    roles: ['admin', 'accountant', 'sales', 'operations'],
     items: [
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
@@ -90,7 +90,7 @@ const navigationGroups = [
   {
     name: 'Finance',
     module: null,
-    roles: ['admin', 'accountant'],
+    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Bills', href: '/dashboard/bills', icon: BanknotesIcon },
       { name: 'Expenses', href: '/dashboard/expenses', icon: CurrencyDollarIcon },
@@ -108,7 +108,7 @@ const navigationGroups = [
   {
     name: 'Payroll',
     module: 'payroll',
-    roles: ['admin', 'accountant'],
+    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Payroll Processing', href: '/dashboard/payroll', icon: CalculatorIcon },
     ]
@@ -134,7 +134,7 @@ const navigationGroups = [
   {
     name: 'Accounting',
     module: null,
-    roles: ['admin', 'accountant'],
+    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
@@ -155,13 +155,13 @@ const navigationGroups = [
 const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/settings': ['admin'],
   '/dashboard/billing': ['admin'],
-  '/dashboard/general-ledger': ['admin', 'accountant'],
-  '/dashboard/reports': ['admin', 'accountant'],
-  '/dashboard/bank': ['admin', 'accountant'],
-  '/dashboard/payroll': ['admin', 'accountant'],
-  '/dashboard/payslips': ['admin', 'accountant'],
-  '/dashboard/bills': ['admin', 'accountant'],
-  '/dashboard/expenses': ['admin', 'accountant'],
+  '/dashboard/general-ledger': ['admin', 'accountant', 'operations'],
+  '/dashboard/reports': ['admin', 'accountant', 'operations'],
+  '/dashboard/bank': ['admin', 'accountant', 'operations'],
+  '/dashboard/payroll': ['admin', 'accountant', 'operations'],
+  '/dashboard/payslips': ['admin', 'accountant', 'operations'],
+  '/dashboard/bills': ['admin', 'accountant', 'operations'],
+  '/dashboard/expenses': ['admin', 'accountant', 'operations'],
   '/dashboard/employees': ['admin', 'accountant', 'operations'],
   '/dashboard/assets': ['admin', 'accountant', 'operations'],
   '/dashboard/inventory': ['admin', 'accountant', 'operations'],
@@ -173,10 +173,10 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/bookings': ['admin', 'operations', 'sales', 'guide'],
   '/dashboard/customers': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/vendors': ['admin', 'accountant', 'operations'],
-  '/dashboard/invoices': ['admin', 'accountant', 'sales'],
-  '/dashboard/receipts': ['admin', 'accountant', 'sales'],
-  '/dashboard/payments': ['admin', 'accountant', 'sales'],
-  '/dashboard/proformas': ['admin', 'accountant', 'sales'],
+  '/dashboard/invoices': ['admin', 'accountant', 'sales', 'operations'],
+  '/dashboard/receipts': ['admin', 'accountant', 'sales', 'operations'],
+  '/dashboard/payments': ['admin', 'accountant', 'sales', 'operations'],
+  '/dashboard/proformas': ['admin', 'accountant', 'sales', 'operations'],
 };
 
 function userHasAccess(pathname: string, userRole: string | null): boolean {

@@ -23,6 +23,8 @@ import {
   XMarkIcon,
   ClockIcon,
   CheckCircleIcon,
+  PencilIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
@@ -52,8 +54,8 @@ interface PendingInvitation {
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },
-  { value: 'accountant', label: 'Accountant' },
   { value: 'operations', label: 'Operations' },
+  { value: 'accountant', label: 'Accountant' },
   { value: 'sales', label: 'Sales' },
   { value: 'guide', label: 'Guide' },
   { value: 'viewer', label: 'Viewer' },
@@ -106,6 +108,9 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState('accountant');
   const [sendingInvite, setSendingInvite] = useState(false);
   const [revokingToken, setRevokingToken] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<string>('');
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   const companyForm = useForm<CompanyFormData>();
   const financialForm = useForm<FinancialFormData>();
@@ -160,6 +165,33 @@ export default function SettingsPage() {
       toast.error(error.message || 'Failed to send invitation');
     } finally {
       setSendingInvite(false);
+    }
+  };
+
+  const handleEditRole = (member: TeamMember) => {
+    setEditingMemberId(member.id);
+    setEditingRole(member.company_role);
+  };
+
+  const handleUpdateRole = async (userId: string) => {
+    if (!company?.id) return;
+    setUpdatingRole(userId);
+    try {
+      const res = await fetch(`/api/user-companies/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: company.id, role: editingRole }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to update role');
+      toast.success('Role updated successfully');
+      setEditingMemberId(null);
+      loadTeam();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update role');
+    } finally {
+      setUpdatingRole(false as any);
     }
   };
 
@@ -1037,28 +1069,68 @@ export default function SettingsPage() {
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {teamMembers.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-white text-sm font-semibold">
+                        <div key={member.id} className="flex items-center justify-between py-3 gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
                               {(member.full_name || member.email)[0].toUpperCase()}
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
                                 {member.full_name || member.email}
                                 {member.is_primary && (
                                   <span className="ml-2 text-xs bg-blueox-primary/10 text-blueox-primary px-2 py-0.5 rounded-full">Owner</span>
                                 )}
                               </p>
-                              <p className="text-xs text-gray-400">{member.email}</p>
+                              <p className="text-xs text-gray-400 truncate">{member.email}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[member.company_role] || 'bg-gray-100 text-gray-600'}`}>
-                              {ROLE_OPTIONS.find(r => r.value === member.company_role)?.label || member.company_role}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {member.last_login_at ? `Last seen ${new Date(member.last_login_at).toLocaleDateString()}` : 'Never logged in'}
-                            </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {editingMemberId === member.id ? (
+                              <>
+                                <select
+                                  value={editingRole}
+                                  onChange={(e) => setEditingRole(e.target.value)}
+                                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blueox-primary/30"
+                                >
+                                  {ROLE_OPTIONS.map((r) => (
+                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => handleUpdateRole(member.id)}
+                                  disabled={updatingRole === member.id}
+                                  className="p-1.5 rounded-lg bg-blueox-primary text-white hover:bg-blueox-primary/90 transition-colors disabled:opacity-50"
+                                  title="Save"
+                                >
+                                  <CheckIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingMemberId(null)}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+                                  title="Cancel"
+                                >
+                                  <XMarkIcon className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[member.company_role] || 'bg-gray-100 text-gray-600'}`}>
+                                  {ROLE_OPTIONS.find(r => r.value === member.company_role)?.label || member.company_role}
+                                </span>
+                                <span className="text-xs text-gray-400 hidden sm:block">
+                                  {member.last_login_at ? `Last seen ${new Date(member.last_login_at).toLocaleDateString()}` : 'Never logged in'}
+                                </span>
+                                {company?.role === 'admin' && !member.is_primary && (
+                                  <button
+                                    onClick={() => handleEditRole(member)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-blueox-primary transition-colors"
+                                    title="Change role"
+                                  >
+                                    <PencilIcon className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
