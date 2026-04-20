@@ -411,13 +411,35 @@ export default function DashboardLayout({
     router.push('/login');
   };
 
-  // Show loading screen while checking authentication
+  // Show skeleton layout (sidebar always visible) while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blueox-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        {/* Sidebar skeleton — same structure as real sidebar */}
+        <aside className="fixed top-0 left-0 z-50 h-full w-64 bg-white/90 backdrop-blur-xl border-r border-blueox-primary/20 shadow-2xl">
+          <div className="h-16 flex items-center px-4 border-b border-blueox-primary/20 gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blueox-primary/10 animate-pulse" />
+            <div className="h-4 w-32 rounded bg-blueox-primary/10 animate-pulse" />
+          </div>
+          <div className="p-4 space-y-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-20 rounded bg-blueox-primary/10 animate-pulse mb-3" />
+                {[1,2,3].map(j => (
+                  <div key={j} className="h-9 rounded-xl bg-blueox-primary/5 animate-pulse" />
+                ))}
+              </div>
+            ))}
+          </div>
+        </aside>
+        {/* Content area skeleton */}
+        <div className="lg:ml-64 p-8 pt-24">
+          <div className="h-6 w-48 rounded bg-blueox-primary/10 animate-pulse mb-8" />
+          <div className="grid grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-32 rounded-2xl bg-white/80 animate-pulse shadow" />
+            ))}
+          </div>
         </div>
       </div>
     );
