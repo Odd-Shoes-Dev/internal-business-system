@@ -146,22 +146,24 @@ export async function GET(request: NextRequest) {
     // Process invoices
     if (invoices.rows) {
       for (const invoice of invoices.rows) {
-        let amountInUSD = invoice.total;
-        let remainingInUSD = invoice.total - (invoice.amount_paid || 0);
+        const invoiceTotal = parseFloat(String(invoice.total)) || 0;
+        const invoicePaid = parseFloat(String(invoice.amount_paid)) || 0;
+        let amountInUSD = invoiceTotal;
+        let remainingInUSD = invoiceTotal - invoicePaid;
 
         if (invoice.currency !== 'USD') {
           const convertedTotal = await db.query<{ converted: number | null }>(
             'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [invoice.total, invoice.currency, 'USD', invoice.invoice_date]
+            [invoiceTotal, invoice.currency, 'USD', invoice.invoice_date]
           );
 
           const convertedRemaining = await db.query<{ converted: number | null }>(
             'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [invoice.total - (invoice.amount_paid || 0), invoice.currency, 'USD', invoice.invoice_date]
+            [invoiceTotal - invoicePaid, invoice.currency, 'USD', invoice.invoice_date]
           );
 
-          amountInUSD = convertedTotal.rows[0]?.converted || invoice.total;
-          remainingInUSD = convertedRemaining.rows[0]?.converted || (invoice.total - (invoice.amount_paid || 0));
+          amountInUSD = parseFloat(String(convertedTotal.rows[0]?.converted)) || invoiceTotal;
+          remainingInUSD = parseFloat(String(convertedRemaining.rows[0]?.converted)) || (invoiceTotal - invoicePaid);
         }
 
         if (invoice.status === 'paid') {
@@ -177,15 +179,17 @@ export async function GET(request: NextRequest) {
     // Process bills
     if (bills.rows) {
       for (const bill of bills.rows) {
-        let remainingInUSD = bill.total - (bill.amount_paid || 0);
+        const billTotal = parseFloat(String(bill.total)) || 0;
+        const billPaid = parseFloat(String(bill.amount_paid)) || 0;
+        let remainingInUSD = billTotal - billPaid;
 
         if (bill.currency !== 'USD') {
           const convertedRemaining = await db.query<{ converted: number | null }>(
             'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [bill.total - (bill.amount_paid || 0), bill.currency, 'USD', bill.bill_date]
+            [billTotal - billPaid, bill.currency, 'USD', bill.bill_date]
           );
 
-          remainingInUSD = convertedRemaining.rows[0]?.converted || (bill.total - (bill.amount_paid || 0));
+          remainingInUSD = parseFloat(String(convertedRemaining.rows[0]?.converted)) || (billTotal - billPaid);
         }
 
         if (bill.status !== 'paid' && bill.status !== 'void') {
@@ -197,15 +201,16 @@ export async function GET(request: NextRequest) {
     // Process expenses
     if (expenses.rows) {
       for (const expense of expenses.rows) {
-        let amountInUSD = expense.total;
+        const expenseTotal = parseFloat(String(expense.total)) || 0;
+        let amountInUSD = expenseTotal;
 
         if (expense.currency !== 'USD') {
           const converted = await db.query<{ converted: number | null }>(
             'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [expense.total, expense.currency, 'USD', expense.expense_date]
+            [expenseTotal, expense.currency, 'USD', expense.expense_date]
           );
 
-          amountInUSD = converted.rows[0]?.converted || expense.total;
+          amountInUSD = parseFloat(String(converted.rows[0]?.converted)) || expenseTotal;
         }
 
         totalExpenses += amountInUSD;
@@ -271,12 +276,13 @@ export async function GET(request: NextRequest) {
 
     // Helper: convert a currency amount to USD using the DB function
     const convertToUSD = async (amount: number, currency: string, date: string): Promise<number> => {
-      if (currency === 'USD') return amount;
+      const safeAmount = parseFloat(String(amount)) || 0;
+      if (currency === 'USD') return safeAmount;
       const result = await db.query<{ converted: number | null }>(
         'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-        [amount, currency, 'USD', date]
+        [safeAmount, currency, 'USD', date]
       );
-      return result.rows[0]?.converted ?? amount;
+      return parseFloat(String(result.rows[0]?.converted)) || safeAmount;
     };
 
     // Helper: sum invoice rows in USD
