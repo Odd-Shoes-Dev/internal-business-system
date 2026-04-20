@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const allExpenses = await db.query(
-      'SELECT amount, currency, expense_date, status FROM expenses WHERE company_id = $1',
+      `SELECT COALESCE(total, amount, 0) AS total,
+              currency,
+              expense_date::text AS expense_date,
+              status
+       FROM expenses
+       WHERE company_id = $1`,
       [companyId]
     );
 
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
     let paidCount = 0;
 
     for (const expense of allExpenses.rows || []) {
-      const amount = parseFloat(expense.amount) || 0;
+      const amount = parseFloat(String(expense.total)) || 0;
 
       let amountUSD = amount;
       if (expense.currency && expense.currency !== 'USD') {
@@ -55,10 +60,11 @@ export async function GET(request: NextRequest) {
           'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
           [amount, expense.currency, 'USD', expense.expense_date]
         );
-        amountUSD = converted.rows[0]?.converted || amount;
+        amountUSD = parseFloat(String(converted.rows[0]?.converted)) || amount;
       }
 
-      if (expense.expense_date >= firstDayOfMonth && expense.expense_date <= lastDayOfMonth) {
+      const expDate = String(expense.expense_date).slice(0, 10);
+      if (expDate >= firstDayOfMonth && expDate <= lastDayOfMonth) {
         thisMonthTotal += amountUSD;
       }
 
