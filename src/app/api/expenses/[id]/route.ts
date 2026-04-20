@@ -23,8 +23,7 @@ export async function GET(request: NextRequest, context: any) {
               pa.name AS payment_account_name,
               pa.code AS payment_account_code,
               ba.id AS bank_account_ref_id,
-              ba.account_name AS bank_account_name,
-              ba.account_number AS bank_account_number,
+              ba.name AS bank_account_name,
               c.id AS customer_ref_id,
               c.name AS customer_name,
               je.id AS journal_entry_ref_id,
@@ -66,7 +65,7 @@ export async function GET(request: NextRequest, context: any) {
         ? { id: row.payment_account_ref_id, name: row.payment_account_name, code: row.payment_account_code }
         : null,
       bank_account: row.bank_account_ref_id
-        ? { id: row.bank_account_ref_id, account_name: row.bank_account_name, account_number: row.bank_account_number }
+        ? { id: row.bank_account_ref_id, name: row.bank_account_name }
         : null,
       customer: row.customer_ref_id ? { id: row.customer_ref_id, name: row.customer_name } : null,
       journal_entry: row.journal_entry_ref_id

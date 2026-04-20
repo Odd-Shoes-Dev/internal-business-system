@@ -4,6 +4,7 @@
 -- We drop the FK constraints but keep the UUID columns — they will hold app_users IDs.
 
 ALTER TABLE expenses             DROP CONSTRAINT IF EXISTS expenses_created_by_fkey;
+ALTER TABLE expenses             DROP CONSTRAINT IF EXISTS expenses_approved_by_fkey;
 ALTER TABLE journal_entries      DROP CONSTRAINT IF EXISTS journal_entries_created_by_fkey;
 ALTER TABLE journal_entries      DROP CONSTRAINT IF EXISTS journal_entries_posted_by_fkey;
 ALTER TABLE bills                DROP CONSTRAINT IF EXISTS bills_created_by_fkey;

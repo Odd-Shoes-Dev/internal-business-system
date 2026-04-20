@@ -15,6 +15,22 @@ export async function GET(request: NextRequest) {
     const accessError = await requireCompanyAccess(user.id, companyId);
     if (accessError) return accessError;
 
+    // Auto-sync exchange rates if stale (no live rate for today)
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const rateCheck = await db.query(
+        `SELECT 1 FROM exchange_rates WHERE source = 'open.er-api.com' AND effective_date = $1 LIMIT 1`,
+        [today]
+      );
+      if (rateCheck.rowCount === 0) {
+        const baseUrl = request.nextUrl.origin;
+        fetch(`${baseUrl}/api/exchange-rates/sync`, {
+          method: 'POST',
+          headers: { cookie: request.headers.get('cookie') || '' },
+        }).catch(() => {});
+      }
+    } catch { /* non-fatal */ }
+
     // Get enabled modules to filter data appropriately
     // subscription_modules may not exist yet — fall back to company_modules
     let moduleIds: string[] = [];
