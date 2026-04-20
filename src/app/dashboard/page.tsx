@@ -632,6 +632,25 @@ function StatCard({
     large: 'text-3xl lg:text-4xl xl:text-5xl',
   };
 
+  const getScaledValueSize = (val: string, sz: string) => {
+    const len = val.length;
+    if (sz === 'large') {
+      if (len > 16) return 'text-xl lg:text-2xl';
+      if (len > 12) return 'text-2xl lg:text-3xl';
+      return valueSizeClasses.large;
+    }
+    if (sz === 'medium') {
+      if (len > 16) return 'text-base lg:text-lg';
+      if (len > 12) return 'text-lg lg:text-xl';
+      if (len > 9)  return 'text-xl lg:text-2xl';
+      return valueSizeClasses.medium;
+    }
+    // small
+    if (len > 12) return 'text-sm lg:text-base';
+    if (len > 9)  return 'text-base lg:text-lg';
+    return valueSizeClasses.small;
+  };
+
   return (
     <div className={`bg-white/90 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl ${sizeClasses[size]} shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden`}>
       {/* Floating background element */}
@@ -651,7 +670,7 @@ function StatCard({
             </div>
           </div>
           
-          <p className={`${valueSizeClasses[size]} font-bold text-gray-900 leading-tight`}>{value}</p>
+          <p className={`${getScaledValueSize(value, size)} font-bold text-gray-900 leading-tight`}>{value}</p>
           
           {trend !== undefined && (
             <div className="flex items-center gap-2">
