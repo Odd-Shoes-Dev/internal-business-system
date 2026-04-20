@@ -121,9 +121,24 @@ export default function NewExpensePage() {
     try {
       let receiptUrl: string | null = null;
 
-      // Receipt uploads are not yet configured in provider mode.
-      if (attachments.length > 0) {
-        throw new Error('Receipt upload is not configured yet. Please save expense without attachment for now.');
+      // Upload receipt to Supabase Storage if provided
+      if (attachments.length > 0 && company) {
+        const uploadForm = new FormData();
+        uploadForm.append('file', attachments[0]);
+        uploadForm.append('company_id', company.id);
+
+        const uploadRes = await fetch('/api/upload/receipt', {
+          method: 'POST',
+          body: uploadForm,
+        });
+
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to upload receipt');
+        }
+
+        const { url } = await uploadRes.json();
+        receiptUrl = url;
       }
 
       // Prepare the payload
