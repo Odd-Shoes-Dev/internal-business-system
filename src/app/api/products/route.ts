@@ -74,3 +74,61 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// POST /api/products - Create a new product
+export async function POST(request: NextRequest) {
+  try {
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+
+    const body = await request.json();
+    const {
+      company_id,
+      name,
+      sku,
+      description,
+      product_type = 'service',
+      unit_price = 0,
+      cost_price = 0,
+      currency = 'USD',
+      unit_of_measure = 'each',
+      is_taxable = false,
+      tax_rate = 0,
+      track_inventory = false,
+      quantity_on_hand = 0,
+      reorder_point,
+      revenue_account_id,
+      category_id,
+    } = body;
+
+    if (!company_id) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
+
+    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    if (companyAccessError) return companyAccessError;
+
+    const result = await db.query(
+      `INSERT INTO products (
+         company_id, name, sku, description, product_type,
+         unit_price, cost_price, currency, unit_of_measure,
+         is_taxable, tax_rate, track_inventory, quantity_on_hand,
+         reorder_point, revenue_account_id, category_id, is_active
+       ) VALUES (
+         $1, $2, $3, $4, $5,
+         $6, $7, $8, $9,
+         $10, $11, $12, $13,
+         $14, $15, $16, true
+       ) RETURNING *`,
+      [
+        company_id, name, sku || null, description || null, product_type,
+        unit_price, cost_price, currency, unit_of_measure,
+        is_taxable, tax_rate, track_inventory, quantity_on_hand,
+        reorder_point || null, revenue_account_id || null, category_id || null,
+      ]
+    );
+
+    return NextResponse.json({ data: result.rows[0] }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

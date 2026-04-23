@@ -84,6 +84,7 @@ const navigationGroups = [
     roles: ['admin', 'accountant', 'sales', 'operations'],
     items: [
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
+      { name: 'Products & Services', href: '/dashboard/products', icon: CubeIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
     ]
   },
@@ -174,6 +175,7 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/customers': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/vendors': ['admin', 'accountant', 'operations'],
   '/dashboard/invoices': ['admin', 'accountant', 'sales', 'operations'],
+  '/dashboard/products': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/receipts': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/payments': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/proformas': ['admin', 'accountant', 'sales', 'operations'],

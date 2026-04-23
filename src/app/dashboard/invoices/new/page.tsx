@@ -48,7 +48,7 @@ export default function NewInvoicePage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [taxRate] = useState(0.0625); // MA sales tax
+  const [taxRate] = useState(0);
 
   // Get query parameters from URL (for booking-generated invoices)
   const bookingId = searchParams.get('booking_id');
@@ -182,7 +182,7 @@ export default function NewInvoicePage() {
       }
       
       setValue(`lines.${index}.unit_price`, convertedPrice);
-      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+      setValue(`lines.${index}.tax_rate`, product.is_taxable ? (Number(product.tax_rate) || 0) : 0);
     }
   };
 
@@ -193,7 +193,7 @@ export default function NewInvoicePage() {
   };
 
   const calculateLineTax = (line: InvoiceLineInput) => {
-    return calculateLineTotal(line) * line.tax_rate;
+    return calculateLineTotal(line) * (line.tax_rate || 0);
   };
 
   const calculateSubtotal = () => {
@@ -501,13 +501,27 @@ export default function NewInvoicePage() {
                   />
                 </div>
 
-                <div className="col-span-4 md:col-span-1">
+                <div className="col-span-3 md:col-span-1">
                   <label className="label text-xs">Disc %</label>
                   <input
                     type="number"
                     step="0.01"
                     {...register(`lines.${index}.discount_percent`, { valueAsNumber: true, min: 0, max: 100 })}
                     className="input text-sm"
+                  />
+                </div>
+
+                <div className="col-span-3 md:col-span-1">
+                  <label className="label text-xs">Tax %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="input text-sm"
+                    value={Number(((watchLines[index]?.tax_rate || 0) * 100).toFixed(4))}
+                    onChange={e => setValue(`lines.${index}.tax_rate`, (parseFloat(e.target.value) || 0) / 100)}
+                    placeholder="0"
                   />
                 </div>
 
@@ -575,10 +589,12 @@ export default function NewInvoicePage() {
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
               </div>
+              {calculateTax() > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (6.25%)</span>
+                <span className="text-gray-600">Tax</span>
                 <span className="font-medium">{formatCurrency(calculateTax())}</span>
               </div>
+              )}
               <div className="border-t pt-3 flex justify-between">
                 <span className="font-semibold text-gray-900">Total</span>
                 <span className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
