@@ -88,11 +88,11 @@ export async function GET(request: NextRequest) {
 
     // Get expenses for the period
     const expensesResult = await db.query(
-      `SELECT id, amount, currency, date, category
+      `SELECT id, amount, currency, expense_date, category
        FROM expenses
        WHERE company_id = $1
-         AND date >= $2::date
-         AND date <= $3::date`,
+         AND expense_date >= $2::date
+         AND expense_date <= $3::date`,
       [companyId, startDate, endDate]
     );
     const expenses = expensesResult.rows;
@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
       if (!accountTotals[entry.account_id]) {
         accountTotals[entry.account_id] = { debit: 0, credit: 0 };
       }
-      accountTotals[entry.account_id].debit += entry.debit || 0;
-      accountTotals[entry.account_id].credit += entry.credit || 0;
+      accountTotals[entry.account_id].debit += parseFloat(entry.debit) || 0;
+      accountTotals[entry.account_id].credit += parseFloat(entry.credit) || 0;
     });
 
     // Build revenue section
@@ -141,19 +141,19 @@ export async function GET(request: NextRequest) {
 
     // Add invoice revenue (convert to USD)
     for (const invoice of invoices || []) {
-      let amountInUSD = invoice.total;
+      let amountInUSD = parseFloat(invoice.total) || 0;
       const currency = invoice.currency || 'USD';
-      
+
       if (currency !== 'USD') {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: invoice.total,
+          p_amount: amountInUSD,
           p_from_currency: currency,
           p_to_currency: 'USD',
           p_date: invoice.invoice_date,
         });
-        amountInUSD = convertedValue || invoice.total;
+        amountInUSD = parseFloat(convertedValue) || amountInUSD;
       }
-      
+
       totalRevenue += amountInUSD;
     }
 
@@ -199,42 +199,42 @@ export async function GET(request: NextRequest) {
 
     // Add bills to operating expenses (convert to USD)
     for (const bill of bills || []) {
-      let amountInUSD = bill.total;
+      let amountInUSD = parseFloat(bill.total) || 0;
       const currency = bill.currency || 'USD';
-      
+
       if (currency !== 'USD') {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: bill.total,
+          p_amount: amountInUSD,
           p_from_currency: currency,
           p_to_currency: 'USD',
           p_date: bill.bill_date,
         });
-        amountInUSD = convertedValue || bill.total;
+        amountInUSD = parseFloat(convertedValue) || amountInUSD;
       }
-      
+
       totalOperatingExpenses += amountInUSD;
     }
 
     // Add expenses to operating expenses (convert to USD)
     for (const expense of expenses || []) {
-      let amountInUSD = expense.amount;
+      let amountInUSD = parseFloat(expense.amount) || 0;
       const currency = expense.currency || 'USD';
-      
+
       if (currency !== 'USD') {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: expense.amount,
+          p_amount: amountInUSD,
           p_from_currency: currency,
           p_to_currency: 'USD',
-          p_date: expense.date,
+          p_date: expense.expense_date,
         });
-        amountInUSD = convertedValue || expense.amount;
+        amountInUSD = parseFloat(convertedValue) || amountInUSD;
       }
-      
+
       totalOperatingExpenses += amountInUSD;
     }
 
     if (bills && bills.length > 0) {
-      const billsTotal = bills.reduce((sum, bill) => sum + bill.total, 0);
+      const billsTotal = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.total) || 0), 0);
       operatingExpenses.push({
         code: '5000',
         name: 'Vendor Bills',
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (expenses && expenses.length > 0) {
-      const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const expensesTotal = expenses.reduce((sum: number, exp: any) => sum + (parseFloat(exp.amount) || 0), 0);
       operatingExpenses.push({
         code: '5100',
         name: 'Operating Expenses',
