@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: invoice.invoice_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       totalRevenue += amountInUSD;
     }
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: bill.bill_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       totalExpenses += amountInUSD;
     }
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: expense.expense_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       totalExpenses += amountInUSD;
     }
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: invoice.invoice_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       beginningAR += amountInUSD;
     }
@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: invoice.invoice_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       endingAR += amountInUSD;
     }
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: bill.bill_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       beginningAP += amountInUSD;
     }
@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: bill.bill_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       endingAP += amountInUSD;
     }
@@ -329,7 +329,7 @@ export async function GET(request: NextRequest) {
           p_to_currency: 'USD',
           p_date: asset.purchase_date,
         });
-        amountInUSD = parseFloat(convertedValue) || amountInUSD;
+        amountInUSD = Number(convertedValue) || amountInUSD;
       }
       assetPurchaseTotal += amountInUSD;
     }
