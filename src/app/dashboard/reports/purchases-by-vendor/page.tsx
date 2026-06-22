@@ -15,6 +15,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { useCompany } from '@/contexts/company-context';
 
 interface VendorPurchase {
   vendorId: string;
@@ -69,6 +70,7 @@ interface PurchasesByVendorData {
 }
 
 export default function PurchasesByVendorPage() {
+  const { company } = useCompany();
   const [data, setData] = useState<PurchasesByVendorData | null>(null);
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
@@ -83,7 +85,7 @@ export default function PurchasesByVendorPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/purchases-by-vendor?startDate=${startDate}&endDate=${endDate}&vendorType=${vendorType}&sortBy=${sortBy}&minAmount=${minAmount}`
+        `/api/reports/purchases-by-vendor?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}&vendorType=${vendorType}&sortBy=${sortBy}&minAmount=${minAmount}`
       );
       const result = await response.json();
       setData(result);
@@ -95,8 +97,9 @@ export default function PurchasesByVendorPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchPurchasesByVendor();
-  }, [startDate, endDate, vendorType, sortBy, minAmount]);
+  }, [startDate, endDate, vendorType, sortBy, minAmount, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

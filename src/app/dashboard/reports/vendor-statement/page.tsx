@@ -85,12 +85,12 @@ export default function VendorStatementPage() {
   }, []);
 
   const fetchStatement = async () => {
-    if (!vendorId) return;
+    if (!vendorId || !company?.id) return;
     
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/vendor-statement?vendorId=${vendorId}&startDate=${startDate}&endDate=${endDate}`
+        `/api/reports/vendor-statement?company_id=${company!.id}&vendorId=${vendorId}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
       

@@ -74,7 +74,7 @@ export default function APAgingPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/ap-aging?reportDate=${reportDate}&vendorType=${vendorType}&sortBy=${sortBy}&showCriticalOnly=${showCriticalOnly}`
+        `/api/reports/ap-aging?company_id=${company!.id}&reportDate=${reportDate}&vendorType=${vendorType}&sortBy=${sortBy}&showCriticalOnly=${showCriticalOnly}`
       );
       const result = await response.json();
       setData(result);
@@ -86,8 +86,9 @@ export default function APAgingPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchAPAging();
-  }, [reportDate, vendorType, sortBy, showCriticalOnly]);
+  }, [reportDate, vendorType, sortBy, showCriticalOnly, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

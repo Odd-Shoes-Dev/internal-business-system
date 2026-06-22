@@ -84,12 +84,12 @@ export default function CustomerStatementPage() {
   }, []);
 
   const fetchStatement = async () => {
-    if (!customerId) return;
+    if (!customerId || !company?.id) return;
     
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/customer-statement?customerId=${customerId}&startDate=${startDate}&endDate=${endDate}`
+        `/api/reports/customer-statement?company_id=${company!.id}&customerId=${customerId}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
       

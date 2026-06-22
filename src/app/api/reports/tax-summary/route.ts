@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     const invoices = invoicesResult.rows;
 
     // Calculate gross revenue from invoices
-    const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+    const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
 
     // Fetch expenses for deductions
     const expensesResult = await db.query(
@@ -150,11 +150,11 @@ export async function GET(request: NextRequest) {
       if (purchaseDate > currentDate) return sum;
       
       const monthsElapsed = Math.min(
-        asset.useful_life_months || 60,
+        parseFloat(asset.useful_life_months) || 60,
         ((currentDate.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44))
       );
       
-      const annualDepreciation = (asset.purchase_price || 0) / ((asset.useful_life_months || 60) / 12);
+      const annualDepreciation = (parseFloat(asset.purchase_price) || 0) / ((parseFloat(asset.useful_life_months) || 60) / 12);
       const monthsInYear = Math.min(12, monthsElapsed);
       
       return sum + (annualDepreciation * (monthsInYear / 12));
@@ -166,12 +166,12 @@ export async function GET(request: NextRequest) {
 
     (expenses || []).forEach(exp => {
       const category = exp.category || 'Other Expenses';
-      expenseCategories[category] = (expenseCategories[category] || 0) + (exp.amount || 0);
+      expenseCategories[category] = (expenseCategories[category] || 0) + (parseFloat(exp.amount) || 0);
     });
 
     (bills || []).forEach(bill => {
       const category = bill.category || 'Vendor Payments';
-      expenseCategories[category] = (expenseCategories[category] || 0) + (bill.amount_paid || 0);
+      expenseCategories[category] = (expenseCategories[category] || 0) + (parseFloat(bill.amount_paid) || 0);
     });
 
     // Create itemized deductions from categories

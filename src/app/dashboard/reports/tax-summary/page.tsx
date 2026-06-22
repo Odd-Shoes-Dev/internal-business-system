@@ -91,7 +91,7 @@ export default function TaxSummaryPage() {
   const fetchTaxSummary = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/reports/tax-summary?taxYear=${taxYear}`);
+      const response = await fetch(`/api/reports/tax-summary?company_id=${company!.id}&taxYear=${taxYear}`);
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -102,8 +102,9 @@ export default function TaxSummaryPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchTaxSummary();
-  }, [taxYear]);
+  }, [taxYear, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

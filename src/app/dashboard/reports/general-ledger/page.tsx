@@ -84,7 +84,7 @@ export default function GeneralLedgerPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/general-ledger?startDate=${startDate}&endDate=${endDate}&accountFilter=${accountFilter}&journalType=${journalType}&searchTerm=${encodeURIComponent(searchTerm)}`
+        `/api/reports/general-ledger?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}&accountFilter=${accountFilter}&journalType=${journalType}&searchTerm=${encodeURIComponent(searchTerm)}`
       );
       const result = await response.json();
       setData(result);
@@ -96,8 +96,9 @@ export default function GeneralLedgerPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchGeneralLedger();
-  }, [startDate, endDate, accountFilter, journalType, searchTerm]);
+  }, [startDate, endDate, accountFilter, journalType, searchTerm, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

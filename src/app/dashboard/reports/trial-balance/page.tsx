@@ -40,13 +40,14 @@ export default function TrialBalancePage() {
   const [showZeroBalances, setShowZeroBalances] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchReport();
-  }, [asOfDate]);
+  }, [asOfDate, company?.id]);
 
   const fetchReport = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/reports/trial-balance?asOfDate=${asOfDate}`);
+      const response = await fetch(`/api/reports/trial-balance?company_id=${company!.id}&asOfDate=${asOfDate}`);
       const result = await response.json();
       setData(result);
     } catch (error) {

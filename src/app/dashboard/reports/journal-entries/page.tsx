@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { useCompany } from '@/contexts/company-context';
 
 interface JournalEntry {
   id: string;
@@ -61,6 +62,7 @@ interface JournalEntriesData {
 }
 
 export default function JournalEntriesPage() {
+  const { company } = useCompany();
   const [data, setData] = useState<JournalEntriesData | null>(null);
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
@@ -76,7 +78,7 @@ export default function JournalEntriesPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/journal-entries?startDate=${startDate}&endDate=${endDate}&entryType=${entryType}&status=${status}&search=${searchTerm}`
+        `/api/reports/journal-entries?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}&entryType=${entryType}&status=${status}&search=${searchTerm}`
       );
       const result = await response.json();
       setData(result);
@@ -88,8 +90,9 @@ export default function JournalEntriesPage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchJournalEntries();
-  }, [startDate, endDate, entryType, status, searchTerm]);
+  }, [startDate, endDate, entryType, status, searchTerm, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

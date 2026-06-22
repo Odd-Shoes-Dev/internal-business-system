@@ -41,13 +41,14 @@ export default function BalanceSheetPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchReport();
-  }, [asOfDate]);
+  }, [asOfDate, company?.id]);
 
   const fetchReport = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/reports/balance-sheet?asOfDate=${asOfDate}`);
+      const response = await fetch(`/api/reports/balance-sheet?company_id=${company!.id}&asOfDate=${asOfDate}`);
       const result = await response.json();
       setData(result.data);
     } catch (error) {

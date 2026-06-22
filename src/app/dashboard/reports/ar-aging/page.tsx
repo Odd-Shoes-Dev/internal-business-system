@@ -45,13 +45,14 @@ export default function ARAgingPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchReport();
-  }, [asOfDate]);
+  }, [asOfDate, company?.id]);
 
   const fetchReport = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/reports/ar-aging?asOfDate=${asOfDate}`);
+      const response = await fetch(`/api/reports/ar-aging?company_id=${company!.id}&asOfDate=${asOfDate}`);
       const result = await response.json();
       setData(result);
     } catch (error) {

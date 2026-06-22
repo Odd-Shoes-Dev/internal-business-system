@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       if (!accountBalances[entry.account_id]) {
         accountBalances[entry.account_id] = 0;
       }
-      accountBalances[entry.account_id] += (entry.debit || 0) - (entry.credit || 0);
+      accountBalances[entry.account_id] += (parseFloat(entry.debit) || 0) - (parseFloat(entry.credit) || 0);
     });
 
     const assetsResult = await db.query(
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     });
 
     for (const asset of assets) {
-      const bookValue = asset.purchase_price - (asset.accumulated_depreciation || 0);
+      const bookValue = (parseFloat(asset.purchase_price) || 0) - (parseFloat(asset.accumulated_depreciation) || 0);
       if (bookValue <= 0) continue;
 
       let bookValueInUSD = bookValue;
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
 
     let inventoryTotal = 0;
     for (const item of inventory) {
-      const inventoryValue = item.quantity_on_hand * item.cost;
+      const inventoryValue = (parseFloat(item.quantity_on_hand) || 0) * (parseFloat(item.cost) || 0);
       let valueInUSD = inventoryValue;
       const currency = item.currency || 'USD';
 
@@ -235,17 +235,17 @@ export async function GET(request: NextRequest) {
 
       let balance = 0;
       for (const txn of transactions) {
-        let amountInUSD = txn.amount;
+        let amountInUSD = parseFloat(txn.amount) || 0;
         const currency = account.currency || 'USD';
 
         if (currency !== 'USD') {
           const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-            p_amount: Math.abs(txn.amount),
+            p_amount: Math.abs(parseFloat(txn.amount) || 0),
             p_from_currency: currency,
             p_to_currency: 'USD',
             p_date: txn.transaction_date,
           });
-          amountInUSD = txn.amount < 0 ? -(convertedValue || Math.abs(txn.amount)) : (convertedValue || Math.abs(txn.amount));
+          amountInUSD = (parseFloat(txn.amount) || 0) < 0 ? -(convertedValue || Math.abs(parseFloat(txn.amount) || 0)) : (convertedValue || Math.abs(parseFloat(txn.amount) || 0));
         }
         balance += amountInUSD;
       }
@@ -262,17 +262,17 @@ export async function GET(request: NextRequest) {
 
     let totalAR = 0;
     for (const invoice of invoices) {
-      let amountInUSD = invoice.total;
+      let amountInUSD = parseFloat(invoice.total) || 0;
       const currency = invoice.currency || 'USD';
 
       if (currency !== 'USD') {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: invoice.total,
+          p_amount: parseFloat(invoice.total) || 0,
           p_from_currency: currency,
           p_to_currency: 'USD',
           p_date: invoice.invoice_date,
         });
-        amountInUSD = convertedValue || invoice.total;
+        amountInUSD = convertedValue || (parseFloat(invoice.total) || 0);
       }
 
       totalAR += amountInUSD;
@@ -289,17 +289,17 @@ export async function GET(request: NextRequest) {
 
     let totalAP = 0;
     for (const bill of bills) {
-      let amountInUSD = bill.total;
+      let amountInUSD = parseFloat(bill.total) || 0;
       const currency = bill.currency || 'USD';
 
       if (currency !== 'USD') {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: bill.total,
+          p_amount: parseFloat(bill.total) || 0,
           p_from_currency: currency,
           p_to_currency: 'USD',
           p_date: bill.bill_date,
         });
-        amountInUSD = convertedValue || bill.total;
+        amountInUSD = convertedValue || (parseFloat(bill.total) || 0);
       }
 
       totalAP += amountInUSD;
@@ -332,9 +332,9 @@ export async function GET(request: NextRequest) {
     incomeEntries.forEach((entry: any) => {
       const code = entry.code;
       if (code >= '4000' && code < '5000') {
-        retainedEarnings += (entry.credit || 0) - (entry.debit || 0);
+        retainedEarnings += (parseFloat(entry.credit) || 0) - (parseFloat(entry.debit) || 0);
       } else {
-        retainedEarnings -= (entry.debit || 0) - (entry.credit || 0);
+        retainedEarnings -= (parseFloat(entry.debit) || 0) - (parseFloat(entry.credit) || 0);
       }
     });
 

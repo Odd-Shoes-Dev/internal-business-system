@@ -73,8 +73,8 @@ const fetchTransactionData = async (db: any, companyId: string, config: CustomRe
   // Transform data to match expected format
   return (entries || []).map((entry: any) => {
     const entryLines = linesByEntryId.get(entry.id) || [];
-    const totalDebit = entryLines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
-    const totalCredit = entryLines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
+    const totalDebit = entryLines.reduce((sum: number, line: any) => sum + (parseFloat(line.debit) || 0), 0);
+    const totalCredit = entryLines.reduce((sum: number, line: any) => sum + (parseFloat(line.credit) || 0), 0);
     
     return {
       date: entry.entry_date,
@@ -102,7 +102,7 @@ const fetchCustomerData = async (db: any, companyId: string) => {
   // Group invoices by customer and calculate metrics
   return (customers || []).map((customer: any) => {
     const customerInvoices = (invoices || []).filter((inv: any) => inv.customer_id === customer.id);
-    const totalSales = customerInvoices.reduce((sum: number, inv: any) => sum + (inv.amount_paid || 0), 0);
+    const totalSales = customerInvoices.reduce((sum: number, inv: any) => sum + (parseFloat(inv.amount_paid) || 0), 0);
     const invoiceCount = customerInvoices.length;
     
     const sortedInvoices = customerInvoices.sort((a: any, b: any) => 
@@ -137,7 +137,7 @@ const fetchVendorData = async (db: any, companyId: string) => {
   // Group bills by vendor and calculate metrics
   return (vendors || []).map((vendor: any) => {
     const vendorBills = (bills || []).filter((bill: any) => bill.vendor_id === vendor.id);
-    const totalPurchases = vendorBills.reduce((sum: number, bill: any) => sum + (bill.amount_paid || 0), 0);
+    const totalPurchases = vendorBills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.amount_paid) || 0), 0);
     const billCount = vendorBills.length;
     
     const sortedBills = vendorBills.sort((a: any, b: any) => 
@@ -172,10 +172,10 @@ const fetchInventoryData = async (db: any, companyId: string) => {
   return (products || []).map((product: any) => ({
     item_name: product.name,
     sku: product.sku || 'N/A',
-    quantity_on_hand: product.quantity_on_hand || 0,
-    unit_cost: product.cost_price || 0,
-    total_value: (product.quantity_on_hand || 0) * (product.cost_price || 0),
-    reorder_point: product.reorder_point || 0,
+    quantity_on_hand: parseFloat(product.quantity_on_hand) || 0,
+    unit_cost: parseFloat(product.cost_price) || 0,
+    total_value: (parseFloat(product.quantity_on_hand) || 0) * (parseFloat(product.cost_price) || 0),
+    reorder_point: parseFloat(product.reorder_point) || 0,
     last_movement_date: product.updated_at,
   }));
 };

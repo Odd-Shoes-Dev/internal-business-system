@@ -99,8 +99,8 @@ export async function GET(request: NextRequest) {
     let items: InventoryItem[] = [];
     
     for (const item of inventory || []) {
-      const quantityOnHand = item.quantity_on_hand || 0;
-      const unitCost = item.cost_price || 0;
+      const quantityOnHand = parseFloat(item.quantity_on_hand) || 0;
+      const unitCost = parseFloat(item.cost_price) || 0;
       
       // Convert unit cost to USD if needed
       const unitCostUSD = await convertCurrency(

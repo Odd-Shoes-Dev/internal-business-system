@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
       if (!accountTotals[entry.account_id]) {
         accountTotals[entry.account_id] = { debit: 0, credit: 0 };
       }
-      accountTotals[entry.account_id].debit += entry.debit || 0;
-      accountTotals[entry.account_id].credit += entry.credit || 0;
+      accountTotals[entry.account_id].debit += parseFloat(entry.debit) || 0;
+      accountTotals[entry.account_id].credit += parseFloat(entry.credit) || 0;
     });
 
     // Build trial balance

@@ -13,6 +13,7 @@ import {
   CogIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { useCompany } from '@/contexts/company-context';
 
 interface AssetDepreciation {
   assetId: string;
@@ -63,6 +64,7 @@ interface DepreciationData {
 }
 
 export default function DepreciationSchedulePage() {
+  const { company } = useCompany();
   const [data, setData] = useState<DepreciationData | null>(null);
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
@@ -77,7 +79,7 @@ export default function DepreciationSchedulePage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/depreciation?startDate=${startDate}&endDate=${endDate}&category=${category}&sortBy=${sortBy}`
+        `/api/reports/depreciation?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}&category=${category}&sortBy=${sortBy}`
       );
       const result = await response.json();
       setData(result);
@@ -89,8 +91,9 @@ export default function DepreciationSchedulePage() {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchDepreciationData();
-  }, [startDate, endDate, category, sortBy]);
+  }, [startDate, endDate, category, sortBy, company?.id]);
 
   const exportToPDF = async () => {
     if (!data) return;
