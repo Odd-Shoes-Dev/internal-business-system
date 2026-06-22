@@ -29,11 +29,15 @@ export async function GET(request: NextRequest) {
         if (fn !== 'convert_currency') {
           return { data: null, error: new Error('Unsupported RPC function') };
         }
-        const result = await db.query<{ value: number }>(
-          `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-          [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-        );
-        return { data: result.rows[0]?.value ?? null, error: null };
+        try {
+          const result = await db.query<{ value: number }>(
+            `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
+            [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
+          );
+          return { data: result.rows[0]?.value ?? null, error: null };
+        } catch {
+          return { data: null, error: new Error('Currency conversion failed') };
+        }
       },
     };
 
@@ -276,6 +280,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
+    console.error('Error generating profit-loss report:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

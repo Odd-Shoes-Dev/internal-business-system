@@ -57,7 +57,12 @@ export default function CashFlowPage() {
         `/api/reports/cash-flow?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
-      setData(result);
+      if (response.ok && !result.error) {
+        setData(result);
+      } else {
+        console.error('Cash flow API error:', result.error);
+        setData(null);
+      }
     } catch (error) {
       console.error('Failed to fetch cash flow:', error);
     } finally {

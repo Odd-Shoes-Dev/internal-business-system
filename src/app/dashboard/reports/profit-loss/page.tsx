@@ -50,8 +50,11 @@ export default function ProfitLossReportPage() {
       setLoading(true);
       const res = await fetch(`/api/reports/profit-loss?company_id=${company!.id}&start_date=${startDate}&end_date=${endDate}`);
       const json = await res.json();
-      if (json.data) {
+      if (res.ok && json.data) {
         setData(json.data);
+      } else {
+        console.error('Profit/loss API error:', json.error);
+        setData(null);
       }
     } catch (error) {
       console.error('Failed to load report:', error);
