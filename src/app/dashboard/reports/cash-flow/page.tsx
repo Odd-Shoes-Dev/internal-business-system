@@ -47,14 +47,14 @@ export default function CashFlowPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchReport();
-  }, [startDate, endDate]);
+    if (company?.id) fetchReport();
+  }, [company?.id, startDate, endDate]);
 
   const fetchReport = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/cash-flow?startDate=${startDate}&endDate=${endDate}`
+        `/api/reports/cash-flow?company_id=${company!.id}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
       setData(result);

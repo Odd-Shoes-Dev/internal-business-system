@@ -42,13 +42,13 @@ export default function ProfitLossReportPage() {
   });
 
   useEffect(() => {
-    loadReport();
-  }, [startDate, endDate]);
+    if (company?.id) loadReport();
+  }, [company?.id, startDate, endDate]);
 
   const loadReport = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`);
+      const res = await fetch(`/api/reports/profit-loss?company_id=${company!.id}&start_date=${startDate}&end_date=${endDate}`);
       const json = await res.json();
       if (json.data) {
         setData(json.data);
