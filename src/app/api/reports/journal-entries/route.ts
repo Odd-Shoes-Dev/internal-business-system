@@ -12,6 +12,9 @@ interface JournalEntry {
   createdBy: string;
   totalDebit: number;
   totalCredit: number;
+  originalTotalDebit: number;
+  originalTotalCredit: number;
+  entryCurrency: string;
   lineItems: Array<{
     id: string;
     accountCode: string;
@@ -62,8 +65,9 @@ export async function GET(request: NextRequest) {
               je.source_module,
               je.status,
               je.created_at,
-              je.created_by
+              COALESCE(u.full_name, u.email, je.created_by) AS created_by
        FROM journal_entries je
+       LEFT JOIN app_users u ON u.id::text = je.created_by::text
        WHERE je.company_id = $1
          AND je.entry_date >= $2::date
          AND je.entry_date <= $3::date
@@ -119,6 +123,9 @@ export async function GET(request: NextRequest) {
       const lines = linesByEntryId.get(entry.id) || [];
       const totalDebit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.base_debit) || 0), 0);
       const totalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.base_credit) || 0), 0);
+      const originalTotalDebit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.debit) || 0), 0);
+      const originalTotalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.credit) || 0), 0);
+      const entryCurrency = lines[0]?.currency || 'USD';
 
       return {
         id: entry.id,
@@ -131,6 +138,9 @@ export async function GET(request: NextRequest) {
         createdBy: entry.created_by || 'System',
         totalDebit,
         totalCredit,
+        originalTotalDebit,
+        originalTotalCredit,
+        entryCurrency,
         lineItems: lines.map((line: any) => ({
           id: line.id,
           accountCode: line.account_code || '',

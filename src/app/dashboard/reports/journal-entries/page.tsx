@@ -29,6 +29,9 @@ interface JournalEntry {
   createdBy: string;
   totalDebit: number;
   totalCredit: number;
+  originalTotalDebit: number;
+  originalTotalCredit: number;
+  entryCurrency: string;
   lineItems: Array<{
     id: string;
     accountCode: string;
@@ -647,10 +650,10 @@ export default function JournalEntriesPage() {
                     <div className="flex items-center justify-between text-xs sm:text-sm">
                       <div className="flex gap-4">
                         <span className="text-red-600 font-medium">
-                          Debit: {formatCurrency(entry.totalDebit)} <span className="text-xs text-gray-400">USD</span>
+                          Debit: {formatCurrency(entry.originalTotalDebit, (entry.entryCurrency || 'USD') as any)}
                         </span>
                         <span className="text-green-600 font-medium">
-                          Credit: {formatCurrency(entry.totalCredit)} <span className="text-xs text-gray-400">USD</span>
+                          Credit: {formatCurrency(entry.originalTotalCredit, (entry.entryCurrency || 'USD') as any)}
                         </span>
                       </div>
                       <span className="text-gray-500">{entry.lineItems.length} line items</span>
