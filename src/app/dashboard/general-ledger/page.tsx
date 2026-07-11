@@ -233,6 +233,7 @@ export default function GeneralLedgerPage() {
           <div className="divide-y divide-gray-100">
             {filteredEntries.map((entry) => {
               const isExpanded = expandedEntries.has(entry.id);
+              const entryCurrency = (entry.lines?.[0]?.currency || 'USD') as any;
               const totalDebit = entry.lines?.reduce((sum, l) => sum + (l.debit_amount || 0), 0) || 0;
               const totalCredit = entry.lines?.reduce((sum, l) => sum + (l.credit_amount || 0), 0) || 0;
 
@@ -269,7 +270,7 @@ export default function GeneralLedgerPage() {
 
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs sm:text-sm font-medium text-gray-900 tabular-nums">
-                        {formatCurrency(totalDebit)}
+                        {formatCurrency(totalDebit, entryCurrency)}
                       </p>
                       <p className="text-xs text-gray-500">{formatDate(entry.entry_date)}</p>
                     </div>
@@ -362,10 +363,10 @@ export default function GeneralLedgerPage() {
                                 Total
                               </td>
                               <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                {formatCurrency(totalDebit)}
+                                {formatCurrency(totalDebit, entryCurrency)}
                               </td>
                               <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                {formatCurrency(totalCredit)}
+                                {formatCurrency(totalCredit, entryCurrency)}
                               </td>
                             </tr>
                           </tfoot>
