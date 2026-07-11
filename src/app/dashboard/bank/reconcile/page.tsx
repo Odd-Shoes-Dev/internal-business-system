@@ -10,6 +10,7 @@ import {
   XCircleIcon,
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface BankAccount {
   id: string;
@@ -231,12 +232,12 @@ export default function ReconcilePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
               <p className="text-sm text-gray-600 mb-1">Statement Balance</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(statementBalance)}</p>
+              <FitNumber value={formatCurrency(statementBalance)} className="font-bold text-gray-900" />
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
               <p className="text-sm text-gray-600 mb-1">Selected Items</p>
-              <p className="text-2xl font-bold text-blue-600">{selectedTransactions.size}</p>
+              <FitNumber value={selectedTransactions.size} className="font-bold text-blue-600" />
             </div>
 
             <div className={`bg-white rounded-lg shadow-sm border p-4 ${

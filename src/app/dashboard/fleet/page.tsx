@@ -19,6 +19,7 @@ import {
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 type VehicleStatus = 'available' | 'in_use' | 'maintenance' | 'out_of_service';
 
@@ -216,7 +217,7 @@ export default function FleetPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="card p-4">
-          <p className="text-2xl font-bold text-gray-900">{vehicles.length}</p>
+          <FitNumber value={vehicles.length} className="font-bold text-gray-900" />
           <p className="text-sm text-gray-500">Total Vehicles</p>
         </div>
         <div className="card p-4">

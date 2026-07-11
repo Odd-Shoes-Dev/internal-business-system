@@ -25,6 +25,7 @@ import {
   FunnelIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 type EmploymentStatus = 'active' | 'on_leave' | 'terminated' | 'probation';
 
@@ -299,7 +300,7 @@ export default function EmployeesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{employees.length}</p>
+          <FitNumber value={employees.length} className="font-bold text-blueox-primary-dark" />
           <p className="text-sm font-medium text-gray-600 mt-2">Total Employees</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">

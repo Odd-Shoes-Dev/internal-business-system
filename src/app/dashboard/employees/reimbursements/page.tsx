@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { PlusIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Employee {
   first_name: string;
@@ -189,19 +190,19 @@ export default function ReimbursementsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Pending Requests</p>
-          <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+          <FitNumber value={stats.pending} className="font-bold text-yellow-600" />
         </div>
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Approved</p>
-          <p className="text-3xl font-bold text-green-600">{stats.approved}</p>
+          <FitNumber value={stats.approved} className="font-bold text-green-600" />
         </div>
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Total Approved</p>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalApproved)}</p>
+          <FitNumber value={formatCurrency(stats.totalApproved)} className="font-bold text-gray-900" />
         </div>
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">Awaiting Payment</p>
-          <p className="text-2xl font-bold text-blueox-primary">{formatCurrency(stats.unpaid)}</p>
+          <FitNumber value={formatCurrency(stats.unpaid)} className="font-bold text-blueox-primary" />
         </div>
       </div>
 

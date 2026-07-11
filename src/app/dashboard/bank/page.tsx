@@ -14,6 +14,7 @@ import {
   BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
 import type { BankAccount, BankTransaction } from '@/types/database';
+import { FitNumber } from '@/components/ui/fit-number';
 
 type BankAccountWithBalance = BankAccount & {
   current_balance?: number;
@@ -147,12 +148,12 @@ export default function BankPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Total Cash Balance</p>
-          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{formatCurrency(stats.totalBalance)}</p>
+          <FitNumber value={formatCurrency(stats.totalBalance)} className="font-bold text-blueox-primary-dark" />
           <p className="text-sm text-gray-500 mt-2">Across {accounts.length} accounts</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Unreconciled</p>
-          <p className="text-2xl lg:text-3xl font-bold text-amber-600">{stats.unreconciledCount}</p>
+          <FitNumber value={stats.unreconciledCount} className="font-bold text-amber-600" />
           <p className="text-sm text-gray-500 mt-2">transactions pending</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">

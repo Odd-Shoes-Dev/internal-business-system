@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, CheckCircle, Clock, TrendingUp, Users, CreditCard, Mail } from 'lucide-react';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Stats {
   totalSubscriptions: number;
@@ -120,7 +121,7 @@ export default function SubscriptionMonitorPage() {
               </div>
               <span className="text-sm text-gray-500">Active</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{stats?.activeSubscriptions || 0}</div>
+            <FitNumber value={stats?.activeSubscriptions || 0} className="font-bold text-gray-900" />
             <p className="text-sm text-gray-600 mt-1">Paying customers</p>
           </div>
 
@@ -132,7 +133,7 @@ export default function SubscriptionMonitorPage() {
               </div>
               <span className="text-sm text-gray-500">Trials</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{stats?.trialSubscriptions || 0}</div>
+            <FitNumber value={stats?.trialSubscriptions || 0} className="font-bold text-gray-900" />
             <p className="text-sm text-gray-600 mt-1">In trial period</p>
           </div>
 
@@ -144,7 +145,7 @@ export default function SubscriptionMonitorPage() {
               </div>
               <span className="text-sm text-gray-500">Past Due</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{stats?.pastDueSubscriptions || 0}</div>
+            <FitNumber value={stats?.pastDueSubscriptions || 0} className="font-bold text-gray-900" />
             <p className="text-sm text-gray-600 mt-1">Payment issues</p>
           </div>
 
@@ -217,11 +218,11 @@ export default function SubscriptionMonitorPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-green-50 rounded-lg">
                       <p className="text-sm text-green-700 font-medium">Sent</p>
-                      <p className="text-2xl font-bold text-green-900">{emailStats.sent}</p>
+                      <FitNumber value={emailStats.sent} className="font-bold text-green-900" />
                     </div>
                     <div className="p-4 bg-red-50 rounded-lg">
                       <p className="text-sm text-red-700 font-medium">Failed</p>
-                      <p className="text-2xl font-bold text-red-900">{emailStats.failed}</p>
+                      <FitNumber value={emailStats.failed} className="font-bold text-red-900" />
                     </div>
                   </div>
 
@@ -249,27 +250,27 @@ export default function SubscriptionMonitorPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">All Subscriptions</h2>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{stats?.totalSubscriptions || 0}</div>
+              <FitNumber value={stats?.totalSubscriptions || 0} className="font-bold text-gray-900" />
               <div className="text-sm text-gray-600">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{stats?.activeSubscriptions || 0}</div>
+              <FitNumber value={stats?.activeSubscriptions || 0} className="font-bold text-green-600" />
               <div className="text-sm text-gray-600">Active</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats?.trialSubscriptions || 0}</div>
+              <FitNumber value={stats?.trialSubscriptions || 0} className="font-bold text-blue-600" />
               <div className="text-sm text-gray-600">Trial</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{stats?.pastDueSubscriptions || 0}</div>
+              <FitNumber value={stats?.pastDueSubscriptions || 0} className="font-bold text-yellow-600" />
               <div className="text-sm text-gray-600">Past Due</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{stats?.expiredSubscriptions || 0}</div>
+              <FitNumber value={stats?.expiredSubscriptions || 0} className="font-bold text-gray-600" />
               <div className="text-sm text-gray-600">Expired</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{stats?.cancelledSubscriptions || 0}</div>
+              <FitNumber value={stats?.cancelledSubscriptions || 0} className="font-bold text-red-600" />
               <div className="text-sm text-gray-600">Cancelled</div>
             </div>
           </div>

@@ -15,6 +15,7 @@ import {
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { formatDate } from '@/lib/utils';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface ScheduledReport {
   id: string;
@@ -321,7 +322,7 @@ export default function ScheduledReportsPage() {
               <CalendarIcon className="w-8 h-8 text-blue-500" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Schedules</p>
-                <p className="text-2xl font-bold text-gray-900">{schedules.length}</p>
+                <FitNumber value={schedules.length} className="font-bold text-gray-900" />
               </div>
             </div>
           </div>

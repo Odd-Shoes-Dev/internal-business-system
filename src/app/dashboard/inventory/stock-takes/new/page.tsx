@@ -9,6 +9,7 @@ import {
   TrashIcon,
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Location {
   id: string;
@@ -300,7 +301,7 @@ export default function NewStockTakePage() {
           <div className="card">
             <div className="card-body">
               <div className="text-sm text-gray-600">Total Products</div>
-              <div className="text-2xl font-bold text-gray-900">{totalLines}</div>
+              <FitNumber value={totalLines} className="font-bold text-gray-900" />
             </div>
           </div>
           <div className="card">

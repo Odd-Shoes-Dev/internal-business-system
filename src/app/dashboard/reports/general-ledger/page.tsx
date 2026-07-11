@@ -16,6 +16,7 @@ import {
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface GeneralLedgerEntry {
   entryId: string;
@@ -595,7 +596,7 @@ export default function GeneralLedgerPage() {
                 <DocumentTextIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Entries</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalEntries || 0}</p>
+                  <FitNumber value={data?.summary?.totalEntries || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -605,7 +606,7 @@ export default function GeneralLedgerPage() {
                 <FunnelIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Accounts</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalAccounts || 0}</p>
+                  <FitNumber value={data?.summary?.totalAccounts || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -617,7 +618,7 @@ export default function GeneralLedgerPage() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalDebits || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -629,7 +630,7 @@ export default function GeneralLedgerPage() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalCredits || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>

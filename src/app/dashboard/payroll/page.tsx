@@ -26,6 +26,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 type PayrollStatus = 'draft' | 'processing' | 'approved' | 'paid';
 
@@ -619,19 +620,19 @@ export default function PayrollPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                   <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border border-blue-100">
                     <p className="text-xs font-medium text-gray-600 mb-1">Employees</p>
-                    <p className="text-2xl font-bold text-blueox-primary-dark">{period.employee_count || '-'}</p>
+                    <FitNumber value={period.employee_count || '-'} className="font-bold text-blueox-primary-dark" />
                   </div>
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
                     <p className="text-xs font-medium text-gray-600 mb-1">Gross Pay</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(period.total_gross)}</p>
+                    <FitNumber value={formatCurrency(period.total_gross)} className="font-bold text-green-600" />
                   </div>
                   <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-4 border border-red-100">
                     <p className="text-xs font-medium text-gray-600 mb-1">Deductions</p>
-                    <p className="text-xl font-bold text-red-600">{formatCurrency(period.total_deductions)}</p>
+                    <FitNumber value={formatCurrency(period.total_deductions)} className="font-bold text-red-600" />
                   </div>
                   <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-4 border border-cyan-100">
                     <p className="text-xs font-medium text-gray-600 mb-1">Net Pay</p>
-                    <p className="text-xl font-bold text-cyan-600">{formatCurrency(period.total_net)}</p>
+                    <FitNumber value={formatCurrency(period.total_net)} className="font-bold text-cyan-600" />
                   </div>
                 </div>
 

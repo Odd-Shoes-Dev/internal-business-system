@@ -10,6 +10,7 @@ import {
   TrashIcon,
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface PageProps {
   params: Promise<{
@@ -234,7 +235,7 @@ export default function BankAccountDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(calculateBalance())}</p>
+            <FitNumber value={formatCurrency(calculateBalance())} className="font-bold text-gray-900" />
           </div>
           <BanknotesIcon className="w-12 h-12 text-gray-300" />
         </div>

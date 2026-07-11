@@ -22,6 +22,7 @@ import {
   StatsCardSkeleton,
   ShimmerSkeleton,
 } from '@/components/ui/skeleton';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -327,7 +328,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <DocumentTextIcon className="w-6 h-6 text-blue-600" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalRevenue || 0)}</p>
+              <FitNumber value={formatCurrency(stats?.totalRevenue || 0)} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Total Revenue</p>
               <div className="flex items-center justify-center gap-1 mt-1">
                 {stats?.trends?.revenue !== null && stats?.trends?.revenue !== undefined ? (
@@ -349,7 +350,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <CurrencyDollarIcon className="w-6 h-6 text-purple-600" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalExpenses || 0)}</p>
+              <FitNumber value={formatCurrency(stats?.totalExpenses || 0)} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Total Expenses</p>
               <div className="flex items-center justify-center gap-1 mt-1">
                 {stats?.trends?.expenses !== null && stats?.trends?.expenses !== undefined ? (
@@ -371,7 +372,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <CubeIcon className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.inventoryValue || 0)}</p>
+              <FitNumber value={formatCurrency(stats?.inventoryValue || 0)} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Inventory Value</p>
               <p className="text-xs text-gray-400">Current valuation</p>
             </div>

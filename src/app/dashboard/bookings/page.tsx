@@ -21,6 +21,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
   inquiry: 'bg-purple-100 text-purple-800',
@@ -228,7 +229,7 @@ export default function BookingsPage() {
               <CalendarDaysIcon className="w-6 h-6 text-blueox-primary" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{stats.total}</p>
+              <FitNumber value={stats.total} className="font-bold text-blueox-primary-dark" />
               <p className="text-sm font-medium text-gray-600">Total Bookings</p>
             </div>
           </div>
@@ -239,7 +240,7 @@ export default function BookingsPage() {
               <CalendarDaysIcon className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-green-600">{stats.upcoming}</p>
+              <FitNumber value={stats.upcoming} className="font-bold text-green-600" />
               <p className="text-sm font-medium text-gray-600">Upcoming</p>
             </div>
           </div>
@@ -250,7 +251,7 @@ export default function BookingsPage() {
               <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-yellow-600">{stats.pendingPayment}</p>
+              <FitNumber value={stats.pendingPayment} className="font-bold text-yellow-600" />
               <p className="text-sm font-medium text-gray-600">Pending Payment</p>
             </div>
           </div>
@@ -261,7 +262,7 @@ export default function BookingsPage() {
               <CurrencyDollarIcon className="w-6 h-6 text-blueox-accent" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{formatCurrency(stats.totalRevenue)}</p>
+              <FitNumber value={formatCurrency(stats.totalRevenue)} className="font-bold text-blueox-primary-dark" />
               <p className="text-sm font-medium text-gray-600">Revenue</p>
             </div>
           </div>

@@ -17,6 +17,7 @@ import {
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface JournalEntry {
   id: string;
@@ -529,7 +530,7 @@ export default function JournalEntriesPage() {
                 <DocumentTextIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Entries</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalEntries || 0}</p>
+                  <FitNumber value={data?.summary?.totalEntries || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -539,7 +540,7 @@ export default function JournalEntriesPage() {
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits (USD)</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalDebits || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -549,7 +550,7 @@ export default function JournalEntriesPage() {
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 rotate-180" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits (USD)</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalCredits || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -559,7 +560,7 @@ export default function JournalEntriesPage() {
                 <CheckCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Posted</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.postedEntries || 0}</p>
+                  <FitNumber value={data?.summary?.postedEntries || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -569,7 +570,7 @@ export default function JournalEntriesPage() {
                 <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Draft</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.draftEntries || 0}</p>
+                  <FitNumber value={data?.summary?.draftEntries || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -579,7 +580,7 @@ export default function JournalEntriesPage() {
                 <XCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Reversed</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.reversedEntries || 0}</p>
+                  <FitNumber value={data?.summary?.reversedEntries || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>

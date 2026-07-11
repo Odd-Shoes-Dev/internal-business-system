@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface CustomerSale {
   customerId: string;
@@ -420,7 +421,7 @@ export default function SalesByCustomerPage() {
                 <UserGroupIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Customers</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalCustomers || 0}</p>
+                  <FitNumber value={data?.summary?.totalCustomers || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -430,7 +431,7 @@ export default function SalesByCustomerPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Sales</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalSales || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalSales || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -440,7 +441,7 @@ export default function SalesByCustomerPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg per Customer</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.averageSalePerCustomer || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.averageSalePerCustomer || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -450,7 +451,7 @@ export default function SalesByCustomerPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Top Customer</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.topCustomerRevenue || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.topCustomerRevenue || 0)} className="font-bold text-gray-900" />
                   <p className="text-xs text-gray-500 truncate">{data?.summary?.topCustomerName || 'N/A'}</p>
                 </div>
               </div>

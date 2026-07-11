@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface VendorAging {
   vendorId: string;
@@ -474,7 +475,7 @@ export default function APAgingPage() {
                 <BuildingOfficeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Vendors</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalVendors || 0}</p>
+                  <FitNumber value={data?.summary?.totalVendors || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -484,7 +485,7 @@ export default function APAgingPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Payables</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalPayables || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalPayables || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -494,7 +495,7 @@ export default function APAgingPage() {
                 <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Payment Days</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{Math.round(data?.summary?.averagePaymentDays || 0)}</p>
+                  <FitNumber value={Math.round(data?.summary?.averagePaymentDays || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -504,7 +505,7 @@ export default function APAgingPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Critical Vendors</p>
-                  <p className="text-lg sm:text-xl font-bold text-red-600">{data?.summary?.criticalVendors || 0}</p>
+                  <FitNumber value={data?.summary?.criticalVendors || 0} className="font-bold text-red-600" />
                 </div>
               </div>
             </div>

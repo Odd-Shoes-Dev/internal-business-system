@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { ArrowLeftIcon, PrinterIcon, EnvelopeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Employee {
   first_name: string;
@@ -856,15 +857,15 @@ export default function PayslipDetailPage({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Gross Salary</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(payslip.gross_salary)}</p>
+              <FitNumber value={formatCurrency(payslip.gross_salary)} className="font-bold text-gray-900" />
             </div>
             <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Deductions</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(payslip.total_deductions)}</p>
+              <FitNumber value={formatCurrency(payslip.total_deductions)} className="font-bold text-red-600" />
             </div>
             <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">NSSF Employer (10%)</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(payslip.nssf_employer)}</p>
+              <FitNumber value={formatCurrency(payslip.nssf_employer)} className="font-bold text-gray-900" />
             </div>
           </div>
 

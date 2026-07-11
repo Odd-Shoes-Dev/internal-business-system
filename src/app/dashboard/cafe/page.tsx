@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface CafeStats {
   revenue: number;
@@ -206,7 +207,7 @@ export default function CafeDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Cafe Staff</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.employeeCount}</p>
+                <FitNumber value={stats.employeeCount} className="font-bold text-gray-900 mt-1" />
                 <p className="text-xs text-gray-500 mt-1">
                   Payroll: {formatCurrency(stats.totalPayroll)}/mo
                 </p>

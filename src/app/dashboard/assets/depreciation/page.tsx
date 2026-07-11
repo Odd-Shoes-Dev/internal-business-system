@@ -10,6 +10,7 @@ import {
   CalendarIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Asset {
   id: string;
@@ -179,7 +180,7 @@ export default function DepreciationPage() {
 
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600 mb-1">Assets to Process</p>
-            <p className="text-2xl font-bold text-gray-900">{assets.length}</p>
+            <FitNumber value={assets.length} className="font-bold text-gray-900" />
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">

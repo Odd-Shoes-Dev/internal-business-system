@@ -15,6 +15,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface InventoryItem {
   itemId: string;
@@ -526,7 +527,7 @@ export default function InventoryValuationPage() {
                 <CubeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Items</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalItems || 0}</p>
+                  <FitNumber value={data?.summary?.totalItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -536,7 +537,7 @@ export default function InventoryValuationPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Quantity</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalQuantity?.toLocaleString() || 0}</p>
+                  <FitNumber value={data?.summary?.totalQuantity?.toLocaleString() || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -563,7 +564,7 @@ export default function InventoryValuationPage() {
                 <CheckCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">In Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{(data?.summary?.totalItems || 0) - (data?.summary?.outOfStockItems || 0)}</p>
+                  <FitNumber value={(data?.summary?.totalItems || 0) - (data?.summary?.outOfStockItems || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -573,7 +574,7 @@ export default function InventoryValuationPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Low Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.lowStockItems || 0}</p>
+                  <FitNumber value={data?.summary?.lowStockItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -583,7 +584,7 @@ export default function InventoryValuationPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Out of Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.outOfStockItems || 0}</p>
+                  <FitNumber value={data?.summary?.outOfStockItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
