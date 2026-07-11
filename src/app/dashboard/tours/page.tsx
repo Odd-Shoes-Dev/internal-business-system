@@ -21,6 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface TourPackageImage {
   id: string;
@@ -212,7 +213,7 @@ export default function TourPackagesPage() {
               <GlobeAltIcon className="w-6 h-6 text-blueox-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{packages.length}</p>
+              <FitNumber value={packages.length} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Total Packages</p>
             </div>
           </div>

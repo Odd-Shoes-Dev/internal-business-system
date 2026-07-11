@@ -16,6 +16,7 @@ import {
   ShoppingCartIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface PurchaseOrder {
   id: string;
@@ -199,23 +200,23 @@ export default function PurchaseOrdersPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6">
         <div className="bg-white/80 backdrop-blur-xl border border-gray-300/30 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-gray-700">{stats.draft}</p>
+          <FitNumber value={stats.draft} className="font-bold text-gray-700" />
           <p className="text-sm font-medium text-gray-600 mt-2">Draft</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-blue-600">{stats.sent}</p>
+          <FitNumber value={stats.sent} className="font-bold text-blue-600" />
           <p className="text-sm font-medium text-gray-600 mt-2">Sent</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-amber-600">{stats.partial}</p>
+          <FitNumber value={stats.partial} className="font-bold text-amber-600" />
           <p className="text-sm font-medium text-gray-600 mt-2">Partial</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-green-600">{stats.received}</p>
+          <FitNumber value={stats.received} className="font-bold text-green-600" />
           <p className="text-sm font-medium text-gray-600 mt-2">Received</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-2xl lg:text-3xl font-bold text-blueox-primary">{formatCurrency(stats.totalValue)}</p>
+          <FitNumber value={formatCurrency(stats.totalValue)} className="font-bold text-blueox-primary" />
           <p className="text-sm font-medium text-gray-600 mt-2">Total Value</p>
         </div>
       </div>

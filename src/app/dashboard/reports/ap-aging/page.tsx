@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface VendorAging {
   vendorId: string;
@@ -474,7 +475,7 @@ export default function APAgingPage() {
                 <BuildingOfficeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Vendors</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalVendors || 0}</p>
+                  <FitNumber value={data?.summary?.totalVendors || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -484,7 +485,7 @@ export default function APAgingPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Payables</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalPayables || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalPayables || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -494,7 +495,7 @@ export default function APAgingPage() {
                 <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Payment Days</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{Math.round(data?.summary?.averagePaymentDays || 0)}</p>
+                  <FitNumber value={Math.round(data?.summary?.averagePaymentDays || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -504,7 +505,7 @@ export default function APAgingPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Critical Vendors</p>
-                  <p className="text-lg sm:text-xl font-bold text-red-600">{data?.summary?.criticalVendors || 0}</p>
+                  <FitNumber value={data?.summary?.criticalVendors || 0} className="font-bold text-red-600" />
                 </div>
               </div>
             </div>
@@ -516,23 +517,23 @@ export default function APAgingPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200 border-l-4 border-l-green-500">
                 <p className="text-xs text-green-600 font-medium">Current</p>
-                <p className="text-sm sm:text-base font-bold text-green-700 mt-1">{formatCurrency(data?.summary?.current || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.current || 0)} className="font-bold text-green-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200 border-l-4 border-l-yellow-500">
                 <p className="text-xs text-yellow-600 font-medium">1-30 Days</p>
-                <p className="text-sm sm:text-base font-bold text-yellow-700 mt-1">{formatCurrency(data?.summary?.days1to30 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days1to30 || 0)} className="font-bold text-yellow-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200 border-l-4 border-l-orange-500">
                 <p className="text-xs text-orange-600 font-medium">31-60 Days</p>
-                <p className="text-sm sm:text-base font-bold text-orange-700 mt-1">{formatCurrency(data?.summary?.days31to60 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days31to60 || 0)} className="font-bold text-orange-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200 border-l-4 border-l-red-500">
                 <p className="text-xs text-red-600 font-medium">61-90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-red-700 mt-1">{formatCurrency(data?.summary?.days61to90 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days61to90 || 0)} className="font-bold text-red-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-100 border border-red-300 border-l-4 border-l-red-600">
                 <p className="text-xs text-red-700 font-medium">Over 90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-red-800 mt-1">{formatCurrency(data?.summary?.over90 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.over90 || 0)} className="font-bold text-red-800 mt-1" />
               </div>
             </div>
           </div>

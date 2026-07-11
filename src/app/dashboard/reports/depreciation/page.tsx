@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface AssetDepreciation {
   assetId: string;
@@ -247,7 +248,7 @@ export default function DepreciationSchedulePage() {
                 <BuildingOfficeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Assets</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalAssets || 0}</p>
+                  <FitNumber value={data?.summary?.totalAssets || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -257,7 +258,7 @@ export default function DepreciationSchedulePage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Original Cost</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalOriginalCost || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalOriginalCost || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -267,7 +268,7 @@ export default function DepreciationSchedulePage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Book Value</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalCurrentValue || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalCurrentValue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -277,7 +278,7 @@ export default function DepreciationSchedulePage() {
                 <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Accumulated</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalAccumulatedDepreciation || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalAccumulatedDepreciation || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -287,7 +288,7 @@ export default function DepreciationSchedulePage() {
                 <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Annual Dep.</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.annualDepreciationExpense || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.annualDepreciationExpense || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -297,7 +298,7 @@ export default function DepreciationSchedulePage() {
                 <CogIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly Dep.</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.monthlyDepreciationExpense || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.monthlyDepreciationExpense || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>

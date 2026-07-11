@@ -19,6 +19,7 @@ import {
   PrinterIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Employee {
   id: string;
@@ -791,7 +792,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                 {recentPayslips.map((payslip: any) => (
                   <div key={payslip.id} className="border-b pb-2 last:border-0">
                     <p className="text-sm font-medium">{payslip.payroll_period?.period_name}</p>
-                    <p className="text-lg font-bold text-green-600">{formatCurrency(payslip.net_salary)}</p>
+                    <FitNumber value={formatCurrency(payslip.net_salary)} className="font-bold text-green-600" />
                     <p className="text-xs text-gray-400">
                       {formatDate(payslip.payroll_period?.payment_date)}
                     </p>

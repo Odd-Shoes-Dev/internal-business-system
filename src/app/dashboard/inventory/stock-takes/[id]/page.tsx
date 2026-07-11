@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PrinterIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface StockTake {
   id: string;
@@ -231,13 +232,13 @@ function StockTakeDetailPageClient({ stockTakeId }: { stockTakeId: string }) {
         <div className="card">
           <div className="card-body">
             <div className="text-sm text-gray-600">Total Products</div>
-            <div className="text-2xl font-bold text-gray-900">{lines.length}</div>
+            <FitNumber value={lines.length} className="font-bold text-gray-900" />
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <div className="text-sm text-gray-600">With Variance</div>
-            <div className="text-2xl font-bold text-orange-600">{varianceLines}</div>
+            <FitNumber value={varianceLines} className="font-bold text-orange-600" />
           </div>
         </div>
         <div className="card">

@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Invoice, Customer } from '@/types/database';
+import { FitNumber } from '@/components/ui/fit-number';
 
 export default function InvoicesPage() {
   const { company } = useCompany();
@@ -339,7 +340,7 @@ export default function InvoicesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                        <p className="text-sm font-bold text-blueox-primary">{formatCurrency(invoice.total, invoice.currency || 'USD')}</p>
+                        <FitNumber value={formatCurrency(invoice.total, invoice.currency || 'USD')} className="font-bold text-blueox-primary" />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Balance Due</p>

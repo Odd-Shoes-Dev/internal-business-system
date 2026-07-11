@@ -14,6 +14,7 @@ import {
   ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface ProductSale {
   productId: string;
@@ -445,7 +446,7 @@ export default function SalesByProductPage() {
                 <CubeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Products</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalProducts || 0}</p>
+                  <FitNumber value={data?.summary?.totalProducts || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -455,7 +456,7 @@ export default function SalesByProductPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalRevenue || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalRevenue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -465,7 +466,7 @@ export default function SalesByProductPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Units Sold</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{(data?.summary?.totalUnitsSold || 0).toLocaleString()}</p>
+                  <FitNumber value={(data?.summary?.totalUnitsSold || 0).toLocaleString()} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -475,7 +476,7 @@ export default function SalesByProductPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Order Value</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.averageOrderValue || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.averageOrderValue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -490,7 +491,7 @@ export default function SalesByProductPage() {
                   <div key={index} className="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
                     <TagIcon className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-700">{cat.category}</p>
-                    <p className="text-lg font-bold text-gray-900">{formatCurrency(cat.revenue)}</p>
+                    <FitNumber value={formatCurrency(cat.revenue)} className="font-bold text-gray-900" />
                     <p className="text-xs text-gray-600">{cat.productCount} products • {cat.unitsSold.toLocaleString()} units</p>
                     <p className="text-xs text-gray-600">Avg margin: {cat.averageMargin.toFixed(1)}%</p>
                   </div>

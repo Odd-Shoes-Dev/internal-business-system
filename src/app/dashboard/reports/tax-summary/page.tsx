@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface TaxDeduction {
   category: string;
@@ -486,7 +487,7 @@ export default function TaxSummaryPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Taxable Income</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.income?.totalTaxableIncome || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.income?.totalTaxableIncome || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -496,7 +497,7 @@ export default function TaxSummaryPage() {
                 <ReceiptPercentIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Tax Liability</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.taxCalculations?.totalTaxLiability || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.taxCalculations?.totalTaxLiability || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -506,7 +507,7 @@ export default function TaxSummaryPage() {
                 <ChartPieIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Effective Rate</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{((data?.taxCalculations?.effectiveTaxRate || 0) * 100).toFixed(1)}%</p>
+                  <FitNumber value={((data?.taxCalculations?.effectiveTaxRate || 0) * 100).toFixed(1)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -552,7 +553,7 @@ export default function TaxSummaryPage() {
                 </div>
                 <div className="flex justify-between items-center py-2 bg-blue-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-blue-700">Total Taxable Income</span>
-                  <span className="text-xs sm:text-sm font-bold text-blue-700">{formatCurrency(data?.income?.totalTaxableIncome || 0)}</span>
+                  <FitNumber value={formatCurrency(data?.income?.totalTaxableIncome || 0)} className="font-bold text-blue-700" />
                 </div>
               </div>
             </div>
@@ -586,7 +587,7 @@ export default function TaxSummaryPage() {
                 </div>
                 <div className="flex justify-between items-center py-2 bg-green-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-green-700">Total Deductions</span>
-                  <span className="text-xs sm:text-sm font-bold text-green-700">{formatCurrency(data?.deductions?.totalDeductions || 0)}</span>
+                  <FitNumber value={formatCurrency(data?.deductions?.totalDeductions || 0)} className="font-bold text-green-700" />
                 </div>
               </div>
             </div>

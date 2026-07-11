@@ -21,6 +21,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { FitNumber } from '@/components/ui/fit-number';
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
   inquiry: 'bg-purple-100 text-purple-800',
@@ -228,7 +229,7 @@ export default function BookingsPage() {
               <CalendarDaysIcon className="w-6 h-6 text-blueox-primary" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{stats.total}</p>
+              <FitNumber value={stats.total} className="font-bold text-blueox-primary-dark" />
               <p className="text-sm font-medium text-gray-600">Total Bookings</p>
             </div>
           </div>
@@ -239,7 +240,7 @@ export default function BookingsPage() {
               <CalendarDaysIcon className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-green-600">{stats.upcoming}</p>
+              <FitNumber value={stats.upcoming} className="font-bold text-green-600" />
               <p className="text-sm font-medium text-gray-600">Upcoming</p>
             </div>
           </div>
@@ -250,7 +251,7 @@ export default function BookingsPage() {
               <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-yellow-600">{stats.pendingPayment}</p>
+              <FitNumber value={stats.pendingPayment} className="font-bold text-yellow-600" />
               <p className="text-sm font-medium text-gray-600">Pending Payment</p>
             </div>
           </div>
@@ -261,7 +262,7 @@ export default function BookingsPage() {
               <CurrencyDollarIcon className="w-6 h-6 text-blueox-accent" />
             </div>
             <div>
-              <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">{formatCurrency(stats.totalRevenue)}</p>
+              <FitNumber value={formatCurrency(stats.totalRevenue)} className="font-bold text-blueox-primary-dark" />
               <p className="text-sm font-medium text-gray-600">Revenue</p>
             </div>
           </div>
@@ -524,7 +525,7 @@ export default function BookingsPage() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <p className="text-lg font-bold text-blueox-primary">{booking.booking_number}</p>
+                        <FitNumber value={booking.booking_number} className="font-bold text-blueox-primary" />
                         <p className="text-sm text-gray-600 mt-1">{booking.customer?.name}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Icon className="w-4 h-4 text-blueox-primary/60" />
@@ -558,12 +559,12 @@ export default function BookingsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                        <p className="text-sm font-bold text-blueox-primary">{formatCurrency(booking.total, booking.currency)}</p>
+                        <FitNumber value={formatCurrency(booking.total, booking.currency)} className="font-bold text-blueox-primary" />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Balance Due</p>
                         {booking.balance_due > 0 ? (
-                          <p className="text-sm font-bold text-red-600">{formatCurrency(booking.balance_due, booking.currency)}</p>
+                          <FitNumber value={formatCurrency(booking.balance_due, booking.currency)} className="font-bold text-red-600" />
                         ) : (
                           <p className="text-sm font-bold text-green-600">Paid</p>
                         )}

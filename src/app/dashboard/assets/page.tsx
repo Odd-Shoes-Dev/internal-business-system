@@ -12,6 +12,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import type { FixedAsset } from '@/types/database';
+import { FitNumber } from '@/components/ui/fit-number';
 
 type AssetStatus = 'all' | 'active' | 'disposed' | 'fully_depreciated';
 
@@ -142,19 +143,19 @@ export default function AssetsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card p-3 sm:p-4 lg:p-6">
           <p className="text-sm text-gray-500">Active Assets</p>
-          <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-0.5">{stats.totalAssets}</p>
+          <FitNumber value={stats.totalAssets} className="font-bold text-gray-900 mt-0.5" />
         </div>
         <div className="card p-3 sm:p-4 lg:p-6">
           <p className="text-sm text-gray-500">Total Cost</p>
-          <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-0.5">{formatCurrency(stats.totalCost)}</p>
+          <FitNumber value={formatCurrency(stats.totalCost)} className="font-bold text-gray-900 mt-0.5" />
         </div>
         <div className="card p-3 sm:p-4 lg:p-6">
           <p className="text-sm text-gray-500">Accumulated Depreciation</p>
-          <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-0.5">{formatCurrency(stats.totalDepreciation)}</p>
+          <FitNumber value={formatCurrency(stats.totalDepreciation)} className="font-bold text-amber-600 mt-0.5" />
         </div>
         <div className="card p-3 sm:p-4 lg:p-6">
           <p className="text-sm text-gray-500">Net Book Value</p>
-          <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-0.5">{formatCurrency(stats.totalBookValue)}</p>
+          <FitNumber value={formatCurrency(stats.totalBookValue)} className="font-bold text-green-600 mt-0.5" />
         </div>
       </div>
 

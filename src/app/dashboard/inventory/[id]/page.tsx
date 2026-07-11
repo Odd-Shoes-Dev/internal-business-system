@@ -14,6 +14,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Product {
   id: string;
@@ -327,7 +328,7 @@ export default function InventoryDetailPage() {
               </div>
               <div className="pt-3 border-t">
                 <p className="text-sm text-gray-500">Gross Margin</p>
-                <p className="text-2xl font-bold text-green-600">{calculateGrossMargin()}%</p>
+                <FitNumber value={calculateGrossMargin()} className="font-bold text-green-600" />
                 <p className="text-xs text-gray-500 mt-1">Profit margin</p>
               </div>
             </div>

@@ -15,6 +15,7 @@ import {
   ExclamationTriangleIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface Vehicle {
   id: string;
@@ -561,7 +562,7 @@ export default function VehicleDetailPage() {
               {vehicle.current_value && vehicle.current_value > 0 && (
                 <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                   <span className="text-sm text-gray-600">Current Value:</span>
-                  <span className="text-sm font-bold text-blueox-primary">{formatPrice(vehicle.current_value, 'USD')}</span>
+                  <FitNumber value={formatPrice(vehicle.current_value, 'USD')} className="font-bold text-blueox-primary" />
                 </div>
               )}
             </div>

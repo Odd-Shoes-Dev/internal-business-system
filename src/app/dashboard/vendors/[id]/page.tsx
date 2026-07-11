@@ -15,6 +15,7 @@ import {
   MapPinIcon,
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface PageProps {
   params: Promise<{
@@ -254,7 +255,7 @@ export default function VendorDetailPage({ params }: PageProps) {
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Bills</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{bills.length}</p>
+            <FitNumber value={bills.length} className="font-bold text-gray-900 mt-1" />
           </div>
         </div>
         <div className="card">

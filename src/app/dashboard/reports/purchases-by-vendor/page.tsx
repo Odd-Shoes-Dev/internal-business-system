@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface VendorPurchase {
   vendorId: string;
@@ -481,7 +482,7 @@ export default function PurchasesByVendorPage() {
                 <BuildingOfficeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Vendors</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalVendors || 0}</p>
+                  <FitNumber value={data?.summary?.totalVendors || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -491,7 +492,7 @@ export default function PurchasesByVendorPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Purchases</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalPurchases || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.totalPurchases || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -501,7 +502,7 @@ export default function PurchasesByVendorPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg per Vendor</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.averagePurchasePerVendor || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.averagePurchasePerVendor || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -511,7 +512,7 @@ export default function PurchasesByVendorPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Top Vendor</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.topVendorSpending || 0)}</p>
+                  <FitNumber value={formatCurrency(data?.summary?.topVendorSpending || 0)} className="font-bold text-gray-900" />
                   <p className="text-xs text-gray-500 truncate">{data?.summary?.topVendorName || 'N/A'}</p>
                 </div>
               </div>
@@ -525,31 +526,31 @@ export default function PurchasesByVendorPage() {
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <TruckIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">Supplier</p>
-                <p className="text-lg font-bold text-blue-700">{data?.vendorTypes?.supplier?.count || 0}</p>
+                <FitNumber value={data?.vendorTypes?.supplier?.count || 0} className="font-bold text-blue-700" />
                 <p className="text-sm text-blue-600">{formatCurrency(data?.vendorTypes?.supplier?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <ShoppingCartIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">Service Provider</p>
-                <p className="text-lg font-bold text-green-700">{data?.vendorTypes?.serviceProvider?.count || 0}</p>
+                <FitNumber value={data?.vendorTypes?.serviceProvider?.count || 0} className="font-bold text-green-700" />
                 <p className="text-sm text-green-600">{formatCurrency(data?.vendorTypes?.serviceProvider?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-red-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-red-600">Contractor</p>
-                <p className="text-lg font-bold text-red-700">{data?.vendorTypes?.contractor?.count || 0}</p>
+                <FitNumber value={data?.vendorTypes?.contractor?.count || 0} className="font-bold text-red-700" />
                 <p className="text-sm text-red-600">{formatCurrency(data?.vendorTypes?.contractor?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200">
                 <ClockIcon className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-yellow-600">Utility</p>
-                <p className="text-lg font-bold text-yellow-700">{data?.vendorTypes?.utility?.count || 0}</p>
+                <FitNumber value={data?.vendorTypes?.utility?.count || 0} className="font-bold text-yellow-700" />
                 <p className="text-sm text-yellow-600">{formatCurrency(data?.vendorTypes?.utility?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
                 <ArrowTrendingUpIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-purple-600">Manufacturing</p>
-                <p className="text-lg font-bold text-purple-700">{data?.vendorTypes?.manufacturing?.count || 0}</p>
+                <FitNumber value={data?.vendorTypes?.manufacturing?.count || 0} className="font-bold text-purple-700" />
                 <p className="text-sm text-purple-600">{formatCurrency(data?.vendorTypes?.manufacturing?.spending || 0)}</p>
               </div>
             </div>

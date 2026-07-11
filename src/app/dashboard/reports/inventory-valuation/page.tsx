@@ -15,6 +15,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface InventoryItem {
   itemId: string;
@@ -526,7 +527,7 @@ export default function InventoryValuationPage() {
                 <CubeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Items</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalItems || 0}</p>
+                  <FitNumber value={data?.summary?.totalItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -536,7 +537,7 @@ export default function InventoryValuationPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Quantity</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.totalQuantity?.toLocaleString() || 0}</p>
+                  <FitNumber value={data?.summary?.totalQuantity?.toLocaleString() || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -563,7 +564,7 @@ export default function InventoryValuationPage() {
                 <CheckCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">In Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{(data?.summary?.totalItems || 0) - (data?.summary?.outOfStockItems || 0)}</p>
+                  <FitNumber value={(data?.summary?.totalItems || 0) - (data?.summary?.outOfStockItems || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -573,7 +574,7 @@ export default function InventoryValuationPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Low Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.lowStockItems || 0}</p>
+                  <FitNumber value={data?.summary?.lowStockItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -583,7 +584,7 @@ export default function InventoryValuationPage() {
                 <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Out of Stock</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">{data?.summary?.outOfStockItems || 0}</p>
+                  <FitNumber value={data?.summary?.outOfStockItems || 0} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -596,25 +597,25 @@ export default function InventoryValuationPage() {
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">FIFO</p>
-                <p className="text-lg font-bold text-blue-700">{formatCurrency(data?.summary?.totalValueFIFO || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueFIFO || 0)} className="font-bold text-blue-700" />
                 <p className="text-xs text-blue-600">First In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">LIFO</p>
-                <p className="text-lg font-bold text-green-700">{formatCurrency(data?.summary?.totalValueLIFO || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueLIFO || 0)} className="font-bold text-green-700" />
                 <p className="text-xs text-green-600">Last In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-purple-600">Average</p>
-                <p className="text-lg font-bold text-purple-700">{formatCurrency(data?.summary?.totalValueAverage || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueAverage || 0)} className="font-bold text-purple-700" />
                 <p className="text-xs text-purple-600">Weighted Average</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-orange-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-orange-600">Standard</p>
-                <p className="text-lg font-bold text-orange-700">{formatCurrency(data?.summary?.totalValueStandard || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueStandard || 0)} className="font-bold text-orange-700" />
                 <p className="text-xs text-orange-600">Standard Cost</p>
               </div>
             </div>
