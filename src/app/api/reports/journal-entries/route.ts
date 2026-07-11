@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
               je.source_module,
               je.status,
               je.created_at,
-              COALESCE(u.full_name, u.email, je.created_by) AS created_by
+              COALESCE(u.full_name, u.email, je.created_by::text) AS created_by
        FROM journal_entries je
        LEFT JOIN app_users u ON u.id::text = je.created_by::text
        WHERE je.company_id = $1
