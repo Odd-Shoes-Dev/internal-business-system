@@ -25,7 +25,6 @@ interface JournalEntry {
   reference: string;
   source: string;
   status: 'draft' | 'posted' | 'void';
-  is_posted: boolean;
   lines: Array<{
     id: string;
     account_code: string;
@@ -257,12 +256,12 @@ export default function GeneralLedgerPage() {
                         <span
                           className={cn(
                             'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                            entry.is_posted
+                            entry.status === 'posted'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
                           )}
                         >
-                          {entry.is_posted ? 'Posted' : 'Draft'}
+                          {entry.status === 'posted' ? 'Posted' : 'Draft'}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 truncate">{entry.description}</p>
