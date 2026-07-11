@@ -283,6 +283,7 @@ export async function PATCH(request: NextRequest, context: any) {
             bill_date: bill.bill_date,
             total: billTotal,
             company_id: bill.company_id,
+            currency: existing.currency || 'USD',
           },
           journalBillLines,
           user.id

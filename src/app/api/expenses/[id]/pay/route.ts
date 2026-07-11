@@ -91,6 +91,7 @@ export async function POST(request: NextRequest, context: any) {
           description: updatedExpense.description || 'Expense',
           bank_account_id: updatedExpense.bank_account_id,
           company_id: updatedExpense.company_id,
+          currency: updatedExpense.currency || 'USD',
         },
         user.id
       );

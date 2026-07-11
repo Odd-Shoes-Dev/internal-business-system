@@ -302,6 +302,7 @@ export async function POST(request: NextRequest) {
             bill_date: bill.bill_date,
             total: bill.total,
             company_id: bill.company_id,
+            currency: bill.currency || 'USD',
           },
           journalBillLines,
           user.id

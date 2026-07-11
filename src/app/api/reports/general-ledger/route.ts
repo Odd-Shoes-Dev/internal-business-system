@@ -72,6 +72,9 @@ export async function GET(request: NextRequest) {
                 jl.account_id,
                 jl.debit,
                 jl.credit,
+                jl.currency,
+                COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
+                COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit,
                 jl.description,
                 a.id AS account_ref_id,
                 a.code AS account_code,
@@ -139,8 +142,8 @@ export async function GET(request: NextRequest) {
             accountType: mapAccountType(line.account_type),
             description: line.description || entry.description || '',
             reference: entry.memo || entry.entry_number,
-            debit: parseFloat(line.debit) || 0,
-            credit: parseFloat(line.credit) || 0,
+            debit: parseFloat(line.base_debit) || 0,
+            credit: parseFloat(line.base_credit) || 0,
             runningBalance: 0, // Will be calculated below
             journalType: getJournalType(entry.source_module)
           });

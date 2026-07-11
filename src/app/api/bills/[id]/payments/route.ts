@@ -236,18 +236,30 @@ export async function POST(
 
           const journalEntryId = journalEntry.rows[0]?.id;
           if (journalEntryId) {
+            const billCurrency = bill.currency || 'USD';
+            const rateResult = await tx.query<{ rate: number | null }>(
+              `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
+              [billCurrency, body.payment_date]
+            );
+            const exchangeRate = Number(rateResult.rows[0]?.rate) || 1;
+            const baseAmount = paymentAmount * exchangeRate;
+
             await tx.query(
               `INSERT INTO journal_lines (
-                 journal_entry_id, line_number, account_id, debit, credit, description
-               ) VALUES ($1, 1, $2, $3, 0, $4)`,
-              [journalEntryId, apAccountId, paymentAmount, `AP payment - Bill ${bill.bill_number}`]
+                 journal_entry_id, line_number, account_id, debit, credit, description,
+                 currency, exchange_rate, base_debit, base_credit
+               ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+              [journalEntryId, apAccountId, paymentAmount, `AP payment - Bill ${bill.bill_number}`,
+               billCurrency, exchangeRate, baseAmount]
             );
 
             await tx.query(
               `INSERT INTO journal_lines (
-                 journal_entry_id, line_number, account_id, debit, credit, description
-               ) VALUES ($1, 2, $2, 0, $3, $4)`,
-              [journalEntryId, cashAccountId, paymentAmount, `Payment - Bill ${bill.bill_number}`]
+                 journal_entry_id, line_number, account_id, debit, credit, description,
+                 currency, exchange_rate, base_debit, base_credit
+               ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+              [journalEntryId, cashAccountId, paymentAmount, `Payment - Bill ${bill.bill_number}`,
+               billCurrency, exchangeRate, baseAmount]
             );
           }
         }

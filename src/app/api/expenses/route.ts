@@ -220,6 +220,7 @@ export async function POST(request: NextRequest) {
               description: newExpense.description || 'Expense',
               bank_account_id: body.bank_account_id,
               company_id,
+              currency: newExpense.currency || 'USD',
             },
             user.id
           );

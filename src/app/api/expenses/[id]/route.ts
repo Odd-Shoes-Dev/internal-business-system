@@ -162,6 +162,7 @@ export async function PATCH(request: NextRequest, context: any) {
               description: updated.description || 'Expense',
               bank_account_id: updated.bank_account_id,
               company_id: existing.company_id,
+              currency: existing.currency || 'USD',
             },
             user.id
           );
