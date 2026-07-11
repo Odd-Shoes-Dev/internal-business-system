@@ -57,6 +57,7 @@ export async function createBillJournalEntryWithDb(
     bill_number: string;
     bill_date: string;
     total: number;
+    company_id: string;
   },
   billLines: Array<{ account_code: string; amount: number; description: string }>,
   createdBy: string
@@ -101,10 +102,10 @@ export async function createBillJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'bill', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'bill', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, bill.bill_date, `Bill ${bill.bill_number}`, bill.id, createdBy]
+      [entryNumber, bill.bill_date, `Bill ${bill.bill_number}`, bill.id, createdBy, bill.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -143,6 +144,7 @@ export async function createInvoiceJournalEntryWithDb(
     invoice_number: string;
     invoice_date: string;
     total: number;
+    company_id: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
@@ -164,10 +166,10 @@ export async function createInvoiceJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'invoice', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'invoice', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, invoice.invoice_date, `Invoice ${invoice.invoice_number}`, invoice.id, createdBy]
+      [entryNumber, invoice.invoice_date, `Invoice ${invoice.invoice_number}`, invoice.id, createdBy, invoice.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -203,6 +205,7 @@ export async function createReceiptJournalEntryWithDb(
     receipt_date: string;
     total: number;
     payment_method: string;
+    company_id: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
@@ -228,10 +231,10 @@ export async function createReceiptJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'receipt', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'receipt', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, receipt.receipt_date, `Receipt ${receipt.receipt_number}`, receipt.id, createdBy]
+      [entryNumber, receipt.receipt_date, `Receipt ${receipt.receipt_number}`, receipt.id, createdBy, receipt.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -269,6 +272,7 @@ export async function createExpenseJournalEntryWithDb(
     account_code: string;
     description: string;
     bank_account_id?: string | null;
+    company_id: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
@@ -307,10 +311,10 @@ export async function createExpenseJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'expense', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'expense', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, expense.expense_date, `Expense: ${expense.description}`, expense.id, createdBy]
+      [entryNumber, expense.expense_date, `Expense: ${expense.description}`, expense.id, createdBy, expense.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;

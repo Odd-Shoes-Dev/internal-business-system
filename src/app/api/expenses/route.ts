@@ -215,6 +215,7 @@ export async function POST(request: NextRequest) {
             account_code: accountCode,
             description: expense.description || 'Expense',
             bank_account_id: body.bank_account_id,
+            company_id: expense.company_id,
           },
           user.id
         );

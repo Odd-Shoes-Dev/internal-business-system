@@ -356,6 +356,7 @@ export async function POST(request: NextRequest) {
             invoice_number: invoice.invoice_number,
             invoice_date: invoice.invoice_date,
             total: Number(invoice.total),
+            company_id: invoice.company_id,
           },
           user.id
         );

@@ -90,6 +90,7 @@ export async function POST(request: NextRequest, context: any) {
           account_code: expenseAccount.code,
           description: updatedExpense.description || 'Expense',
           bank_account_id: updatedExpense.bank_account_id,
+          company_id: updatedExpense.company_id,
         },
         user.id
       );

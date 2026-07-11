@@ -301,6 +301,7 @@ export async function POST(request: NextRequest) {
             bill_number: bill.bill_number,
             bill_date: bill.bill_date,
             total: bill.total,
+            company_id: bill.company_id,
           },
           journalBillLines,
           user.id

@@ -322,6 +322,7 @@ export async function POST(request: NextRequest) {
           receipt_date: paymentRow.payment_date,
           total: Number(paymentRow.amount),
           payment_method: paymentRow.payment_method,
+          company_id: body.company_id,
         },
         user.id
       );
