@@ -32,6 +32,7 @@ interface JournalEntry {
     account_name: string;
     debit_amount: number;
     credit_amount: number;
+    currency: string;
     description: string;
   }>;
 }
@@ -348,10 +349,10 @@ export default function GeneralLedgerPage() {
                                 </td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600">{line.description}</td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                  {line.debit_amount > 0 ? formatCurrency(line.debit_amount) : ''}
+                                  {line.debit_amount > 0 ? formatCurrency(line.debit_amount, line.currency as any || 'USD') : ''}
                                 </td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                  {line.credit_amount > 0 ? formatCurrency(line.credit_amount) : ''}
+                                  {line.credit_amount > 0 ? formatCurrency(line.credit_amount, line.currency as any || 'USD') : ''}
                                 </td>
                               </tr>
                             ))}
