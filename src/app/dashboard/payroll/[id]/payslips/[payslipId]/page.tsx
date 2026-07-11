@@ -807,7 +807,7 @@ export default function PayslipDetailPage({
               )}
               <div className="flex justify-between py-2 mt-2 border-t-2 border-gray-900">
                 <span className="text-sm font-semibold text-gray-900">Gross Salary</span>
-                <span className="text-sm font-bold text-gray-900">{formatCurrency(payslip.gross_salary)}</span>
+                <FitNumber value={formatCurrency(payslip.gross_salary)} className="font-bold text-gray-900" />
               </div>
             </div>
           </div>
@@ -846,7 +846,7 @@ export default function PayslipDetailPage({
               )}
               <div className="flex justify-between py-2 mt-2 border-t-2 border-gray-900">
                 <span className="text-sm font-semibold text-gray-900">Total Deductions</span>
-                <span className="text-sm font-bold text-red-600">{formatCurrency(payslip.total_deductions)}</span>
+                <FitNumber value={formatCurrency(payslip.total_deductions)} className="font-bold text-red-600" />
               </div>
             </div>
           </div>
@@ -871,7 +871,7 @@ export default function PayslipDetailPage({
 
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-lg text-center">
             <p className="text-sm font-medium mb-1 opacity-90">NET PAY</p>
-            <p className="text-4xl font-bold">{formatCurrency(payslip.net_salary)}</p>
+            <FitNumber value={formatCurrency(payslip.net_salary)} className="font-bold" />
           </div>
         </div>
 

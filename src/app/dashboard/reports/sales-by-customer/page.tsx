@@ -465,19 +465,19 @@ export default function SalesByCustomerPage() {
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">Individual</p>
-                <p className="text-lg font-bold text-blue-700">{data?.customerTypes?.individual?.count || 0}</p>
+                <FitNumber value={data?.customerTypes?.individual?.count || 0} className="font-bold text-blue-700" />
                 <p className="text-sm text-blue-600">{formatCurrency(data?.customerTypes?.individual?.revenue || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">Business</p>
-                <p className="text-lg font-bold text-green-700">{data?.customerTypes?.business?.count || 0}</p>
+                <FitNumber value={data?.customerTypes?.business?.count || 0} className="font-bold text-green-700" />
                 <p className="text-sm text-green-600">{formatCurrency(data?.customerTypes?.business?.revenue || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-red-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-red-600">Government</p>
-                <p className="text-lg font-bold text-red-700">{data?.customerTypes?.government?.count || 0}</p>
+                <FitNumber value={data?.customerTypes?.government?.count || 0} className="font-bold text-red-700" />
                 <p className="text-sm text-red-600">{formatCurrency(data?.customerTypes?.government?.revenue || 0)}</p>
               </div>
             </div>

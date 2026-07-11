@@ -491,7 +491,7 @@ export default function SalesByProductPage() {
                   <div key={index} className="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
                     <TagIcon className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-700">{cat.category}</p>
-                    <p className="text-lg font-bold text-gray-900">{formatCurrency(cat.revenue)}</p>
+                    <FitNumber value={formatCurrency(cat.revenue)} className="font-bold text-gray-900" />
                     <p className="text-xs text-gray-600">{cat.productCount} products • {cat.unitsSold.toLocaleString()} units</p>
                     <p className="text-xs text-gray-600">Avg margin: {cat.averageMargin.toFixed(1)}%</p>
                   </div>

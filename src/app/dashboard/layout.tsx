@@ -34,6 +34,7 @@ import {
   CreditCardIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 
 // Navigation grouped by category - with module and role requirements
 const navigationGroups = [
@@ -554,7 +555,7 @@ export default function DashboardLayout({
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-blueox-primary/10 transition-colors"
               >
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
-                  <span className="text-black text-xs font-bold">{company?.name?.[0]?.toUpperCase() || 'C'}</span>
+                  <FitNumber value={company?.name?.[0]?.toUpperCase() || 'C'} className="text-black font-bold" />
                 </div>
                 <span className="text-sm font-semibold text-blueox-primary-dark max-w-[160px] truncate">{company?.name || 'Company'}</span>
                 {companies.length > 1 && (
@@ -578,7 +579,7 @@ export default function DashboardLayout({
                           }`}
                         >
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
-                            <span className="text-black text-sm font-bold">{c.name?.[0]?.toUpperCase() || 'C'}</span>
+                            <FitNumber value={c.name?.[0]?.toUpperCase() || 'C'} className="text-black font-bold" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-blueox-primary-dark truncate">{c.name}</p>

@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types/database';
+import { FitNumber } from '@/components/ui/fit-number';
 
 export default function InventoryPage() {
   const { company } = useCompany();
@@ -388,15 +389,15 @@ export default function InventoryPage() {
                     <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
                         <p className="text-xs font-medium text-gray-600 mb-1">On Hand</p>
-                        <p className="text-lg font-bold text-blueox-primary-dark">{item.quantity_on_hand}</p>
+                        <FitNumber value={item.quantity_on_hand} className="font-bold text-blueox-primary-dark" />
                       </div>
                       <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-3 border border-amber-100">
                         <p className="text-xs font-medium text-gray-600 mb-1">Reserved</p>
-                        <p className="text-lg font-bold text-amber-600">{item.quantity_reserved}</p>
+                        <FitNumber value={item.quantity_reserved} className="font-bold text-amber-600" />
                       </div>
                       <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-3 border border-green-100">
                         <p className="text-xs font-medium text-gray-600 mb-1">Available</p>
-                        <p className="text-lg font-bold text-green-600">{available}</p>
+                        <FitNumber value={available} className="font-bold text-green-600" />
                       </div>
                     </div>
                     <div className="mt-4 pt-4 border-t border-blueox-primary/10 flex justify-between items-center">

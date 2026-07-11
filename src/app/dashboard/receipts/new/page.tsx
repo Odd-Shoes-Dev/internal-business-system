@@ -17,6 +17,7 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product } from '@/types/database';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface ReceiptLineInput {
   product_id: string;
@@ -881,7 +882,7 @@ export default function NewReceiptPage() {
                 </div>
                 <div className="flex justify-between pt-2 border-t border-gray-200">
                   <span className="text-lg font-semibold text-green-600">Total Amount Paid:</span>
-                  <span className="text-lg font-bold text-green-600">{formatCurrency(calculateTotal())}</span>
+                  <FitNumber value={formatCurrency(calculateTotal())} className="font-bold text-green-600" />
                 </div>
               </div>
             </div>

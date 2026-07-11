@@ -525,7 +525,7 @@ export default function BookingsPage() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <p className="text-lg font-bold text-blueox-primary">{booking.booking_number}</p>
+                        <FitNumber value={booking.booking_number} className="font-bold text-blueox-primary" />
                         <p className="text-sm text-gray-600 mt-1">{booking.customer?.name}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Icon className="w-4 h-4 text-blueox-primary/60" />
@@ -559,12 +559,12 @@ export default function BookingsPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                        <p className="text-sm font-bold text-blueox-primary">{formatCurrency(booking.total, booking.currency)}</p>
+                        <FitNumber value={formatCurrency(booking.total, booking.currency)} className="font-bold text-blueox-primary" />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Balance Due</p>
                         {booking.balance_due > 0 ? (
-                          <p className="text-sm font-bold text-red-600">{formatCurrency(booking.balance_due, booking.currency)}</p>
+                          <FitNumber value={formatCurrency(booking.balance_due, booking.currency)} className="font-bold text-red-600" />
                         ) : (
                           <p className="text-sm font-bold text-green-600">Paid</p>
                         )}

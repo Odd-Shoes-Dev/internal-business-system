@@ -606,7 +606,7 @@ export default function JournalEntriesPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-900">{entry.entryNumber}</span>
+                          <FitNumber value={entry.entryNumber} className="font-bold text-gray-900" />
                           <span className={cn(
                             'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border',
                             getStatusColor(entry.status)

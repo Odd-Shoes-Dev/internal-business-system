@@ -553,7 +553,7 @@ export default function TaxSummaryPage() {
                 </div>
                 <div className="flex justify-between items-center py-2 bg-blue-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-blue-700">Total Taxable Income</span>
-                  <span className="text-xs sm:text-sm font-bold text-blue-700">{formatCurrency(data?.income?.totalTaxableIncome || 0)}</span>
+                  <FitNumber value={formatCurrency(data?.income?.totalTaxableIncome || 0)} className="font-bold text-blue-700" />
                 </div>
               </div>
             </div>
@@ -587,7 +587,7 @@ export default function TaxSummaryPage() {
                 </div>
                 <div className="flex justify-between items-center py-2 bg-green-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-green-700">Total Deductions</span>
-                  <span className="text-xs sm:text-sm font-bold text-green-700">{formatCurrency(data?.deductions?.totalDeductions || 0)}</span>
+                  <FitNumber value={formatCurrency(data?.deductions?.totalDeductions || 0)} className="font-bold text-green-700" />
                 </div>
               </div>
             </div>

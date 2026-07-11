@@ -597,25 +597,25 @@ export default function InventoryValuationPage() {
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">FIFO</p>
-                <p className="text-lg font-bold text-blue-700">{formatCurrency(data?.summary?.totalValueFIFO || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueFIFO || 0)} className="font-bold text-blue-700" />
                 <p className="text-xs text-blue-600">First In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">LIFO</p>
-                <p className="text-lg font-bold text-green-700">{formatCurrency(data?.summary?.totalValueLIFO || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueLIFO || 0)} className="font-bold text-green-700" />
                 <p className="text-xs text-green-600">Last In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-purple-600">Average</p>
-                <p className="text-lg font-bold text-purple-700">{formatCurrency(data?.summary?.totalValueAverage || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueAverage || 0)} className="font-bold text-purple-700" />
                 <p className="text-xs text-purple-600">Weighted Average</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-orange-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-orange-600">Standard</p>
-                <p className="text-lg font-bold text-orange-700">{formatCurrency(data?.summary?.totalValueStandard || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.totalValueStandard || 0)} className="font-bold text-orange-700" />
                 <p className="text-xs text-orange-600">Standard Cost</p>
               </div>
             </div>

@@ -517,23 +517,23 @@ export default function APAgingPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200 border-l-4 border-l-green-500">
                 <p className="text-xs text-green-600 font-medium">Current</p>
-                <p className="text-sm sm:text-base font-bold text-green-700 mt-1">{formatCurrency(data?.summary?.current || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.current || 0)} className="font-bold text-green-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200 border-l-4 border-l-yellow-500">
                 <p className="text-xs text-yellow-600 font-medium">1-30 Days</p>
-                <p className="text-sm sm:text-base font-bold text-yellow-700 mt-1">{formatCurrency(data?.summary?.days1to30 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days1to30 || 0)} className="font-bold text-yellow-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200 border-l-4 border-l-orange-500">
                 <p className="text-xs text-orange-600 font-medium">31-60 Days</p>
-                <p className="text-sm sm:text-base font-bold text-orange-700 mt-1">{formatCurrency(data?.summary?.days31to60 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days31to60 || 0)} className="font-bold text-orange-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200 border-l-4 border-l-red-500">
                 <p className="text-xs text-red-600 font-medium">61-90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-red-700 mt-1">{formatCurrency(data?.summary?.days61to90 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.days61to90 || 0)} className="font-bold text-red-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-100 border border-red-300 border-l-4 border-l-red-600">
                 <p className="text-xs text-red-700 font-medium">Over 90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-red-800 mt-1">{formatCurrency(data?.summary?.over90 || 0)}</p>
+                <FitNumber value={formatCurrency(data?.summary?.over90 || 0)} className="font-bold text-red-800 mt-1" />
               </div>
             </div>
           </div>

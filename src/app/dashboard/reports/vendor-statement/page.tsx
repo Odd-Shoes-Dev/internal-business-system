@@ -14,6 +14,7 @@ import {
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useCompany } from '@/contexts/company-context';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { FitNumber } from '@/components/ui/fit-number';
 
 interface VendorTransaction {
   id: string;
@@ -580,23 +581,23 @@ export default function VendorStatementPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-xs text-green-600 font-medium">Current</p>
-                <p className="text-sm sm:text-base font-bold text-green-700 mt-1">{formatCurrency(data.aging.current)}</p>
+                <FitNumber value={formatCurrency(data.aging.current)} className="font-bold text-green-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-xs text-blue-600 font-medium">1-30 Days</p>
-                <p className="text-sm sm:text-base font-bold text-blue-700 mt-1">{formatCurrency(data.aging.days1to30)}</p>
+                <FitNumber value={formatCurrency(data.aging.days1to30)} className="font-bold text-blue-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-yellow-50 border border-yellow-200">
                 <p className="text-xs text-yellow-600 font-medium">31-60 Days</p>
-                <p className="text-sm sm:text-base font-bold text-yellow-700 mt-1">{formatCurrency(data.aging.days31to60)}</p>
+                <FitNumber value={formatCurrency(data.aging.days31to60)} className="font-bold text-yellow-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-orange-50 border border-orange-200">
                 <p className="text-xs text-orange-600 font-medium">61-90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-orange-700 mt-1">{formatCurrency(data.aging.days61to90)}</p>
+                <FitNumber value={formatCurrency(data.aging.days61to90)} className="font-bold text-orange-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
                 <p className="text-xs text-red-600 font-medium">Over 90 Days</p>
-                <p className="text-sm sm:text-base font-bold text-red-700 mt-1">{formatCurrency(data.aging.over90)}</p>
+                <FitNumber value={formatCurrency(data.aging.over90)} className="font-bold text-red-700 mt-1" />
               </div>
             </div>
           </div>

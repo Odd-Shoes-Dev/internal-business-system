@@ -14,21 +14,19 @@ import path from 'path';
 const ROOT = path.resolve('src/app/dashboard');
 const IMPORT_LINE = "import { FitNumber } from '@/components/ui/fit-number';";
 
-// Matches a single-line <p> or <div> with a size+bold className.
-// Captures: [1] tag, [2] classes before size, [3] size class, [4] classes after size,
-//           [5] JSX expression content, [6] closing tag
+// Matches a single-line <p>, <div>, or <span> with a size+bold className.
 const STAT_RE =
-  /<(p|div)((?:\s+\w[\w-]*="[^"]*")*)\s+className="([^"]*\b(?:text-xl|text-2xl|text-3xl)\b[^"]*\bfont-bold\b[^"]*)">(.*?)<\/\1>/g;
+  /<(p|div|span)((?:\s+\w[\w-]*="[^"]*")*)\s+className="([^"]*\b(?:text-xs|text-sm|text-base|text-lg|text-xl|text-2xl|text-3xl|text-4xl|text-5xl)\b[^"]*\bfont-bold\b[^"]*)">(.*?)<\/\1>/g;
 
-// className parts we want to KEEP (everything except the size token)
-const SIZE_TOKENS = new Set(['text-xl', 'text-2xl', 'text-3xl', 'lg:text-3xl', 'sm:text-xl', 'sm:text-2xl', 'lg:text-2xl', 'base']);
+// className parts we want to KEEP (everything except size tokens)
+const SIZE_TOKENS = new Set([
+  'text-xs','text-sm','text-base','text-lg','text-xl','text-2xl','text-3xl','text-4xl','text-5xl',
+]);
 
 function stripSizeClasses(classes) {
   return classes
     .split(/\s+/)
     .filter(c => {
-      // Remove any token that IS or ENDS WITH one of our size patterns
-      if (SIZE_TOKENS.has(c)) return false;
       if (/^(?:xs:|sm:|md:|lg:|xl:)?text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl)$/.test(c)) return false;
       return true;
     })

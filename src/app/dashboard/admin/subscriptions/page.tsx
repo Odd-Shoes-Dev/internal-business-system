@@ -212,7 +212,7 @@ export default function SubscriptionMonitorPage() {
                       <Mail className="w-5 h-5 text-gray-600" />
                       <span className="font-medium text-gray-900">Total Emails</span>
                     </div>
-                    <span className="text-2xl font-bold text-gray-900">{emailStats.total}</span>
+                    <FitNumber value={emailStats.total} className="font-bold text-gray-900" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
