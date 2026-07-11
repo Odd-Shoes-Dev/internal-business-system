@@ -109,61 +109,74 @@ export async function PATCH(request: NextRequest, context: any) {
       return NextResponse.json({ error: 'Cannot edit paid expenses. Void the expense first.' }, { status: 400 });
     }
 
-    const updateData: any = { ...body };
-    if (body.amount !== undefined || body.tax_amount !== undefined) {
-      const amount = Number(body.amount ?? 0);
-      const taxAmount = Number(body.tax_amount ?? 0);
-      updateData.total = amount + taxAmount;
+    const ALLOWED_FIELDS = [
+      'expense_date', 'vendor_id', 'expense_account_id', 'payment_account_id',
+      'amount', 'tax_amount', 'currency', 'description', 'category', 'department',
+      'payment_method', 'bank_account_id', 'receipt_url', 'is_billable', 'customer_id',
+      'status', 'reference', 'notes',
+    ];
+
+    const updateData: any = {};
+    for (const field of ALLOWED_FIELDS) {
+      if (body[field] !== undefined) updateData[field] = body[field];
     }
 
-    delete updateData.id;
-    delete updateData.created_at;
-    delete updateData.created_by;
+    if (updateData.amount !== undefined || updateData.tax_amount !== undefined) {
+      const amount = Number(updateData.amount ?? existing.amount ?? 0);
+      const taxAmount = Number(updateData.tax_amount ?? existing.tax_amount ?? 0);
+      updateData.total = amount + taxAmount;
+    }
 
     const fields = Object.keys(updateData);
     if (fields.length === 0) {
       return NextResponse.json({ data: existing });
     }
 
-    const setSql = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
-    const values = fields.map((f) => updateData[f]);
+    const expense = await db.transaction(async (tx) => {
+      const setSql = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
+      const values = fields.map((f) => updateData[f]);
 
-    const updateResult = await db.query(
-      `UPDATE expenses
-       SET ${setSql}, updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [params.id, ...values]
-    );
+      const updateResult = await tx.query(
+        `UPDATE expenses
+         SET ${setSql}, updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [params.id, ...values]
+      );
 
-    const expense = updateResult.rows[0];
+      const updated = updateResult.rows[0];
 
-    if (body.status === 'paid' && existing.status !== 'paid' && !existing.journal_entry_id) {
-      const accountResult = await db.query('SELECT code FROM accounts WHERE id = $1 LIMIT 1', [expense.expense_account_id]);
-      const accountCode = accountResult.rows[0]?.code;
+      if (body.status === 'paid' && existing.status !== 'paid' && !existing.journal_entry_id) {
+        const accountResult = await tx.query('SELECT code FROM accounts WHERE id = $1 AND company_id = $2 LIMIT 1', [updated.expense_account_id, existing.company_id]);
+        const accountCode = accountResult.rows[0]?.code;
 
-      if (accountCode) {
-        const journalResult = await createExpenseJournalEntryWithDb(
-          db,
-          {
-            id: expense.id,
-            expense_number: expense.expense_number,
-            expense_date: expense.expense_date,
-            amount: expense.total,
-            account_code: accountCode,
-            description: expense.description || 'Expense',
-            bank_account_id: expense.bank_account_id,
-            company_id: expense.company_id,
-          },
-          user.id
-        );
+        if (accountCode) {
+          const journalResult = await createExpenseJournalEntryWithDb(
+            tx,
+            {
+              id: updated.id,
+              expense_number: updated.expense_number,
+              expense_date: updated.expense_date,
+              amount: updated.total,
+              account_code: accountCode,
+              description: updated.description || 'Expense',
+              bank_account_id: updated.bank_account_id,
+              company_id: existing.company_id,
+            },
+            user.id
+          );
 
-        if (journalResult.journalEntryId) {
-          await db.query('UPDATE expenses SET journal_entry_id = $2 WHERE id = $1', [params.id, journalResult.journalEntryId]);
-          expense.journal_entry_id = journalResult.journalEntryId;
+          if (journalResult.journalEntryId) {
+            await tx.query('UPDATE expenses SET journal_entry_id = $2 WHERE id = $1', [params.id, journalResult.journalEntryId]);
+            updated.journal_entry_id = journalResult.journalEntryId;
+          } else if (!journalResult.success) {
+            throw new Error(`Expense updated but journal entry failed: ${journalResult.error}`);
+          }
         }
       }
-    }
+
+      return updated;
+    });
 
     return NextResponse.json({ data: expense });
   } catch (error: any) {

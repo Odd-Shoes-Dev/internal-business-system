@@ -189,8 +189,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get AR account
-    const arAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-      '1200',
+    const arAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+      '1100', company_id,
     ]);
 
     // Calculate totals from lines

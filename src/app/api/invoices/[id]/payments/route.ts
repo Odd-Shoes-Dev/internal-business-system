@@ -88,11 +88,11 @@ export async function POST(request: NextRequest, context: any) {
         [resolvedParams.id, newAmountPaid, newStatus]
       );
 
-      const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-        '1200',
+      const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+        '1100', invoice.company_id,
       ]);
-      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-        '1000',
+      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+        '1000', invoice.company_id,
       ]);
 
       if (arAccount.rowCount && cashAccount.rowCount) {

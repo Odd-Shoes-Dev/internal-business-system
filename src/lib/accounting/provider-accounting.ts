@@ -45,8 +45,8 @@ export async function validatePeriodLockWithDb(
   return `Cannot modify transaction: The ${found.level} period "${found.name}" (${found.start_date} to ${found.end_date}) is ${found.status}.`;
 }
 
-export async function getAccountIdByCode(q: QueryExecutor, code: string): Promise<string | null> {
-  const result = await q.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [code]);
+export async function getAccountIdByCode(q: QueryExecutor, code: string, companyId: string): Promise<string | null> {
+  const result = await q.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [code, companyId]);
   return result.rows[0]?.id ?? null;
 }
 
@@ -63,7 +63,7 @@ export async function createBillJournalEntryWithDb(
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const apAccountId = await getAccountIdByCode(q, '2000');
+    const apAccountId = await getAccountIdByCode(q, '2000', bill.company_id);
     if (!apAccountId) {
       return { success: false, error: 'Accounts Payable account not found' };
     }
@@ -71,7 +71,7 @@ export async function createBillJournalEntryWithDb(
     const debitLines: Array<{ account_id: string; debit: number; credit: number; description: string }> = [];
 
     for (const line of billLines) {
-      const accountId = await getAccountIdByCode(q, line.account_code);
+      const accountId = await getAccountIdByCode(q, line.account_code, bill.company_id);
       if (!accountId) {
         return { success: false, error: `Account ${line.account_code} not found` };
       }
@@ -149,8 +149,8 @@ export async function createInvoiceJournalEntryWithDb(
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const arAccountId = await getAccountIdByCode(q, '1200');
-    const revenueAccountId = await getAccountIdByCode(q, '4000');
+    const arAccountId = await getAccountIdByCode(q, '1100', invoice.company_id);
+    const revenueAccountId = await getAccountIdByCode(q, '4000', invoice.company_id);
 
     if (!arAccountId || !revenueAccountId) {
       return { success: false, error: 'Required accounts not found for invoice journal entry' };
@@ -210,12 +210,12 @@ export async function createReceiptJournalEntryWithDb(
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const arAccountId = await getAccountIdByCode(q, '1200');
+    const arAccountId = await getAccountIdByCode(q, '1100', receipt.company_id);
     let cashAccountCode = '1000';
     if (receipt.payment_method === 'bank_transfer' || receipt.payment_method === 'check') {
-      cashAccountCode = '1010';
+      cashAccountCode = '1020';
     }
-    const cashAccountId = await getAccountIdByCode(q, cashAccountCode);
+    const cashAccountId = await getAccountIdByCode(q, cashAccountCode, receipt.company_id);
 
     if (!arAccountId || !cashAccountId) {
       return { success: false, error: 'Required accounts not found for receipt journal entry' };
@@ -277,7 +277,7 @@ export async function createExpenseJournalEntryWithDb(
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const expenseAccountId = await getAccountIdByCode(q, expense.account_code);
+    const expenseAccountId = await getAccountIdByCode(q, expense.account_code, expense.company_id);
 
     let cashAccountId: string | null = null;
 
@@ -294,7 +294,7 @@ export async function createExpenseJournalEntryWithDb(
     }
 
     if (!cashAccountId) {
-      cashAccountId = await getAccountIdByCode(q, '1000');
+      cashAccountId = await getAccountIdByCode(q, '1000', expense.company_id);
     }
 
     if (!expenseAccountId || !cashAccountId) {

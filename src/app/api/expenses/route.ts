@@ -160,73 +160,81 @@ export async function POST(request: NextRequest) {
     const date = new Date();
     const ref = `EXP-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-    const insertResult = await db.query(
-      `INSERT INTO expenses (
-         company_id, expense_number, reference, expense_date, vendor_id,
-         expense_account_id, payment_account_id, amount, tax_amount, total,
-         currency, description, category, department, payment_method,
-         bank_account_id, receipt_url, is_billable, customer_id, status, created_by
-       ) VALUES (
-         $1, $2, $3, $4::date, $5,
-         $6, $7, $8, $9, $10,
-         $11, $12, $13, $14, $15,
-         $16, $17, $18, $19, $20, $21
-       )
-       RETURNING *`,
-      [
-        company_id,
-        expenseData.reference || ref,
-        expenseData.reference || ref,
-        expenseData.expense_date,
-        expenseData.vendor_id || null,
-        expenseData.expense_account_id,
-        expenseData.bank_account_id || expenseData.expense_account_id,
-        expenseData.amount,
-        expenseData.tax_amount || 0,
-        Number(expenseData.amount || 0) + Number(expenseData.tax_amount || 0),
-        expenseData.currency || 'USD',
-        expenseData.description || null,
-        expenseData.category || null,
-        expenseData.department || null,
-        expenseData.payment_method || 'cash',
-        expenseData.bank_account_id || null,
-        expenseData.receipt_url || null,
-        expenseData.is_billable || false,
-        expenseData.customer_id || null,
-        expenseData.status || 'pending',
-        user.id,
-      ]
-    );
+    const expenseNumberResult = await db.query<{ expense_number: string }>('SELECT generate_expense_number() AS expense_number');
+    const expenseNumber = expenseNumberResult.rows[0]?.expense_number || ref;
 
-    const expense = insertResult.rows[0];
+    const expense = await db.transaction(async (tx) => {
+      const insertResult = await tx.query(
+        `INSERT INTO expenses (
+           company_id, expense_number, reference, expense_date, vendor_id,
+           expense_account_id, payment_account_id, amount, tax_amount, total,
+           currency, description, category, department, payment_method,
+           bank_account_id, receipt_url, is_billable, customer_id, status, created_by
+         ) VALUES (
+           $1, $2, $3, $4::date, $5,
+           $6, $7, $8, $9, $10,
+           $11, $12, $13, $14, $15,
+           $16, $17, $18, $19, $20, $21
+         )
+         RETURNING *`,
+        [
+          company_id,
+          expenseNumber,
+          expenseData.reference || null,
+          expenseData.expense_date,
+          expenseData.vendor_id || null,
+          expenseData.expense_account_id,
+          expenseData.bank_account_id || expenseData.expense_account_id,
+          expenseData.amount,
+          expenseData.tax_amount || 0,
+          Number(expenseData.amount || 0) + Number(expenseData.tax_amount || 0),
+          expenseData.currency || 'USD',
+          expenseData.description || null,
+          expenseData.category || null,
+          expenseData.department || null,
+          expenseData.payment_method || 'cash',
+          expenseData.bank_account_id || null,
+          expenseData.receipt_url || null,
+          expenseData.is_billable || false,
+          expenseData.customer_id || null,
+          expenseData.status || 'pending',
+          user.id,
+        ]
+      );
 
-    if (body.status === 'paid') {
-      const accountResult = await db.query('SELECT code FROM accounts WHERE id = $1 LIMIT 1', [body.expense_account_id]);
-      const accountCode = accountResult.rows[0]?.code;
+      const newExpense = insertResult.rows[0];
 
-      if (accountCode) {
-        const journalResult = await createExpenseJournalEntryWithDb(
-          db,
-          {
-            id: expense.id,
-            expense_number: expense.expense_number,
-            expense_date: expense.expense_date,
-            amount: expense.total,
-            account_code: accountCode,
-            description: expense.description || 'Expense',
-            bank_account_id: body.bank_account_id,
-            company_id: expense.company_id,
-          },
-          user.id
-        );
+      if (body.status === 'paid') {
+        const accountResult = await tx.query('SELECT code FROM accounts WHERE id = $1 AND company_id = $2 LIMIT 1', [body.expense_account_id, company_id]);
+        const accountCode = accountResult.rows[0]?.code;
 
-        if (journalResult.journalEntryId) {
-          await db.query('UPDATE expenses SET journal_entry_id = $2 WHERE id = $1', [expense.id, journalResult.journalEntryId]);
-        } else if (!journalResult.success) {
-          console.error('Failed to create journal entry for expense:', journalResult.error);
+        if (accountCode) {
+          const journalResult = await createExpenseJournalEntryWithDb(
+            tx,
+            {
+              id: newExpense.id,
+              expense_number: newExpense.expense_number,
+              expense_date: newExpense.expense_date,
+              amount: newExpense.total,
+              account_code: accountCode,
+              description: newExpense.description || 'Expense',
+              bank_account_id: body.bank_account_id,
+              company_id,
+            },
+            user.id
+          );
+
+          if (journalResult.journalEntryId) {
+            await tx.query('UPDATE expenses SET journal_entry_id = $2 WHERE id = $1', [newExpense.id, journalResult.journalEntryId]);
+            newExpense.journal_entry_id = journalResult.journalEntryId;
+          } else if (!journalResult.success) {
+            throw new Error(`Expense created but journal entry failed: ${journalResult.error}`);
+          }
         }
       }
-    }
+
+      return newExpense;
+    });
 
     return NextResponse.json({ data: expense }, { status: 201 });
   } catch (error: any) {

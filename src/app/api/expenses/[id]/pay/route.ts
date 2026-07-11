@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, context: any) {
 
     let paidByUser = null;
     if (updatedExpense.paid_by) {
-      const paidByResult = await db.query('SELECT id, full_name, email FROM user_profiles WHERE id = $1 LIMIT 1', [
+      const paidByResult = await db.query('SELECT id, full_name, email FROM app_users WHERE id = $1 LIMIT 1', [
         updatedExpense.paid_by,
       ]);
       paidByUser = paidByResult.rows[0] || null;

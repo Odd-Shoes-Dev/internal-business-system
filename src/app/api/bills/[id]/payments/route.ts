@@ -206,10 +206,10 @@ export async function POST(
 
       // Create journal entry for payment
       // Debit: AP (2000) and Credit: Cash/Bank account.
-      const apAccountId = await getAccountIdByCode(tx, '2000');
+      const apAccountId = await getAccountIdByCode(tx, '2000', bill.company_id);
       let cashAccountId = payFromAccountId;
       if (!cashAccountId) {
-        cashAccountId = await getAccountIdByCode(tx, '1010');
+        cashAccountId = await getAccountIdByCode(tx, '1000', bill.company_id);
       }
 
       if (apAccountId && cashAccountId) {
@@ -221,8 +221,8 @@ export async function POST(
         if (entryNumberValue) {
           const journalEntry = await tx.query<{ id: string }>(
             `INSERT INTO journal_entries (
-               entry_number, entry_date, description, source_module, source_document_id, status, created_by
-             ) VALUES ($1, $2, $3, 'bill_payment', $4, 'posted', $5)
+               entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+             ) VALUES ($1, $2, $3, 'bill_payment', $4, 'posted', $5, $6)
              RETURNING id`,
             [
               entryNumberValue,
@@ -230,6 +230,7 @@ export async function POST(
               `Payment for Bill ${bill.bill_number} - ${bill.vendor_name || 'Vendor'}`,
               paymentRow.id,
               user.id,
+              bill.company_id,
             ]
           );
 
