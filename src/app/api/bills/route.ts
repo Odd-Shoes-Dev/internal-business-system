@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to generate bill number' }, { status: 500 });
     }
 
-    const apAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', ['2000']);
+    const apAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', ['2000', company_id]);
 
     const lines = body.line_items || body.lines || [];
     let subtotal = 0;
@@ -153,8 +153,8 @@ export async function POST(request: NextRequest) {
     let accountMap: Record<string, string> = {};
     if (accountCodes.length > 0) {
       const accounts = await db.query<{ id: string; code: string }>(
-        'SELECT id, code FROM accounts WHERE code = ANY($1::text[])',
-        [accountCodes]
+        'SELECT id, code FROM accounts WHERE code = ANY($1::text[]) AND company_id = $2',
+        [accountCodes, company_id]
       );
 
       if (accounts.rows.length > 0) {
@@ -301,13 +301,15 @@ export async function POST(request: NextRequest) {
             bill_number: bill.bill_number,
             bill_date: bill.bill_date,
             total: bill.total,
+            company_id: bill.company_id,
+            currency: bill.currency || 'USD',
           },
           journalBillLines,
           user.id
         );
 
         if (!journalResult.success) {
-          console.error('Failed to create journal entry for bill:', journalResult.error);
+          throw new Error(`Bill created but journal entry failed: ${journalResult.error}`);
         } else if (journalResult.journalEntryId) {
           await tx.query('UPDATE bills SET journal_entry_id = $2 WHERE id = $1', [
             bill.id,

@@ -45,9 +45,18 @@ export async function validatePeriodLockWithDb(
   return `Cannot modify transaction: The ${found.level} period "${found.name}" (${found.start_date} to ${found.end_date}) is ${found.status}.`;
 }
 
-export async function getAccountIdByCode(q: QueryExecutor, code: string): Promise<string | null> {
-  const result = await q.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [code]);
+export async function getAccountIdByCode(q: QueryExecutor, code: string, companyId: string): Promise<string | null> {
+  const result = await q.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [code, companyId]);
   return result.rows[0]?.id ?? null;
+}
+
+async function getExchangeRateToUSD(q: QueryExecutor, currency: string, date: string): Promise<number> {
+  if (!currency || currency === 'USD') return 1;
+  const result = await q.query<{ rate: number | null }>(
+    `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
+    [currency, date]
+  );
+  return Number(result.rows[0]?.rate) || 1;
 }
 
 export async function createBillJournalEntryWithDb(
@@ -57,12 +66,14 @@ export async function createBillJournalEntryWithDb(
     bill_number: string;
     bill_date: string;
     total: number;
+    company_id: string;
+    currency?: string;
   },
   billLines: Array<{ account_code: string; amount: number; description: string }>,
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const apAccountId = await getAccountIdByCode(q, '2000');
+    const apAccountId = await getAccountIdByCode(q, '2000', bill.company_id);
     if (!apAccountId) {
       return { success: false, error: 'Accounts Payable account not found' };
     }
@@ -70,7 +81,7 @@ export async function createBillJournalEntryWithDb(
     const debitLines: Array<{ account_id: string; debit: number; credit: number; description: string }> = [];
 
     for (const line of billLines) {
-      const accountId = await getAccountIdByCode(q, line.account_code);
+      const accountId = await getAccountIdByCode(q, line.account_code, bill.company_id);
       if (!accountId) {
         return { success: false, error: `Account ${line.account_code} not found` };
       }
@@ -91,6 +102,9 @@ export async function createBillJournalEntryWithDb(
       };
     }
 
+    const currency = bill.currency || 'USD';
+    const exchangeRate = await getExchangeRateToUSD(q, currency, bill.bill_date);
+
     const entryNumberResult = await q.query<{ entry_number: string }>(
       'SELECT generate_journal_entry_number() AS entry_number'
     );
@@ -101,10 +115,10 @@ export async function createBillJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'bill', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'bill', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, bill.bill_date, `Bill ${bill.bill_number}`, bill.id, createdBy]
+      [entryNumber, bill.bill_date, `Bill ${bill.bill_number}`, bill.id, createdBy, bill.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -116,18 +130,22 @@ export async function createBillJournalEntryWithDb(
     for (const line of debitLines) {
       await q.query(
         `INSERT INTO journal_lines (
-           journal_entry_id, line_number, account_id, debit, credit, description
-         ) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [journalEntryId, lineNumber, line.account_id, line.debit, line.credit, line.description]
+           journal_entry_id, line_number, account_id, debit, credit, description,
+           currency, exchange_rate, base_debit, base_credit
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [journalEntryId, lineNumber, line.account_id, line.debit, line.credit, line.description,
+         currency, exchangeRate, line.debit * exchangeRate, line.credit * exchangeRate]
       );
       lineNumber += 1;
     }
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, $2, $3, 0, $4, $5)`,
-      [journalEntryId, lineNumber, apAccountId, bill.total, `AP - Bill ${bill.bill_number}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, $2, $3, 0, $4, $5, $6, $7, 0, $8)`,
+      [journalEntryId, lineNumber, apAccountId, bill.total, `AP - Bill ${bill.bill_number}`,
+       currency, exchangeRate, bill.total * exchangeRate]
     );
 
     return { success: true, journalEntryId };
@@ -143,16 +161,22 @@ export async function createInvoiceJournalEntryWithDb(
     invoice_number: string;
     invoice_date: string;
     total: number;
+    company_id: string;
+    currency?: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const arAccountId = await getAccountIdByCode(q, '1200');
-    const revenueAccountId = await getAccountIdByCode(q, '4000');
+    const arAccountId = await getAccountIdByCode(q, '1100', invoice.company_id);
+    const revenueAccountId = await getAccountIdByCode(q, '4000', invoice.company_id);
 
     if (!arAccountId || !revenueAccountId) {
       return { success: false, error: 'Required accounts not found for invoice journal entry' };
     }
+
+    const currency = invoice.currency || 'USD';
+    const exchangeRate = await getExchangeRateToUSD(q, currency, invoice.invoice_date);
+    const baseTotal = invoice.total * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
       'SELECT generate_journal_entry_number() AS entry_number'
@@ -164,10 +188,10 @@ export async function createInvoiceJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'invoice', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'invoice', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, invoice.invoice_date, `Invoice ${invoice.invoice_number}`, invoice.id, createdBy]
+      [entryNumber, invoice.invoice_date, `Invoice ${invoice.invoice_number}`, invoice.id, createdBy, invoice.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -177,16 +201,20 @@ export async function createInvoiceJournalEntryWithDb(
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 1, $2, $3, 0, $4)`,
-      [journalEntryId, arAccountId, invoice.total, `AR - Invoice ${invoice.invoice_number}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+      [journalEntryId, arAccountId, invoice.total, `AR - Invoice ${invoice.invoice_number}`,
+       currency, exchangeRate, baseTotal]
     );
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 2, $2, 0, $3, $4)`,
-      [journalEntryId, revenueAccountId, invoice.total, `Revenue - Invoice ${invoice.invoice_number}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+      [journalEntryId, revenueAccountId, invoice.total, `Revenue - Invoice ${invoice.invoice_number}`,
+       currency, exchangeRate, baseTotal]
     );
 
     return { success: true, journalEntryId };
@@ -203,20 +231,26 @@ export async function createReceiptJournalEntryWithDb(
     receipt_date: string;
     total: number;
     payment_method: string;
+    company_id: string;
+    currency?: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const arAccountId = await getAccountIdByCode(q, '1200');
+    const arAccountId = await getAccountIdByCode(q, '1100', receipt.company_id);
     let cashAccountCode = '1000';
     if (receipt.payment_method === 'bank_transfer' || receipt.payment_method === 'check') {
-      cashAccountCode = '1010';
+      cashAccountCode = '1020';
     }
-    const cashAccountId = await getAccountIdByCode(q, cashAccountCode);
+    const cashAccountId = await getAccountIdByCode(q, cashAccountCode, receipt.company_id);
 
     if (!arAccountId || !cashAccountId) {
       return { success: false, error: 'Required accounts not found for receipt journal entry' };
     }
+
+    const currency = receipt.currency || 'USD';
+    const exchangeRate = await getExchangeRateToUSD(q, currency, receipt.receipt_date);
+    const baseTotal = receipt.total * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
       'SELECT generate_journal_entry_number() AS entry_number'
@@ -228,10 +262,10 @@ export async function createReceiptJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'receipt', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'receipt', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, receipt.receipt_date, `Receipt ${receipt.receipt_number}`, receipt.id, createdBy]
+      [entryNumber, receipt.receipt_date, `Receipt ${receipt.receipt_number}`, receipt.id, createdBy, receipt.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -241,16 +275,20 @@ export async function createReceiptJournalEntryWithDb(
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 1, $2, $3, 0, $4)`,
-      [journalEntryId, cashAccountId, receipt.total, `Cash received - Receipt ${receipt.receipt_number}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+      [journalEntryId, cashAccountId, receipt.total, `Cash received - Receipt ${receipt.receipt_number}`,
+       currency, exchangeRate, baseTotal]
     );
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 2, $2, 0, $3, $4)`,
-      [journalEntryId, arAccountId, receipt.total, `AR payment - Receipt ${receipt.receipt_number}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+      [journalEntryId, arAccountId, receipt.total, `AR payment - Receipt ${receipt.receipt_number}`,
+       currency, exchangeRate, baseTotal]
     );
 
     return { success: true, journalEntryId };
@@ -269,11 +307,13 @@ export async function createExpenseJournalEntryWithDb(
     account_code: string;
     description: string;
     bank_account_id?: string | null;
+    company_id: string;
+    currency?: string;
   },
   createdBy: string
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
-    const expenseAccountId = await getAccountIdByCode(q, expense.account_code);
+    const expenseAccountId = await getAccountIdByCode(q, expense.account_code, expense.company_id);
 
     let cashAccountId: string | null = null;
 
@@ -290,12 +330,16 @@ export async function createExpenseJournalEntryWithDb(
     }
 
     if (!cashAccountId) {
-      cashAccountId = await getAccountIdByCode(q, '1000');
+      cashAccountId = await getAccountIdByCode(q, '1000', expense.company_id);
     }
 
     if (!expenseAccountId || !cashAccountId) {
       return { success: false, error: 'Required accounts not found for expense journal entry' };
     }
+
+    const currency = expense.currency || 'USD';
+    const exchangeRate = await getExchangeRateToUSD(q, currency, expense.expense_date);
+    const baseAmount = expense.amount * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
       'SELECT generate_journal_entry_number() AS entry_number'
@@ -307,10 +351,10 @@ export async function createExpenseJournalEntryWithDb(
 
     const journalEntry = await q.query<{ id: string }>(
       `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by
-       ) VALUES ($1, $2, $3, 'expense', $4, 'posted', $5)
+         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+       ) VALUES ($1, $2, $3, 'expense', $4, 'posted', $5, $6)
        RETURNING id`,
-      [entryNumber, expense.expense_date, `Expense: ${expense.description}`, expense.id, createdBy]
+      [entryNumber, expense.expense_date, `Expense: ${expense.description}`, expense.id, createdBy, expense.company_id]
     );
 
     const journalEntryId = journalEntry.rows[0]?.id;
@@ -320,16 +364,20 @@ export async function createExpenseJournalEntryWithDb(
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 1, $2, $3, 0, $4)`,
-      [journalEntryId, expenseAccountId, expense.amount, expense.description]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+      [journalEntryId, expenseAccountId, expense.amount, expense.description,
+       currency, exchangeRate, baseAmount]
     );
 
     await q.query(
       `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description
-       ) VALUES ($1, 2, $2, 0, $3, $4)`,
-      [journalEntryId, cashAccountId, expense.amount, `Payment - ${expense.description}`]
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+      [journalEntryId, cashAccountId, expense.amount, `Payment - ${expense.description}`,
+       currency, exchangeRate, baseAmount]
     );
 
     return { success: true, journalEntryId };

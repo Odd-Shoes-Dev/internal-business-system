@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
     const accounts = accountsResult.rows;
 
     const entriesResult = await db.query(
-      `SELECT jl.account_id, jl.debit, jl.credit
+      `SELECT jl.account_id,
+              COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
+              COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS credit
        FROM journal_lines jl
        INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
        WHERE je.company_id = $1
@@ -55,6 +57,7 @@ export async function GET(request: NextRequest) {
     );
     const entries = entriesResult.rows;
 
+    // All amounts are in USD (base currency)
     const accountBalances: Record<string, number> = {};
 
     entries.forEach((entry: any) => {
@@ -315,7 +318,9 @@ export async function GET(request: NextRequest) {
     }
 
     const incomeEntriesResult = await db.query(
-      `SELECT a.code, jl.debit, jl.credit
+      `SELECT a.code,
+              COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
+              COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS credit
        FROM journal_lines jl
        INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
        INNER JOIN accounts a ON a.id = jl.account_id

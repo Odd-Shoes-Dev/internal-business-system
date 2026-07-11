@@ -36,6 +36,7 @@ interface JournalEntry {
     description: string;
     debit: number;
     credit: number;
+    currency: string;
   }>;
 }
 
@@ -311,8 +312,8 @@ export default function JournalEntriesPage() {
                   <div class="line-item">
                     <div class="account">${line.accountCode}</div>
                     <div class="description">${line.accountName} - ${line.description}</div>
-                    <div class="amount debit">${line.debit > 0 ? formatCurrency(line.debit) : ''}</div>
-                    <div class="amount credit">${line.credit > 0 ? formatCurrency(line.credit) : ''}</div>
+                    <div class="amount debit">${line.debit > 0 ? formatCurrency(line.debit, line.currency || 'USD') : ''}</div>
+                    <div class="amount credit">${line.credit > 0 ? formatCurrency(line.credit, line.currency || 'USD') : ''}</div>
                   </div>
                 `).join('')}
               </div>
@@ -534,7 +535,7 @@ export default function JournalEntriesPage() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits (USD)</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalDebits || 0)}</p>
                 </div>
               </div>
@@ -544,7 +545,7 @@ export default function JournalEntriesPage() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 rotate-180" />
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits (USD)</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(data?.summary?.totalCredits || 0)}</p>
                 </div>
               </div>
@@ -646,10 +647,10 @@ export default function JournalEntriesPage() {
                     <div className="flex items-center justify-between text-xs sm:text-sm">
                       <div className="flex gap-4">
                         <span className="text-red-600 font-medium">
-                          Debit: {formatCurrency(entry.totalDebit)}
+                          Debit: {formatCurrency(entry.totalDebit)} <span className="text-xs text-gray-400">USD</span>
                         </span>
                         <span className="text-green-600 font-medium">
-                          Credit: {formatCurrency(entry.totalCredit)}
+                          Credit: {formatCurrency(entry.totalCredit)} <span className="text-xs text-gray-400">USD</span>
                         </span>
                       </div>
                       <span className="text-gray-500">{entry.lineItems.length} line items</span>
@@ -673,13 +674,13 @@ export default function JournalEntriesPage() {
                               <div>
                                 <p className="text-xs text-gray-500">Debit</p>
                                 <p className="text-sm font-medium text-red-600 tabular-nums">
-                                  {line.debit > 0 ? formatCurrency(line.debit) : '—'}
+                                  {line.debit > 0 ? formatCurrency(line.debit, line.currency || 'USD') : '—'}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-xs text-gray-500">Credit</p>
                                 <p className="text-sm font-medium text-green-600 tabular-nums">
-                                  {line.credit > 0 ? formatCurrency(line.credit) : '—'}
+                                  {line.credit > 0 ? formatCurrency(line.credit, line.currency || 'USD') : '—'}
                                 </p>
                               </div>
                             </div>

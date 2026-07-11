@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
                 jl.account_id,
                 jl.debit,
                 jl.credit,
+                jl.currency,
                 jl.description,
                 a.code AS account_code,
                 a.name AS account_name
@@ -74,8 +75,9 @@ export async function GET(request: NextRequest) {
           id: line.id,
           account_code: line.account_code || '',
           account_name: line.account_name || '',
-          debit_amount: line.debit || 0,
-          credit_amount: line.credit || 0,
+          debit_amount: Number(line.debit) || 0,
+          credit_amount: Number(line.credit) || 0,
+          currency: line.currency || 'USD',
           description: line.description,
         })),
       });

@@ -29,8 +29,9 @@ export async function POST(request: NextRequest, context: any) {
       status: string;
       booking_id: string | null;
       company_id: string;
+      currency: string;
     }>(
-      'SELECT id, total, amount_paid, status, booking_id, company_id FROM invoices WHERE id = $1 LIMIT 1',
+      'SELECT id, total, amount_paid, status, booking_id, company_id, currency FROM invoices WHERE id = $1 LIMIT 1',
       [resolvedParams.id]
     );
 
@@ -88,11 +89,11 @@ export async function POST(request: NextRequest, context: any) {
         [resolvedParams.id, newAmountPaid, newStatus]
       );
 
-      const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-        '1200',
+      const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+        '1100', invoice.company_id,
       ]);
-      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-        '1000',
+      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+        '1000', invoice.company_id,
       ]);
 
       if (arAccount.rowCount && cashAccount.rowCount) {
@@ -102,8 +103,8 @@ export async function POST(request: NextRequest, context: any) {
 
         const journalEntry = await tx.query<{ id: string }>(
           `INSERT INTO journal_entries (
-             entry_number, entry_date, description, source_module, source_document_id, status, created_by
-           ) VALUES ($1, $2, $3, 'invoice_payment', $4, 'posted', $5)
+             entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+           ) VALUES ($1, $2, $3, 'invoice_payment', $4, 'posted', $5, $6)
            RETURNING id`,
           [
             entryNumber.rows[0]?.entry_number,
@@ -111,23 +112,36 @@ export async function POST(request: NextRequest, context: any) {
             `Payment received - ${body.payment_method}`,
             payment.id,
             user.id,
+            invoice.company_id,
           ]
         );
 
         const journalEntryId = journalEntry.rows[0]?.id;
         if (journalEntryId) {
+          const invCurrency = invoice.currency || 'USD';
+          const rateResult = await tx.query<{ rate: number | null }>(
+            `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
+            [invCurrency, body.payment_date]
+          );
+          const exchangeRate = Number(rateResult.rows[0]?.rate) || 1;
+          const baseAmount = Number(body.amount) * exchangeRate;
+
           await tx.query(
             `INSERT INTO journal_lines (
-               journal_entry_id, line_number, account_id, debit, credit, description
-             ) VALUES ($1, 1, $2, $3, 0, $4)`,
-            [journalEntryId, cashAccount.rows[0].id, body.amount, 'Payment received']
+               journal_entry_id, line_number, account_id, debit, credit, description,
+               currency, exchange_rate, base_debit, base_credit
+             ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+            [journalEntryId, cashAccount.rows[0].id, body.amount, 'Payment received',
+             invCurrency, exchangeRate, baseAmount]
           );
 
           await tx.query(
             `INSERT INTO journal_lines (
-               journal_entry_id, line_number, account_id, debit, credit, description
-             ) VALUES ($1, 2, $2, 0, $3, $4)`,
-            [journalEntryId, arAccount.rows[0].id, body.amount, 'AR reduction']
+               journal_entry_id, line_number, account_id, debit, credit, description,
+               currency, exchange_rate, base_debit, base_credit
+             ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+            [journalEntryId, arAccount.rows[0].id, body.amount, 'AR reduction',
+             invCurrency, exchangeRate, baseAmount]
           );
         }
       }

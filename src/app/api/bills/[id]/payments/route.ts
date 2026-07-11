@@ -206,10 +206,10 @@ export async function POST(
 
       // Create journal entry for payment
       // Debit: AP (2000) and Credit: Cash/Bank account.
-      const apAccountId = await getAccountIdByCode(tx, '2000');
+      const apAccountId = await getAccountIdByCode(tx, '2000', bill.company_id);
       let cashAccountId = payFromAccountId;
       if (!cashAccountId) {
-        cashAccountId = await getAccountIdByCode(tx, '1010');
+        cashAccountId = await getAccountIdByCode(tx, '1000', bill.company_id);
       }
 
       if (apAccountId && cashAccountId) {
@@ -221,8 +221,8 @@ export async function POST(
         if (entryNumberValue) {
           const journalEntry = await tx.query<{ id: string }>(
             `INSERT INTO journal_entries (
-               entry_number, entry_date, description, source_module, source_document_id, status, created_by
-             ) VALUES ($1, $2, $3, 'bill_payment', $4, 'posted', $5)
+               entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+             ) VALUES ($1, $2, $3, 'bill_payment', $4, 'posted', $5, $6)
              RETURNING id`,
             [
               entryNumberValue,
@@ -230,23 +230,36 @@ export async function POST(
               `Payment for Bill ${bill.bill_number} - ${bill.vendor_name || 'Vendor'}`,
               paymentRow.id,
               user.id,
+              bill.company_id,
             ]
           );
 
           const journalEntryId = journalEntry.rows[0]?.id;
           if (journalEntryId) {
+            const billCurrency = bill.currency || 'USD';
+            const rateResult = await tx.query<{ rate: number | null }>(
+              `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
+              [billCurrency, body.payment_date]
+            );
+            const exchangeRate = Number(rateResult.rows[0]?.rate) || 1;
+            const baseAmount = paymentAmount * exchangeRate;
+
             await tx.query(
               `INSERT INTO journal_lines (
-                 journal_entry_id, line_number, account_id, debit, credit, description
-               ) VALUES ($1, 1, $2, $3, 0, $4)`,
-              [journalEntryId, apAccountId, paymentAmount, `AP payment - Bill ${bill.bill_number}`]
+                 journal_entry_id, line_number, account_id, debit, credit, description,
+                 currency, exchange_rate, base_debit, base_credit
+               ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
+              [journalEntryId, apAccountId, paymentAmount, `AP payment - Bill ${bill.bill_number}`,
+               billCurrency, exchangeRate, baseAmount]
             );
 
             await tx.query(
               `INSERT INTO journal_lines (
-                 journal_entry_id, line_number, account_id, debit, credit, description
-               ) VALUES ($1, 2, $2, 0, $3, $4)`,
-              [journalEntryId, cashAccountId, paymentAmount, `Payment - Bill ${bill.bill_number}`]
+                 journal_entry_id, line_number, account_id, debit, credit, description,
+                 currency, exchange_rate, base_debit, base_credit
+               ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+              [journalEntryId, cashAccountId, paymentAmount, `Payment - Bill ${bill.bill_number}`,
+               billCurrency, exchangeRate, baseAmount]
             );
           }
         }

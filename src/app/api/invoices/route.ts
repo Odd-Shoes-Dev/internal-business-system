@@ -189,8 +189,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get AR account
-    const arAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 LIMIT 1', [
-      '1200',
+    const arAccount = await db.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+      '1100', company_id,
     ]);
 
     // Calculate totals from lines
@@ -356,6 +356,8 @@ export async function POST(request: NextRequest) {
             invoice_number: invoice.invoice_number,
             invoice_date: invoice.invoice_date,
             total: Number(invoice.total),
+            company_id: invoice.company_id,
+            currency: invoice.currency || 'USD',
           },
           user.id
         );

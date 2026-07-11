@@ -25,13 +25,13 @@ interface JournalEntry {
   reference: string;
   source: string;
   status: 'draft' | 'posted' | 'void';
-  is_posted: boolean;
   lines: Array<{
     id: string;
     account_code: string;
     account_name: string;
     debit_amount: number;
     credit_amount: number;
+    currency: string;
     description: string;
   }>;
 }
@@ -233,6 +233,7 @@ export default function GeneralLedgerPage() {
           <div className="divide-y divide-gray-100">
             {filteredEntries.map((entry) => {
               const isExpanded = expandedEntries.has(entry.id);
+              const entryCurrency = (entry.lines?.[0]?.currency || 'USD') as any;
               const totalDebit = entry.lines?.reduce((sum, l) => sum + (l.debit_amount || 0), 0) || 0;
               const totalCredit = entry.lines?.reduce((sum, l) => sum + (l.credit_amount || 0), 0) || 0;
 
@@ -256,12 +257,12 @@ export default function GeneralLedgerPage() {
                         <span
                           className={cn(
                             'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                            entry.is_posted
+                            entry.status === 'posted'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
                           )}
                         >
-                          {entry.is_posted ? 'Posted' : 'Draft'}
+                          {entry.status === 'posted' ? 'Posted' : 'Draft'}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 truncate">{entry.description}</p>
@@ -269,7 +270,7 @@ export default function GeneralLedgerPage() {
 
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs sm:text-sm font-medium text-gray-900 tabular-nums">
-                        {formatCurrency(totalDebit)}
+                        {formatCurrency(totalDebit, entryCurrency)}
                       </p>
                       <p className="text-xs text-gray-500">{formatDate(entry.entry_date)}</p>
                     </div>
@@ -348,10 +349,10 @@ export default function GeneralLedgerPage() {
                                 </td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600">{line.description}</td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                  {line.debit_amount > 0 ? formatCurrency(line.debit_amount) : ''}
+                                  {line.debit_amount > 0 ? formatCurrency(line.debit_amount, line.currency as any || 'USD') : ''}
                                 </td>
                                 <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                  {line.credit_amount > 0 ? formatCurrency(line.credit_amount) : ''}
+                                  {line.credit_amount > 0 ? formatCurrency(line.credit_amount, line.currency as any || 'USD') : ''}
                                 </td>
                               </tr>
                             ))}
@@ -362,10 +363,10 @@ export default function GeneralLedgerPage() {
                                 Total
                               </td>
                               <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                {formatCurrency(totalDebit)}
+                                {formatCurrency(totalDebit, entryCurrency)}
                               </td>
                               <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
-                                {formatCurrency(totalCredit)}
+                                {formatCurrency(totalCredit, entryCurrency)}
                               </td>
                             </tr>
                           </tfoot>

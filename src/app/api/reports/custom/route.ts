@@ -58,7 +58,10 @@ const fetchTransactionData = async (db: any, companyId: string, config: CustomRe
   let linesByEntryId = new Map<string, any[]>();
   if (entryIds.length > 0) {
     const linesResult = await db.query(
-      `SELECT journal_entry_id, debit, credit, account_id
+      `SELECT journal_entry_id,
+              COALESCE(NULLIF(base_debit, 0), debit) AS debit,
+              COALESCE(NULLIF(base_credit, 0), credit) AS credit,
+              account_id
        FROM journal_lines
        WHERE journal_entry_id = ANY($1::uuid[])`,
       [entryIds]
@@ -70,7 +73,7 @@ const fetchTransactionData = async (db: any, companyId: string, config: CustomRe
     }
   }
 
-  // Transform data to match expected format
+  // Transform data to match expected format (amounts in USD)
   return (entries || []).map((entry: any) => {
     const entryLines = linesByEntryId.get(entry.id) || [];
     const totalDebit = entryLines.reduce((sum: number, line: any) => sum + (parseFloat(line.debit) || 0), 0);

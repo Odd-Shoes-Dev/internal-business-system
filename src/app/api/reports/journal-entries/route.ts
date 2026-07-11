@@ -19,6 +19,7 @@ interface JournalEntry {
     description: string;
     debit: number;
     credit: number;
+    currency: string;
   }>;
 }
 
@@ -83,6 +84,9 @@ export async function GET(request: NextRequest) {
                 jl.account_id,
                 jl.debit,
                 jl.credit,
+                jl.currency,
+                COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
+                COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit,
                 jl.description,
                 a.code AS account_code,
                 a.name AS account_name
@@ -113,8 +117,8 @@ export async function GET(request: NextRequest) {
     // Transform to expected format
     const entries: JournalEntry[] = (journalEntriesData || []).map((entry: any) => {
       const lines = linesByEntryId.get(entry.id) || [];
-      const totalDebit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.debit) || 0), 0);
-      const totalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.credit) || 0), 0);
+      const totalDebit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.base_debit) || 0), 0);
+      const totalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.base_credit) || 0), 0);
 
       return {
         id: entry.id,
@@ -134,6 +138,7 @@ export async function GET(request: NextRequest) {
           description: line.description || '',
           debit: parseFloat(line.debit) || 0,
           credit: parseFloat(line.credit) || 0,
+          currency: line.currency || 'USD',
         })),
       };
     });

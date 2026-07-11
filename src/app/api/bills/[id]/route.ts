@@ -119,8 +119,8 @@ export async function PATCH(request: NextRequest, context: any) {
     let accountMap: Record<string, string> = {};
     if (accountCodes.length > 0) {
       const accounts = await db.query<{ id: string; code: string }>(
-        'SELECT id, code FROM accounts WHERE code = ANY($1::text[])',
-        [accountCodes]
+        'SELECT id, code FROM accounts WHERE code = ANY($1::text[]) AND company_id = $2',
+        [accountCodes, existing.company_id]
       );
       accountMap = Object.fromEntries(accounts.rows.map((acc) => [acc.code, acc.id]));
     }
@@ -282,6 +282,8 @@ export async function PATCH(request: NextRequest, context: any) {
             bill_number: bill.bill_number,
             bill_date: bill.bill_date,
             total: billTotal,
+            company_id: bill.company_id,
+            currency: existing.currency || 'USD',
           },
           journalBillLines,
           user.id
