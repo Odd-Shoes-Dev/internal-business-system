@@ -88,13 +88,20 @@ export async function GET(request: NextRequest) {
                 jl.account_id,
                 jl.debit,
                 jl.credit,
-                jl.currency,
-                COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
-                COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit,
+                COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
+                jl.debit * COALESCE(
+                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), 'USD', je.entry_date::date),
+                  1
+                ) AS base_debit,
+                jl.credit * COALESCE(
+                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), 'USD', je.entry_date::date),
+                  1
+                ) AS base_credit,
                 jl.description,
                 a.code AS account_code,
                 a.name AS account_name
          FROM journal_lines jl
+         JOIN journal_entries je ON je.id = jl.journal_entry_id
          LEFT JOIN accounts a ON a.id = jl.account_id
          WHERE jl.journal_entry_id = ANY($1::uuid[])
          ORDER BY jl.line_number ASC`,
