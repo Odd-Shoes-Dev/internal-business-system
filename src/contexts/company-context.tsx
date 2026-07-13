@@ -20,6 +20,13 @@ interface Company {
   tax_id: string | null;
   registration_number: string | null;
   region?: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
+  sales_tax_rate: number | null;
+  default_payment_terms: number | null;
+  fiscal_year_start: string | null;
+  fiscal_year_start_month: number | null;
+  city: string | null;
+  country: string | null;
+  website: string | null;
 }
 
 interface CompanyContextType {
