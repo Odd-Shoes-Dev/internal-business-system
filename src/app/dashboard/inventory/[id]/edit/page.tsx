@@ -57,7 +57,7 @@ export default function EditInventoryItemPage() {
     unit_of_measure: 'each',
     unit_cost: 0,
     selling_price: 0,
-    currency: 'USD',
+    currency: company?.currency || 'USD',
     quantity_on_hand: 0,
     reorder_point: 10,
     reorder_quantity: 50,

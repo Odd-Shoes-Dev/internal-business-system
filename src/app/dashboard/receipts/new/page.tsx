@@ -6,6 +6,7 @@ import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, ComboboxButto
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { buildRatesMap, convertCurrency, getExchangeRate } from '@/lib/exchange-rates';
 import { CurrencySelect } from '@/components/ui';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -63,13 +64,8 @@ export default function NewReceiptPage() {
   const [loading, setLoading] = useState(false);
   const [isManualInvoiceEntry, setIsManualInvoiceEntry] = useState(false);
   const defaultTaxRate = (company?.sales_tax_rate ?? 0) / 100;
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({
-    USD: 1,
-    EUR: 1,
-    GBP: 1,
-    UGX: 1,
-  });
-  const [previousCurrency, setPreviousCurrency] = useState('USD');
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+  const [previousCurrency, setPreviousCurrency] = useState(company?.currency || 'USD');
 
   const {
     register,
@@ -82,7 +78,7 @@ export default function NewReceiptPage() {
     defaultValues: {
       receipt_date: new Date().toISOString().split('T')[0],
       payment_method: 'cash',
-      currency: 'USD',
+      currency: company?.currency || 'USD',
       amount_paid: 0,
       lines: [
         {
@@ -117,30 +113,11 @@ export default function NewReceiptPage() {
 
   const fetchExchangeRates = async () => {
     try {
-      const response = await fetch('/api/exchange-rates');
+      const response = await fetch('/api/exchange-rates', { credentials: 'include' });
       const result = await response.json();
       if (result.data && Array.isArray(result.data)) {
-        // Convert array to object with currency codes as keys
-        const ratesMap: Record<string, number> = {
-          USD: 1, // Base currency
-        };
-        
-        // Get the most recent rate for each currency
-        const latestRates = result.data.reduce((acc: any, rate: any) => {
-          if (!acc[rate.to_currency] || new Date(rate.effective_date) > new Date(acc[rate.to_currency].effective_date)) {
-            acc[rate.to_currency] = rate;
-          }
-          return acc;
-        }, {});
-        
-        // Build rates map (USD to each currency)
-        Object.values(latestRates).forEach((rate: any) => {
-          if (rate.from_currency === 'USD') {
-            ratesMap[rate.to_currency] = parseFloat(rate.rate);
-          }
-        });
-        
-        console.log('Exchange rates loaded:', ratesMap);
+        const baseCurrency = company?.currency || 'USD';
+        const ratesMap = buildRatesMap(result.data, baseCurrency);
         setExchangeRates(ratesMap);
       }
     } catch (error) {
@@ -322,24 +299,10 @@ export default function NewReceiptPage() {
     // Try to find product by name
     const product = products.find((p) => p.name === productName);
     if (product) {
-      // Get current currency value directly from watch
-      const currentCurrency = watch('currency') || 'USD';
-      
-      // Convert product price from USD to current currency
-      const usdRate = exchangeRates['USD'] || 1;
-      const currentRate = exchangeRates[currentCurrency] || 1;
-      const conversionFactor = currentRate / usdRate;
-      const convertedPrice = product.unit_price * conversionFactor;
-      
-      console.log('Product selected:', {
-        product: product.name,
-        basePrice: product.unit_price,
-        currentCurrency,
-        usdRate,
-        currentRate,
-        conversionFactor,
-        convertedPrice: Math.round(convertedPrice * 100) / 100
-      });
+      const currentCurrency = watch('currency') || company?.currency || 'USD';
+      const productCurrency = (product as any).currency || company?.currency || 'USD';
+      // Convert from product's own currency to the receipt currency
+      const convertedPrice = convertCurrency(product.unit_price, productCurrency, currentCurrency, exchangeRates);
       
       setValue(`lines.${index}.product_id`, product.id);
       setValue(`lines.${index}.product_name`, product.name);
@@ -442,12 +405,17 @@ export default function NewReceiptPage() {
       }
 
       if (amountPaid > 0) {
+        const baseCurrency = company?.currency || 'USD';
+        const receiptCurrency = data.currency || baseCurrency;
+        const exchangeRate = getExchangeRate(receiptCurrency, baseCurrency, exchangeRates);
         const paymentResponse = await fetch(`/api/receipts/${receipt.id}/payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
             amount: amountPaid,
+            currency: receiptCurrency,
+            exchange_rate: exchangeRate,
             payment_method: data.payment_method,
             notes: data.notes || 'Payment recorded during receipt creation',
           }),
