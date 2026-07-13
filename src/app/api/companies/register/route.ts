@@ -223,28 +223,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Create default chart of accounts (copy from template)
-    // This is simplified - you'd want to copy a full default chart
-    const defaultAccounts = [
-      { code: '1000', name: 'Assets', type: 'asset', parent_id: null },
-      { code: '2000', name: 'Liabilities', type: 'liability', parent_id: null },
-      { code: '3000', name: 'Equity', type: 'equity', parent_id: null },
-      { code: '4000', name: 'Revenue', type: 'revenue', parent_id: null },
-      { code: '5000', name: 'Expenses', type: 'expense', parent_id: null },
-    ];
-
-    const accountsWithCompany = defaultAccounts.map(acc => ({
-      ...acc,
-      company_id: companyId,
-    }));
-
-    for (const acc of accountsWithCompany) {
-      await db.query(
-        `INSERT INTO chart_of_accounts (code, name, type, parent_id, company_id)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [acc.code, acc.name, acc.type, acc.parent_id, acc.company_id]
-      );
-    }
+    // 5. Seed full default chart of accounts via DB function (migration 079)
+    await db.query('SELECT seed_default_chart_of_accounts($1)', [companyId]);
 
     // 6. Create default bank account
     await db.query(
