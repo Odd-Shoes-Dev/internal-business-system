@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/migrate.mjs",
     "start": "next start",
     "lint": "next lint",
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:stamp": "node scripts/migrate.mjs --stamp",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:seed": "ts-node --project tsconfig.seed.json supabase/seed.ts",
