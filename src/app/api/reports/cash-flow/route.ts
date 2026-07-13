@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
     // Net income from journal entries (same source as P&L — avoids double-counting)
     const incomeEntriesResult = await db.query(
       `SELECT a.code,
-              COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
-              COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS credit
+              COALESCE(convert_currency(jl.debit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.debit) AS debit,
+              COALESCE(convert_currency(jl.credit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.credit) AS credit
        FROM journal_lines jl
        INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
        INNER JOIN accounts a ON a.id = jl.account_id
@@ -327,6 +327,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
 
 
 
