@@ -82,7 +82,7 @@ export default function AssetsPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const formatDate = (dateString: string) => {

@@ -1,6 +1,8 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import Link from 'next/link';
 import type { Vehicle } from '@/types/breco';
 import {
@@ -38,6 +40,7 @@ interface VehicleWithImages extends Vehicle {
 }
 
 export default function FleetPage() {
+  const { company } = useCompany();
   const [vehicles, setVehicles] = useState<VehicleWithImages[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

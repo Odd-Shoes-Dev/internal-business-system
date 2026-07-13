@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import Link from 'next/link';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {

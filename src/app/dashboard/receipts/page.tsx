@@ -155,7 +155,7 @@ export default function ReceiptsPage() {
           <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
             <p className="text-sm font-medium text-gray-600 mb-2">Total Amount Received</p>
             <p className="text-2xl lg:text-3xl font-bold text-green-600">
-              {formatCurrency(stats.totalAmount, 'USD')}
+              {formatCurrency(stats.totalAmount, company?.currency || 'USD')}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">

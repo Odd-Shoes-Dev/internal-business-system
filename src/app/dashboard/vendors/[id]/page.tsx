@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeftIcon,
@@ -65,6 +66,7 @@ interface Bill {
 export default function VendorDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { company } = useCompany();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +247,7 @@ export default function VendorDetailPage({ params }: PageProps) {
         </span>
         {outstandingBalance > 0 && (
           <span className="badge badge-warning">
-            Outstanding Balance: {formatCurrency(outstandingBalance, 'USD')}
+            Outstanding Balance: {formatCurrency(outstandingBalance, company?.currency || 'USD')}
           </span>
         )}
       </div>
@@ -262,7 +264,7 @@ export default function VendorDetailPage({ params }: PageProps) {
           <div className="card-body">
             <p className="text-sm text-gray-500">Outstanding Balance (USD)</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">
-              {formatCurrency(outstandingBalance, 'USD')}
+              {formatCurrency(outstandingBalance, company?.currency || 'USD')}
             </p>
           </div>
         </div>

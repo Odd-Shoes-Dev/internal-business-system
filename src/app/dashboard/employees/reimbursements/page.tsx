@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { PlusIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
@@ -119,11 +120,7 @@ export default function ReimbursementsPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: 'UGX',
-      minimumFractionDigits: 0,
-    }).format(amount);
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const formatDate = (date: string) => {

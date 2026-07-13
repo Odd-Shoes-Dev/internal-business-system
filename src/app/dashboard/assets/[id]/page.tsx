@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import {
   ArrowLeftIcon,
   BuildingLibraryIcon,

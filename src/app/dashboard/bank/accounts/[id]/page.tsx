@@ -95,7 +95,7 @@ export default function BankAccountDetailPage({ params }: PageProps) {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const calculateBalance = () => {
