@@ -155,7 +155,7 @@ export default function ReceiptsPage() {
           <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
             <p className="text-sm font-medium text-gray-600 mb-2">Total Amount Received</p>
             <p className="text-2xl lg:text-3xl font-bold text-green-600">
-              {formatCurrency(stats.totalAmount, company?.currency || 'USD')}
+              {formatCurrency(stats.totalAmount || 0, company?.currency || 'USD')}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -278,7 +278,7 @@ export default function ReceiptsPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6 text-right font-semibold text-green-600">
-                      {formatCurrency(receipt.amount_paid || receipt.total, receipt.currency || 'USD')}
+                      {formatCurrency(Number((receipt as any).amount || (receipt as any).amount_paid || (receipt as any).total || receipt.total_amount || 0), (receipt.currency || company?.currency || 'USD') as any)}
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold bg-green-100 text-green-700">
