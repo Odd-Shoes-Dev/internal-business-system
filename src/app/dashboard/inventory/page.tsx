@@ -149,12 +149,13 @@ export default function InventoryPage() {
             >
               Stock Movements
             </Link>
-            <Link 
-              href="/dashboard/inventory/new" 
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            <Link
+              href="/dashboard/inventory/new"
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
             >
               <PlusIcon className="w-5 h-5" />
               Add Item
+              <SparklesIcon className="w-4 h-4" />
             </Link>
           </div>
         </div>
