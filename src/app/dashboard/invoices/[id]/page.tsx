@@ -601,32 +601,39 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handleSendEmail = async () => {
+  const handleSendEmail = () => {
     if (!invoice?.customer?.email) {
       alert('Customer does not have an email address');
       return;
     }
 
-    setActionLoading('email');
-    try {
-      const response = await fetch(`/api/invoices/${params.id}/send`, {
-        method: 'POST',
-      });
+    const customerName = invoice.customer?.name || 'Customer';
+    const invoiceNumber = invoice.invoice_number;
+    const dueDate = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '';
+    const total = invoice.total ?? invoice.total_amount ?? 0;
+    const currency = invoice.currency || 'USD';
+    const companyName = company?.name || '';
 
-      const data = await response.json();
+    const subject = `Invoice ${invoiceNumber} from ${companyName}`;
+    const body = [
+      `Dear ${customerName},`,
+      ``,
+      `Please find below the details for Invoice ${invoiceNumber}.`,
+      ``,
+      `Invoice Number: ${invoiceNumber}`,
+      dueDate ? `Due Date: ${dueDate}` : '',
+      `Amount Due: ${currency} ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      ``,
+      `Please let us know if you have any questions.`,
+      ``,
+      `Thank you for your business!`,
+      ``,
+      `Best regards,`,
+      companyName,
+    ].filter(line => line !== null).join('\n');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      alert(data.message || 'Invoice sent successfully!');
-      fetchInvoice();
-    } catch (error: any) {
-      console.error('Error sending invoice:', error);
-      alert(error.message || 'Failed to send invoice email');
-    } finally {
-      setActionLoading(null);
-    }
+    const mailto = `mailto:${invoice.customer.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
   };
 
   const handleDelete = async () => {
@@ -805,13 +812,12 @@ export default function InvoiceDetailPage() {
 
         <div className="flex flex-wrap gap-2">
           {invoice.customer?.email && (
-            <button 
+            <button
               onClick={handleSendEmail}
-              disabled={actionLoading === 'email'}
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
             >
               <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{actionLoading === 'email' ? 'Sending...' : 'Send Email'}</span>
+              <span className="hidden sm:inline">Send Email</span>
               <span className="sm:hidden">Send</span>
             </button>
           )}
