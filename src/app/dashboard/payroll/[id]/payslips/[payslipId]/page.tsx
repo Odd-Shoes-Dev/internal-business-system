@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import { ArrowLeftIcon, PrinterIcon, EnvelopeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
@@ -72,6 +73,7 @@ export default function PayslipDetailPage({
   params: Promise<{ id: string; payslipId: string }> 
 }) {
   const router = useRouter();
+  const { company } = useCompany();
   const [payslip, setPayslip] = useState<Payslip | null>(null);
   const [payslipItems, setPayslipItems] = useState<PayslipItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +130,7 @@ export default function PayslipDetailPage({
         payment_method: result.payment_method || 'bank_transfer',
         payment_reference: result.payment_reference || null,
         paid_at: result.paid_at || null,
-        currency: result.currency || 'UGX',
+        currency: result.currency || company?.currency || 'USD',
         notes: result.notes || null,
         created_at: result.created_at || new Date().toISOString(),
         employee: {
@@ -223,7 +225,7 @@ export default function PayslipDetailPage({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-UG', {
       style: 'currency',
-      currency: (payslip as any).currency || 'UGX',
+      currency: (payslip as any).currency || company?.currency || 'USD',
       minimumFractionDigits: 0,
     }).format(amount);
   };

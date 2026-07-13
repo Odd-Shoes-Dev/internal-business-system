@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -38,6 +39,7 @@ interface Payslip {
 
 export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { company } = useCompany();
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'UGX');
+    return currencyFormatter(amount, (company?.currency || 'USD') as SupportedCurrency);
   };
 
   const formatDate = (date: string) => {
