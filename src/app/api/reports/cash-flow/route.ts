@@ -19,6 +19,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
 
@@ -60,18 +66,18 @@ export async function GET(request: NextRequest) {
       const beginningTransactions = beginningTransactionsResult.rows;
       const accountBeginningBalance = beginningTransactions?.reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0) || 0;
 
-      let balanceInUSD = accountBeginningBalance;
-      const currency = account.currency || 'USD';
+      let balanceInBase = accountBeginningBalance;
+      const currency = account.currency || baseCurrency;
       if (currency !== 'USD' && accountBeginningBalance !== 0) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: Math.abs(accountBeginningBalance),
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: startDate,
         });
-        balanceInUSD = accountBeginningBalance < 0 ? -(convertedValue || Math.abs(accountBeginningBalance)) : (convertedValue || Math.abs(accountBeginningBalance));
+        balanceInBase = accountBeginningBalance < 0 ? -(convertedValue || Math.abs(accountBeginningBalance)) : (convertedValue || Math.abs(accountBeginningBalance));
       }
-      beginningCash += balanceInUSD;
+      beginningCash += balanceInBase;
     }
 
     let netChangeInCash = 0;
@@ -88,18 +94,18 @@ export async function GET(request: NextRequest) {
       const periodTransactions = periodTransactionsResult.rows;
       const accountPeriodChange = periodTransactions?.reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0) || 0;
 
-      let changeInUSD = accountPeriodChange;
-      const currency = account.currency || 'USD';
+      let changeInBase = accountPeriodChange;
+      const currency = account.currency || baseCurrency;
       if (currency !== 'USD' && accountPeriodChange !== 0) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: Math.abs(accountPeriodChange),
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: endDate,
         });
-        changeInUSD = accountPeriodChange < 0 ? -(convertedValue || Math.abs(accountPeriodChange)) : (convertedValue || Math.abs(accountPeriodChange));
+        changeInBase = accountPeriodChange < 0 ? -(convertedValue || Math.abs(accountPeriodChange)) : (convertedValue || Math.abs(accountPeriodChange));
       }
-      netChangeInCash += changeInUSD;
+      netChangeInCash += changeInBase;
     }
 
     const invoicesResult = await db.query(
@@ -114,18 +120,18 @@ export async function GET(request: NextRequest) {
 
     let totalRevenue = 0;
     for (const invoice of invoices) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(invoice.total) || 0;
+      const currency = invoice.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: invoice.invoice_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      totalRevenue += amountInUSD;
+      totalRevenue += amountInBase;
     }
 
     const billsResult = await db.query(
@@ -150,33 +156,33 @@ export async function GET(request: NextRequest) {
 
     let totalExpenses = 0;
     for (const bill of bills) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(bill.total) || 0;
+      const currency = bill.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: bill.bill_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      totalExpenses += amountInUSD;
+      totalExpenses += amountInBase;
     }
 
     for (const expense of expenses) {
-      let amountInUSD = parseFloat(expense.amount) || 0;
-      const currency = expense.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(expense.amount) || 0;
+      const currency = expense.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: expense.expense_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      totalExpenses += amountInUSD;
+      totalExpenses += amountInBase;
     }
 
     const netIncome = totalRevenue - totalExpenses;
@@ -212,18 +218,18 @@ export async function GET(request: NextRequest) {
 
     let beginningAR = 0;
     for (const invoice of beginningInvoices) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(invoice.total) || 0;
+      const currency = invoice.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: invoice.invoice_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      beginningAR += amountInUSD;
+      beginningAR += amountInBase;
     }
 
     const endingInvoicesResult = await db.query(
@@ -238,18 +244,18 @@ export async function GET(request: NextRequest) {
 
     let endingAR = 0;
     for (const invoice of endingInvoices) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(invoice.total) || 0;
+      const currency = invoice.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: invoice.invoice_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      endingAR += amountInUSD;
+      endingAR += amountInBase;
     }
 
     const arChange = endingAR - beginningAR;
@@ -266,18 +272,18 @@ export async function GET(request: NextRequest) {
 
     let beginningAP = 0;
     for (const bill of beginningBills) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(bill.total) || 0;
+      const currency = bill.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: bill.bill_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      beginningAP += amountInUSD;
+      beginningAP += amountInBase;
     }
 
     const endingBillsResult = await db.query(
@@ -292,18 +298,18 @@ export async function GET(request: NextRequest) {
 
     let endingAP = 0;
     for (const bill of endingBills) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(bill.total) || 0;
+      const currency = bill.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: bill.bill_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      endingAP += amountInUSD;
+      endingAP += amountInBase;
     }
 
     const apChange = endingAP - beginningAP;
@@ -320,18 +326,18 @@ export async function GET(request: NextRequest) {
 
     let assetPurchaseTotal = 0;
     for (const asset of assetPurchases) {
-      let amountInUSD = parseFloat(asset.purchase_price) || 0;
-      const currency = asset.currency || 'USD';
-      if (currency !== 'USD') {
+      let amountInBase = parseFloat(asset.purchase_price) || 0;
+      const currency = asset.currency || baseCurrency;
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: asset.purchase_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
-      assetPurchaseTotal += amountInUSD;
+      assetPurchaseTotal += amountInBase;
     }
 
     const cashFlowStatement = {
@@ -370,4 +376,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
+
 

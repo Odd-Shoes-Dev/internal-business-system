@@ -64,7 +64,7 @@ export default function ProfitLossReportPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const formatDate = (dateString: string) => {
@@ -600,5 +600,6 @@ export default function ProfitLossReportPage() {
     </div>
   );
 }
+
 
 

@@ -59,6 +59,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const vendorType = searchParams.get('vendorType') || 'all';
@@ -142,7 +148,7 @@ export async function GET(request: NextRequest) {
       
       // Convert total to USD for reporting
       const total = parseFloat(bill.total);
-      const totalUSD = await convertCurrency(
+      const totalBase = await convertCurrency(
         {
           rpc: async (fn: string, args: any) => {
             if (fn !== 'convert_currency') {
@@ -156,12 +162,12 @@ export async function GET(request: NextRequest) {
           },
         },
         total,
-        (bill.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency,
+        (bill.currency || baseCurrency) as SupportedCurrency,
+        baseCurrency as SupportedCurrency,
         endDate
       ) || total;
       
-      vendor.totalPurchases += totalUSD;
+      vendor.totalPurchases += totalBase;
       vendor.purchaseCount += 1;
       vendor.lastPurchaseDate = bill.bill_date;
 
@@ -273,4 +279,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 

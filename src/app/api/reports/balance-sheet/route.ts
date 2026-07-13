@@ -20,6 +20,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const asOfDate = searchParams.get('asOfDate') || searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
 
     const currencyRpc = {
@@ -174,44 +180,44 @@ export async function GET(request: NextRequest) {
       const bookValue = (parseFloat(asset.purchase_price) || 0) - (parseFloat(asset.accumulated_depreciation) || 0);
       if (bookValue <= 0) continue;
 
-      let bookValueInUSD = bookValue;
-      const currency = asset.currency || 'USD';
+      let bookValueInBase = bookValue;
+      const currency = asset.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: bookValue,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: asOfDate,
         });
-        bookValueInUSD = convertedValue || bookValue;
+        bookValueInBase = convertedValue || bookValue;
       }
 
       fixedAssets.push({
         code: '',
         name: asset.name,
-        amount: bookValueInUSD,
+        amount: bookValueInBase,
       });
-      totalFixedAssets += bookValueInUSD;
+      totalFixedAssets += bookValueInBase;
     }
 
     let inventoryTotal = 0;
     for (const item of inventory) {
       const inventoryValue = (parseFloat(item.quantity_on_hand) || 0) * (parseFloat(item.cost) || 0);
-      let valueInUSD = inventoryValue;
-      const currency = item.currency || 'USD';
+      let valueInBase = inventoryValue;
+      const currency = item.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: inventoryValue,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: asOfDate,
         });
-        valueInUSD = convertedValue || inventoryValue;
+        valueInBase = convertedValue || inventoryValue;
       }
 
-      inventoryTotal += valueInUSD;
+      inventoryTotal += valueInBase;
     }
 
     if (inventoryTotal > 0) {
@@ -238,19 +244,19 @@ export async function GET(request: NextRequest) {
 
       let balance = 0;
       for (const txn of transactions) {
-        let amountInUSD = parseFloat(txn.amount) || 0;
-        const currency = account.currency || 'USD';
+        let amountInBase = parseFloat(txn.amount) || 0;
+        const currency = account.currency || baseCurrency;
 
-        if (currency !== 'USD') {
+        if (currency !== baseCurrency) {
           const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
             p_amount: Math.abs(parseFloat(txn.amount) || 0),
             p_from_currency: currency,
-            p_to_currency: 'USD',
+            p_to_currency: baseCurrency,
             p_date: txn.transaction_date,
           });
-          amountInUSD = (parseFloat(txn.amount) || 0) < 0 ? -(convertedValue || Math.abs(parseFloat(txn.amount) || 0)) : (convertedValue || Math.abs(parseFloat(txn.amount) || 0));
+          amountInBase = (parseFloat(txn.amount) || 0) < 0 ? -(convertedValue || Math.abs(parseFloat(txn.amount) || 0)) : (convertedValue || Math.abs(parseFloat(txn.amount) || 0));
         }
-        balance += amountInUSD;
+        balance += amountInBase;
       }
 
       if (balance === 0) continue;
@@ -265,20 +271,20 @@ export async function GET(request: NextRequest) {
 
     let totalAR = 0;
     for (const invoice of invoices) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
+      let amountInBase = parseFloat(invoice.total) || 0;
+      const currency = invoice.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: parseFloat(invoice.total) || 0,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: invoice.invoice_date,
         });
-        amountInUSD = convertedValue || (parseFloat(invoice.total) || 0);
+        amountInBase = convertedValue || (parseFloat(invoice.total) || 0);
       }
 
-      totalAR += amountInUSD;
+      totalAR += amountInBase;
     }
 
     if (totalAR > 0) {
@@ -292,20 +298,20 @@ export async function GET(request: NextRequest) {
 
     let totalAP = 0;
     for (const bill of bills) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
+      let amountInBase = parseFloat(bill.total) || 0;
+      const currency = bill.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
           p_amount: parseFloat(bill.total) || 0,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: bill.bill_date,
         });
-        amountInUSD = convertedValue || (parseFloat(bill.total) || 0);
+        amountInBase = convertedValue || (parseFloat(bill.total) || 0);
       }
 
-      totalAP += amountInUSD;
+      totalAP += amountInBase;
     }
 
     if (totalAP > 0) {
@@ -385,4 +391,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
 

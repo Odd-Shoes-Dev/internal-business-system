@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const reportDate = searchParams.get('reportDate') || new Date().toISOString().split('T')[0];
     const vendorType = searchParams.get('vendorType') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalAmount';
@@ -79,7 +85,7 @@ export async function GET(request: NextRequest) {
       if (balance <= 0) continue; // Skip fully paid bills
 
       // Convert balance to USD for reporting
-      const balanceUSD = await convertCurrency(
+      const balanceBase = await convertCurrency(
         {
           rpc: async (fn: string, args: any) => {
             if (fn !== 'convert_currency') {
@@ -93,8 +99,8 @@ export async function GET(request: NextRequest) {
           },
         },
         balance,
-        (bill.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency,
+        (bill.currency || baseCurrency) as SupportedCurrency,
+        baseCurrency as SupportedCurrency,
         reportDate
       ) || balance;
 
@@ -122,20 +128,20 @@ export async function GET(request: NextRequest) {
       }
 
       const vendorAging = vendorMap.get(vendorId)!;
-      vendorAging.totalAmount += balanceUSD;
+      vendorAging.totalAmount += balanceBase;
       vendorAging.invoiceCount++;
 
       // Categorize by aging bucket
       if (daysOverdue <= 0) {
-        vendorAging.current += balanceUSD;
+        vendorAging.current += balanceBase;
       } else if (daysOverdue <= 30) {
-        vendorAging.days1to30 += balanceUSD;
+        vendorAging.days1to30 += balanceBase;
       } else if (daysOverdue <= 60) {
-        vendorAging.days31to60 += balanceUSD;
+        vendorAging.days31to60 += balanceBase;
       } else if (daysOverdue <= 90) {
-        vendorAging.days61to90 += balanceUSD;
+        vendorAging.days61to90 += balanceBase;
       } else {
-        vendorAging.over90 += balanceUSD;
+        vendorAging.over90 += balanceBase;
       }
 
       // Track oldest invoice
@@ -222,4 +228,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 

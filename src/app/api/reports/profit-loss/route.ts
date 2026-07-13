@@ -21,6 +21,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('start_date') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
 
@@ -143,20 +149,20 @@ export async function GET(request: NextRequest) {
 
     // Add invoice revenue (convert to USD)
     for (const invoice of invoices || []) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
+      let amountInBase = parseFloat(invoice.total) || 0;
+      const currency = invoice.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: invoice.invoice_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
 
-      totalRevenue += amountInUSD;
+      totalRevenue += amountInBase;
     }
 
     if (totalRevenue > 0 && invoices && invoices.length > 0) {
@@ -201,38 +207,38 @@ export async function GET(request: NextRequest) {
 
     // Add bills to operating expenses (convert to USD)
     for (const bill of bills || []) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
+      let amountInBase = parseFloat(bill.total) || 0;
+      const currency = bill.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: bill.bill_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
 
-      totalOperatingExpenses += amountInUSD;
+      totalOperatingExpenses += amountInBase;
     }
 
     // Add expenses to operating expenses (convert to USD)
     for (const expense of expenses || []) {
-      let amountInUSD = parseFloat(expense.amount) || 0;
-      const currency = expense.currency || 'USD';
+      let amountInBase = parseFloat(expense.amount) || 0;
+      const currency = expense.currency || baseCurrency;
 
-      if (currency !== 'USD') {
+      if (currency !== baseCurrency) {
         const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
+          p_amount: amountInBase,
           p_from_currency: currency,
-          p_to_currency: 'USD',
+          p_to_currency: baseCurrency,
           p_date: expense.expense_date,
         });
-        amountInUSD = Number(convertedValue) || amountInUSD;
+        amountInBase = Number(convertedValue) || amountInBase;
       }
 
-      totalOperatingExpenses += amountInUSD;
+      totalOperatingExpenses += amountInBase;
     }
 
     if (bills && bills.length > 0) {
@@ -286,4 +292,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
 
