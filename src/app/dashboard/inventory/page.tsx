@@ -15,7 +15,7 @@ import {
   SparklesIcon,
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
-import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
+import { ShimmerSkeleton, CardSkeleton, StatsCardSkeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/card';
 import type { Product } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
@@ -24,6 +24,7 @@ export default function InventoryPage() {
   const { company } = useCompany();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,6 +90,7 @@ export default function InventoryPage() {
 
   const loadStats = async () => {
     try {
+      setStatsLoading(true);
       if (!company?.id) {
         return;
       }
@@ -102,6 +104,8 @@ export default function InventoryPage() {
       }
     } catch (error) {
       console.error('Failed to load stats:', error);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -158,30 +162,36 @@ export default function InventoryPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        <StatCard
-          title="Total Items"
-          value={stats.totalItems}
-          icon={<CubeIcon className="w-6 h-6" />}
-          trend="neutral"
-        />
-        <StatCard
-          title="Total Value"
-          value={formatCurrency(stats.totalValue)}
-          icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
-          trend="up"
-        />
-        <StatCard
-          title="Low Stock"
-          value={stats.lowStock}
-          icon={<ArrowTrendingDownIcon className="w-6 h-6" />}
-          trend={stats.lowStock > 0 ? 'down' : 'neutral'}
-        />
-        <StatCard
-          title="Out of Stock"
-          value={stats.outOfStock}
-          icon={<ExclamationTriangleIcon className="w-6 h-6" />}
-          trend={stats.outOfStock > 0 ? 'down' : 'neutral'}
-        />
+        {statsLoading ? (
+          [1, 2, 3, 4].map((i) => <StatsCardSkeleton key={i} />)
+        ) : (
+          <>
+            <StatCard
+              title="Total Items"
+              value={stats.totalItems}
+              icon={<CubeIcon className="w-6 h-6" />}
+              trend="neutral"
+            />
+            <StatCard
+              title="Total Value"
+              value={formatCurrency(stats.totalValue)}
+              icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
+              trend="up"
+            />
+            <StatCard
+              title="Low Stock"
+              value={stats.lowStock}
+              icon={<ArrowTrendingDownIcon className="w-6 h-6" />}
+              trend={stats.lowStock > 0 ? 'down' : 'neutral'}
+            />
+            <StatCard
+              title="Out of Stock"
+              value={stats.outOfStock}
+              icon={<ExclamationTriangleIcon className="w-6 h-6" />}
+              trend={stats.outOfStock > 0 ? 'down' : 'neutral'}
+            />
+          </>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -223,14 +233,6 @@ export default function InventoryPage() {
       {/* Inventory List */}
       {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white/80 backdrop-blur-xl border-l-4 border-gray-200 rounded-3xl p-6 shadow-xl">
-                <ShimmerSkeleton className="h-4 w-20 mb-3" />
-                <ShimmerSkeleton className="h-8 w-16" />
-              </div>
-            ))}
-          </div>
           <div className="hidden md:block bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
             <div className="space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
