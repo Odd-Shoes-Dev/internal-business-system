@@ -47,6 +47,7 @@ export default function InventoryPage() {
     outOfStock: 0,
   });
   const [activeTab, setActiveTab] = useState<'stock' | 'categories'>('stock');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -59,7 +60,11 @@ export default function InventoryPage() {
     if (!company?.id) return;
     loadInventory();
     loadStats();
-  }, [searchQuery, stockFilter, currentPage, company?.id]);
+  }, [searchQuery, stockFilter, categoryFilter, currentPage, company?.id]);
+
+  useEffect(() => {
+    if (company?.id) loadCategories();
+  }, [company?.id]);
 
   useEffect(() => {
     if (activeTab === 'categories' && company?.id) {
@@ -84,6 +89,9 @@ export default function InventoryPage() {
       }
       if (stockFilter === 'low') {
         params.set('low_stock', 'true');
+      }
+      if (categoryFilter) {
+        params.set('category', categoryFilter);
       }
 
       const response = await fetch(`/api/inventory?${params.toString()}`, {
@@ -420,6 +428,16 @@ export default function InventoryPage() {
               className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
             />
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full md:w-48 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl text-gray-900 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
           <select
             value={stockFilter}
             onChange={(e) => {
