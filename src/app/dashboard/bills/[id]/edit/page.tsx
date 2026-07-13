@@ -97,8 +97,8 @@ export default function EditBillPage() {
       setBill(billData);
       setFormData({
         vendor_id: billData.vendor_id,
-        bill_date: billData.bill_date,
-        due_date: billData.due_date,
+        bill_date: billData.bill_date?.split('T')[0] ?? billData.bill_date,
+        due_date: billData.due_date?.split('T')[0] ?? billData.due_date,
         vendor_invoice_number: billData.vendor_invoice_number || '',
         notes: billData.notes || '',
       });

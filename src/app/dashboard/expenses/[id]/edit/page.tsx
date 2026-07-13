@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { getCurrencySymbol } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CreditCardIcon,
@@ -28,6 +29,7 @@ interface Expense {
   vendor_id: string | null;
   amount: number;
   tax_amount: number;
+  currency: string | null;
   payment_method: string;
   reference_number: string | null;
   expense_account_id: string;
@@ -148,7 +150,7 @@ export default function EditExpensePage() {
       setFormData({
         vendor_id: data.vendor_id || '',
         payee: data.payee || '',
-        expense_date: data.expense_date,
+        expense_date: data.expense_date?.split('T')[0] ?? data.expense_date,
         category: data.category || '',
         department: data.department || '',
         expense_account_id: data.expense_account_id,
@@ -268,6 +270,8 @@ export default function EditExpensePage() {
       </div>
     );
   }
+
+  const currencySymbol = getCurrencySymbol((expense?.currency || company?.currency || 'USD') as any);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -452,7 +456,7 @@ export default function EditExpensePage() {
                 Amount <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol}</span>
                 <input
                   type="number"
                   name="amount"
@@ -472,7 +476,7 @@ export default function EditExpensePage() {
                 Tax Amount
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol}</span>
                 <input
                   type="number"
                   name="tax_amount"
@@ -491,7 +495,7 @@ export default function EditExpensePage() {
                 Total
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol}</span>
                 <input
                   type="text"
                   value={(formData.amount + formData.tax_amount).toFixed(2)}
