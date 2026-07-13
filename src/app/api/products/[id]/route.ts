@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       `SELECT *
        FROM inventory_movements
        WHERE product_id = $1
-       ORDER BY movement_date DESC, created_at DESC
+       ORDER BY created_at DESC
        LIMIT 50`,
       [id]
     );

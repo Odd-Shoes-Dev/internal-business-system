@@ -7,6 +7,7 @@ import {
   ArrowLeftIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
+import { CategoryCombobox } from '@/components/ui/category-combobox';
 import { useCompany } from '@/contexts/company-context';
 import { type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
@@ -44,6 +45,9 @@ export default function EditInventoryItemPage() {
   const [error, setError] = useState<string | null>(null);
   const [item, setItem] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const [formData, setFormData] = useState({
     sku: '',
@@ -113,9 +117,9 @@ export default function EditInventoryItemPage() {
         unit_cost: parseFloat(data.cost_price),
         selling_price: parseFloat(data.unit_price),
         currency: data.currency || 'USD',
-        quantity_on_hand: data.quantity_on_hand,
-        reorder_point: data.reorder_point || 10,
-        reorder_quantity: data.reorder_quantity || 50,
+        quantity_on_hand: parseFloat(data.quantity_on_hand) || 0,
+        reorder_point: parseFloat(data.reorder_point) || 10,
+        reorder_quantity: parseFloat(data.reorder_quantity) || 50,
         is_taxable: data.is_taxable,
         is_active: data.is_active,
       });
@@ -124,6 +128,29 @@ export default function EditInventoryItemPage() {
       setError('Failed to load item');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim() || !company?.id) return;
+    setSavingCategory(true);
+    try {
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to create category');
+      setCategories((prev) => [...prev, result]);
+      setFormData((prev) => ({ ...prev, category_id: result.id }));
+      setNewCategoryName('');
+      setShowNewCategory(false);
+    } catch (err) {
+      console.error('Error creating category:', err);
+    } finally {
+      setSavingCategory(false);
     }
   };
 
@@ -266,22 +293,34 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category
               </label>
-              <select
-                name="category_id"
-                value={formData.category_id}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-              >
-                <option value="">Select category...</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                <Link href="/dashboard/settings/categories" className="text-blueox-primary hover:underline">
-                  Manage categories
-                </Link>
-              </p>
+              {showNewCategory ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCategory(); } if (e.key === 'Escape') { setShowNewCategory(false); setNewCategoryName(''); } }}
+                    autoFocus
+                    placeholder="Category name..."
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                  />
+                  <button type="button" onClick={handleCreateCategory} disabled={savingCategory || !newCategoryName.trim()} className="px-3 py-2 bg-blueox-primary text-white rounded-lg text-sm font-medium hover:bg-blueox-primary-dark disabled:opacity-50">
+                    {savingCategory ? '...' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <CategoryCombobox
+                  categories={categories}
+                  value={formData.category_id}
+                  onChange={(id) => setFormData((prev) => ({ ...prev, category_id: id }))}
+                />
+              )}
+              <button type="button" onClick={() => setShowNewCategory(true)} className="text-xs text-blueox-primary hover:underline mt-1 block">
+                + New category
+              </button>
             </div>
 
             <div>
@@ -426,7 +465,7 @@ export default function EditInventoryItemPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Initial Quantity
+                Quantity on Hand
               </label>
               <input
                 type="number"

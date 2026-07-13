@@ -62,11 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await db.query(
-      `INSERT INTO product_categories (
-         company_id, name, description, created_by
-       ) VALUES ($1, $2, $3, $4)
+      `INSERT INTO product_categories (company_id, name, description)
+       VALUES ($1, $2, $3)
        RETURNING *`,
-      [companyId, name, description || null, user.id]
+      [companyId, name, description || null]
     );
 
     const data = result.rows[0];
