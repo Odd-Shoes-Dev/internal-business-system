@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    // Get company_id from query params (required for multi-company users)
     const companyId = getCompanyIdFromRequest(request);
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
@@ -15,7 +14,14 @@ export async function GET(request: NextRequest) {
     const accessError = await requireCompanyAccess(user.id, companyId);
     if (accessError) return accessError;
 
-    // Auto-sync exchange rates if stale (no live rate for today)
+    // Get company base currency so all stats are converted to the right currency
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
+    // Auto-sync exchange rates if stale
     try {
       const today = new Date().toISOString().split('T')[0];
       const rateCheck = await db.query(
@@ -31,8 +37,6 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* non-fatal */ }
 
-    // Get enabled modules to filter data appropriately
-    // subscription_modules may not exist yet — fall back to company_modules
     let moduleIds: string[] = [];
     try {
       const enabledModules = await db.query<{ module_id: string }>(
@@ -52,7 +56,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Date ranges for current and previous month
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
@@ -69,7 +72,6 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // Fetch all financial data - FILTERED BY COMPANY
     const [invoices, bills, expenses,
       currentMonthInvoices, prevMonthInvoices,
       currentMonthExpenses, prevMonthExpenses,
@@ -86,56 +88,49 @@ export async function GET(request: NextRequest) {
         'SELECT total, currency, expense_date FROM expenses WHERE company_id = $1',
         [companyId]
       ),
-      // Current month paid invoices
       db.query<{ total: number; currency: string; invoice_date: string }>(
-        `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2`,
+        `SELECT total, currency, invoice_date FROM invoices WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2`,
         [companyId, currentMonthStart]
       ),
-      // Previous month paid invoices
       db.query<{ total: number; currency: string; invoice_date: string }>(
-        `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2 AND invoice_date <= $3`,
+        `SELECT total, currency, invoice_date FROM invoices WHERE company_id = $1 AND status = 'paid' AND invoice_date >= $2 AND invoice_date <= $3`,
         [companyId, prevMonthStart, prevMonthEnd]
       ),
-      // Current month expenses
       db.query<{ total: number; currency: string; expense_date: string }>(
-        `SELECT total, currency, expense_date FROM expenses
-         WHERE company_id = $1 AND expense_date >= $2`,
+        `SELECT total, currency, expense_date FROM expenses WHERE company_id = $1 AND expense_date >= $2`,
         [companyId, currentMonthStart]
       ),
-      // Previous month expenses
       db.query<{ total: number; currency: string; expense_date: string }>(
-        `SELECT total, currency, expense_date FROM expenses
-         WHERE company_id = $1 AND expense_date >= $2 AND expense_date <= $3`,
+        `SELECT total, currency, expense_date FROM expenses WHERE company_id = $1 AND expense_date >= $2 AND expense_date <= $3`,
         [companyId, prevMonthStart, prevMonthEnd]
       ),
     ]);
 
-    // Bank transaction queries isolated — bank_accounts.company_id requires migration 078
     const [bankTransactions, currentMonthBankTx, prevMonthBankTx] = await Promise.all([
       safeBankQuery<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
-        `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency
-         FROM bank_transactions bt
-         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
-         WHERE ba.company_id = $1`,
+        `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency FROM bank_transactions bt JOIN bank_accounts ba ON ba.id = bt.bank_account_id WHERE ba.company_id = $1`,
         [companyId]
       ),
       safeBankQuery<{ amount: number; transaction_date: string; currency: string | null }>(
-        `SELECT bt.amount, bt.transaction_date, ba.currency
-         FROM bank_transactions bt
-         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
-         WHERE ba.company_id = $1 AND bt.transaction_date >= $2`,
+        `SELECT bt.amount, bt.transaction_date, ba.currency FROM bank_transactions bt JOIN bank_accounts ba ON ba.id = bt.bank_account_id WHERE ba.company_id = $1 AND bt.transaction_date >= $2`,
         [companyId, currentMonthStart]
       ),
       safeBankQuery<{ amount: number; transaction_date: string; currency: string | null }>(
-        `SELECT bt.amount, bt.transaction_date, ba.currency
-         FROM bank_transactions bt
-         JOIN bank_accounts ba ON ba.id = bt.bank_account_id
-         WHERE ba.company_id = $1 AND bt.transaction_date >= $2 AND bt.transaction_date <= $3`,
+        `SELECT bt.amount, bt.transaction_date, ba.currency FROM bank_transactions bt JOIN bank_accounts ba ON ba.id = bt.bank_account_id WHERE ba.company_id = $1 AND bt.transaction_date >= $2 AND bt.transaction_date <= $3`,
         [companyId, prevMonthStart, prevMonthEnd]
       ),
     ]);
+
+    // Convert any amount to the company base currency
+    const convertToBase = async (amount: number, currency: string, date: string): Promise<number> => {
+      const safeAmount = parseFloat(String(amount)) || 0;
+      if (!currency || currency === baseCurrency) return safeAmount;
+      const result = await db.query<{ converted: number | null }>(
+        'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
+        [safeAmount, currency, baseCurrency, date]
+      );
+      return parseFloat(String(result.rows[0]?.converted)) || safeAmount;
+    };
 
     let totalRevenue = 0;
     let totalExpenses = 0;
@@ -143,130 +138,62 @@ export async function GET(request: NextRequest) {
     let accountsPayable = 0;
     let cashBalance = 0;
 
-    // Process invoices
     if (invoices.rows) {
       for (const invoice of invoices.rows) {
         const invoiceTotal = parseFloat(String(invoice.total)) || 0;
         const invoicePaid = parseFloat(String(invoice.amount_paid)) || 0;
-        let amountInUSD = invoiceTotal;
-        let remainingInUSD = invoiceTotal - invoicePaid;
-
-        if (invoice.currency !== 'USD') {
-          const convertedTotal = await db.query<{ converted: number | null }>(
-            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [invoiceTotal, invoice.currency, 'USD', invoice.invoice_date]
-          );
-
-          const convertedRemaining = await db.query<{ converted: number | null }>(
-            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [invoiceTotal - invoicePaid, invoice.currency, 'USD', invoice.invoice_date]
-          );
-
-          amountInUSD = parseFloat(String(convertedTotal.rows[0]?.converted)) || invoiceTotal;
-          remainingInUSD = parseFloat(String(convertedRemaining.rows[0]?.converted)) || (invoiceTotal - invoicePaid);
-        }
-
+        const cur = invoice.currency || baseCurrency;
+        const amountInBase = await convertToBase(invoiceTotal, cur, invoice.invoice_date);
+        const remainingInBase = await convertToBase(invoiceTotal - invoicePaid, cur, invoice.invoice_date);
         if (invoice.status === 'paid') {
-          totalRevenue += amountInUSD;
+          totalRevenue += amountInBase;
         }
-        
         if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
-          accountsReceivable += remainingInUSD;
+          accountsReceivable += remainingInBase;
         }
       }
     }
 
-    // Process bills
     if (bills.rows) {
       for (const bill of bills.rows) {
         const billTotal = parseFloat(String(bill.total)) || 0;
         const billPaid = parseFloat(String(bill.amount_paid)) || 0;
-        let remainingInUSD = billTotal - billPaid;
-
-        if (bill.currency !== 'USD') {
-          const convertedRemaining = await db.query<{ converted: number | null }>(
-            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [billTotal - billPaid, bill.currency, 'USD', bill.bill_date]
-          );
-
-          remainingInUSD = parseFloat(String(convertedRemaining.rows[0]?.converted)) || (billTotal - billPaid);
-        }
-
+        const cur = bill.currency || baseCurrency;
+        const remainingInBase = await convertToBase(billTotal - billPaid, cur, bill.bill_date);
         if (bill.status !== 'paid' && bill.status !== 'void') {
-          accountsPayable += remainingInUSD;
+          accountsPayable += remainingInBase;
         }
       }
     }
 
-    // Process expenses
     if (expenses.rows) {
       for (const expense of expenses.rows) {
         const expenseTotal = parseFloat(String(expense.total)) || 0;
-        let amountInUSD = expenseTotal;
-
-        if (expense.currency !== 'USD') {
-          const converted = await db.query<{ converted: number | null }>(
-            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [expenseTotal, expense.currency, 'USD', expense.expense_date]
-          );
-
-          amountInUSD = parseFloat(String(converted.rows[0]?.converted)) || expenseTotal;
-        }
-
-        totalExpenses += amountInUSD;
+        const cur = expense.currency || baseCurrency;
+        totalExpenses += await convertToBase(expenseTotal, cur, expense.expense_date);
       }
     }
 
-    // Process bank transactions for cash balance
     if (bankTransactions.rows) {
       for (const transaction of bankTransactions.rows) {
-        const currency = transaction.currency || 'USD';
-        
-        let amountInUSD = transaction.amount || 0;
-
-        // Convert to USD if not already
-        if (currency !== 'USD') {
-          const converted = await db.query<{ converted: number | null }>(
-            'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-            [Math.abs(transaction.amount), currency, 'USD', transaction.transaction_date]
-          );
-          const convertedValue = converted.rows[0]?.converted || Math.abs(transaction.amount);
-
-          // Preserve the sign (positive or negative)
-          amountInUSD = transaction.amount < 0 ? -convertedValue : convertedValue;
-        }
-
-        cashBalance += amountInUSD;
+        const cur = transaction.currency || baseCurrency;
+        const abs = await convertToBase(Math.abs(transaction.amount), cur, transaction.transaction_date);
+        cashBalance += transaction.amount < 0 ? -abs : abs;
       }
     }
 
-    // Calculate inventory value - ONLY IF INVENTORY MODULE ENABLED
     let inventoryValue = 0;
     if (moduleIds.includes('inventory') || moduleIds.includes('retail') || moduleIds.includes('cafe')) {
       const inventoryItems = await db.query<{ quantity_on_hand: number; cost_price: number; currency: string | null }>(
         'SELECT quantity_on_hand, cost_price, currency FROM products WHERE company_id = $1 AND track_inventory = TRUE',
         [companyId]
       );
-
       if (inventoryItems.rows) {
         for (const item of inventoryItems.rows) {
-          const quantity = item.quantity_on_hand || 0;
-          const cost = item.cost_price || 0;
-          const itemValue = quantity * cost;
-
+          const itemValue = (item.quantity_on_hand || 0) * (item.cost_price || 0);
           if (itemValue > 0) {
-            let valueInUSD = itemValue;
-
-            if (item.currency && item.currency !== 'USD') {
-              const converted = await db.query<{ converted: number | null }>(
-                'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-                [itemValue, item.currency, 'USD', new Date().toISOString().split('T')[0]]
-              );
-
-              valueInUSD = converted.rows[0]?.converted || itemValue;
-            }
-
-            inventoryValue += valueInUSD;
+            const cur = item.currency || baseCurrency;
+            inventoryValue += await convertToBase(itemValue, cur, new Date().toISOString().split('T')[0]);
           }
         }
       }
@@ -274,75 +201,53 @@ export async function GET(request: NextRequest) {
 
     const netIncome = totalRevenue - totalExpenses;
 
-    // Helper: convert a currency amount to USD using the DB function
-    const convertToUSD = async (amount: number, currency: string, date: string): Promise<number> => {
-      const safeAmount = parseFloat(String(amount)) || 0;
-      if (currency === 'USD') return safeAmount;
-      const result = await db.query<{ converted: number | null }>(
-        'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-        [safeAmount, currency, 'USD', date]
-      );
-      return parseFloat(String(result.rows[0]?.converted)) || safeAmount;
-    };
-
-    // Helper: sum invoice rows in USD
-    const sumInvoicesUSD = async (rows: { total: number; currency: string; invoice_date: string }[]) => {
+    const sumInvoicesBase = async (rows: { total: number; currency: string; invoice_date: string }[]) => {
       let total = 0;
       for (const row of rows) {
-        total += await convertToUSD(row.total, row.currency, row.invoice_date);
+        total += await convertToBase(row.total, row.currency || baseCurrency, row.invoice_date);
       }
       return total;
     };
 
-    // Helper: sum expense rows in USD
-    const sumExpensesUSD = async (rows: { total: number; currency: string; expense_date: string }[]) => {
+    const sumExpensesBase = async (rows: { total: number; currency: string; expense_date: string }[]) => {
       let total = 0;
       for (const row of rows) {
-        total += await convertToUSD(row.total, row.currency, row.expense_date);
+        total += await convertToBase(row.total, row.currency || baseCurrency, row.expense_date);
       }
       return total;
     };
 
-    // Helper: sum bank transaction rows in USD (net)
-    const sumBankTxUSD = async (rows: { amount: number; transaction_date: string; currency: string | null }[]) => {
+    const sumBankTxBase = async (rows: { amount: number; transaction_date: string; currency: string | null }[]) => {
       let total = 0;
       for (const row of rows) {
-        const currency = row.currency || 'USD';
-        const abs = await convertToUSD(Math.abs(row.amount), currency, row.transaction_date);
+        const cur = row.currency || baseCurrency;
+        const abs = await convertToBase(Math.abs(row.amount), cur, row.transaction_date);
         total += row.amount < 0 ? -abs : abs;
       }
       return total;
     };
 
-    // Calculate period totals for trend comparison
     const [
       currentRevenue, prevRevenue,
       currentExpensesTotal, prevExpensesTotal,
       currentCashNet, prevCashNet,
     ] = await Promise.all([
-      sumInvoicesUSD(currentMonthInvoices.rows || []),
-      sumInvoicesUSD(prevMonthInvoices.rows || []),
-      sumExpensesUSD(currentMonthExpenses.rows || []),
-      sumExpensesUSD(prevMonthExpenses.rows || []),
-      sumBankTxUSD(currentMonthBankTx.rows || []),
-      sumBankTxUSD(prevMonthBankTx.rows || []),
+      sumInvoicesBase(currentMonthInvoices.rows || []),
+      sumInvoicesBase(prevMonthInvoices.rows || []),
+      sumExpensesBase(currentMonthExpenses.rows || []),
+      sumExpensesBase(prevMonthExpenses.rows || []),
+      sumBankTxBase(currentMonthBankTx.rows || []),
+      sumBankTxBase(prevMonthBankTx.rows || []),
     ]);
 
     const currentNetIncome = currentRevenue - currentExpensesTotal;
     const prevNetIncome = prevRevenue - prevExpensesTotal;
 
-    // Calculate % change: null when no previous data to compare
     const calcTrend = (current: number, previous: number): number | null => {
       if (previous === 0) return current > 0 ? 100 : null;
       return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
     };
 
-    const revenueTrend = calcTrend(currentRevenue, prevRevenue);
-    const expensesTrend = calcTrend(currentExpensesTotal, prevExpensesTotal);
-    const netIncomeTrend = calcTrend(currentNetIncome, prevNetIncome);
-    const cashBalanceTrend = calcTrend(currentCashNet, prevCashNet);
-
-    // Return stats with conditional fields based on enabled modules
     const stats: any = {
       totalRevenue,
       totalExpenses,
@@ -351,14 +256,13 @@ export async function GET(request: NextRequest) {
       accountsPayable,
       cashBalance,
       trends: {
-        revenue: revenueTrend,
-        expenses: expensesTrend,
-        netIncome: netIncomeTrend,
-        cashBalance: cashBalanceTrend,
+        revenue: calcTrend(currentRevenue, prevRevenue),
+        expenses: calcTrend(currentExpensesTotal, prevExpensesTotal),
+        netIncome: calcTrend(currentNetIncome, prevNetIncome),
+        cashBalance: calcTrend(currentCashNet, prevCashNet),
       },
     };
 
-    // Only include inventory value if inventory/retail/cafe module is enabled
     if (moduleIds.includes('inventory') || moduleIds.includes('retail') || moduleIds.includes('cafe')) {
       stats.inventoryValue = inventoryValue;
     }
@@ -366,9 +270,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(stats);
   } catch (error: any) {
     console.error('Failed to calculate dashboard stats:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
