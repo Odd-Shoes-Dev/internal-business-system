@@ -120,7 +120,9 @@ export default function InvoiceDetailPage() {
         discount_amount: parseFloat(invoiceData.discount_amount || 0),
         total_amount: parseFloat(invoiceData.total || 0),
         amount_paid: parseFloat(invoiceData.amount_paid || 0),
-        tax_rate: parseFloat(invoiceData.tax_rate || 0),
+        tax_rate: parseFloat(invoiceData.tax_rate || 0) ||
+          parseFloat((invoiceData.invoice_lines || []).find((l: any) => l.tax_rate > 0)?.tax_rate || 0) * 100 ||
+          (invoiceData.subtotal > 0 ? Math.round((parseFloat(invoiceData.tax_amount || 0) / parseFloat(invoiceData.subtotal)) * 10000) / 100 : 0),
       };
 
       setInvoice(parsedInvoice);
@@ -453,21 +455,31 @@ export default function InvoiceDetailPage() {
               <tr>
                 <th>#</th>
                 <th>Description</th>
-                <th class="text-right">Quantity</th>
+                <th class="text-right">Qty</th>
                 <th class="text-right">Unit Price</th>
-                <th class="text-right">Amount</th>
+                <th class="text-right">Subtotal</th>
+                <th class="text-right">Tax %</th>
+                <th class="text-right">Tax Amt</th>
+                <th class="text-right">Line Total</th>
               </tr>
             </thead>
             <tbody>
-              ${lineItems.map(item => `
+              ${lineItems.map(item => {
+                const subtotal = Number(item.quantity) * Number(item.unit_price) - Number(item.discount_amount || 0);
+                const taxRate = Number(item.tax_rate) || 0;
+                const taxAmount = Number(item.tax_amount) || 0;
+                return `
                 <tr>
                   <td>${item.line_number}</td>
                   <td>${item.description}</td>
                   <td class="text-right">${item.quantity}</td>
                   <td class="text-right">${formatCurrency(Number(item.unit_price))}</td>
+                  <td class="text-right">${formatCurrency(subtotal)}</td>
+                  <td class="text-right">${taxRate > 0 ? (taxRate * 100).toFixed(0) + '%' : '—'}</td>
+                  <td class="text-right">${taxAmount > 0 ? formatCurrency(taxAmount) : '—'}</td>
                   <td class="text-right"><strong>${formatCurrency(Number(item.amount))}</strong></td>
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
 
@@ -909,20 +921,36 @@ export default function InvoiceDetailPage() {
                       <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">#</th>
                       <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Description</th>
                       <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Qty</th>
-                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:table-cell">Unit Price</th>
-                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Amount</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden md:table-cell">Unit Price</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden md:table-cell">Subtotal</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden lg:table-cell">Tax %</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden lg:table-cell">Tax Amt</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Line Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {lineItems.map((item) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm text-gray-500">{item.line_number}</td>
-                        <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">{item.description}</td>
-                        <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm">{item.quantity}</td>
-                        <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden sm:table-cell">{formatCurrency(Number(item.unit_price))}</td>
-                        <td className="py-2 sm:py-3 px-2 text-right font-medium text-xs sm:text-sm">{formatCurrency(Number(item.amount))}</td>
-                      </tr>
-                    ))}
+                    {lineItems.map((item) => {
+                      const subtotal = Number(item.quantity) * Number(item.unit_price) - Number(item.discount_amount || 0);
+                      const taxRate = Number(item.tax_rate) || 0;
+                      const taxAmount = Number(item.tax_amount) || 0;
+                      const lineTotal = Number(item.amount);
+                      return (
+                        <tr key={item.id} className="border-b">
+                          <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm text-gray-500">{item.line_number}</td>
+                          <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">{item.description}</td>
+                          <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm">{item.quantity}</td>
+                          <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden md:table-cell">{formatCurrency(Number(item.unit_price))}</td>
+                          <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden md:table-cell">{formatCurrency(subtotal)}</td>
+                          <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden lg:table-cell text-gray-500">
+                            {taxRate > 0 ? `${(taxRate * 100).toFixed(0)}%` : '—'}
+                          </td>
+                          <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden lg:table-cell text-gray-500">
+                            {taxAmount > 0 ? formatCurrency(taxAmount) : '—'}
+                          </td>
+                          <td className="py-2 sm:py-3 px-2 text-right font-medium text-xs sm:text-sm">{formatCurrency(lineTotal)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
