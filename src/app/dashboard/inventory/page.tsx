@@ -44,6 +44,7 @@ export default function InventoryPage() {
     totalValue: 0,
     lowStock: 0,
     outOfStock: 0,
+    currency: 'USD',
   });
   const [activeTab, setActiveTab] = useState<'stock' | 'categories'>('stock');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -377,7 +378,7 @@ export default function InventoryPage() {
             />
             <StatCard
               title="Total Value"
-              value={formatCurrency(stats.totalValue)}
+              value={formatCurrency(stats.totalValue, stats.currency)}
               icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
               trend="up"
             />
