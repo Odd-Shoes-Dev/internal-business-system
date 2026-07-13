@@ -23,6 +23,9 @@ export default function NewInventoryItemPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const [formData, setFormData] = useState({
     sku: '',
@@ -78,6 +81,29 @@ export default function NewInventoryItemPage() {
           ? Number(value) 
           : value,
     }));
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim() || !company?.id) return;
+    setSavingCategory(true);
+    try {
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to create category');
+      setCategories((prev) => [...prev, result]);
+      setFormData((prev) => ({ ...prev, category_id: result.id }));
+      setNewCategoryName('');
+      setShowNewCategory(false);
+    } catch (err) {
+      console.error('Error creating category:', err);
+    } finally {
+      setSavingCategory(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,22 +214,53 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category
               </label>
-              <select
-                name="category_id"
-                value={formData.category_id}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              {showNewCategory ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCategory(); } if (e.key === 'Escape') { setShowNewCategory(false); setNewCategoryName(''); } }}
+                    autoFocus
+                    placeholder="Category name..."
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCategory}
+                    disabled={savingCategory || !newCategoryName.trim()}
+                    className="px-3 py-2 bg-blueox-primary text-white rounded-lg text-sm font-medium hover:bg-blueox-primary-dark disabled:opacity-50"
+                  >
+                    {savingCategory ? '...' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <select
+                  name="category_id"
+                  value={formData.category_id}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                >
+                  <option value="">Select category...</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowNewCategory(true)}
+                className="text-xs text-blueox-primary hover:underline mt-1 block"
               >
-                <option value="">Select category...</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                <Link href="/dashboard/settings/categories" className="text-blueox-primary hover:underline">
-                  Manage categories
-                </Link>
-              </p>
+                + New category
+              </button>
             </div>
 
             <div className="md:col-span-2">
@@ -260,7 +317,9 @@ export default function NewInventoryItemPage() {
                   onChange={handleChange}
                   className="rounded border-gray-300 text-[#52b53b] focus:ring-[#52b53b]"
                 />
-                <span className="text-sm text-gray-700">Taxable (6.25% MA)</span>
+                <span className="text-sm text-gray-700">
+                  Taxable{company?.sales_tax_rate ? ` (${company.sales_tax_rate}%)` : ''}
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
