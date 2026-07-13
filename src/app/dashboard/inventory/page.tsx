@@ -33,13 +33,12 @@ import { FitNumber } from '@/components/ui/fit-number';
 
 export default function InventoryPage() {
   const { company } = useCompany();
-  const [items, setItems] = useState<Product[]>([]);
+  const [allItems, setAllItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({
     totalItems: 0,
     totalValue: 0,
@@ -60,7 +59,7 @@ export default function InventoryPage() {
     if (!company?.id) return;
     loadInventory();
     loadStats();
-  }, [searchQuery, stockFilter, categoryFilter, currentPage, company?.id]);
+  }, [company?.id]);
 
   useEffect(() => {
     if (company?.id) loadCategories();
@@ -75,42 +74,18 @@ export default function InventoryPage() {
   const loadInventory = async () => {
     try {
       setLoading(true);
-      if (!company?.id) {
-        return;
-      }
+      if (!company?.id) return;
 
       const params = new URLSearchParams({
         company_id: company.id,
-        page: String(currentPage),
-        limit: String(pageSize),
+        limit: '1000',
       });
-      if (searchQuery) {
-        params.set('search', searchQuery);
-      }
-      if (stockFilter === 'low') {
-        params.set('low_stock', 'true');
-      }
-      if (categoryFilter) {
-        params.set('category', categoryFilter);
-      }
 
-      const response = await fetch(`/api/inventory?${params.toString()}`, {
-        credentials: 'include',
-      });
+      const response = await fetch(`/api/inventory?${params.toString()}`, { credentials: 'include' });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to load inventory');
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to load inventory');
 
-      let inventoryItems = (result.data || []) as Product[];
-      if (stockFilter === 'out') {
-        inventoryItems = inventoryItems.filter((item) => Number(item.quantity_on_hand || 0) === 0);
-      }
-
-      setItems(inventoryItems);
-      setTotalCount(
-        stockFilter === 'out' ? inventoryItems.length : Number(result.pagination?.total || inventoryItems.length)
-      );
+      setAllItems((result.data || []) as Product[]);
     } catch (error) {
       console.error('Failed to load inventory:', error);
     } finally {
@@ -227,7 +202,22 @@ export default function InventoryPage() {
     return { label: 'In Stock', class: 'badge-success', icon: ArrowTrendingUpIcon };
   };
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const filteredItems = allItems.filter((item) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!item.name.toLowerCase().includes(q) && !(item.sku || '').toLowerCase().includes(q)) return false;
+    }
+    if (categoryFilter && item.category_id !== categoryFilter) return false;
+    if (stockFilter === 'low') {
+      if (Number(item.quantity_on_hand || 0) === 0) return false;
+      if (Number(item.quantity_on_hand || 0) > Number(item.reorder_point || 0)) return false;
+    }
+    if (stockFilter === 'out' && Number(item.quantity_on_hand || 0) !== 0) return false;
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize);
+  const items = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
@@ -619,7 +609,7 @@ export default function InventoryPage() {
           {totalPages > 1 && (
             <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl flex items-center justify-between">
               <p className="text-sm font-medium text-gray-600">
-                Showing <span className="font-bold text-blueox-primary">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-bold text-blueox-primary">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="font-bold text-blueox-primary">{totalCount}</span> items
+                Showing <span className="font-bold text-blueox-primary">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-bold text-blueox-primary">{Math.min(currentPage * pageSize, filteredItems.length)}</span> of <span className="font-bold text-blueox-primary">{filteredItems.length}</span> items
               </p>
               <div className="flex gap-3">
                 <button
