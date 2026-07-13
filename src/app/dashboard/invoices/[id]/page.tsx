@@ -508,14 +508,14 @@ export default function InvoiceDetailPage() {
                 <span>TOTAL</span>
                 <span>${formatCurrency(Number(invoice.total_amount))}</span>
               </div>
-              ${Number(invoice.amount_paid) > 0 ? `
+              ${effectiveAmountPaid > 0 ? `
               <div class="total-row paid">
                 <span>Amount Paid</span>
-                <span>-${formatCurrency(Number(invoice.amount_paid))}</span>
+                <span>-${formatCurrency(effectiveAmountPaid)}</span>
               </div>
               <div class="total-row balance-due">
                 <span>BALANCE DUE</span>
-                <span>${formatCurrency(Number(invoice.total_amount) - Number(invoice.amount_paid))}</span>
+                <span>${formatCurrency(balanceDue)}</span>
               </div>
               ` : ''}
             </div>
@@ -784,7 +784,12 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
+  const effectiveAmountPaid = invoice.status === 'paid' && Number(invoice.amount_paid) === 0
+    ? Number(invoice.total_amount)
+    : Number(invoice.amount_paid);
+  const balanceDue = invoice.status === 'paid'
+    ? 0
+    : Number(invoice.total_amount) - effectiveAmountPaid;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
@@ -985,11 +990,11 @@ export default function InvoiceDetailPage() {
                   <span>Total</span>
                   <span>{formatCurrency(Number(invoice.total_amount))}</span>
                 </div>
-                {Number(invoice.amount_paid) > 0 && (
+                {effectiveAmountPaid > 0 && (
                   <>
                     <div className="flex justify-between text-xs sm:text-sm text-green-600">
                       <span>Amount Paid</span>
-                      <span>-{formatCurrency(Number(invoice.amount_paid))}</span>
+                      <span>-{formatCurrency(effectiveAmountPaid)}</span>
                     </div>
                     <div className="flex justify-between text-base sm:text-lg font-semibold text-red-600">
                       <span>Balance Due</span>
@@ -1187,7 +1192,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount Paid</span>
-                  <span className="font-medium text-green-600">{formatCurrency(Number(invoice.amount_paid))}</span>
+                  <span className="font-medium text-green-600">{formatCurrency(effectiveAmountPaid)}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t">
                   <span className="font-medium">Balance Due</span>

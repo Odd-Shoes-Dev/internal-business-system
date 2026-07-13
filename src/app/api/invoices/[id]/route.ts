@@ -335,6 +335,14 @@ export async function PATCH(request: NextRequest, context: any) {
       return currentInvoice;
     });
 
+    // Always sync amount_paid when marking as paid (regardless of booking)
+    if (newStatus === 'paid' && oldStatus !== 'paid') {
+      await db.query(
+        'UPDATE invoices SET amount_paid = total, updated_at = NOW() WHERE id = $1',
+        [resolvedParams.id]
+      );
+    }
+
     if (
       (newStatus === 'paid' || newStatus === 'partial') &&
       oldStatus !== 'paid' &&
@@ -345,7 +353,7 @@ export async function PATCH(request: NextRequest, context: any) {
         newStatus === 'paid'
           ? (
               await db.query<any>(
-                'UPDATE invoices SET amount_paid = total, updated_at = NOW() WHERE id = $1 RETURNING *',
+                'SELECT * FROM invoices WHERE id = $1',
                 [resolvedParams.id]
               )
             ).rows[0]

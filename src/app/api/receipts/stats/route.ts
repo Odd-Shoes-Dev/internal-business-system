@@ -54,24 +54,11 @@ export async function GET(request: NextRequest) {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     for (const receipt of receipts.rows || []) {
-      // Only count receipts (document_type === 'receipt')
       if (receipt.document_type !== 'receipt') continue;
 
-      const amountPaid = Number(receipt.amount_paid) || Number(receipt.total) || 0;
-      let amountUSD = amountPaid;
+      const amount = Number(receipt.amount_paid) || Number(receipt.total) || 0;
+      totalAmount += amount;
 
-      // Convert to USD if not already
-      if (receipt.currency && receipt.currency !== 'USD') {
-        const converted = await db.query<{ converted: number | null }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [amountPaid, receipt.currency, 'USD', receipt.invoice_date]
-        );
-        amountUSD = converted.rows[0]?.converted || amountPaid;
-      }
-
-      totalAmount += amountUSD;
-
-      // Count this month receipts
       const receiptDate = new Date(receipt.invoice_date);
       if (receiptDate >= firstDayOfMonth) {
         thisMonthCount++;
