@@ -87,9 +87,17 @@ export async function POST(
     const { id: billId } = await params;
     const body = await request.json();
 
-    if (!body.payment_date || !body.amount || !body.bank_account_id) {
+    if (!body.payment_date || !body.amount) {
       return NextResponse.json(
-        { error: 'Missing required fields: payment_date, amount, bank_account_id' },
+        { error: 'Missing required fields: payment_date, amount' },
+        { status: 400 }
+      );
+    }
+
+    // bank_account_id only required for non-cash payments
+    if (body.payment_method !== 'cash' && !body.bank_account_id) {
+      return NextResponse.json(
+        { error: 'bank_account_id is required for non-cash payments' },
         { status: 400 }
       );
     }
@@ -150,12 +158,15 @@ export async function POST(
     const ref = `BP-${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     const outcome = await db.transaction(async (tx) => {
-      const bankAccount = await tx.query<{ gl_account_id: string | null }>(
-        'SELECT gl_account_id FROM bank_accounts WHERE id = $1 LIMIT 1',
-        [body.bank_account_id]
-      );
+      let payFromAccountId: string | null = null;
 
-      const payFromAccountId = bankAccount.rows[0]?.gl_account_id || null;
+      if (body.bank_account_id) {
+        const bankAccount = await tx.query<{ gl_account_id: string | null }>(
+          'SELECT gl_account_id FROM bank_accounts WHERE id = $1 LIMIT 1',
+          [body.bank_account_id]
+        );
+        payFromAccountId = bankAccount.rows[0]?.gl_account_id || null;
+      }
 
       const payment = await tx.query<any>(
         `INSERT INTO bill_payments (

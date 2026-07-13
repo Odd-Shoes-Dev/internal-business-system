@@ -92,7 +92,7 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     -- Get the bill to find vendor
     SELECT * INTO v_bill FROM bills WHERE id = NEW.bill_id;
-    
+
     IF v_bill.id IS NOT NULL THEN
       -- Decrease vendor balance (we paid them)
       PERFORM update_vendor_balance(v_bill.vendor_id, -NEW.amount);

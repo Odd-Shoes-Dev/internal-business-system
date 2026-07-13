@@ -110,24 +110,29 @@ export default function RecordBillPaymentPage() {
         throw new Error(`Amount cannot exceed balance due (${formatCurrency(balanceDue)})`);
       }
 
-      if (!bankAccountId) {
+      if (formData.payment_method !== 'cash' && !bankAccountId) {
         throw new Error('No active bank account found. Please set up a bank account first.');
       }
 
       // Record payment via API
+      const payload: any = {
+        payment_date: formData.payment_date,
+        amount: amount,
+        payment_method: formData.payment_method,
+        reference: formData.reference_number || '',
+        notes: formData.notes || '',
+        currency: bill!.currency || 'USD',
+      };
+
+      if (formData.payment_method !== 'cash') {
+        payload.bank_account_id = bankAccountId;
+      }
+
       const response = await fetch(`/api/bills/${params.id}/payments`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payment_date: formData.payment_date,
-          amount: amount,
-          payment_method: formData.payment_method,
-          bank_account_id: bankAccountId,
-          reference: formData.reference_number || '',
-          notes: formData.notes || '',
-          currency: bill!.currency || 'USD',
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
