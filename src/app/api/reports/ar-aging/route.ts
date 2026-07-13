@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const asOfDate = searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
     const customerId = searchParams.get('customer_id');
 
@@ -84,17 +90,17 @@ export async function GET(request: NextRequest) {
       const balance = Number(invoice.total || 0) - Number(invoice.amount_paid || 0);
       if (balance <= 0) continue;
 
-      let balanceUSD = balance;
-      const fromCurrency = (invoice.currency || 'USD') as SupportedCurrency;
-      if (fromCurrency !== 'USD') {
+      let balanceBase = balance;
+      const fromCurrency = (invoice.currency || baseCurrency) as SupportedCurrency;
+      if (fromCurrency !== baseCurrency) {
         try {
           const conversion = await db.query<{ converted_amount: number }>(
             `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS converted_amount`,
-            [balance, fromCurrency, 'USD', asOfDate]
+            [balance, fromCurrency, baseCurrency, asOfDate]
           );
-          balanceUSD = Number(conversion.rows[0]?.converted_amount ?? balance);
+          balanceBase = Number(conversion.rows[0]?.converted_amount ?? balance);
         } catch {
-          balanceUSD = balance;
+          balanceBase = balance;
         }
       }
 
@@ -107,9 +113,9 @@ export async function GET(request: NextRequest) {
         invoice_date: invoice.invoice_date,
         due_date: invoice.due_date,
         total: invoice.total,
-        balance: balanceUSD,
+        balance: balanceBase,
         originalBalance: balance,
-        currency: invoice.currency || 'USD',
+        currency: invoice.currency || baseCurrency,
         days_overdue: Math.max(0, daysOverdue),
         customer: invoice.customer_ref_id
           ? {
@@ -135,7 +141,7 @@ export async function GET(request: NextRequest) {
       }
 
       aging[bucket].count++;
-      aging[bucket].total += balanceUSD;
+      aging[bucket].total += balanceBase;
       aging[bucket].invoices.push(invoiceData);
 
       // Update customer summary
@@ -153,8 +159,8 @@ export async function GET(request: NextRequest) {
             total: 0,
           };
         }
-        customerAging[custId][bucket] += balanceUSD;
-        customerAging[custId].total += balanceUSD;
+        customerAging[custId][bucket] += balanceBase;
+        customerAging[custId].total += balanceBase;
       }
     }
 
@@ -184,4 +190,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
 

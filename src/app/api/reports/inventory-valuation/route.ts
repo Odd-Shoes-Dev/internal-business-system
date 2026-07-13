@@ -71,6 +71,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const category = searchParams.get('category') || 'all';
     const location = searchParams.get('location') || 'all';
     const status = searchParams.get('status') || 'all';
@@ -103,7 +109,7 @@ export async function GET(request: NextRequest) {
       const unitCost = parseFloat(item.cost_price) || 0;
       
       // Convert unit cost to USD if needed
-      const unitCostUSD = await convertCurrency(
+      const unitCostBase = await convertCurrency(
         {
           rpc: async (fn: string, args: any) => {
             if (fn !== 'convert_currency') {
@@ -117,11 +123,11 @@ export async function GET(request: NextRequest) {
           },
         },
         unitCost,
-        (item.currency || 'USD') as SupportedCurrency,
-        'USD' as SupportedCurrency
+        (item.currency || baseCurrency) as SupportedCurrency,
+        baseCurrency as SupportedCurrency
       ) || unitCost;
       
-      const totalValue = quantityOnHand * unitCostUSD;
+      const totalValue = quantityOnHand * unitCostBase;
       const reorderLevel = item.reorder_point || 0;
 
       // Determine status
@@ -141,7 +147,7 @@ export async function GET(request: NextRequest) {
         location: 'Main Warehouse',
         quantityOnHand,
         unitOfMeasure: item.unit_of_measure || 'EA',
-        unitCost: unitCostUSD,
+        unitCost: unitCostBase,
         totalValue,
         reorderLevel,
         status: itemStatus,
@@ -259,4 +265,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 

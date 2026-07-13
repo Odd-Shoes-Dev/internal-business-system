@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const status = searchParams.get('status') || 'all';
@@ -90,11 +96,11 @@ export async function GET(request: NextRequest) {
                 jl.credit,
                 COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
                 jl.debit * COALESCE(
-                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), 'USD', je.entry_date::date),
+                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), baseCurrency, je.entry_date::date),
                   1
                 ) AS base_debit,
                 jl.credit * COALESCE(
-                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), 'USD', je.entry_date::date),
+                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), baseCurrency, je.entry_date::date),
                   1
                 ) AS base_credit,
                 jl.description,
@@ -132,7 +138,7 @@ export async function GET(request: NextRequest) {
       const totalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.base_credit) || 0), 0);
       const originalTotalDebit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.debit) || 0), 0);
       const originalTotalCredit = lines.reduce((sum: number, line: any) => sum + (parseFloat(line.credit) || 0), 0);
-      const entryCurrency = lines[0]?.currency || 'USD';
+      const entryCurrency = lines[0]?.currency || baseCurrency;
 
       return {
         id: entry.id,
@@ -155,7 +161,7 @@ export async function GET(request: NextRequest) {
           description: line.description || '',
           debit: parseFloat(line.debit) || 0,
           credit: parseFloat(line.credit) || 0,
-          currency: line.currency || 'USD',
+          currency: line.currency || baseCurrency,
         })),
       };
     });
@@ -199,4 +205,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 

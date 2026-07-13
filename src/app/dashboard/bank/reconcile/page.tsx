@@ -158,7 +158,7 @@ export default function ReconcilePage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const currentAccount = bankAccounts.find(a => a.id === selectedAccount);

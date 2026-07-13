@@ -47,7 +47,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
-  const [taxRate] = useState(0.0625); // MA sales tax
+  const defaultTaxRate = (company?.sales_tax_rate ?? 0) / 100;
 
   const {
     register,
@@ -69,7 +69,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
           quantity: 1,
           unit_price: 0,
           discount_percent: 0,
-          tax_rate: taxRate,
+          tax_rate: defaultTaxRate,
         },
       ],
     },
@@ -133,8 +133,8 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       // Populate form with existing data
       const formData: InvoiceFormData = {
         customer_id: invoiceData.customer_id,
-        invoice_date: invoiceData.invoice_date,
-        due_date: invoiceData.due_date,
+        invoice_date: invoiceData.invoice_date?.split('T')[0] ?? invoiceData.invoice_date,
+        due_date: invoiceData.due_date?.split('T')[0] ?? invoiceData.due_date,
         payment_terms: invoiceData.payment_terms,
         po_number: invoiceData.po_number || '',
         notes: invoiceData.notes || '',
@@ -198,7 +198,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       }
       
       setValue(`lines.${index}.unit_price`, convertedPrice);
-      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+      setValue(`lines.${index}.tax_rate`, product.is_taxable ? (Number(product.tax_rate) || defaultTaxRate) : 0);
     }
   };
 
@@ -558,6 +558,20 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
 
+                <div className="col-span-4 md:col-span-1">
+                  <label className="label text-xs">Tax %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="input text-sm"
+                    value={Number(((watchLines[index]?.tax_rate || 0) * 100).toFixed(4))}
+                    onChange={e => setValue(`lines.${index}.tax_rate`, (parseFloat(e.target.value) || 0) / 100)}
+                    placeholder="0"
+                  />
+                </div>
+
                 <div className="col-span-6 md:col-span-2">
                   <label className="label text-xs">Line Total</label>
                   <div className="input bg-gray-100 text-sm">
@@ -592,7 +606,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   quantity: 1,
                   unit_price: 0,
                   discount_percent: 0,
-                  tax_rate: taxRate,
+                  tax_rate: defaultTaxRate,
                 })
               }
               className="btn-secondary"
@@ -620,10 +634,12 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
               </div>
+              {calculateTax() > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (6.25%)</span>
+                <span className="text-gray-600">Tax</span>
                 <span className="font-medium">{formatCurrency(calculateTax())}</span>
               </div>
+              )}
               <div className="border-t pt-3 flex justify-between">
                 <span className="font-semibold text-gray-900">Total</span>
                 <span className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">

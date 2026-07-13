@@ -92,7 +92,7 @@ export default function StockMovementsPage() {
 
   const formatCurrency = (amount: number | null) => {
     if (!amount) return '-';
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   const formatDate = (dateString: string) => {

@@ -62,7 +62,7 @@ export default function NewReceiptPage() {
   const [invoiceQuery, setInvoiceQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isManualInvoiceEntry, setIsManualInvoiceEntry] = useState(false);
-  const [taxRate] = useState(0.0625); // MA sales tax
+  const defaultTaxRate = (company?.sales_tax_rate ?? 0) / 100;
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({
     USD: 1,
     EUR: 1,
@@ -92,7 +92,7 @@ export default function NewReceiptPage() {
           quantity: 1,
           unit_price: 0,
           discount_percent: 0,
-          tax_rate: taxRate,
+          tax_rate: defaultTaxRate,
         },
       ],
     },
@@ -241,7 +241,7 @@ export default function NewReceiptPage() {
         quantity: 1,
         unit_price: 0,
         discount_percent: 0,
-        tax_rate: taxRate,
+        tax_rate: defaultTaxRate,
       }]);
       setValue('amount_paid', 0);
       return;
@@ -315,7 +315,7 @@ export default function NewReceiptPage() {
       setValue(`lines.${index}.product_name`, '');
       setValue(`lines.${index}.description`, '');
       setValue(`lines.${index}.unit_price`, 0);
-      setValue(`lines.${index}.tax_rate`, taxRate);
+      setValue(`lines.${index}.tax_rate`, defaultTaxRate);
       return;
     }
     
@@ -345,7 +345,7 @@ export default function NewReceiptPage() {
       setValue(`lines.${index}.product_name`, product.name);
       setValue(`lines.${index}.description`, product.name);
       setValue(`lines.${index}.unit_price`, Math.round(convertedPrice * 100) / 100);
-      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+      setValue(`lines.${index}.tax_rate`, product.is_taxable ? (Number(product.tax_rate) || defaultTaxRate) : 0);
     } else {
       // If not found, treat as manual entry
       setValue(`lines.${index}.product_id`, '');
@@ -760,7 +760,7 @@ export default function NewReceiptPage() {
                   quantity: 1,
                   unit_price: 0,
                   discount_percent: 0,
-                  tax_rate: taxRate,
+                  tax_rate: defaultTaxRate,
                 })
               }
               className="btn-secondary"

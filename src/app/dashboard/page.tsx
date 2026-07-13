@@ -283,7 +283,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Cash Balance"
-            value={formatCurrency(stats?.cashBalance || 0)}
+            value={formatCurrency(stats?.cashBalance || 0, company?.currency || 'USD')}
             icon={BanknotesIcon}
             trend={stats?.trends?.cashBalance ?? undefined}
             color="primary"
@@ -292,7 +292,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Net Income"
-            value={formatCurrency(stats?.netIncome || 0)}
+            value={formatCurrency(stats?.netIncome || 0, company?.currency || 'USD')}
             icon={ArrowTrendingUpIcon}
             trend={stats?.trends?.netIncome ?? undefined}
             color="accent"
@@ -301,7 +301,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Accounts Receivable"
-            value={formatCurrency(stats?.accountsReceivable || 0)}
+            value={formatCurrency(stats?.accountsReceivable || 0, company?.currency || 'USD')}
             icon={DocumentTextIcon}
             subtitle={`${stats?.overdueInvoices || 0} overdue`}
             color="secondary"
@@ -309,7 +309,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Accounts Payable"
-            value={formatCurrency(stats?.accountsPayable || 0)}
+            value={formatCurrency(stats?.accountsPayable || 0, company?.currency || 'USD')}
             icon={CurrencyDollarIcon}
             subtitle={`${stats?.overdueBills || 0} overdue`}
             color="secondary"
@@ -328,7 +328,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <DocumentTextIcon className="w-6 h-6 text-blue-600" />
               </div>
-              <FitNumber value={formatCurrency(stats?.totalRevenue || 0)} className="font-bold text-gray-900" />
+              <FitNumber value={formatCurrency(stats?.totalRevenue || 0, company?.currency || 'USD')} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Total Revenue</p>
               <div className="flex items-center justify-center gap-1 mt-1">
                 {stats?.trends?.revenue !== null && stats?.trends?.revenue !== undefined ? (
@@ -350,7 +350,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <CurrencyDollarIcon className="w-6 h-6 text-purple-600" />
               </div>
-              <FitNumber value={formatCurrency(stats?.totalExpenses || 0)} className="font-bold text-gray-900" />
+              <FitNumber value={formatCurrency(stats?.totalExpenses || 0, company?.currency || 'USD')} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Total Expenses</p>
               <div className="flex items-center justify-center gap-1 mt-1">
                 {stats?.trends?.expenses !== null && stats?.trends?.expenses !== undefined ? (
@@ -372,7 +372,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl flex items-center justify-center mx-auto mb-2">
                 <CubeIcon className="w-6 h-6 text-green-600" />
               </div>
-              <FitNumber value={formatCurrency(stats?.inventoryValue || 0)} className="font-bold text-gray-900" />
+              <FitNumber value={formatCurrency(stats?.inventoryValue || 0, company?.currency || 'USD')} className="font-bold text-gray-900" />
               <p className="text-sm text-gray-500">Inventory Value</p>
               <p className="text-xs text-gray-400">Current valuation</p>
             </div>

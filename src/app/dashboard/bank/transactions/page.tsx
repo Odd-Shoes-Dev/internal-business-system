@@ -124,7 +124,7 @@ export default function BankTransactionsPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, (company?.currency || 'USD') as any);
   };
 
   if (loading) {

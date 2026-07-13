@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import type { Employee } from '@/types/breco';
 import { CurrencySelect } from '@/components/ui';
 import {

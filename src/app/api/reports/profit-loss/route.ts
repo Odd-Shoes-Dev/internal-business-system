@@ -21,25 +21,14 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('start_date') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
-
-    const currencyRpc = {
-      rpc: async (fn: string, args: any) => {
-        if (fn !== 'convert_currency') {
-          return { data: null, error: new Error('Unsupported RPC function') };
-        }
-        try {
-          const result = await db.query<{ value: number }>(
-            `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-            [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-          );
-          return { data: result.rows[0]?.value ?? null, error: null };
-        } catch {
-          return { data: null, error: new Error('Currency conversion failed') };
-        }
-      },
-    };
 
     // Get all revenue accounts (4xxx)
     const revenueAccountsResult = await db.query(
@@ -64,44 +53,11 @@ export async function GET(request: NextRequest) {
     );
     const expenseAccounts = expenseAccountsResult.rows;
 
-    // Get invoices for the period (revenue)
-    const invoicesResult = await db.query(
-      `SELECT id, total, currency, invoice_date, status
-       FROM invoices
-       WHERE company_id = $1
-         AND invoice_date >= $2::date
-         AND invoice_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
-    const invoices = invoicesResult.rows;
-
-    // Get bills for the period (expenses)
-    const billsResult = await db.query(
-      `SELECT id, total, currency, bill_date, status
-       FROM bills
-       WHERE company_id = $1
-         AND bill_date >= $2::date
-         AND bill_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
-    const bills = billsResult.rows;
-
-    // Get expenses for the period
-    const expensesResult = await db.query(
-      `SELECT id, amount, currency, expense_date, category
-       FROM expenses
-       WHERE company_id = $1
-         AND expense_date >= $2::date
-         AND expense_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
-    const expenses = expensesResult.rows;
-
     // Get journal entry lines for the period
     const entriesResult = await db.query(
       `SELECT jl.account_id,
-              COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
-              COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS credit
+              COALESCE(convert_currency(jl.debit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.debit) AS debit,
+              COALESCE(convert_currency(jl.credit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.credit) AS credit
        FROM journal_lines jl
        INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
        WHERE je.company_id = $1
@@ -112,7 +68,7 @@ export async function GET(request: NextRequest) {
     );
     const entries = entriesResult.rows;
 
-    // Calculate totals by account (all amounts in USD)
+    // Calculate totals by account (all amounts in company base currency)
     const accountTotals: Record<string, { debit: number; credit: number }> = {};
 
     entries?.forEach((entry: any) => {
@@ -141,31 +97,6 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Add invoice revenue (convert to USD)
-    for (const invoice of invoices || []) {
-      let amountInUSD = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || 'USD';
-
-      if (currency !== 'USD') {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
-          p_from_currency: currency,
-          p_to_currency: 'USD',
-          p_date: invoice.invoice_date,
-        });
-        amountInUSD = Number(convertedValue) || amountInUSD;
-      }
-
-      totalRevenue += amountInUSD;
-    }
-
-    if (totalRevenue > 0 && invoices && invoices.length > 0) {
-      revenue.push({
-        code: '4000',
-        name: 'Sales Revenue',
-        amount: totalRevenue - revenue.reduce((sum, item) => sum + item.amount, 0),
-      });
-    }
 
     // Build expense sections
     const costOfSales: any[] = [];
@@ -199,59 +130,6 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Add bills to operating expenses (convert to USD)
-    for (const bill of bills || []) {
-      let amountInUSD = parseFloat(bill.total) || 0;
-      const currency = bill.currency || 'USD';
-
-      if (currency !== 'USD') {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
-          p_from_currency: currency,
-          p_to_currency: 'USD',
-          p_date: bill.bill_date,
-        });
-        amountInUSD = Number(convertedValue) || amountInUSD;
-      }
-
-      totalOperatingExpenses += amountInUSD;
-    }
-
-    // Add expenses to operating expenses (convert to USD)
-    for (const expense of expenses || []) {
-      let amountInUSD = parseFloat(expense.amount) || 0;
-      const currency = expense.currency || 'USD';
-
-      if (currency !== 'USD') {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInUSD,
-          p_from_currency: currency,
-          p_to_currency: 'USD',
-          p_date: expense.expense_date,
-        });
-        amountInUSD = Number(convertedValue) || amountInUSD;
-      }
-
-      totalOperatingExpenses += amountInUSD;
-    }
-
-    if (bills && bills.length > 0) {
-      const billsTotal = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.total) || 0), 0);
-      operatingExpenses.push({
-        code: '5000',
-        name: 'Vendor Bills',
-        amount: billsTotal,
-      });
-    }
-
-    if (expenses && expenses.length > 0) {
-      const expensesTotal = expenses.reduce((sum: number, exp: any) => sum + (parseFloat(exp.amount) || 0), 0);
-      operatingExpenses.push({
-        code: '5100',
-        name: 'Operating Expenses',
-        amount: expensesTotal,
-      });
-    }
 
     const grossProfit = totalRevenue - totalCostOfSales;
     const operatingIncome = grossProfit - totalOperatingExpenses;
@@ -286,4 +164,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+
+
+
 
