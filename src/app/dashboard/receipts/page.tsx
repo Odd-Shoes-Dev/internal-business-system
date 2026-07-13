@@ -278,7 +278,7 @@ export default function ReceiptsPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6 text-right font-semibold text-green-600">
-                      {formatCurrency(receipt.amount_paid || receipt.total, receipt.currency || 'USD')}
+                      {formatCurrency(receipt.amount || receipt.amount_paid || receipt.total, receipt.currency || 'USD')}
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold bg-green-100 text-green-700">
