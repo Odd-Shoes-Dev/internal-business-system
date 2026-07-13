@@ -145,9 +145,9 @@ export default function InventoryDetailPage() {
   };
 
   const calculateGrossMargin = () => {
-    if (!item || item.cost_price === 0) return '0.0';
+    if (!item || !item.unit_price) return '0.0%';
     const margin = ((item.unit_price - item.cost_price) / item.unit_price) * 100;
-    return margin.toFixed(1);
+    return margin.toFixed(1) + '%';
   };
 
   const calculateTotalValue = () => {
