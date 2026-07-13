@@ -590,7 +590,7 @@ export default function InventoryPage() {
                       <div>
                         <span className="text-sm text-gray-500">Total Value:</span>
                         <span className="ml-2 text-lg font-bold text-blueox-primary-dark">
-                          {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0))}
+                          {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency)}
                         </span>
                       </div>
                       <Link
