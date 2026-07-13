@@ -34,8 +34,6 @@ interface PayrollPeriodWithPayslips extends PayrollPeriod {
   payslips?: (Payslip & { employee?: Employee })[];
 }
 
-// Default currency for payroll - can be overridden from company settings
-const defaultCurrency: SupportedCurrency = 'UGX';
 
 export default function PayrollPage() {
   const { company } = useCompany();
@@ -235,10 +233,11 @@ export default function PayrollPage() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const payCurrency = (company?.currency || 'USD') as SupportedCurrency;
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat('en-UG', {
         style: 'currency',
-        currency: defaultCurrency,
+        currency: payCurrency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(amount);
@@ -442,7 +441,7 @@ export default function PayrollPage() {
     }
   };
 
-  const formatCurrency = (amount: number | null, currency: SupportedCurrency = 'UGX') => {
+  const formatCurrency = (amount: number | null, currency: SupportedCurrency = (company?.currency || 'USD') as SupportedCurrency) => {
     if (!amount) return currencyFormatter(0, currency);
     return currencyFormatter(amount, currency);
   };
