@@ -175,9 +175,9 @@ export default function ProductsPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <CubeIcon className="w-7 h-7 text-blueox-primary" />
-              Products & Services
+              Price List
             </h1>
-            <p className="text-gray-500 mt-1">Manage your products and services used on invoices</p>
+            <p className="text-gray-500 mt-1">Products, services and non-inventory items you sell — added to invoices and receipts</p>
           </div>
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <PlusIcon className="w-5 h-5" />
@@ -204,8 +204,8 @@ export default function ProductsPage() {
           ) : products.length === 0 ? (
             <div className="p-12 text-center">
               <CubeIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No products yet</p>
-              <p className="text-sm text-gray-400 mt-1">Create your first product or service to use on invoices</p>
+              <p className="text-gray-500 font-medium">Price list is empty</p>
+              <p className="text-sm text-gray-400 mt-1">Add products, services, or non-inventory items to use on invoices and receipts</p>
               <button onClick={openCreate} className="btn-primary mt-4">
                 <PlusIcon className="w-4 h-4 mr-1" /> Add Product
               </button>

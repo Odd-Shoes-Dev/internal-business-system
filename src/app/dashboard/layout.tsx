@@ -85,7 +85,7 @@ const navigationGroups = [
     roles: ['admin', 'accountant', 'sales', 'operations'],
     items: [
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
-      { name: 'Products & Services', href: '/dashboard/products', icon: CubeIcon },
+      { name: 'Price List', href: '/dashboard/products', icon: CubeIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
     ]
   },
@@ -120,7 +120,7 @@ const navigationGroups = [
     module: 'inventory',
     roles: ['admin', 'accountant', 'operations'],
     items: [
-      { name: 'Inventory', href: '/dashboard/inventory', icon: CubeIcon },
+      { name: 'Stock Control', href: '/dashboard/inventory', icon: CubeIcon },
       { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
     ]
   },
