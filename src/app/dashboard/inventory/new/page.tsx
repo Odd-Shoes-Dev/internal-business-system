@@ -10,6 +10,7 @@ import {
   ArrowLeftIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
+import { CategoryCombobox } from '@/components/ui/category-combobox';
 
 interface Category {
   id: string;
@@ -225,34 +226,19 @@ export default function NewInventoryItemPage() {
                     placeholder="Category name..."
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                   />
-                  <button
-                    type="button"
-                    onClick={handleCreateCategory}
-                    disabled={savingCategory || !newCategoryName.trim()}
-                    className="px-3 py-2 bg-blueox-primary text-white rounded-lg text-sm font-medium hover:bg-blueox-primary-dark disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleCreateCategory} disabled={savingCategory || !newCategoryName.trim()} className="px-3 py-2 bg-blueox-primary text-white rounded-lg text-sm font-medium hover:bg-blueox-primary-dark disabled:opacity-50">
                     {savingCategory ? '...' : 'Save'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-                  >
+                  <button type="button" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
                     Cancel
                   </button>
                 </div>
               ) : (
-                <select
-                  name="category_id"
+                <CategoryCombobox
+                  categories={categories}
                   value={formData.category_id}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                >
-                  <option value="">Select category...</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                  onChange={(id) => setFormData((prev) => ({ ...prev, category_id: id }))}
+                />
               )}
               <button
                 type="button"

@@ -144,10 +144,17 @@ export default function InventoryDetailPage() {
     return { label: 'In Stock', class: 'badge-success', icon: ArrowTrendingUpIcon };
   };
 
+  const formatQty = (val: number | string | null | undefined) => {
+    const n = Number(val || 0);
+    return Number.isInteger(n) ? n.toString() : parseFloat(n.toFixed(2)).toString();
+  };
+
   const calculateGrossMargin = () => {
-    if (!item || !item.unit_price) return '0.0%';
-    const margin = ((item.unit_price - item.cost_price) / item.unit_price) * 100;
-    return margin.toFixed(1) + '%';
+    if (!item) return '0.0%';
+    const price = Number(item.unit_price || 0);
+    const cost = Number(item.cost_price || 0);
+    if (price === 0) return '0.0%';
+    return (((price - cost) / price) * 100).toFixed(1) + '%';
   };
 
   const calculateTotalValue = () => {
@@ -226,7 +233,7 @@ export default function InventoryDetailPage() {
           <div className="card-body">
             <p className="text-sm text-gray-500">On Hand</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {item.quantity_on_hand} {item.unit_of_measure}
+              {formatQty(item.quantity_on_hand)} {item.unit_of_measure}
             </p>
           </div>
         </div>
@@ -234,7 +241,7 @@ export default function InventoryDetailPage() {
           <div className="card-body">
             <p className="text-sm text-gray-500">Reserved</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {item.quantity_reserved} {item.unit_of_measure}
+              {formatQty(item.quantity_reserved)} {item.unit_of_measure}
             </p>
           </div>
         </div>
@@ -242,7 +249,7 @@ export default function InventoryDetailPage() {
           <div className="card-body">
             <p className="text-sm text-gray-500">Available</p>
             <p className="text-2xl font-bold text-green-600 mt-1">
-              {(item.quantity_on_hand || 0) - (item.quantity_reserved || 0)} {item.unit_of_measure}
+              {formatQty(Number(item.quantity_on_hand || 0) - Number(item.quantity_reserved || 0))} {item.unit_of_measure}
             </p>
           </div>
         </div>
@@ -344,28 +351,28 @@ export default function InventoryDetailPage() {
             <div>
               <p className="text-sm text-gray-500">Quantity on Hand</p>
               <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.quantity_on_hand} {item.unit_of_measure}
+                {formatQty(item.quantity_on_hand)} {item.unit_of_measure}
               </p>
               <p className="text-xs text-gray-500 mt-1">Current stock count</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Reserved</p>
               <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.quantity_reserved} {item.unit_of_measure}
+                {formatQty(item.quantity_reserved)} {item.unit_of_measure}
               </p>
               <p className="text-xs text-gray-500 mt-1">Allocated to orders</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Reorder Point</p>
               <p className="text-xl font-semibold text-amber-600 mt-1">
-                {item.reorder_point || 0} {item.unit_of_measure}
+                {formatQty(item.reorder_point)} {item.unit_of_measure}
               </p>
               <p className="text-xs text-gray-500 mt-1">Alert when stock falls below</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Reorder Quantity</p>
               <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.reorder_quantity || 0} {item.unit_of_measure}
+                {formatQty(item.reorder_quantity)} {item.unit_of_measure}
               </p>
               <p className="text-xs text-gray-500 mt-1">Suggested order amount</p>
             </div>

@@ -35,8 +35,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       `UPDATE product_categories
        SET name = $2,
            description = $3,
-           parent_id = $4,
-           updated_at = NOW()
+           parent_id = $4
        WHERE id = $1
        RETURNING *`,
       [id, body.name, body.description || null, body.parent_id || null]

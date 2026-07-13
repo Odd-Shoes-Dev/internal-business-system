@@ -14,7 +14,18 @@ import {
   ArrowTrendingDownIcon,
   SparklesIcon,
   Squares2X2Icon,
+  TagIcon,
+  PencilIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+}
 import { ShimmerSkeleton, CardSkeleton, StatsCardSkeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/card';
 import type { Product } from '@/types/database';
@@ -35,15 +46,26 @@ export default function InventoryPage() {
     lowStock: 0,
     outOfStock: 0,
   });
+  const [activeTab, setActiveTab] = useState<'stock' | 'categories'>('stock');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
   const pageSize = 20;
 
   useEffect(() => {
-    if (!company?.id) {
-      return;
-    }
+    if (!company?.id) return;
     loadInventory();
     loadStats();
   }, [searchQuery, stockFilter, currentPage, company?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'categories' && company?.id) {
+      loadCategories();
+    }
+  }, [activeTab, company?.id]);
 
   const loadInventory = async () => {
     try {
@@ -109,6 +131,80 @@ export default function InventoryPage() {
     }
   };
 
+  const loadCategories = async () => {
+    if (!company?.id) return;
+    setCategoriesLoading(true);
+    try {
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, { credentials: 'include' });
+      const result = await response.json().catch(() => []);
+      setCategories(Array.isArray(result) ? result : []);
+    } catch (e) {
+      console.error('Failed to load categories:', e);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !company?.id) return;
+    setSavingCategory(true);
+    try {
+      const response = await fetch(`/api/product-categories?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setCategories((prev) => [...prev, result]);
+      setNewCategoryName('');
+      setAddingCategory(false);
+    } catch (e) {
+      console.error('Failed to add category:', e);
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !editingCategory.name.trim() || !company?.id) return;
+    setSavingCategory(true);
+    try {
+      const response = await fetch(`/api/product-categories/${editingCategory.id}?company_id=${company.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: editingCategory.name.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setCategories((prev) => prev.map((c) => (c.id === editingCategory.id ? result : c)));
+      setEditingCategory(null);
+    } catch (e) {
+      console.error('Failed to update category:', e);
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!company?.id || !confirm('Delete this category? Products in this category will be uncategorized.')) return;
+    try {
+      const response = await fetch(`/api/product-categories/${id}?company_id=${company.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error);
+      }
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+    } catch (e) {
+      console.error('Failed to delete category:', e);
+    }
+  };
+
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return currencyFormatter(amount, currency as any);
   };
@@ -161,6 +257,114 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('stock')}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-semibold text-sm transition-all duration-200 ${activeTab === 'stock' ? 'bg-blueox-primary text-black shadow-md' : 'bg-white/80 backdrop-blur-xl border border-blueox-primary/20 text-blueox-primary hover:border-blueox-primary/40'}`}
+        >
+          <CubeIcon className="w-4 h-4" />
+          Stock
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-semibold text-sm transition-all duration-200 ${activeTab === 'categories' ? 'bg-blueox-primary text-black shadow-md' : 'bg-white/80 backdrop-blur-xl border border-blueox-primary/20 text-blueox-primary hover:border-blueox-primary/40'}`}
+        >
+          <TagIcon className="w-4 h-4" />
+          Categories
+        </button>
+      </div>
+
+      {activeTab === 'categories' && (
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <TagIcon className="w-5 h-5 text-blueox-primary" />
+              <h3 className="text-lg font-bold text-blueox-primary-dark">Product Categories</h3>
+            </div>
+            <button
+              onClick={() => { setAddingCategory(true); setNewCategoryName(''); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark text-black rounded-2xl text-sm font-semibold hover:shadow-lg transition-all"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Category
+            </button>
+          </div>
+
+          {addingCategory && (
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); } if (e.key === 'Escape') { setAddingCategory(false); } }}
+                autoFocus
+                placeholder="Category name..."
+                className="flex-1 rounded-xl border border-blueox-primary/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+              />
+              <button onClick={handleAddCategory} disabled={savingCategory || !newCategoryName.trim()} className="inline-flex items-center gap-1 px-4 py-2 bg-blueox-primary text-black rounded-xl text-sm font-semibold disabled:opacity-50">
+                <CheckIcon className="w-4 h-4" />
+                {savingCategory ? 'Saving...' : 'Save'}
+              </button>
+              <button onClick={() => setAddingCategory(false)} className="inline-flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+                <XMarkIcon className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {categoriesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <ShimmerSkeleton key={i} className="h-12 w-full rounded-xl" />)}
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <TagIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">No categories yet</p>
+              <p className="text-sm mt-1">Create your first category to organise your products</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 hover:border-blueox-primary/20 hover:bg-blue-50/30 transition-all group">
+                  {editingCategory?.id === cat.id ? (
+                    <div className="flex items-center gap-2 flex-1 mr-4">
+                      <input
+                        type="text"
+                        value={editingCategory.name}
+                        onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleUpdateCategory(); } if (e.key === 'Escape') setEditingCategory(null); }}
+                        autoFocus
+                        className="flex-1 rounded-lg border border-blueox-primary/30 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                      />
+                      <button onClick={handleUpdateCategory} disabled={savingCategory} className="p-1.5 bg-blueox-primary text-black rounded-lg">
+                        <CheckIcon className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setEditingCategory(null)} className="p-1.5 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50">
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="font-medium text-gray-800">{cat.name}</span>
+                  )}
+                  {editingCategory?.id !== cat.id && (
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-gray-400 hover:text-blueox-primary rounded-lg hover:bg-blue-50 transition-colors">
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'stock' && <>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
         {statsLoading ? (
@@ -419,6 +623,7 @@ export default function InventoryPage() {
           )}
         </>
       )}
+      </>}
     </div>
   );
 }
