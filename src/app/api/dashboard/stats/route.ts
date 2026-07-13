@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       ),
     ]);
 
-    const [bankTransactions, currentMonthBankTx, prevMonthBankTx] = await Promise.all([
+    const [bankTransactions, currentMonthBankTx, prevMonthBankTx, exchangeRateRows] = await Promise.all([
       safeBankQuery<{ amount: number; transaction_type: string; transaction_date: string; currency: string | null }>(
         `SELECT bt.amount, bt.transaction_type, bt.transaction_date, ba.currency FROM bank_transactions bt JOIN bank_accounts ba ON ba.id = bt.bank_account_id WHERE ba.company_id = $1`,
         [companyId]
@@ -119,17 +120,17 @@ export async function GET(request: NextRequest) {
         `SELECT bt.amount, bt.transaction_date, ba.currency FROM bank_transactions bt JOIN bank_accounts ba ON ba.id = bt.bank_account_id WHERE ba.company_id = $1 AND bt.transaction_date >= $2 AND bt.transaction_date <= $3`,
         [companyId, prevMonthStart, prevMonthEnd]
       ),
+      db.query<{ from_currency: string; to_currency: string; rate: number; effective_date: string }>(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
     ]);
 
-    // Convert any amount to the company base currency
-    const convertToBase = async (amount: number, currency: string, date: string): Promise<number> => {
+    // Build JS-side rates map (no DB convert_currency() function needed)
+    const ratesMap = buildRatesMap(exchangeRateRows.rows, baseCurrency);
+    const convertToBase = (amount: number, currency: string): number => {
       const safeAmount = parseFloat(String(amount)) || 0;
       if (!currency || currency === baseCurrency) return safeAmount;
-      const result = await db.query<{ converted: number | null }>(
-        'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-        [safeAmount, currency, baseCurrency, date]
-      );
-      return parseFloat(String(result.rows[0]?.converted)) || safeAmount;
+      return convertCurrency(safeAmount, currency, baseCurrency, ratesMap);
     };
 
     let totalRevenue = 0;
@@ -143,8 +144,8 @@ export async function GET(request: NextRequest) {
         const invoiceTotal = parseFloat(String(invoice.total)) || 0;
         const invoicePaid = parseFloat(String(invoice.amount_paid)) || 0;
         const cur = invoice.currency || baseCurrency;
-        const amountInBase = await convertToBase(invoiceTotal, cur, invoice.invoice_date);
-        const remainingInBase = await convertToBase(invoiceTotal - invoicePaid, cur, invoice.invoice_date);
+        const amountInBase = convertToBase(invoiceTotal, cur);
+        const remainingInBase = convertToBase(invoiceTotal - invoicePaid, cur);
         if (invoice.status === 'paid') {
           totalRevenue += amountInBase;
         }
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest) {
         const billTotal = parseFloat(String(bill.total)) || 0;
         const billPaid = parseFloat(String(bill.amount_paid)) || 0;
         const cur = bill.currency || baseCurrency;
-        const remainingInBase = await convertToBase(billTotal - billPaid, cur, bill.bill_date);
+        const remainingInBase = convertToBase(billTotal - billPaid, cur);
         if (bill.status !== 'paid' && bill.status !== 'void') {
           accountsPayable += remainingInBase;
         }
@@ -170,14 +171,14 @@ export async function GET(request: NextRequest) {
       for (const expense of expenses.rows) {
         const expenseTotal = parseFloat(String(expense.total)) || 0;
         const cur = expense.currency || baseCurrency;
-        totalExpenses += await convertToBase(expenseTotal, cur, expense.expense_date);
+        totalExpenses += convertToBase(expenseTotal, cur);
       }
     }
 
     if (bankTransactions.rows) {
       for (const transaction of bankTransactions.rows) {
         const cur = transaction.currency || baseCurrency;
-        const abs = await convertToBase(Math.abs(transaction.amount), cur, transaction.transaction_date);
+        const abs = convertToBase(Math.abs(transaction.amount), cur);
         cashBalance += transaction.amount < 0 ? -abs : abs;
       }
     }
@@ -193,7 +194,7 @@ export async function GET(request: NextRequest) {
           const itemValue = (item.quantity_on_hand || 0) * (item.cost_price || 0);
           if (itemValue > 0) {
             const cur = item.currency || baseCurrency;
-            inventoryValue += await convertToBase(itemValue, cur, new Date().toISOString().split('T')[0]);
+            inventoryValue += convertToBase(itemValue, cur);
           }
         }
       }
@@ -201,44 +202,22 @@ export async function GET(request: NextRequest) {
 
     const netIncome = totalRevenue - totalExpenses;
 
-    const sumInvoicesBase = async (rows: { total: number; currency: string; invoice_date: string }[]) => {
-      let total = 0;
-      for (const row of rows) {
-        total += await convertToBase(row.total, row.currency || baseCurrency, row.invoice_date);
-      }
-      return total;
-    };
-
-    const sumExpensesBase = async (rows: { total: number; currency: string; expense_date: string }[]) => {
-      let total = 0;
-      for (const row of rows) {
-        total += await convertToBase(row.total, row.currency || baseCurrency, row.expense_date);
-      }
-      return total;
-    };
-
-    const sumBankTxBase = async (rows: { amount: number; transaction_date: string; currency: string | null }[]) => {
-      let total = 0;
-      for (const row of rows) {
-        const cur = row.currency || baseCurrency;
-        const abs = await convertToBase(Math.abs(row.amount), cur, row.transaction_date);
-        total += row.amount < 0 ? -abs : abs;
-      }
-      return total;
-    };
-
-    const [
-      currentRevenue, prevRevenue,
-      currentExpensesTotal, prevExpensesTotal,
-      currentCashNet, prevCashNet,
-    ] = await Promise.all([
-      sumInvoicesBase(currentMonthInvoices.rows || []),
-      sumInvoicesBase(prevMonthInvoices.rows || []),
-      sumExpensesBase(currentMonthExpenses.rows || []),
-      sumExpensesBase(prevMonthExpenses.rows || []),
-      sumBankTxBase(currentMonthBankTx.rows || []),
-      sumBankTxBase(prevMonthBankTx.rows || []),
-    ]);
+    const currentRevenue = (currentMonthInvoices.rows || []).reduce((sum, r) =>
+      sum + convertToBase(r.total, r.currency || baseCurrency), 0);
+    const prevRevenue = (prevMonthInvoices.rows || []).reduce((sum, r) =>
+      sum + convertToBase(r.total, r.currency || baseCurrency), 0);
+    const currentExpensesTotal = (currentMonthExpenses.rows || []).reduce((sum, r) =>
+      sum + convertToBase(r.total, r.currency || baseCurrency), 0);
+    const prevExpensesTotal = (prevMonthExpenses.rows || []).reduce((sum, r) =>
+      sum + convertToBase(r.total, r.currency || baseCurrency), 0);
+    const currentCashNet = (currentMonthBankTx.rows || []).reduce((sum, r) => {
+      const abs = convertToBase(Math.abs(r.amount), r.currency || baseCurrency);
+      return sum + (r.amount < 0 ? -abs : abs);
+    }, 0);
+    const prevCashNet = (prevMonthBankTx.rows || []).reduce((sum, r) => {
+      const abs = convertToBase(Math.abs(r.amount), r.currency || baseCurrency);
+      return sum + (r.amount < 0 ? -abs : abs);
+    }, 0);
 
     const currentNetIncome = currentRevenue - currentExpensesTotal;
     const prevNetIncome = prevRevenue - prevExpensesTotal;
