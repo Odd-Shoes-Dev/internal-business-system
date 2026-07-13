@@ -610,7 +610,7 @@ export default function InvoiceDetailPage() {
     const customerName = invoice.customer?.name || 'Customer';
     const invoiceNumber = invoice.invoice_number;
     const dueDate = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '';
-    const total = invoice.total ?? invoice.total_amount ?? 0;
+    const total = invoice.total_amount ?? 0;
     const currency = invoice.currency || 'USD';
     const companyName = company?.name || '';
 
