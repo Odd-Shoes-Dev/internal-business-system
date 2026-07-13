@@ -18,6 +18,12 @@ interface CompanyInfo {
   country?: string;
 }
 
+interface PDFAttachment {
+  content: Buffer;
+  filename: string;
+  type: string;
+}
+
 interface SendInvoiceEmailParams {
   to: string;
   customerName: string;
@@ -26,7 +32,9 @@ interface SendInvoiceEmailParams {
   dueDate: string;
   totalAmount: number;
   balanceDue: number;
+  currency?: string;
   paymentLink: string;
+  pdfAttachment?: PDFAttachment;
   company: CompanyInfo;
 }
 
@@ -39,14 +47,16 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     dueDate,
     totalAmount,
     balanceDue,
+    currency = 'USD',
     paymentLink,
+    pdfAttachment,
     company,
   } = params;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: currency,
     }).format(amount);
   };
 
@@ -81,7 +91,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
             </p>
             
             <p style="font-size: 16px; color: #666; margin-bottom: 30px;">
-              Please find attached your invoice. Here's a summary:
+              ${pdfAttachment ? 'Please find your invoice attached as a PDF. Here\'s a summary:' : 'Here\'s a summary of your invoice:'}
             </p>
             
             <!-- Invoice Summary -->
@@ -163,6 +173,14 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       to: [to],
       subject: `Invoice ${invoiceNumber} from ${company.name}`,
       html,
+      ...(pdfAttachment && {
+        attachments: [
+          {
+            content: pdfAttachment.content,
+            filename: pdfAttachment.filename,
+          },
+        ],
+      }),
     });
 
     if (error) {
@@ -185,6 +203,7 @@ interface SendPaymentReceiptParams {
   paymentAmount: number;
   paymentMethod: string;
   remainingBalance: number;
+  currency?: string;
   company: CompanyInfo;
 }
 
@@ -197,13 +216,14 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
     paymentAmount,
     paymentMethod,
     remainingBalance,
+    currency = 'USD',
     company,
   } = params;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: currency,
     }).format(amount);
   };
 
