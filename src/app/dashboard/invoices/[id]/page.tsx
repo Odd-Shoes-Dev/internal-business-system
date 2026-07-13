@@ -58,6 +58,10 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  discount_amount: number | null;
+  discount_percent: number | null;
+  tax_rate: number | null;
+  tax_amount: number | null;
   inventory_item_id: string | null;
 }
 
