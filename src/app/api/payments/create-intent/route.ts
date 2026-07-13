@@ -17,8 +17,7 @@ export async function POST(request: NextRequest) {
       `SELECT i.*,
               c.id AS customer_id_join,
               c.name AS customer_name,
-              c.email AS customer_email,
-              c.stripe_customer_id AS customer_stripe_customer_id
+              c.email AS customer_email
        FROM invoices i
        LEFT JOIN customers c ON c.id = i.customer_id
        WHERE i.id = $1
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
       const { clientSecret, paymentIntentId } = await createPaymentIntent({
         amount: amountDue,
         currency: 'usd',
-        customerId: invoice.customer_stripe_customer_id,
+        customerId: undefined,
         invoiceId: invoice.id,
         description: `Payment for Invoice ${invoice.invoice_number}`,
         metadata: {

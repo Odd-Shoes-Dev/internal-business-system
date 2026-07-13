@@ -149,20 +149,19 @@ async function getExpenseData(db: any, companyId: string, startDate: string, end
 
 async function getCashData(db: any, companyId: string) {
   const accountsResult = await db.query(
-    `SELECT id, name, current_balance
-     FROM accounts
-     WHERE company_id = $1
-       AND is_active = true
-       AND LOWER(COALESCE(account_subtype, '')) IN ('cash', 'bank')
-     ORDER BY name ASC`,
+    `SELECT ba.id, ba.name, ba.current_balance
+     FROM bank_accounts ba
+     WHERE ba.company_id = $1
+       AND ba.is_active = true
+     ORDER BY ba.name ASC`,
     [companyId]
   );
   const cashAccounts = accountsResult.rows as any[];
 
   const balance = cashAccounts.reduce((sum: number, account: any) => sum + Number(account.current_balance || 0), 0);
-  
-  return { 
-    balance, 
+
+  return {
+    balance,
     accounts: cashAccounts.map((acc: any) => ({
       id: acc.id,
       name: acc.name,

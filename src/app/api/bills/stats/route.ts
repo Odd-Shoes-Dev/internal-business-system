@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser } from '@/lib/provider/route-guards';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
@@ -20,6 +21,21 @@ export async function GET() {
     }
 
     const companyId = userCompany.rows[0].company_id;
+
+    // Get company base currency
+    const companyResult = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1 LIMIT 1',
+      [companyId]
+    );
+    const baseCurrency = companyResult.rows[0]?.currency || 'USD';
+
+    // Fetch exchange rates once
+    const ratesResult = await db.query<{ from_currency: string; to_currency: string; rate: number }>(
+      `SELECT DISTINCT ON (from_currency, to_currency) from_currency, to_currency, rate
+       FROM exchange_rates
+       ORDER BY from_currency, to_currency, effective_date DESC`
+    );
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     // Fetch all bills with their currencies
     const bills = await db.query<{
@@ -42,6 +58,7 @@ export async function GET() {
         dueThisWeek: 0,
         overdue: 0,
         paidThisMonth: 0,
+        currency: baseCurrency,
       });
     }
 
@@ -50,51 +67,38 @@ export async function GET() {
     weekFromNow.setDate(weekFromNow.getDate() + 7);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Convert all amounts to USD
     let totalUnpaid = 0;
     let dueThisWeek = 0;
     let overdue = 0;
     let paidThisMonth = 0;
 
     for (const bill of bills.rows) {
-      const remaining = bill.total - (bill.amount_paid || 0);
+      const billCurrency = bill.currency || baseCurrency;
+      const total = Number(bill.total || 0);
+      const amountPaid = Number(bill.amount_paid || 0);
+      const remaining = total - amountPaid;
+
+      // Convert to base currency using rates map
+      const totalInBase = convertCurrency(total, billCurrency, baseCurrency, ratesMap);
+      const remainingInBase = convertCurrency(remaining, billCurrency, baseCurrency, ratesMap);
+
       const dueDate = new Date(bill.due_date);
       const billDate = new Date(bill.bill_date);
 
-      // Convert to USD
-      let amountInUSD = bill.total;
-      let remainingInUSD = remaining;
-
-      if (bill.currency !== 'USD') {
-        const convertedTotal = await db.query<{ converted: number | null }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [bill.total, bill.currency, 'USD', bill.bill_date]
-        );
-
-        const convertedRemaining = await db.query<{ converted: number | null }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [remaining, bill.currency, 'USD', bill.bill_date]
-        );
-
-        amountInUSD = convertedTotal.rows[0]?.converted || bill.total;
-        remainingInUSD = convertedRemaining.rows[0]?.converted || remaining;
-      }
-
-      // Calculate totals in USD
       if (bill.status !== 'paid' && bill.status !== 'void') {
-        totalUnpaid += remainingInUSD;
+        totalUnpaid += remainingInBase;
 
         if (dueDate >= now && dueDate <= weekFromNow) {
-          dueThisWeek += remainingInUSD;
+          dueThisWeek += remainingInBase;
         }
 
         if (dueDate < now) {
-          overdue += remainingInUSD;
+          overdue += remainingInBase;
         }
       }
 
       if (bill.status === 'paid' && billDate >= startOfMonth) {
-        paidThisMonth += amountInUSD;
+        paidThisMonth += totalInBase;
       }
     }
 
@@ -103,6 +107,7 @@ export async function GET() {
       dueThisWeek,
       overdue,
       paidThisMonth,
+      currency: baseCurrency,
     });
   } catch (error: any) {
     console.error('Failed to calculate bill stats:', error);

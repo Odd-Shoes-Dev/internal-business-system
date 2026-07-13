@@ -55,10 +55,9 @@ export async function POST(request: NextRequest) {
               `UPDATE invoices
                SET amount_paid = $2,
                    status = $3,
-                   paid_date = $4,
                    updated_at = NOW()
                WHERE id = $1`,
-              [invoiceId, newAmountPaid, newStatus, newStatus === 'paid' ? new Date().toISOString() : null]
+              [invoiceId, newAmountPaid, newStatus]
             );
 
             const paymentNumberResult = await db.query('SELECT generate_payment_number() AS payment_number');
@@ -261,10 +260,9 @@ export async function POST(request: NextRequest) {
               `UPDATE invoices
                SET amount_paid = $2,
                    status = $3,
-                   paid_date = $4,
                    updated_at = NOW()
                WHERE id = $1`,
-              [invoiceId, newAmountPaid, newStatus, newStatus === 'paid' ? new Date().toISOString() : null]
+              [invoiceId, newAmountPaid, newStatus]
             );
 
             const paymentNumberResult = await db.query('SELECT generate_payment_number() AS payment_number');
