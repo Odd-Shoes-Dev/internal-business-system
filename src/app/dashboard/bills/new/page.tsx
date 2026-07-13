@@ -126,8 +126,9 @@ export default function NewBillPage() {
   };
 
   const fetchProducts = async () => {
+    if (!company?.id) return;
     try {
-      const response = await fetch('/api/inventory?active=true');
+      const response = await fetch(`/api/inventory?company_id=${company.id}&active=true&limit=1000`, { credentials: 'include' });
       const result = await response.json();
       setProducts(result.data || []);
     } catch (error) {
