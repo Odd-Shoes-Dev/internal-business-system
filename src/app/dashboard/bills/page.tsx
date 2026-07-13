@@ -34,6 +34,7 @@ export default function BillsPage() {
     dueThisWeek: 0,
     overdue: 0,
     paidThisMonth: 0,
+    currency: 'USD',
   });
   const pageSize = 20;
 
@@ -173,25 +174,25 @@ export default function BillsPage() {
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Total Unpaid</p>
           <p className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">
-            {formatCurrency(stats.totalUnpaid)}
+            {formatCurrency(stats.totalUnpaid, stats.currency)}
           </p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Due This Week</p>
           <p className="text-2xl lg:text-3xl font-bold text-amber-600">
-            {formatCurrency(stats.dueThisWeek)}
+            {formatCurrency(stats.dueThisWeek, stats.currency)}
           </p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-red-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Overdue</p>
           <p className="text-2xl lg:text-3xl font-bold text-red-600">
-            {formatCurrency(stats.overdue)}
+            {formatCurrency(stats.overdue, stats.currency)}
           </p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Paid This Month</p>
           <p className="text-2xl lg:text-3xl font-bold text-green-600">
-            {formatCurrency(stats.paidThisMonth)}
+            {formatCurrency(stats.paidThisMonth, stats.currency)}
           </p>
         </div>
       </div>

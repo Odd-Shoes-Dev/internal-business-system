@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +19,19 @@ export async function GET(request: NextRequest) {
 
     const accessError = await requireCompanyAccess(user.id, companyId);
     if (accessError) return accessError;
+
+    const companyResult = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1 LIMIT 1',
+      [companyId]
+    );
+    const baseCurrency = companyResult.rows[0]?.currency || 'USD';
+
+    const ratesResult = await db.query<{ from_currency: string; to_currency: string; rate: number }>(
+      `SELECT DISTINCT ON (from_currency, to_currency) from_currency, to_currency, rate
+       FROM exchange_rates
+       ORDER BY from_currency, to_currency, effective_date DESC`
+    );
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     const where: string[] = ['company_id = $1'];
     const params: any[] = [companyId];
@@ -40,11 +54,10 @@ export async function GET(request: NextRequest) {
     const transactions = await db.query<{
       amount: number | string;
       currency: string;
-      transaction_date: string;
       transaction_type: string;
       is_reconciled: boolean;
     }>(
-      `SELECT amount, currency, transaction_date, transaction_type, is_reconciled
+      `SELECT amount, currency, transaction_type, is_reconciled
        FROM bank_transactions
        WHERE ${where.join(' AND ')}`,
       params
@@ -56,25 +69,15 @@ export async function GET(request: NextRequest) {
 
     for (const tx of transactions.rows || []) {
       const amount = Math.abs(Number(tx.amount) || 0);
-      let amountUSD = amount;
+      const txCurrency = tx.currency || baseCurrency;
+      const amountInBase = convertCurrency(amount, txCurrency, baseCurrency, ratesMap);
 
-      // Convert to USD if not already
-      if (tx.currency && tx.currency !== 'USD') {
-        const converted = await db.query<{ converted: number | null }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [amount, tx.currency, 'USD', tx.transaction_date]
-        );
-        amountUSD = converted.rows[0]?.converted || amount;
+      if (tx.transaction_type === 'deposit' || tx.transaction_type === 'transfer_in') {
+        totalDeposits += amountInBase;
+      } else if (tx.transaction_type === 'withdrawal' || tx.transaction_type === 'transfer_out') {
+        totalWithdrawals += amountInBase;
       }
 
-      // Sum deposits and withdrawals
-      if (tx.transaction_type === 'deposit') {
-        totalDeposits += amountUSD;
-      } else if (tx.transaction_type === 'withdrawal') {
-        totalWithdrawals += amountUSD;
-      }
-
-      // Count unreconciled
       if (!tx.is_reconciled) {
         unreconciledCount++;
       }
@@ -84,6 +87,7 @@ export async function GET(request: NextRequest) {
       totalDeposits,
       totalWithdrawals,
       unreconciledCount,
+      currency: baseCurrency,
     });
   } catch (error) {
     console.error('Error calculating bank transactions stats:', error);

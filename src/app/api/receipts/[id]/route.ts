@@ -176,14 +176,15 @@ export async function DELETE(request: NextRequest, context: any) {
         if (entryNumberValue && originalLines.rows.length > 0) {
           const reversingEntry = await tx.query<{ id: string }>(
             `INSERT INTO journal_entries (
-               entry_number, entry_date, description, source_module, source_document_id,
+               company_id, entry_number, entry_date, description, source_module, source_document_id,
                status, created_by, posted_by, posted_at
              ) VALUES (
-               $1, $2, $3, 'receipts', $4,
-               'posted', $5, $5, $6
+               $1, $2, $3, $4, 'receipts', $5,
+               'posted', $6, $6, $7
              )
              RETURNING id`,
             [
+              payment.company_id,
               entryNumberValue,
               new Date().toISOString().split('T')[0],
               `VOID - Reverse payment ${payment.payment_number}`,
@@ -198,13 +199,14 @@ export async function DELETE(request: NextRequest, context: any) {
             for (const [index, line] of originalLines.rows.entries()) {
               await tx.query(
                 `INSERT INTO journal_lines (
-                   journal_entry_id, line_number, account_id, description,
+                   company_id, journal_entry_id, line_number, account_id, description,
                    debit, credit, base_debit, base_credit
                  ) VALUES (
-                   $1, $2, $3, $4,
-                   $5, $6, $7, $8
+                   $1, $2, $3, $4, $5,
+                   $6, $7, $8, $9
                  )`,
                 [
+                  payment.company_id,
                   reversingEntryId,
                   index + 1,
                   line.account_id,

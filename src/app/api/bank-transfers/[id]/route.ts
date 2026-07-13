@@ -15,10 +15,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       `SELECT bt.*,
               fa.id AS from_account_ref_id,
               fa.name AS from_account_name,
-              fa.account_number AS from_account_number,
+              NULL AS from_account_number,
               ta.id AS to_account_ref_id,
               ta.name AS to_account_name,
-              ta.account_number AS to_account_number,
+              NULL AS to_account_number,
               up.id AS approved_by_user_id,
               up.full_name AS approved_by_user_full_name,
               COALESCE(fa.company_id, ta.company_id) AS company_id

@@ -97,11 +97,12 @@ export async function POST(request: NextRequest) {
 
       const journalEntryResult = await tx.query(
         `INSERT INTO journal_entries (
-           entry_number, entry_date, description, reference, status,
+           company_id, entry_number, entry_date, description, reference, status,
            source_module, source_document_id, created_by, posted_by, posted_at
-         ) VALUES ($1, $2::date, $3, $4, 'posted', 'bank', $5, $6, $6, NOW())
+         ) VALUES ($1, $2, $3::date, $4, $5, 'posted', 'bank', $6, $7, $7, NOW())
          RETURNING *`,
         [
+          fromAccount.company_id,
           entryNumber,
           body.transfer_date,
           `Bank transfer: ${fromAccount.name} -> ${toAccount.name}`,
@@ -115,11 +116,12 @@ export async function POST(request: NextRequest) {
 
       await tx.query(
         `INSERT INTO journal_lines (
-           journal_entry_id, line_number, account_id, debit, credit, description
+           company_id, journal_entry_id, line_number, account_id, debit, credit, description
          ) VALUES
-           ($1, 1, $2, $3, 0, $4),
-           ($1, 2, $5, 0, $3, $6)`,
+           ($1, $2, 1, $3, $4, 0, $5),
+           ($1, $2, 2, $6, 0, $4, $7)`,
         [
+          fromAccount.company_id,
           journalEntry.id,
           toAccount.gl_account_id,
           transferAmount,
@@ -129,8 +131,34 @@ export async function POST(request: NextRequest) {
         ]
       );
 
+      const fromTx = txResult.rows.find((r: any) => r.transaction_type === 'transfer_out');
+      const toTx = txResult.rows.find((r: any) => r.transaction_type === 'transfer_in');
+
+      const transferResult = await tx.query(
+        `INSERT INTO bank_transfers (
+           company_id, from_account_id, to_account_id, amount, transfer_date,
+           description, reference_number, notes, status, journal_entry_id,
+           from_transaction_id, to_transaction_id, created_by
+         ) VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, 'completed', $9, $10, $11, $12)
+         RETURNING *`,
+        [
+          fromAccount.company_id,
+          body.from_account_id,
+          body.to_account_id,
+          transferAmount,
+          body.transfer_date,
+          body.description || `Bank transfer: ${fromAccount.name} -> ${toAccount.name}`,
+          referenceNumber,
+          body.notes || null,
+          journalEntry.id,
+          fromTx?.id || null,
+          toTx?.id || null,
+          user.id,
+        ]
+      );
+
       return {
-        data: txResult.rows,
+        data: transferResult.rows[0],
         journal_entry: journalEntry,
       };
     });
