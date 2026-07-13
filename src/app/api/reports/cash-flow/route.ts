@@ -108,82 +108,33 @@ export async function GET(request: NextRequest) {
       netChangeInCash += changeInBase;
     }
 
-    const invoicesResult = await db.query(
-      `SELECT total, currency, invoice_date
-       FROM invoices
-       WHERE company_id = $1
-         AND invoice_date >= $2::date
-         AND invoice_date <= $3::date`,
+    // Net income from journal entries (same source as P&L — avoids double-counting)
+    const incomeEntriesResult = await db.query(
+      `SELECT a.code,
+              COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
+              COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS credit
+       FROM journal_lines jl
+       INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+       INNER JOIN accounts a ON a.id = jl.account_id
+       WHERE je.company_id = $1
+         AND je.status = 'posted'
+         AND je.entry_date >= $2::date
+         AND je.entry_date <= $3::date
+         AND a.company_id = $1
+         AND a.code >= '4000'`,
       [companyId, startDate, endDate]
     );
-    const invoices = invoicesResult.rows;
 
     let totalRevenue = 0;
-    for (const invoice of invoices) {
-      let amountInBase = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || baseCurrency;
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInBase,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: invoice.invoice_date,
-        });
-        amountInBase = Number(convertedValue) || amountInBase;
-      }
-      totalRevenue += amountInBase;
-    }
-
-    const billsResult = await db.query(
-      `SELECT total, currency, bill_date
-       FROM bills
-       WHERE company_id = $1
-         AND bill_date >= $2::date
-         AND bill_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
-    const bills = billsResult.rows;
-
-    const expensesResult = await db.query(
-      `SELECT amount, currency, expense_date
-       FROM expenses
-       WHERE company_id = $1
-         AND expense_date >= $2::date
-         AND expense_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
-    const expenses = expensesResult.rows;
-
     let totalExpenses = 0;
-    for (const bill of bills) {
-      let amountInBase = parseFloat(bill.total) || 0;
-      const currency = bill.currency || baseCurrency;
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInBase,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: bill.bill_date,
-        });
-        amountInBase = Number(convertedValue) || amountInBase;
+    incomeEntriesResult.rows.forEach((entry: any) => {
+      const code = entry.code;
+      if (code >= '4000' && code < '5000') {
+        totalRevenue += (parseFloat(entry.credit) || 0) - (parseFloat(entry.debit) || 0);
+      } else {
+        totalExpenses += (parseFloat(entry.debit) || 0) - (parseFloat(entry.credit) || 0);
       }
-      totalExpenses += amountInBase;
-    }
-
-    for (const expense of expenses) {
-      let amountInBase = parseFloat(expense.amount) || 0;
-      const currency = expense.currency || baseCurrency;
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: amountInBase,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: expense.expense_date,
-        });
-        amountInBase = Number(convertedValue) || amountInBase;
-      }
-      totalExpenses += amountInBase;
-    }
+    });
 
     const netIncome = totalRevenue - totalExpenses;
 

@@ -28,19 +28,6 @@ export async function GET(request: NextRequest) {
 
     const asOfDate = searchParams.get('asOfDate') || searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
 
-    const currencyRpc = {
-      rpc: async (fn: string, args: any) => {
-        if (fn !== 'convert_currency') {
-          return { data: null, error: new Error('Unsupported RPC function') };
-        }
-        const result = await db.query<{ value: number }>(
-          `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-          [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-        );
-        return { data: result.rows[0]?.value ?? null, error: null };
-      },
-    };
-
     const accountsResult = await db.query(
       `SELECT id, code, name, account_type, normal_balance
        FROM accounts
@@ -50,6 +37,7 @@ export async function GET(request: NextRequest) {
     );
     const accounts = accountsResult.rows;
 
+    // All posted journal lines up to the as-of date
     const entriesResult = await db.query(
       `SELECT jl.account_id,
               COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
@@ -63,62 +51,14 @@ export async function GET(request: NextRequest) {
     );
     const entries = entriesResult.rows;
 
-    // All amounts are in USD (base currency)
+    // Compute net debit balance per account from journal lines
     const accountBalances: Record<string, number> = {};
-
     entries.forEach((entry: any) => {
       if (!accountBalances[entry.account_id]) {
         accountBalances[entry.account_id] = 0;
       }
       accountBalances[entry.account_id] += (parseFloat(entry.debit) || 0) - (parseFloat(entry.credit) || 0);
     });
-
-    const assetsResult = await db.query(
-      `SELECT id, name, purchase_price, accumulated_depreciation, status, purchase_date, currency
-       FROM fixed_assets
-       WHERE company_id = $1
-         AND purchase_date <= $2::date
-         AND status IN ('active', 'fully_depreciated')`,
-      [companyId, asOfDate]
-    );
-    const assets = assetsResult.rows;
-
-    const inventoryResult = await db.query(
-      `SELECT id, name, quantity_on_hand, cost, currency
-       FROM products
-       WHERE company_id = $1
-         AND quantity_on_hand > 0`,
-      [companyId]
-    );
-    const inventory = inventoryResult.rows;
-
-    const bankAccountsResult = await db.query(
-      `SELECT id, name, currency, created_at
-       FROM bank_accounts
-       WHERE company_id = $1`,
-      [companyId]
-    );
-    const bankAccounts = bankAccountsResult.rows;
-
-    const invoicesResult = await db.query(
-      `SELECT id, total, currency, invoice_date
-       FROM invoices
-       WHERE company_id = $1
-         AND invoice_date <= $2::date
-         AND status <> 'paid'`,
-      [companyId, asOfDate]
-    );
-    const invoices = invoicesResult.rows;
-
-    const billsResult = await db.query(
-      `SELECT id, total, currency, bill_date
-       FROM bills
-       WHERE company_id = $1
-         AND bill_date <= $2::date
-         AND status <> 'paid'`,
-      [companyId, asOfDate]
-    );
-    const bills = billsResult.rows;
 
     const currentAssets: any[] = [];
     const fixedAssets: any[] = [];
@@ -134,9 +74,11 @@ export async function GET(request: NextRequest) {
     let totalLongTermLiabilities = 0;
     let totalEquity = 0;
 
+    // Classify each account balance into balance sheet sections
     accounts.forEach((account: any) => {
       let balance = accountBalances[account.id] || 0;
 
+      // Credit-normal accounts (liabilities, equity, revenue) flip sign to get natural balance
       if (account.normal_balance === 'credit') {
         balance = -balance;
       }
@@ -176,153 +118,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    for (const asset of assets) {
-      const bookValue = (parseFloat(asset.purchase_price) || 0) - (parseFloat(asset.accumulated_depreciation) || 0);
-      if (bookValue <= 0) continue;
-
-      let bookValueInBase = bookValue;
-      const currency = asset.currency || baseCurrency;
-
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: bookValue,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: asOfDate,
-        });
-        bookValueInBase = convertedValue || bookValue;
-      }
-
-      fixedAssets.push({
-        code: '',
-        name: asset.name,
-        amount: bookValueInBase,
-      });
-      totalFixedAssets += bookValueInBase;
-    }
-
-    let inventoryTotal = 0;
-    for (const item of inventory) {
-      const inventoryValue = (parseFloat(item.quantity_on_hand) || 0) * (parseFloat(item.cost) || 0);
-      let valueInBase = inventoryValue;
-      const currency = item.currency || baseCurrency;
-
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: inventoryValue,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: asOfDate,
-        });
-        valueInBase = convertedValue || inventoryValue;
-      }
-
-      inventoryTotal += valueInBase;
-    }
-
-    if (inventoryTotal > 0) {
-      currentAssets.push({
-        code: '1300',
-        name: 'Inventory',
-        amount: inventoryTotal,
-      });
-      totalCurrentAssets += inventoryTotal;
-    }
-
-    for (const account of bankAccounts) {
-      const transactionsResult = await db.query(
-        `SELECT amount, transaction_date
-         FROM bank_transactions
-         WHERE company_id = $1
-           AND bank_account_id = $2
-           AND transaction_date <= $3::date`,
-        [companyId, account.id, asOfDate]
-      );
-      const transactions = transactionsResult.rows;
-
-      if (!transactions || transactions.length === 0) continue;
-
-      let balance = 0;
-      for (const txn of transactions) {
-        let amountInBase = parseFloat(txn.amount) || 0;
-        const currency = account.currency || baseCurrency;
-
-        if (currency !== baseCurrency) {
-          const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-            p_amount: Math.abs(parseFloat(txn.amount) || 0),
-            p_from_currency: currency,
-            p_to_currency: baseCurrency,
-            p_date: txn.transaction_date,
-          });
-          amountInBase = (parseFloat(txn.amount) || 0) < 0 ? -(convertedValue || Math.abs(parseFloat(txn.amount) || 0)) : (convertedValue || Math.abs(parseFloat(txn.amount) || 0));
-        }
-        balance += amountInBase;
-      }
-
-      if (balance === 0) continue;
-
-      currentAssets.push({
-        code: '1100',
-        name: account.name,
-        amount: Math.abs(balance),
-      });
-      totalCurrentAssets += balance;
-    }
-
-    let totalAR = 0;
-    for (const invoice of invoices) {
-      let amountInBase = parseFloat(invoice.total) || 0;
-      const currency = invoice.currency || baseCurrency;
-
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: parseFloat(invoice.total) || 0,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: invoice.invoice_date,
-        });
-        amountInBase = convertedValue || (parseFloat(invoice.total) || 0);
-      }
-
-      totalAR += amountInBase;
-    }
-
-    if (totalAR > 0) {
-      currentAssets.push({
-        code: '1200',
-        name: 'Accounts Receivable',
-        amount: totalAR,
-      });
-      totalCurrentAssets += totalAR;
-    }
-
-    let totalAP = 0;
-    for (const bill of bills) {
-      let amountInBase = parseFloat(bill.total) || 0;
-      const currency = bill.currency || baseCurrency;
-
-      if (currency !== baseCurrency) {
-        const { data: convertedValue } = await currencyRpc.rpc('convert_currency', {
-          p_amount: parseFloat(bill.total) || 0,
-          p_from_currency: currency,
-          p_to_currency: baseCurrency,
-          p_date: bill.bill_date,
-        });
-        amountInBase = convertedValue || (parseFloat(bill.total) || 0);
-      }
-
-      totalAP += amountInBase;
-    }
-
-    if (totalAP > 0) {
-      currentLiabilities.push({
-        code: '2100',
-        name: 'Accounts Payable',
-        amount: totalAP,
-      });
-      totalCurrentLiabilities += totalAP;
-    }
-
+    // Retained earnings: net of all income/expense account activity up to asOfDate
     const incomeEntriesResult = await db.query(
       `SELECT a.code,
               COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS debit,
@@ -365,6 +161,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: {
         asOfDate,
+        currency: baseCurrency,
         assets: {
           current: currentAssets.map(item => ({ account: item.name, balance: item.amount })),
           fixed: fixedAssets.map(item => ({ account: item.name, balance: item.amount })),
@@ -391,7 +188,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-
-
