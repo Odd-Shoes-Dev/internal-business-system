@@ -840,9 +840,6 @@ export default function SettingsPage() {
                     {...financialForm.register('sales_tax_rate', { valueAsNumber: true })}
                     className="input max-w-xs"
                   />
-                  <p className="text-sm text-black mt-1">
-                    Massachusetts sales tax is 6.25%
-                  </p>
                 </div>
 
                 <div>

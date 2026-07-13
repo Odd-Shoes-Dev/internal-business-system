@@ -16,9 +16,12 @@ export async function GET(request: NextRequest) {
       `SELECT uc.company_id,
               uc.is_primary,
               uc.role,
-              c.*
+              c.*,
+              cs.default_payment_terms AS cs_default_payment_terms,
+              cs.sales_tax_rate AS cs_sales_tax_rate
        FROM user_companies uc
        INNER JOIN companies c ON c.id = uc.company_id
+       LEFT JOIN company_settings cs ON cs.company_id = c.id
        WHERE uc.user_id = $1
        ORDER BY uc.is_primary DESC, uc.joined_at ASC`,
       [user.id]
@@ -42,8 +45,8 @@ export async function GET(request: NextRequest) {
       registration_number: row.registration_number,
       fiscal_year_start: row.fiscal_year_start || null,
       fiscal_year_start_month: row.fiscal_year_start_month || null,
-      default_payment_terms: row.default_payment_terms || null,
-      sales_tax_rate: row.sales_tax_rate || null,
+      default_payment_terms: row.cs_default_payment_terms ?? row.default_payment_terms ?? null,
+      sales_tax_rate: row.cs_sales_tax_rate ?? row.sales_tax_rate ?? null,
       trial_ends_at: row.trial_ends_at,
       region: row.region || 'DEFAULT',
       role: row.role,
