@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import { useForm } from 'react-hook-form';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import {
@@ -88,6 +89,7 @@ interface FinancialFormData {
   fiscal_year_start_month: number;
   default_payment_terms: number;
   sales_tax_rate: number;
+  currency: string;
 }
 
 export default function SettingsPage() {
@@ -248,6 +250,7 @@ export default function SettingsPage() {
           fiscal_year_start_month: data.fiscal_year_start_month || 1,
           default_payment_terms: data.default_payment_terms || 30,
           sales_tax_rate: Number(data.sales_tax_rate) || 6.25,
+          currency: data.currency || 'USD',
         });
       }
     } catch (error) {
@@ -365,6 +368,7 @@ export default function SettingsPage() {
           fiscal_year_start: fiscalYearStart,
           default_payment_terms: data.default_payment_terms,
           sales_tax_rate: data.sales_tax_rate,
+          currency: data.currency,
         }),
       });
 
@@ -841,10 +845,22 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
-                  <h4 className="font-medium text-black">Base Currency</h4>
-                  <p className="text-sm text-black mt-1">
-                    USD (US Dollar) - Contact support to change base currency
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Base Currency
+                  </label>
+                  <select
+                    {...financialForm.register('currency')}
+                    className="input max-w-xs"
+                  >
+                    {Object.values(SUPPORTED_CURRENCIES).map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Used as the default currency across invoices, bills, and payroll.
                   </p>
                 </div>
 

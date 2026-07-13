@@ -108,6 +108,7 @@ export async function PUT(request: NextRequest) {
       fiscal_year_start,
       default_payment_terms,
       sales_tax_rate,
+      currency,
     } = body;
 
     const updateResult = await db.query(
@@ -123,6 +124,7 @@ export async function PUT(request: NextRequest) {
            website = COALESCE($10, website),
            logo_url = COALESCE($11, logo_url),
            fiscal_year_start = COALESCE($12::text, fiscal_year_start),
+           currency = COALESCE($13, currency),
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -139,6 +141,7 @@ export async function PUT(request: NextRequest) {
         website || null,
         logo_url || null,
         fiscal_year_start || null,
+        currency || null,
       ]
     );
 
