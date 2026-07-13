@@ -16,6 +16,7 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/card';
 import type { Product } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -157,61 +158,30 @@ export default function InventoryPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-blue-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Total Items</p>
-              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-blueox-primary transition-colors">
-                {stats.totalItems}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-2xl group-hover:bg-blue-200 transition-colors">
-              <CubeIcon className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-green-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Total Value</p>
-              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-green-600 transition-colors">
-                {formatCurrency(stats.totalValue)}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-2xl group-hover:bg-green-200 transition-colors">
-              <ArrowTrendingUpIcon className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-amber-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Low Stock</p>
-              <p className="text-3xl font-extrabold text-amber-600 group-hover:text-amber-700 transition-colors">
-                {stats.lowStock}
-              </p>
-            </div>
-            <div className="p-3 bg-amber-100 rounded-2xl group-hover:bg-amber-200 transition-colors">
-              <ArrowTrendingDownIcon className="w-6 h-6 text-amber-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-red-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Out of Stock</p>
-              <p className="text-3xl font-extrabold text-red-600 group-hover:text-red-700 transition-colors">
-                {stats.outOfStock}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-2xl group-hover:bg-red-200 transition-colors">
-              <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Total Items"
+          value={stats.totalItems}
+          icon={<CubeIcon className="w-6 h-6" />}
+          trend="neutral"
+        />
+        <StatCard
+          title="Total Value"
+          value={formatCurrency(stats.totalValue)}
+          icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
+          trend="up"
+        />
+        <StatCard
+          title="Low Stock"
+          value={stats.lowStock}
+          icon={<ArrowTrendingDownIcon className="w-6 h-6" />}
+          trend={stats.lowStock > 0 ? 'down' : 'neutral'}
+        />
+        <StatCard
+          title="Out of Stock"
+          value={stats.outOfStock}
+          icon={<ExclamationTriangleIcon className="w-6 h-6" />}
+          trend={stats.outOfStock > 0 ? 'down' : 'neutral'}
+        />
       </div>
 
       {/* Search and Filters */}
