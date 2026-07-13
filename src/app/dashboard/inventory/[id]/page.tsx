@@ -12,6 +12,8 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ExclamationTriangleIcon,
+  AdjustmentsHorizontalIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { FitNumber } from '@/components/ui/fit-number';
@@ -65,6 +67,14 @@ export default function InventoryDetailPage() {
   const [item, setItem] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({
+    quantity_change: 0,
+    reason: 'adjustment',
+    notes: '',
+    adjustment_date: new Date().toISOString().split('T')[0],
+  });
+  const [savingAdjust, setSavingAdjust] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -144,6 +154,31 @@ export default function InventoryDetailPage() {
     return { label: 'In Stock', class: 'badge-success', icon: ArrowTrendingUpIcon };
   };
 
+  const handleSaveAdjustment = async () => {
+    if (!item || adjustForm.quantity_change === 0) return;
+    setSavingAdjust(true);
+    try {
+      const res = await fetch(`/api/inventory-adjustments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          product_id: item.id,
+          ...adjustForm,
+          adjustment_date: new Date(adjustForm.adjustment_date).toISOString(),
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to save');
+      setShowAdjustModal(false);
+      loadItemDetails();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSavingAdjust(false);
+    }
+  };
+
   const formatQty = (val: number | string | null | undefined) => {
     const n = Number(val || 0);
     return Number.isInteger(n) ? n.toString() : parseFloat(n.toFixed(2)).toString();
@@ -198,6 +233,16 @@ export default function InventoryDetailPage() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setAdjustForm({ quantity_change: 0, reason: 'adjustment', notes: '', adjustment_date: new Date().toISOString().split('T')[0] });
+              setShowAdjustModal(true);
+            }}
+            className="btn-secondary"
+          >
+            <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" />
+            Adjust Stock
+          </button>
           <Link
             href={`/dashboard/inventory/${item.id}/edit`}
             className="btn-secondary"
@@ -433,6 +478,89 @@ export default function InventoryDetailPage() {
           </div>
         </div>
       </div>
+      {/* Adjust Stock Modal */}
+      {showAdjustModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Adjust Stock</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{item.name} — current: {formatQty(item.quantity_on_hand)} {item.unit_of_measure}</p>
+              </div>
+              <button onClick={() => setShowAdjustModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={adjustForm.reason}
+                  onChange={(e) => setAdjustForm((f) => ({ ...f, reason: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                >
+                  <option value="adjustment">Adjustment (stock count correction)</option>
+                  <option value="purchase">Purchase (stock received)</option>
+                  <option value="return">Return (customer returned)</option>
+                  <option value="write_off">Write Off (damaged / expired / stolen)</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity Change <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  value={adjustForm.quantity_change}
+                  onChange={(e) => setAdjustForm((f) => ({ ...f, quantity_change: Number(e.target.value) }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                  placeholder="Positive to add, negative to reduce e.g. -5"
+                />
+                {adjustForm.quantity_change !== 0 && (
+                  <p className="text-xs mt-1">
+                    New stock: <span className={`font-medium ${Number(item.quantity_on_hand) + adjustForm.quantity_change < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      {formatQty(Number(item.quantity_on_hand) + adjustForm.quantity_change)} {item.unit_of_measure}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={adjustForm.adjustment_date}
+                  onChange={(e) => setAdjustForm((f) => ({ ...f, adjustment_date: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Reason</label>
+                <textarea
+                  value={adjustForm.notes}
+                  onChange={(e) => setAdjustForm((f) => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g. Physical count found 3 extra units"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <button onClick={() => setShowAdjustModal(false)} className="btn-secondary">Cancel</button>
+              <button
+                onClick={handleSaveAdjustment}
+                disabled={savingAdjust || adjustForm.quantity_change === 0}
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingAdjust ? 'Saving...' : 'Save Adjustment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

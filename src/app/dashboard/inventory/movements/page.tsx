@@ -7,11 +7,21 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   ArrowUpIcon,
-  ArrowDownIcon,
   AdjustmentsHorizontalIcon,
   ShoppingCartIcon,
   ArchiveBoxIcon,
+  PlusIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+
+interface Product {
+  id: string;
+  name: string;
+  sku: string | null;
+  quantity_on_hand: number;
+  unit_of_measure: string;
+  cost_price: number;
+}
 
 interface InventoryMovement {
   id: string;
@@ -39,6 +49,18 @@ export default function StockMovementsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 50;
+
+  const [showModal, setShowModal] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    product_id: '',
+    quantity_change: 0,
+    reason: 'adjustment',
+    notes: '',
+    adjustment_date: new Date().toISOString().split('T')[0],
+    unit_cost: 0,
+  });
 
   useEffect(() => {
     if (!company?.id) {
@@ -89,6 +111,58 @@ export default function StockMovementsPage() {
       setLoading(false);
     }
   };
+
+  const loadProducts = async () => {
+    if (!company?.id) return;
+    try {
+      const res = await fetch(`/api/inventory?company_id=${company.id}&limit=1000`, { credentials: 'include' });
+      const result = await res.json();
+      setProducts(result.data || []);
+    } catch (e) {
+      console.error('Failed to load products:', e);
+    }
+  };
+
+  const openModal = () => {
+    loadProducts();
+    setForm({
+      product_id: '',
+      quantity_change: 0,
+      reason: 'adjustment',
+      notes: '',
+      adjustment_date: new Date().toISOString().split('T')[0],
+      unit_cost: 0,
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.product_id) return;
+    if (form.quantity_change === 0) return;
+    if (!company?.id) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/inventory-adjustments?company_id=${company.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...form,
+          adjustment_date: new Date(form.adjustment_date).toISOString(),
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to save');
+      setShowModal(false);
+      loadMovements();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedProduct = products.find((p) => p.id === form.product_id);
 
   const formatCurrency = (amount: number | null) => {
     if (!amount) return '-';
@@ -157,6 +231,13 @@ export default function StockMovementsPage() {
             <p className="text-gray-500 mt-1">Track all inventory transactions</p>
           </div>
         </div>
+        <button
+          onClick={openModal}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blueox-primary text-black rounded-2xl font-semibold text-sm hover:shadow-lg transition-all"
+        >
+          <PlusIcon className="w-4 h-4" />
+          Record Adjustment
+        </button>
       </div>
 
       {/* Filters */}
@@ -190,6 +271,7 @@ export default function StockMovementsPage() {
               <option value="sale">Sale</option>
               <option value="adjustment">Adjustment</option>
               <option value="return">Return</option>
+              <option value="write_off">Write Off</option>
               <option value="transfer">Transfer</option>
             </select>
           </div>
@@ -315,6 +397,115 @@ export default function StockMovementsPage() {
             </div>
           )}
         </>
+      )}
+      {/* Record Adjustment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-bold text-gray-900">Record Stock Adjustment</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Product */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product <span className="text-red-500">*</span></label>
+                <select
+                  value={form.product_id}
+                  onChange={(e) => {
+                    const p = products.find((x) => x.id === e.target.value);
+                    setForm((f) => ({ ...f, product_id: e.target.value, unit_cost: p ? Number(p.cost_price) : 0 }));
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                >
+                  <option value="">Select product...</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>
+                  ))}
+                </select>
+                {selectedProduct && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Current stock: <span className="font-medium">{Number(selectedProduct.quantity_on_hand)} {selectedProduct.unit_of_measure}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type <span className="text-red-500">*</span></label>
+                <select
+                  value={form.reason}
+                  onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                >
+                  <option value="adjustment">Adjustment (stock count correction)</option>
+                  <option value="purchase">Purchase (stock received)</option>
+                  <option value="return">Return (customer returned)</option>
+                  <option value="write_off">Write Off (damaged / expired / stolen)</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity Change <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={form.quantity_change}
+                  onChange={(e) => setForm((f) => ({ ...f, quantity_change: Number(e.target.value) }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                  placeholder="Use negative for stock reduction e.g. -5"
+                />
+                {selectedProduct && form.quantity_change !== 0 && (
+                  <p className="text-xs mt-1">
+                    New stock: <span className={`font-medium ${Number(selectedProduct.quantity_on_hand) + form.quantity_change < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      {Number(selectedProduct.quantity_on_hand) + form.quantity_change} {selectedProduct.unit_of_measure}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={form.adjustment_date}
+                  onChange={(e) => setForm((f) => ({ ...f, adjustment_date: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Reason</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g. Stock count on 13 Jul found 5 units missing"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <button onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !form.product_id || form.quantity_change === 0}
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save Adjustment'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
