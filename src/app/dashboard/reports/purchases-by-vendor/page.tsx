@@ -14,7 +14,8 @@ import {
   TruckIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -68,6 +69,7 @@ interface PurchasesByVendorData {
     vendorCount: number;
     averagePerVendor: number;
   }>;
+  currency: string;
 }
 
 export default function PurchasesByVendorPage() {
@@ -81,6 +83,8 @@ export default function PurchasesByVendorPage() {
   const [sortBy, setSortBy] = useState('totalPurchases');
   const [minAmount, setMinAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchPurchasesByVendor = async () => {
     setIsLoading(true);
@@ -260,15 +264,15 @@ export default function PurchasesByVendorPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Purchases</h4>
-                <div class="value">${formatCurrency(data.summary.totalPurchases)}</div>
+                <div class="value">${fmt(data.summary.totalPurchases)}</div>
               </div>
               <div class="summary-item">
                 <h4>Avg per Vendor</h4>
-                <div class="value">${formatCurrency(data.summary.averagePurchasePerVendor)}</div>
+                <div class="value">${fmt(data.summary.averagePurchasePerVendor)}</div>
               </div>
               <div class="summary-item">
                 <h4>Top Vendor</h4>
-                <div class="value">${formatCurrency(data.summary.topVendorSpending)}</div>
+                <div class="value">${fmt(data.summary.topVendorSpending)}</div>
               </div>
             </div>
           </div>
@@ -291,9 +295,9 @@ export default function PurchasesByVendorPage() {
                 <tr class="vendor-row">
                   <td><strong>${vendor.vendorName}</strong></td>
                   <td class="type-${vendor.vendorType.toLowerCase().replace(/\s+/g, '')}">${vendor.vendorType}</td>
-                  <td class="number">${formatCurrency(vendor.totalPurchases)}</td>
+                  <td class="number">${fmt(vendor.totalPurchases)}</td>
                   <td class="number">${vendor.purchaseCount}</td>
-                  <td class="number">${formatCurrency(vendor.averagePurchase)}</td>
+                  <td class="number">${fmt(vendor.averagePurchase)}</td>
                   <td class="number growth-${vendor.purchaseGrowth > 0 ? 'positive' : vendor.purchaseGrowth < 0 ? 'negative' : 'neutral'}">
                     ${vendor.purchaseGrowth > 0 ? '+' : ''}${vendor.purchaseGrowth.toFixed(1)}%
                   </td>
@@ -492,7 +496,7 @@ export default function PurchasesByVendorPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Purchases</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalPurchases || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalPurchases || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -502,7 +506,7 @@ export default function PurchasesByVendorPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg per Vendor</p>
-                  <FitNumber value={formatCurrency(data?.summary?.averagePurchasePerVendor || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.averagePurchasePerVendor || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -512,7 +516,7 @@ export default function PurchasesByVendorPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Top Vendor</p>
-                  <FitNumber value={formatCurrency(data?.summary?.topVendorSpending || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.topVendorSpending || 0)} className="font-bold text-gray-900" />
                   <p className="text-xs text-gray-500 truncate">{data?.summary?.topVendorName || 'N/A'}</p>
                 </div>
               </div>
@@ -527,31 +531,31 @@ export default function PurchasesByVendorPage() {
                 <TruckIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">Supplier</p>
                 <FitNumber value={data?.vendorTypes?.supplier?.count || 0} className="font-bold text-blue-700" />
-                <p className="text-sm text-blue-600">{formatCurrency(data?.vendorTypes?.supplier?.spending || 0)}</p>
+                <p className="text-sm text-blue-600">{fmt(data?.vendorTypes?.supplier?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <ShoppingCartIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">Service Provider</p>
                 <FitNumber value={data?.vendorTypes?.serviceProvider?.count || 0} className="font-bold text-green-700" />
-                <p className="text-sm text-green-600">{formatCurrency(data?.vendorTypes?.serviceProvider?.spending || 0)}</p>
+                <p className="text-sm text-green-600">{fmt(data?.vendorTypes?.serviceProvider?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-red-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-red-600">Contractor</p>
                 <FitNumber value={data?.vendorTypes?.contractor?.count || 0} className="font-bold text-red-700" />
-                <p className="text-sm text-red-600">{formatCurrency(data?.vendorTypes?.contractor?.spending || 0)}</p>
+                <p className="text-sm text-red-600">{fmt(data?.vendorTypes?.contractor?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200">
                 <ClockIcon className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-yellow-600">Utility</p>
                 <FitNumber value={data?.vendorTypes?.utility?.count || 0} className="font-bold text-yellow-700" />
-                <p className="text-sm text-yellow-600">{formatCurrency(data?.vendorTypes?.utility?.spending || 0)}</p>
+                <p className="text-sm text-yellow-600">{fmt(data?.vendorTypes?.utility?.spending || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
                 <ArrowTrendingUpIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-purple-600">Manufacturing</p>
                 <FitNumber value={data?.vendorTypes?.manufacturing?.count || 0} className="font-bold text-purple-700" />
-                <p className="text-sm text-purple-600">{formatCurrency(data?.vendorTypes?.manufacturing?.spending || 0)}</p>
+                <p className="text-sm text-purple-600">{fmt(data?.vendorTypes?.manufacturing?.spending || 0)}</p>
               </div>
             </div>
           </div>
@@ -617,13 +621,13 @@ export default function PurchasesByVendorPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(vendor.totalPurchases)}
+                          {fmt(vendor.totalPurchases)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
                           {vendor.purchaseCount}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                          {formatCurrency(vendor.averagePurchase)}
+                          {fmt(vendor.averagePurchase)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums">
                           <span className={cn('font-medium', getGrowthColor(vendor.purchaseGrowth))}>

@@ -14,7 +14,8 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -48,6 +49,7 @@ interface GeneralLedgerData {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   summary: {
     totalAccounts: number;
     totalDebits: number;
@@ -80,6 +82,8 @@ export default function GeneralLedgerPage() {
   const [showAccountSummary, setShowAccountSummary] = useState(false);
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchGeneralLedger = async () => {
     setIsLoading(true);
@@ -275,11 +279,11 @@ export default function GeneralLedgerPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Debits</h4>
-                <div class="value">${formatCurrency(data.summary.totalDebits)}</div>
+                <div class="value">${fmt(data.summary.totalDebits)}</div>
               </div>
               <div class="summary-item">
                 <h4>Total Credits</h4>
-                <div class="value">${formatCurrency(data.summary.totalCredits)}</div>
+                <div class="value">${fmt(data.summary.totalCredits)}</div>
               </div>
               <div class="summary-item">
                 <h4>Total Entries</h4>
@@ -290,7 +294,7 @@ export default function GeneralLedgerPage() {
 
           <div class="balance-indicator ${data.summary.inBalance ? 'in-balance' : 'out-of-balance'}">
             <strong>${data.summary.inBalance ? '✓ Ledger is in Balance' : '⚠ Ledger is Out of Balance'}</strong>
-            ${data.summary.balanceDifference !== 0 ? `<br>Difference: ${formatCurrency(Math.abs(data.summary.balanceDifference))}` : ''}
+            ${data.summary.balanceDifference !== 0 ? `<br>Difference: ${fmt(Math.abs(data.summary.balanceDifference))}` : ''}
           </div>
 
           <table>
@@ -314,9 +318,9 @@ export default function GeneralLedgerPage() {
                   <td>${entry.accountName}</td>
                   <td>${entry.description}</td>
                   <td>${entry.reference}</td>
-                  <td class="number">${entry.debit > 0 ? formatCurrency(entry.debit) : ''}</td>
-                  <td class="number">${entry.credit > 0 ? formatCurrency(entry.credit) : ''}</td>
-                  <td class="number">${formatCurrency(entry.runningBalance)}</td>
+                  <td class="number">${entry.debit > 0 ? fmt(entry.debit) : ''}</td>
+                  <td class="number">${entry.credit > 0 ? fmt(entry.credit) : ''}</td>
+                  <td class="number">${fmt(entry.runningBalance)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -579,10 +583,10 @@ export default function GeneralLedgerPage() {
                   "text-xs sm:text-sm mt-1",
                   data.summary.inBalance ? "text-green-600" : "text-red-600"
                 )}>
-                  Total Debits: {formatCurrency(data.summary.totalDebits)} | 
-                  Total Credits: {formatCurrency(data.summary.totalCredits)}
+                  Total Debits: {fmt(data.summary.totalDebits)} | 
+                  Total Credits: {fmt(data.summary.totalCredits)}
                   {data.summary.balanceDifference !== 0 && 
-                    ` | Difference: ${formatCurrency(Math.abs(data.summary.balanceDifference))}`
+                    ` | Difference: ${fmt(Math.abs(data.summary.balanceDifference))}`
                   }
                 </p>
               </div>
@@ -618,7 +622,7 @@ export default function GeneralLedgerPage() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -630,7 +634,7 @@ export default function GeneralLedgerPage() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -703,16 +707,16 @@ export default function GeneralLedgerPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                          {formatCurrency(account.openingBalance)}
+                          {fmt(account.openingBalance)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-green-600">
-                          {formatCurrency(account.totalDebits)}
+                          {fmt(account.totalDebits)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-red-600">
-                          {formatCurrency(account.totalCredits)}
+                          {fmt(account.totalCredits)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(account.closingBalance)}
+                          {fmt(account.closingBalance)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-600">
                           {account.entryCount}
@@ -802,13 +806,13 @@ export default function GeneralLedgerPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-green-600 font-medium">
-                          {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
+                          {entry.debit > 0 ? fmt(entry.debit) : ''}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-red-600 font-medium">
-                          {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
+                          {entry.credit > 0 ? fmt(entry.credit) : ''}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(entry.runningBalance)}
+                          {fmt(entry.runningBalance)}
                         </td>
                       </tr>
                     ))

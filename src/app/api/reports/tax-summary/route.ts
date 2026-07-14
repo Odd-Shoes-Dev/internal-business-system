@@ -18,6 +18,7 @@ interface QuarterlyTax {
 }
 
 interface TaxSummaryData {
+  currency: string;
   reportPeriod: {
     taxYear: number;
     startDate: string;
@@ -84,6 +85,12 @@ export async function GET(request: NextRequest) {
     if (companyAccessError) {
       return companyAccessError;
     }
+
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
 
     // Validate tax year
     const currentYear = new Date().getFullYear();
@@ -262,6 +269,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
+      currency: baseCurrency,
       income: {
         grossRevenue,
         netIncome,

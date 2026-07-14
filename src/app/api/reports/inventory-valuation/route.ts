@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface InventoryItem {
@@ -18,6 +18,7 @@ interface InventoryItem {
 
 interface InventoryValuationData {
   reportDate: string;
+  currency: string;
   reportPeriod: {
     asOfDate: string;
   };
@@ -82,50 +83,38 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalValue';
 
-    const inventoryResult = await db.query(
-      `SELECT p.id,
-              p.sku,
-              p.name,
-              p.quantity_on_hand,
-              p.cost_price,
-              p.currency,
-              p.reorder_point,
-              p.unit_of_measure,
-              pc.name AS category_name
-       FROM products p
-       LEFT JOIN product_categories pc ON pc.id = p.category_id
-       WHERE p.company_id = $1
-         AND p.track_inventory = true
-       ORDER BY p.id ASC`,
-      [companyId]
-    );
+    const [inventoryResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT p.id,
+                p.sku,
+                p.name,
+                p.quantity_on_hand,
+                p.cost_price,
+                p.currency,
+                p.reorder_point,
+                p.unit_of_measure,
+                pc.name AS category_name
+         FROM products p
+         LEFT JOIN product_categories pc ON pc.id = p.category_id
+         WHERE p.company_id = $1
+           AND p.track_inventory = true
+         ORDER BY p.id ASC`,
+        [companyId]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
     const inventory = inventoryResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
-    // Transform inventory data and convert to USD
     let items: InventoryItem[] = [];
-    
+
     for (const item of inventory || []) {
       const quantityOnHand = parseFloat(item.quantity_on_hand) || 0;
       const unitCost = parseFloat(item.cost_price) || 0;
-      
-      // Convert unit cost to USD if needed
-      const unitCostBase = await convertCurrency(
-        {
-          rpc: async (fn: string, args: any) => {
-            if (fn !== 'convert_currency') {
-              return { data: null, error: new Error('Unsupported RPC function') };
-            }
-            const result = await db.query<{ value: number }>(
-              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-            );
-            return { data: result.rows[0]?.value ?? null, error: null };
-          },
-        },
-        unitCost,
-        (item.currency || baseCurrency) as SupportedCurrency,
-        baseCurrency as SupportedCurrency
-      ) || unitCost;
+
+      const unitCostBase = convertCurrency(unitCost, item.currency || baseCurrency, baseCurrency, ratesMap);
       
       const totalValue = quantityOnHand * unitCostBase;
       const reorderLevel = item.reorder_point || 0;
@@ -228,6 +217,7 @@ export async function GET(request: NextRequest) {
 
     const response: InventoryValuationData = {
       reportDate: new Date().toISOString().split('T')[0],
+      currency: baseCurrency,
       reportPeriod: {
         asOfDate: new Date().toISOString().split('T')[0]
       },
