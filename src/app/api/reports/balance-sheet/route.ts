@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 // GET /api/reports/balance-sheet
 export async function GET(request: NextRequest) {
@@ -28,28 +29,40 @@ export async function GET(request: NextRequest) {
 
     const asOfDate = searchParams.get('asOfDate') || searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
 
-    const accountsResult = await db.query(
-      `SELECT id, code, name, account_type, normal_balance
-       FROM accounts
-       WHERE company_id = $1
-       ORDER BY code ASC`,
-      [companyId]
-    );
-    const accounts = accountsResult.rows;
+    const [accountsResult, entriesResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT id, code, name, account_type, normal_balance
+         FROM accounts
+         WHERE company_id = $1
+         ORDER BY code ASC`,
+        [companyId]
+      ),
+      db.query(
+        `SELECT jl.account_id,
+                jl.debit,
+                jl.credit,
+                COALESCE(NULLIF(jl.currency, ''), $2) AS currency
+         FROM journal_lines jl
+         INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+         WHERE je.company_id = $1
+           AND je.status = 'posted'
+           AND je.entry_date <= $3::date`,
+        [companyId, baseCurrency, asOfDate]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
 
-    // All posted journal lines up to the as-of date
-    const entriesResult = await db.query(
-      `SELECT jl.account_id,
-              COALESCE(convert_currency(jl.debit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.debit) AS debit,
-              COALESCE(convert_currency(jl.credit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.credit) AS credit
-       FROM journal_lines jl
-       INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
-       WHERE je.company_id = $1
-         AND je.status = 'posted'
-         AND je.entry_date <= $2::date`,
-      [companyId, asOfDate]
-    );
-    const entries = entriesResult.rows;
+    const accounts = accountsResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
+
+    // Convert each journal line to base currency using JS-side rates
+    const entries = entriesResult.rows.map((row: any) => ({
+      account_id: row.account_id,
+      debit: convertCurrency(parseFloat(row.debit) || 0, row.currency, baseCurrency, ratesMap),
+      credit: convertCurrency(parseFloat(row.credit) || 0, row.currency, baseCurrency, ratesMap),
+    }));
 
     // Compute net debit balance per account from journal lines
     const accountBalances: Record<string, number> = {};
@@ -121,8 +134,9 @@ export async function GET(request: NextRequest) {
     // Retained earnings: net of all income/expense account activity up to asOfDate
     const incomeEntriesResult = await db.query(
       `SELECT a.code,
-              COALESCE(convert_currency(jl.debit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.debit) AS debit,
-              COALESCE(convert_currency(jl.credit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.credit) AS credit
+              jl.debit,
+              jl.credit,
+              COALESCE(NULLIF(jl.currency, ''), $3) AS currency
        FROM journal_lines jl
        INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
        INNER JOIN accounts a ON a.id = jl.account_id
@@ -131,9 +145,13 @@ export async function GET(request: NextRequest) {
          AND je.entry_date <= $2::date
          AND a.company_id = $1
          AND a.code >= '4000'`,
-      [companyId, asOfDate]
+      [companyId, asOfDate, baseCurrency]
     );
-    const incomeEntries = incomeEntriesResult.rows;
+    const incomeEntries = incomeEntriesResult.rows.map((row: any) => ({
+      code: row.code,
+      debit: convertCurrency(parseFloat(row.debit) || 0, row.currency, baseCurrency, ratesMap),
+      credit: convertCurrency(parseFloat(row.credit) || 0, row.currency, baseCurrency, ratesMap),
+    }));
 
     let retainedEarnings = 0;
     incomeEntries.forEach((entry: any) => {

@@ -13,7 +13,8 @@ import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { FitNumber } from '@/components/ui/fit-number';
 
 interface ProductSale {
@@ -60,6 +61,7 @@ interface SalesByProductData {
     averageMargin: number;
   }>;
   topPerformers: ProductSale[];
+  currency: string;
 }
 
 export default function SalesByProductPage() {
@@ -72,6 +74,8 @@ export default function SalesByProductPage() {
   const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('totalRevenue');
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchSalesByProduct = async () => {
     setIsLoading(true);
@@ -249,7 +253,7 @@ export default function SalesByProductPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Revenue</h4>
-                <div class="value">${formatCurrency(data.summary.totalRevenue)}</div>
+                <div class="value">${fmt(data.summary.totalRevenue)}</div>
               </div>
               <div class="summary-item">
                 <h4>Units Sold</h4>
@@ -257,7 +261,7 @@ export default function SalesByProductPage() {
               </div>
               <div class="summary-item">
                 <h4>Avg Order Value</h4>
-                <div class="value">${formatCurrency(data.summary.averageOrderValue)}</div>
+                <div class="value">${fmt(data.summary.averageOrderValue)}</div>
               </div>
             </div>
           </div>
@@ -280,8 +284,8 @@ export default function SalesByProductPage() {
                   <td><strong>${product.productName}</strong></td>
                   <td class="category-${product.category.toLowerCase().replace(/\s+/g, '')}">${product.category}</td>
                   <td class="number">${product.unitsSold.toLocaleString()}</td>
-                  <td class="number">${formatCurrency(product.totalRevenue)}</td>
-                  <td class="number">${formatCurrency(product.averagePrice)}</td>
+                  <td class="number">${fmt(product.totalRevenue)}</td>
+                  <td class="number">${fmt(product.averagePrice)}</td>
                   <td class="number margin-${product.marginPercentage > 30 ? 'high' : product.marginPercentage > 15 ? 'medium' : 'low'}">
                     ${product.marginPercentage.toFixed(1)}%
                   </td>
@@ -456,7 +460,7 @@ export default function SalesByProductPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalRevenue || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalRevenue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -476,7 +480,7 @@ export default function SalesByProductPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Order Value</p>
-                  <FitNumber value={formatCurrency(data?.summary?.averageOrderValue || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.averageOrderValue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -491,7 +495,7 @@ export default function SalesByProductPage() {
                   <div key={index} className="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
                     <TagIcon className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-700">{cat.category}</p>
-                    <FitNumber value={formatCurrency(cat.revenue)} className="font-bold text-gray-900" />
+                    <FitNumber value={fmt(cat.revenue)} className="font-bold text-gray-900" />
                     <p className="text-xs text-gray-600">{cat.productCount} products • {cat.unitsSold.toLocaleString()} units</p>
                     <p className="text-xs text-gray-600">Avg margin: {cat.averageMargin.toFixed(1)}%</p>
                   </div>
@@ -509,7 +513,7 @@ export default function SalesByProductPage() {
                   <h3 className="text-sm sm:text-base font-semibold text-green-800">Top Performing Product</h3>
                   <p className="text-xs sm:text-sm text-green-600 mt-1">
                     <span className="font-bold">{data.summary.topProductName}</span> is your top performer with{' '}
-                    <span className="font-bold">{formatCurrency(data.summary.topProductRevenue)}</span> in revenue
+                    <span className="font-bold">{fmt(data.summary.topProductRevenue)}</span> in revenue
                   </p>
                 </div>
               </div>
@@ -577,10 +581,10 @@ export default function SalesByProductPage() {
                           {product.unitsSold.toLocaleString()}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(product.totalRevenue)}
+                          {fmt(product.totalRevenue)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                          {formatCurrency(product.averagePrice)}
+                          {fmt(product.averagePrice)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums">
                           <span className={cn('font-medium', getMarginColor(product.marginPercentage))}>

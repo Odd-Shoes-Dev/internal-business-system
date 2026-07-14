@@ -11,13 +11,15 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 
 interface CashFlowData {
   period: {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   operatingActivities: {
     netIncome: number;
     adjustments: Array<{ label: string; amount: number }>;
@@ -200,23 +202,23 @@ export default function CashFlowPage() {
             <div class="section-title">CASH FLOW FROM OPERATING ACTIVITIES</div>
             <div class="line-item">
               <span>Net Income</span>
-              <span class="amount">${data.operatingActivities.netIncome >= 0 ? formatCurrency(data.operatingActivities.netIncome) : `(${formatCurrency(Math.abs(data.operatingActivities.netIncome))})`}</span>
+              <span class="amount">${data.operatingActivities.netIncome >= 0 ? fmt(data.operatingActivities.netIncome) : `(${fmt(Math.abs(data.operatingActivities.netIncome))})`}</span>
             </div>
             ${data.operatingActivities.adjustments.map(item => `
               <div class="line-item indent">
                 <span>${item.label}</span>
-                <span class="amount">${item.amount >= 0 ? formatCurrency(item.amount) : `(${formatCurrency(Math.abs(item.amount))})`}</span>
+                <span class="amount">${item.amount >= 0 ? fmt(item.amount) : `(${fmt(Math.abs(item.amount))})`}</span>
               </div>
             `).join('')}
             ${data.operatingActivities.changesInWorkingCapital.map(item => `
               <div class="line-item indent">
                 <span>${item.label}</span>
-                <span class="amount">${item.amount >= 0 ? formatCurrency(item.amount) : `(${formatCurrency(Math.abs(item.amount))})`}</span>
+                <span class="amount">${item.amount >= 0 ? fmt(item.amount) : `(${fmt(Math.abs(item.amount))})`}</span>
               </div>
             `).join('')}
             <div class="line-item total">
               <span>Net Cash from Operating Activities</span>
-              <span class="amount">${data.operatingActivities.netCashFromOperating >= 0 ? formatCurrency(data.operatingActivities.netCashFromOperating) : `(${formatCurrency(Math.abs(data.operatingActivities.netCashFromOperating))})`}</span>
+              <span class="amount">${data.operatingActivities.netCashFromOperating >= 0 ? fmt(data.operatingActivities.netCashFromOperating) : `(${fmt(Math.abs(data.operatingActivities.netCashFromOperating))})`}</span>
             </div>
           </div>
 
@@ -225,12 +227,12 @@ export default function CashFlowPage() {
             ${data.investingActivities.items.map(item => `
               <div class="line-item">
                 <span>${item.label}</span>
-                <span class="amount">${item.amount >= 0 ? formatCurrency(item.amount) : `(${formatCurrency(Math.abs(item.amount))})`}</span>
+                <span class="amount">${item.amount >= 0 ? fmt(item.amount) : `(${fmt(Math.abs(item.amount))})`}</span>
               </div>
             `).join('')}
             <div class="line-item total">
               <span>Net Cash from Investing Activities</span>
-              <span class="amount">${data.investingActivities.netCashFromInvesting >= 0 ? formatCurrency(data.investingActivities.netCashFromInvesting) : `(${formatCurrency(Math.abs(data.investingActivities.netCashFromInvesting))})`}</span>
+              <span class="amount">${data.investingActivities.netCashFromInvesting >= 0 ? fmt(data.investingActivities.netCashFromInvesting) : `(${fmt(Math.abs(data.investingActivities.netCashFromInvesting))})`}</span>
             </div>
           </div>
 
@@ -239,27 +241,27 @@ export default function CashFlowPage() {
             ${data.financingActivities.items.map(item => `
               <div class="line-item">
                 <span>${item.label}</span>
-                <span class="amount">${item.amount >= 0 ? formatCurrency(item.amount) : `(${formatCurrency(Math.abs(item.amount))})`}</span>
+                <span class="amount">${item.amount >= 0 ? fmt(item.amount) : `(${fmt(Math.abs(item.amount))})`}</span>
               </div>
             `).join('')}
             <div class="line-item total">
               <span>Net Cash from Financing Activities</span>
-              <span class="amount">${data.financingActivities.netCashFromFinancing >= 0 ? formatCurrency(data.financingActivities.netCashFromFinancing) : `(${formatCurrency(Math.abs(data.financingActivities.netCashFromFinancing))})`}</span>
+              <span class="amount">${data.financingActivities.netCashFromFinancing >= 0 ? fmt(data.financingActivities.netCashFromFinancing) : `(${fmt(Math.abs(data.financingActivities.netCashFromFinancing))})`}</span>
             </div>
           </div>
 
           <div class="summary-section">
             <div class="line-item">
               <span>Net Change in Cash</span>
-              <span class="amount">${data.netChangeInCash >= 0 ? formatCurrency(data.netChangeInCash) : `(${formatCurrency(Math.abs(data.netChangeInCash))})`}</span>
+              <span class="amount">${data.netChangeInCash >= 0 ? fmt(data.netChangeInCash) : `(${fmt(Math.abs(data.netChangeInCash))})`}</span>
             </div>
             <div class="line-item">
               <span>Beginning Cash Balance</span>
-              <span class="amount">${formatCurrency(data.beginningCash)}</span>
+              <span class="amount">${fmt(data.beginningCash)}</span>
             </div>
             <div class="line-item final-total">
               <span>Ending Cash Balance</span>
-              <span class="amount">${formatCurrency(data.endingCash)}</span>
+              <span class="amount">${fmt(data.endingCash)}</span>
             </div>
           </div>
         </body>
@@ -280,9 +282,12 @@ export default function CashFlowPage() {
     }
   };
 
+  const cur = data?.currency;
+  const fmt = (amount: number) => formatCurrency(amount, cur);
+
   const renderAmount = (amount: number) => (
     <span className={cn('tabular-nums', amount < 0 ? 'text-red-600' : 'text-gray-900')}>
-      {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
+      {amount < 0 ? `(${fmt(Math.abs(amount))})` : fmt(amount)}
     </span>
   );
 
@@ -373,7 +378,7 @@ export default function CashFlowPage() {
                 <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
                   <span className="text-gray-700 pr-2">Net Income</span>
                   <span className="font-medium tabular-nums text-right">
-                    {formatCurrency(data.operatingActivities.netIncome)}
+                    {fmt(data.operatingActivities.netIncome)}
                   </span>
                 </div>
 
@@ -462,12 +467,12 @@ export default function CashFlowPage() {
               </div>
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-gray-700 pr-2">Beginning Cash Balance</span>
-                <span className="tabular-nums text-right">{formatCurrency(data.beginningCash)}</span>
+                <span className="tabular-nums text-right">{fmt(data.beginningCash)}</span>
               </div>
               <div className="flex justify-between items-center text-sm sm:text-lg font-bold pt-2 sm:pt-3 border-t border-gray-200">
                 <span className="text-blueox-primary pr-2">Ending Cash Balance</span>
                 <span className="text-blueox-primary tabular-nums text-right">
-                  {formatCurrency(data.endingCash)}
+                  {fmt(data.endingCash)}
                 </span>
               </div>
             </div>

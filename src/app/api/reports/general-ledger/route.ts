@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const accountFilter = searchParams.get('accountFilter') || 'all';
@@ -269,6 +275,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
+      currency: baseCurrency,
       summary: {
         totalAccounts: accountSummaries.length,
         totalDebits,

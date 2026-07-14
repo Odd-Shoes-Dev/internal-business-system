@@ -14,7 +14,8 @@ import {
   CheckCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { FitNumber } from '@/components/ui/fit-number';
 
 interface InventoryItem {
@@ -75,6 +76,7 @@ interface InventoryValuationData {
     average: { totalValue: number; variance: number };
     standard: { totalValue: number; variance: number };
   };
+  currency: string;
 }
 
 interface Category {
@@ -93,6 +95,8 @@ export default function InventoryValuationPage() {
   const [sortBy, setSortBy] = useState('totalValue');
   const [isLoading, setIsLoading] = useState(false);
   const [showLotDetails, setShowLotDetails] = useState<string | null>(null);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchCategories = async () => {
     try {
@@ -307,7 +311,7 @@ export default function InventoryValuationPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Value</h4>
-                <div class="value">${formatCurrency(data.summary.totalValueFIFO)}</div>
+                <div class="value">${fmt(data.summary.totalValueFIFO)}</div>
               </div>
               <div class="summary-item">
                 <h4>Low Stock Items</h4>
@@ -339,8 +343,8 @@ export default function InventoryValuationPage() {
                   <td class="category-${item.category.toLowerCase().replace(/\s+/g, '-')}">${item.category}</td>
                   <td>${item.location}</td>
                   <td class="number">${item.quantityOnHand} ${item.unitOfMeasure}</td>
-                  <td class="number">${formatCurrency(item.unitCost)}</td>
-                  <td class="number">${formatCurrency(item.totalValue)}</td>
+                  <td class="number">${fmt(item.unitCost)}</td>
+                  <td class="number">${fmt(item.totalValue)}</td>
                   <td class="status-${item.status.toLowerCase().replace(/\s+/g, '-')}">${item.status}</td>
                   <td>${formatDate(item.lastReceived)}</td>
                 </tr>
@@ -548,7 +552,7 @@ export default function InventoryValuationPage() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Value</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900">
-                    {formatCurrency(
+                    {fmt(
                       valuationMethod === 'fifo' ? data?.summary?.totalValueFIFO :
                       valuationMethod === 'lifo' ? data?.summary?.totalValueLIFO :
                       valuationMethod === 'average' ? data?.summary?.totalValueAverage :
@@ -597,25 +601,25 @@ export default function InventoryValuationPage() {
               <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">FIFO</p>
-                <FitNumber value={formatCurrency(data?.summary?.totalValueFIFO || 0)} className="font-bold text-blue-700" />
+                <FitNumber value={fmt(data?.summary?.totalValueFIFO || 0)} className="font-bold text-blue-700" />
                 <p className="text-xs text-blue-600">First In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">LIFO</p>
-                <FitNumber value={formatCurrency(data?.summary?.totalValueLIFO || 0)} className="font-bold text-green-700" />
+                <FitNumber value={fmt(data?.summary?.totalValueLIFO || 0)} className="font-bold text-green-700" />
                 <p className="text-xs text-green-600">Last In, First Out</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-purple-600">Average</p>
-                <FitNumber value={formatCurrency(data?.summary?.totalValueAverage || 0)} className="font-bold text-purple-700" />
+                <FitNumber value={fmt(data?.summary?.totalValueAverage || 0)} className="font-bold text-purple-700" />
                 <p className="text-xs text-purple-600">Weighted Average</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200">
                 <CurrencyDollarIcon className="w-8 h-8 text-orange-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-orange-600">Standard</p>
-                <FitNumber value={formatCurrency(data?.summary?.totalValueStandard || 0)} className="font-bold text-orange-700" />
+                <FitNumber value={fmt(data?.summary?.totalValueStandard || 0)} className="font-bold text-orange-700" />
                 <p className="text-xs text-orange-600">Standard Cost</p>
               </div>
             </div>
@@ -694,10 +698,10 @@ export default function InventoryValuationPage() {
                           {item.quantityOnHand} {item.unitOfMeasure}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-900">
-                          {formatCurrency(item.unitCost)}
+                          {fmt(item.unitCost)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(getValuationMethodValue(item, valuationMethod))}
+                          {fmt(getValuationMethodValue(item, valuationMethod))}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <span className={cn(
@@ -788,8 +792,8 @@ export default function InventoryValuationPage() {
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="px-4 py-2 text-sm text-gray-900">{lot.lotNumber}</td>
                                   <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{lot.quantity}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(lot.unitCost)}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(lot.quantity * lot.unitCost)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{fmt(lot.unitCost)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{fmt(lot.quantity * lot.unitCost)}</td>
                                   <td className="px-4 py-2 text-sm text-gray-700">
                                     {lot.expirationDate ? formatDate(lot.expirationDate) : 'N/A'}
                                   </td>

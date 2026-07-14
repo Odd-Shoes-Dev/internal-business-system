@@ -14,7 +14,8 @@ import {
   DocumentTextIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -80,6 +81,7 @@ interface TaxSummaryData {
     extensionDeadline?: string;
     estimatedPenalty: number;
   };
+  currency: string;
 }
 
 export default function TaxSummaryPage() {
@@ -88,6 +90,8 @@ export default function TaxSummaryPage() {
   const [taxYear, setTaxYear] = useState(new Date().getFullYear());
   const [isLoading, setIsLoading] = useState(false);
   const [showDeductionDetails, setShowDeductionDetails] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchTaxSummary = async () => {
     setIsLoading(true);
@@ -253,19 +257,19 @@ export default function TaxSummaryPage() {
             <div class="summary-grid">
               <div class="summary-item">
                 <h4>Gross Revenue</h4>
-                <div class="value">${formatCurrency(data.income.grossRevenue)}</div>
+                <div class="value">${fmt(data.income.grossRevenue)}</div>
               </div>
               <div class="summary-item">
                 <h4>Net Income</h4>
-                <div class="value">${formatCurrency(data.income.netIncome)}</div>
+                <div class="value">${fmt(data.income.netIncome)}</div>
               </div>
               <div class="summary-item">
                 <h4>Operating Income</h4>
-                <div class="value">${formatCurrency(data.income.operatingIncome)}</div>
+                <div class="value">${fmt(data.income.operatingIncome)}</div>
               </div>
               <div class="summary-item">
                 <h4>Total Taxable Income</h4>
-                <div class="value">${formatCurrency(data.income.totalTaxableIncome)}</div>
+                <div class="value">${fmt(data.income.totalTaxableIncome)}</div>
               </div>
             </div>
           </div>
@@ -284,22 +288,22 @@ export default function TaxSummaryPage() {
                 <tr>
                   <td>Federal Tax</td>
                   <td class="number">${(data.taxCalculations.federalTaxRate * 100).toFixed(1)}%</td>
-                  <td class="number">${formatCurrency(data.taxCalculations.federalTaxLiability)}</td>
+                  <td class="number">${fmt(data.taxCalculations.federalTaxLiability)}</td>
                 </tr>
                 <tr>
                   <td>State Tax</td>
                   <td class="number">${(data.taxCalculations.stateTaxRate * 100).toFixed(1)}%</td>
-                  <td class="number">${formatCurrency(data.taxCalculations.stateTaxLiability)}</td>
+                  <td class="number">${fmt(data.taxCalculations.stateTaxLiability)}</td>
                 </tr>
                 <tr>
                   <td>Self-Employment Tax</td>
                   <td class="number">15.3%</td>
-                  <td class="number">${formatCurrency(data.taxCalculations.selfEmploymentTax)}</td>
+                  <td class="number">${fmt(data.taxCalculations.selfEmploymentTax)}</td>
                 </tr>
                 <tr class="total-row">
                   <td><strong>Total Tax Liability</strong></td>
                   <td class="number"><strong>${(data.taxCalculations.effectiveTaxRate * 100).toFixed(1)}%</strong></td>
-                  <td class="number"><strong>${formatCurrency(data.taxCalculations.totalTaxLiability)}</strong></td>
+                  <td class="number"><strong>${fmt(data.taxCalculations.totalTaxLiability)}</strong></td>
                 </tr>
               </tbody>
             </table>
@@ -323,15 +327,15 @@ export default function TaxSummaryPage() {
                   <tr>
                     <td>${quarter.quarter}</td>
                     <td>${quarter.period}</td>
-                    <td class="number">${formatCurrency(quarter.estimatedPayment)}</td>
-                    <td class="number">${formatCurrency(quarter.actualPayment)}</td>
+                    <td class="number">${fmt(quarter.estimatedPayment)}</td>
+                    <td class="number">${fmt(quarter.actualPayment)}</td>
                     <td>${formatDate(quarter.dueDate)}</td>
                     <td class="status-${quarter.status.toLowerCase()}">${quarter.status}</td>
                   </tr>
                 `).join('')}
                 <tr class="total-row">
                   <td colspan="3"><strong>Total Paid</strong></td>
-                  <td class="number"><strong>${formatCurrency(data.payments.totalPaid)}</strong></td>
+                  <td class="number"><strong>${fmt(data.payments.totalPaid)}</strong></td>
                   <td colspan="2"></td>
                 </tr>
               </tbody>
@@ -487,7 +491,7 @@ export default function TaxSummaryPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Taxable Income</p>
-                  <FitNumber value={formatCurrency(data?.income?.totalTaxableIncome || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.income?.totalTaxableIncome || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -497,7 +501,7 @@ export default function TaxSummaryPage() {
                 <ReceiptPercentIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Tax Liability</p>
-                  <FitNumber value={formatCurrency(data?.taxCalculations?.totalTaxLiability || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.taxCalculations?.totalTaxLiability || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -523,7 +527,7 @@ export default function TaxSummaryPage() {
                     "text-lg sm:text-xl font-bold",
                     (data?.payments?.balanceDue || 0) > 0 ? 'text-red-600' : 'text-green-600'
                   )}>
-                    {formatCurrency(Math.abs(data?.payments?.balanceDue || data?.payments?.refundDue || 0))}
+                    {fmt(Math.abs(data?.payments?.balanceDue || data?.payments?.refundDue || 0))}
                   </p>
                 </div>
               </div>
@@ -541,19 +545,19 @@ export default function TaxSummaryPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Gross Revenue</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.income?.grossRevenue || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.income?.grossRevenue || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Operating Income</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.income?.operatingIncome || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.income?.operatingIncome || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Other Income</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.income?.otherIncome || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.income?.otherIncome || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 bg-blue-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-blue-700">Total Taxable Income</span>
-                  <FitNumber value={formatCurrency(data?.income?.totalTaxableIncome || 0)} className="font-bold text-blue-700" />
+                  <FitNumber value={fmt(data?.income?.totalTaxableIncome || 0)} className="font-bold text-blue-700" />
                 </div>
               </div>
             </div>
@@ -575,19 +579,19 @@ export default function TaxSummaryPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Business Expenses</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.deductions?.businessExpenses || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.deductions?.businessExpenses || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Depreciation</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.deductions?.depreciation || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.deductions?.depreciation || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-xs sm:text-sm text-gray-600">Interest Expenses</span>
-                  <span className="text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(data?.deductions?.interestExpenses || 0)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900">{fmt(data?.deductions?.interestExpenses || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 bg-green-50 px-3 rounded-lg">
                   <span className="text-xs sm:text-sm font-medium text-green-700">Total Deductions</span>
-                  <FitNumber value={formatCurrency(data?.deductions?.totalDeductions || 0)} className="font-bold text-green-700" />
+                  <FitNumber value={fmt(data?.deductions?.totalDeductions || 0)} className="font-bold text-green-700" />
                 </div>
               </div>
             </div>
@@ -629,10 +633,10 @@ export default function TaxSummaryPage() {
                       {((data?.taxCalculations?.federalTaxRate || 0) * 100).toFixed(1)}%
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                      {formatCurrency(data?.taxCalculations?.taxableIncome || 0)}
+                      {fmt(data?.taxCalculations?.taxableIncome || 0)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                      {formatCurrency(data?.taxCalculations?.federalTaxLiability || 0)}
+                      {fmt(data?.taxCalculations?.federalTaxLiability || 0)}
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
@@ -643,10 +647,10 @@ export default function TaxSummaryPage() {
                       {((data?.taxCalculations?.stateTaxRate || 0) * 100).toFixed(1)}%
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                      {formatCurrency(data?.taxCalculations?.taxableIncome || 0)}
+                      {fmt(data?.taxCalculations?.taxableIncome || 0)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                      {formatCurrency(data?.taxCalculations?.stateTaxLiability || 0)}
+                      {fmt(data?.taxCalculations?.stateTaxLiability || 0)}
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
@@ -657,10 +661,10 @@ export default function TaxSummaryPage() {
                       15.3%
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                      {formatCurrency(data?.income?.netIncome || 0)}
+                      {fmt(data?.income?.netIncome || 0)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                      {formatCurrency(data?.taxCalculations?.selfEmploymentTax || 0)}
+                      {fmt(data?.taxCalculations?.selfEmploymentTax || 0)}
                     </td>
                   </tr>
                   <tr className="bg-red-50 border-t-2 border-red-200">
@@ -672,7 +676,7 @@ export default function TaxSummaryPage() {
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4"></td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-bold text-red-700">
-                      {formatCurrency(data?.taxCalculations?.totalTaxLiability || 0)}
+                      {fmt(data?.taxCalculations?.totalTaxLiability || 0)}
                     </td>
                   </tr>
                 </tbody>
@@ -723,10 +727,10 @@ export default function TaxSummaryPage() {
                         {quarter.period}
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                        {formatCurrency(quarter.estimatedPayment)}
+                        {fmt(quarter.estimatedPayment)}
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                        {formatCurrency(quarter.actualPayment)}
+                        {fmt(quarter.actualPayment)}
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700">
                         {formatDate(quarter.dueDate)}
@@ -768,7 +772,7 @@ export default function TaxSummaryPage() {
               </div>
               <div className="bg-gray-50 p-3 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Est. Penalty</p>
-                <p className="text-sm font-semibold text-gray-900">{formatCurrency(data?.compliance?.estimatedPenalty || 0)}</p>
+                <p className="text-sm font-semibold text-gray-900">{fmt(data?.compliance?.estimatedPenalty || 0)}</p>
               </div>
             </div>
 
@@ -816,7 +820,7 @@ export default function TaxSummaryPage() {
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-4 py-2 text-sm text-gray-900">{deduction.category}</td>
                             <td className="px-4 py-2 text-sm text-gray-700">{deduction.description}</td>
-                            <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(deduction.amount)}</td>
+                            <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{fmt(deduction.amount)}</td>
                             <td className="px-4 py-2 text-center">
                               {deduction.deductible ? (
                                 <span className="text-green-600">✓</span>

@@ -9,10 +9,12 @@ import {
   ArrowLeftIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
+import { formatDate } from '@/lib/utils';
 
 interface BalanceSheetData {
   asOfDate: string;
+  currency: string;
   assets: {
     current: Array<{ account: string; balance: number }>;
     fixed: Array<{ account: string; balance: number }>;
@@ -209,34 +211,34 @@ export default function BalanceSheetPage() {
             data.assets.current.map(item => 
               `<div class="line-item">
                 <span>${item.account}</span>
-                <span>${formatCurrency(item.balance)}</span>
+                <span>${formatCurrency(item.balance, data.currency)}</span>
               </div>`
             ).join('') : 
             '<div class="no-items">No current assets</div>'
           }
           <div class="total-line">
             <span>Total Current Assets</span>
-            <span>${formatCurrency(data.assets?.totalCurrent || 0)}</span>
+            <span>${formatCurrency(data.assets?.totalCurrent || 0, data.currency)}</span>
           </div>
 
           <div class="subsection-title">Fixed Assets</div>
-          ${data.assets?.fixed?.length ? 
-            data.assets.fixed.map(item => 
+          ${data.assets?.fixed?.length ?
+            data.assets.fixed.map(item =>
               `<div class="line-item">
                 <span>${item.account}</span>
-                <span>${formatCurrency(item.balance)}</span>
+                <span>${formatCurrency(item.balance, data.currency)}</span>
               </div>`
-            ).join('') : 
+            ).join('') :
             '<div class="no-items">No fixed assets</div>'
           }
           <div class="total-line">
             <span>Total Fixed Assets</span>
-            <span>${formatCurrency(data.assets?.totalFixed || 0)}</span>
+            <span>${formatCurrency(data.assets?.totalFixed || 0, data.currency)}</span>
           </div>
 
           <div class="section-total">
             <span>TOTAL ASSETS</span>
-            <span>${formatCurrency(data.assets?.totalAssets || 0)}</span>
+            <span>${formatCurrency(data.assets?.totalAssets || 0, data.currency)}</span>
           </div>
         </div>
 
@@ -248,34 +250,34 @@ export default function BalanceSheetPage() {
             data.liabilities.current.map(item => 
               `<div class="line-item">
                 <span>${item.account}</span>
-                <span>${formatCurrency(item.balance)}</span>
+                <span>${formatCurrency(item.balance, data.currency)}</span>
               </div>`
             ).join('') : 
             '<div class="no-items">No current liabilities</div>'
           }
           <div class="total-line">
             <span>Total Current Liabilities</span>
-            <span>${formatCurrency(data.liabilities?.totalCurrent || 0)}</span>
+            <span>${formatCurrency(data.liabilities?.totalCurrent || 0, data.currency)}</span>
           </div>
 
           <div class="subsection-title">Long-Term Liabilities</div>
-          ${data.liabilities?.longTerm?.length ? 
-            data.liabilities.longTerm.map(item => 
+          ${data.liabilities?.longTerm?.length ?
+            data.liabilities.longTerm.map(item =>
               `<div class="line-item">
                 <span>${item.account}</span>
-                <span>${formatCurrency(item.balance)}</span>
+                <span>${formatCurrency(item.balance, data.currency)}</span>
               </div>`
-            ).join('') : 
+            ).join('') :
             '<div class="no-items">No long-term liabilities</div>'
           }
           <div class="total-line">
             <span>Total Long-Term Liabilities</span>
-            <span>${formatCurrency(data.liabilities?.totalLongTerm || 0)}</span>
+            <span>${formatCurrency(data.liabilities?.totalLongTerm || 0, data.currency)}</span>
           </div>
 
           <div class="section-total">
             <span>TOTAL LIABILITIES</span>
-            <span>${formatCurrency(data.liabilities?.totalLiabilities || 0)}</span>
+            <span>${formatCurrency(data.liabilities?.totalLiabilities || 0, data.currency)}</span>
           </div>
         </div>
 
@@ -286,7 +288,7 @@ export default function BalanceSheetPage() {
             data.equity.items.map(item => 
               `<div class="line-item">
                 <span>${item.account}</span>
-                <span>${formatCurrency(item.balance)}</span>
+                <span>${formatCurrency(item.balance, data.currency)}</span>
               </div>`
             ).join('') : 
             '<div class="no-items">No equity items</div>'
@@ -294,13 +296,13 @@ export default function BalanceSheetPage() {
 
           <div class="section-total">
             <span>TOTAL EQUITY</span>
-            <span>${formatCurrency(data.equity?.totalEquity || 0)}</span>
+            <span>${formatCurrency(data.equity?.totalEquity || 0, data.currency)}</span>
           </div>
         </div>
 
         <div class="final-total">
           <span>TOTAL LIABILITIES & EQUITY</span>
-          <span>${formatCurrency(data.totalLiabilitiesAndEquity || 0)}</span>
+          <span>${formatCurrency(data.totalLiabilitiesAndEquity || 0, data.currency)}</span>
         </div>
       </body>
       </html>
@@ -392,7 +394,7 @@ export default function BalanceSheetPage() {
                     <div key={index} className="flex justify-between py-1 text-xs sm:text-sm">
                       <span className="text-gray-600 pl-3 sm:pl-4 min-w-0 flex-1 mr-2">{item.account}</span>
                       <span className="text-gray-900 font-medium tabular-nums flex-shrink-0">
-                        {formatCurrency(item.balance)}
+                        {formatCurrency(item.balance, data.currency)}
                       </span>
                     </div>
                   )) || (
@@ -402,7 +404,7 @@ export default function BalanceSheetPage() {
                 <div className="flex justify-between py-2 mt-2 border-t border-gray-100">
                   <span className="text-xs sm:text-sm font-medium text-gray-700 pl-3 sm:pl-4">Total Current Assets</span>
                   <span className="text-xs sm:text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatCurrency(data.assets?.totalCurrent || 0)}
+                    {formatCurrency(data.assets?.totalCurrent || 0, data.currency)}
                   </span>
                 </div>
               </div>
@@ -415,7 +417,7 @@ export default function BalanceSheetPage() {
                     <div key={index} className="flex justify-between py-1 text-xs sm:text-sm">
                       <span className="text-gray-600 pl-3 sm:pl-4 min-w-0 flex-1 mr-2">{item.account}</span>
                       <span className="text-gray-900 font-medium tabular-nums flex-shrink-0">
-                        {formatCurrency(item.balance)}
+                        {formatCurrency(item.balance, data.currency)}
                       </span>
                     </div>
                   )) || (
@@ -425,7 +427,7 @@ export default function BalanceSheetPage() {
                 <div className="flex justify-between py-2 mt-2 border-t border-gray-100">
                   <span className="text-xs sm:text-sm font-medium text-gray-700 pl-3 sm:pl-4">Total Fixed Assets</span>
                   <span className="text-xs sm:text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatCurrency(data.assets?.totalFixed || 0)}
+                    {formatCurrency(data.assets?.totalFixed || 0, data.currency)}
                   </span>
                 </div>
               </div>
@@ -434,7 +436,7 @@ export default function BalanceSheetPage() {
               <div className="flex justify-between py-2.5 sm:py-3 border-t-2 border-gray-300 bg-gray-50 px-3 sm:px-4 -mx-3 sm:-mx-4 mt-3 sm:mt-4">
                 <span className="text-sm sm:text-base font-bold text-gray-900">TOTAL ASSETS</span>
                 <span className="text-sm sm:text-base font-bold text-gray-900 tabular-nums">
-                  {formatCurrency(data.assets?.totalAssets || 0)}
+                  {formatCurrency(data.assets?.totalAssets || 0, data.currency)}
                 </span>
               </div>
             </div>
@@ -453,7 +455,7 @@ export default function BalanceSheetPage() {
                     <div key={index} className="flex justify-between py-1 text-xs sm:text-sm">
                       <span className="text-gray-600 pl-3 sm:pl-4 min-w-0 flex-1 mr-2">{item.account}</span>
                       <span className="text-gray-900 font-medium tabular-nums flex-shrink-0">
-                        {formatCurrency(item.balance)}
+                        {formatCurrency(item.balance, data.currency)}
                       </span>
                     </div>
                   )) || (
@@ -463,7 +465,7 @@ export default function BalanceSheetPage() {
                 <div className="flex justify-between py-2 mt-2 border-t border-gray-100">
                   <span className="text-xs sm:text-sm font-medium text-gray-700 pl-3 sm:pl-4">Total Current Liabilities</span>
                   <span className="text-xs sm:text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatCurrency(data.liabilities?.totalCurrent || 0)}
+                    {formatCurrency(data.liabilities?.totalCurrent || 0, data.currency)}
                   </span>
                 </div>
               </div>
@@ -476,7 +478,7 @@ export default function BalanceSheetPage() {
                     <div key={index} className="flex justify-between py-1 text-xs sm:text-sm">
                       <span className="text-gray-600 pl-3 sm:pl-4 min-w-0 flex-1 mr-2">{item.account}</span>
                       <span className="text-gray-900 font-medium tabular-nums flex-shrink-0">
-                        {formatCurrency(item.balance)}
+                        {formatCurrency(item.balance, data.currency)}
                       </span>
                     </div>
                   )) || (
@@ -486,7 +488,7 @@ export default function BalanceSheetPage() {
                 <div className="flex justify-between py-2 mt-2 border-t border-gray-100">
                   <span className="text-xs sm:text-sm font-medium text-gray-700 pl-3 sm:pl-4">Total Long-Term Liabilities</span>
                   <span className="text-xs sm:text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatCurrency(data.liabilities?.totalLongTerm || 0)}
+                    {formatCurrency(data.liabilities?.totalLongTerm || 0, data.currency)}
                   </span>
                 </div>
               </div>
@@ -495,7 +497,7 @@ export default function BalanceSheetPage() {
               <div className="flex justify-between py-2.5 sm:py-3 border-t-2 border-gray-300 bg-gray-50 px-3 sm:px-4 -mx-3 sm:-mx-4 mt-3 sm:mt-4">
                 <span className="text-sm sm:text-base font-bold text-gray-900">TOTAL LIABILITIES</span>
                 <span className="text-sm sm:text-base font-bold text-gray-900 tabular-nums">
-                  {formatCurrency(data.liabilities?.totalLiabilities || 0)}
+                  {formatCurrency(data.liabilities?.totalLiabilities || 0, data.currency)}
                 </span>
               </div>
             </div>
@@ -511,7 +513,7 @@ export default function BalanceSheetPage() {
                   <div key={index} className="flex justify-between py-1 text-xs sm:text-sm">
                     <span className="text-gray-600 pl-3 sm:pl-4 min-w-0 flex-1 mr-2">{item.account}</span>
                     <span className="text-gray-900 font-medium tabular-nums flex-shrink-0">
-                      {formatCurrency(item.balance)}
+                      {formatCurrency(item.balance, data.currency)}
                     </span>
                   </div>
                 )) || (
@@ -523,7 +525,7 @@ export default function BalanceSheetPage() {
               <div className="flex justify-between py-2.5 sm:py-3 border-t-2 border-gray-300 bg-gray-50 px-3 sm:px-4 -mx-3 sm:-mx-4 mt-3 sm:mt-4">
                 <span className="text-sm sm:text-base font-bold text-gray-900">TOTAL EQUITY</span>
                 <span className="text-sm sm:text-base font-bold text-gray-900 tabular-nums">
-                  {formatCurrency(data.equity?.totalEquity || 0)}
+                  {formatCurrency(data.equity?.totalEquity || 0, data.currency)}
                 </span>
               </div>
             </div>
@@ -532,7 +534,7 @@ export default function BalanceSheetPage() {
             <div className="flex justify-between py-3 sm:py-4 border-t-4 border-double border-[#52b53b] bg-[#52b53b]/5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-lg">
               <span className="text-base sm:text-lg font-bold text-[#52b53b]">TOTAL LIABILITIES & EQUITY</span>
               <span className="text-base sm:text-lg font-bold text-[#52b53b] tabular-nums">
-                {formatCurrency(data.totalLiabilitiesAndEquity || 0)}
+                {formatCurrency(data.totalLiabilitiesAndEquity || 0, data.currency)}
               </span>
             </div>
           </div>

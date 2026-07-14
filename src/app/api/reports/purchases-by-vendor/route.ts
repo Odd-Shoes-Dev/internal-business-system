@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorPurchase {
@@ -25,6 +25,7 @@ interface PurchasesByVendorData {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   summary: {
     totalVendors: number;
     totalPurchases: number;
@@ -71,26 +72,32 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'totalPurchases';
     const minAmount = parseFloat(searchParams.get('minAmount') || '0');
 
-    const billsResult = await db.query(
-      `SELECT b.id,
-              b.vendor_id,
-              b.bill_date,
-              b.total,
-              b.currency,
-              b.payment_terms,
-              v.id AS vendor_ref_id,
-              v.name AS vendor_name,
-              v.company_name AS vendor_company_name
-       FROM bills b
-       LEFT JOIN vendors v ON v.id = b.vendor_id
-       WHERE b.company_id = $1
-         AND b.bill_date >= $2::date
-         AND b.bill_date <= $3::date
-         AND b.status <> 'void'
-       ORDER BY b.bill_date ASC`,
-      [companyId, startDate, endDate]
-    );
+    const [billsResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT b.id,
+                b.vendor_id,
+                b.bill_date,
+                b.total,
+                b.currency,
+                b.payment_terms,
+                v.id AS vendor_ref_id,
+                v.name AS vendor_name,
+                v.company_name AS vendor_company_name
+         FROM bills b
+         LEFT JOIN vendors v ON v.id = b.vendor_id
+         WHERE b.company_id = $1
+           AND b.bill_date >= $2::date
+           AND b.bill_date <= $3::date
+           AND b.status <> 'void'
+         ORDER BY b.bill_date ASC`,
+        [companyId, startDate, endDate]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
     const bills = billsResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     // Fetch bill lines to get category/account details
     const billIds = (bills || []).map(bill => bill.id);
@@ -148,24 +155,7 @@ export async function GET(request: NextRequest) {
       
       // Convert total to USD for reporting
       const total = parseFloat(bill.total);
-      const totalBase = await convertCurrency(
-        {
-          rpc: async (fn: string, args: any) => {
-            if (fn !== 'convert_currency') {
-              return { data: null, error: new Error('Unsupported RPC function') };
-            }
-            const result = await db.query<{ value: number }>(
-              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-            );
-            return { data: result.rows[0]?.value ?? null, error: null };
-          },
-        },
-        total,
-        (bill.currency || baseCurrency) as SupportedCurrency,
-        baseCurrency as SupportedCurrency,
-        endDate
-      ) || total;
+      const totalBase = convertCurrency(total, bill.currency || baseCurrency, baseCurrency, ratesMap);
       
       vendor.totalPurchases += totalBase;
       vendor.purchaseCount += 1;
@@ -257,6 +247,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
+      currency: baseCurrency,
       summary: {
         totalVendors,
         totalPurchases,

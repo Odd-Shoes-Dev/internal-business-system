@@ -34,6 +34,7 @@ interface SalesByProductData {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   summary: {
     totalProducts: number;
     totalRevenue: number;
@@ -298,6 +299,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
+      currency: 'USD',
       summary: {
         totalProducts,
         totalRevenue: Math.round(totalRevenue),

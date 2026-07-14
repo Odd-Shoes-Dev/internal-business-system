@@ -1,5 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { SupportedCurrency } from '@/lib/currency';
+import { NextRequest, NextResponse } from 'next/server';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/reports/ar-aging - Accounts Receivable Aging
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     );
     const baseCurrency = companyRow.rows[0]?.currency || 'USD';
 
-    const asOfDate = searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
+    const asOfDate = searchParams.get('as_of_date') || searchParams.get('asOfDate') || new Date().toISOString().split('T')[0];
     const customerId = searchParams.get('customer_id');
 
     const params: any[] = [companyId, ['sent', 'partial', 'overdue'], asOfDate];
@@ -42,29 +42,35 @@ export async function GET(request: NextRequest) {
       where.push(`i.customer_id = $${params.length}`);
     }
 
-    const invoicesResult = await db.query(
-      `SELECT i.id,
-              i.invoice_number,
-              i.invoice_date,
-              i.due_date,
-              i.total,
-              i.amount_paid,
-              i.currency,
-              i.status,
-              c.id AS customer_ref_id,
-              c.name AS customer_name,
-              c.email AS customer_email
-       FROM invoices i
-       LEFT JOIN customers c ON c.id = i.customer_id
-       WHERE ${where.join(' AND ')}
-       ORDER BY i.due_date ASC`,
-      params
-    );
+    const [invoicesResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT i.id,
+                i.invoice_number,
+                i.invoice_date,
+                i.due_date,
+                i.total,
+                i.amount_paid,
+                i.currency,
+                i.status,
+                c.id AS customer_ref_id,
+                c.name AS customer_name,
+                c.email AS customer_email
+         FROM invoices i
+         LEFT JOIN customers c ON c.id = i.customer_id
+         WHERE ${where.join(' AND ')}
+         ORDER BY i.due_date ASC`,
+        params
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
 
     const invoices = invoicesResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     const today = new Date(asOfDate);
-    
+
     // Initialize aging buckets
     const aging = {
       current: { count: 0, total: 0, invoices: [] as any[] },
@@ -85,24 +91,12 @@ export async function GET(request: NextRequest) {
       total: number;
     }> = {};
 
-    // Process invoices with currency conversion
     for (const invoice of invoices || []) {
       const balance = Number(invoice.total || 0) - Number(invoice.amount_paid || 0);
       if (balance <= 0) continue;
 
-      let balanceBase = balance;
-      const fromCurrency = (invoice.currency || baseCurrency) as SupportedCurrency;
-      if (fromCurrency !== baseCurrency) {
-        try {
-          const conversion = await db.query<{ converted_amount: number }>(
-            `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS converted_amount`,
-            [balance, fromCurrency, baseCurrency, asOfDate]
-          );
-          balanceBase = Number(conversion.rows[0]?.converted_amount ?? balance);
-        } catch {
-          balanceBase = balance;
-        }
-      }
+      const fromCurrency = invoice.currency || baseCurrency;
+      const balanceBase = convertCurrency(balance, fromCurrency, baseCurrency, ratesMap);
 
       const dueDate = new Date(invoice.due_date);
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -115,7 +109,7 @@ export async function GET(request: NextRequest) {
         total: invoice.total,
         balance: balanceBase,
         originalBalance: balance,
-        currency: invoice.currency || baseCurrency,
+        currency: fromCurrency,
         days_overdue: Math.max(0, daysOverdue),
         customer: invoice.customer_ref_id
           ? {
@@ -126,7 +120,6 @@ export async function GET(request: NextRequest) {
           : null,
       };
 
-      // Determine bucket
       let bucket: keyof typeof aging;
       if (daysOverdue <= 0) {
         bucket = 'current';
@@ -144,7 +137,6 @@ export async function GET(request: NextRequest) {
       aging[bucket].total += balanceBase;
       aging[bucket].invoices.push(invoiceData);
 
-      // Update customer summary
       const customer: any = invoiceData.customer;
       const custId = customer?.id;
       if (custId) {
@@ -164,33 +156,42 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const totalOutstanding = 
-      aging.current.total + 
-      aging.days1to30.total + 
-      aging.days31to60.total + 
-      aging.days61to90.total + 
+    const totalOutstanding =
+      aging.current.total +
+      aging.days1to30.total +
+      aging.days31to60.total +
+      aging.days61to90.total +
       aging.over90.total;
 
+    const customers = Object.values(customerAging)
+      .sort((a: any, b: any) => b.total - a.total)
+      .map((c: any) => ({
+        customerId: c.customer?.id || '',
+        customerName: c.customer?.name || 'Unknown',
+        current: c.current,
+        days1to30: c.days1to30,
+        days31to60: c.days31to60,
+        days61to90: c.days61to90,
+        over90: c.over90,
+        total: c.total,
+      }));
+
     return NextResponse.json({
-      data: {
-        asOfDate,
-        summary: {
-          current: aging.current.total,
-          days1to30: aging.days1to30.total,
-          days31to60: aging.days31to60.total,
-          days61to90: aging.days61to90.total,
-          over90: aging.over90.total,
-          total: totalOutstanding,
-        },
-        aging,
-        byCustomer: Object.values(customerAging).sort((a, b) => b.total - a.total),
+      asOfDate,
+      currency: baseCurrency,
+      summary: {
+        totalReceivables: totalOutstanding,
+        buckets: [
+          { label: 'Current', amount: aging.current.total, count: aging.current.count },
+          { label: '1-30 Days', amount: aging.days1to30.total, count: aging.days1to30.count },
+          { label: '31-60 Days', amount: aging.days31to60.total, count: aging.days31to60.count },
+          { label: '61-90 Days', amount: aging.days61to90.total, count: aging.days61to90.count },
+          { label: 'Over 90 Days', amount: aging.over90.total, count: aging.over90.count },
+        ],
       },
+      customers,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-
-

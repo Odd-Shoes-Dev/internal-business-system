@@ -12,7 +12,8 @@ import {
   ExclamationTriangleIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -36,6 +37,7 @@ interface VendorAging {
 
 interface APAgingData {
   reportDate: string;
+  currency: string;
   summary: {
     totalVendors: number;
     totalPayables: number;
@@ -70,6 +72,8 @@ export default function APAgingPage() {
   const [sortBy, setSortBy] = useState('totalAmount');
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchAPAging = async () => {
     setIsLoading(true);
@@ -244,23 +248,23 @@ export default function APAgingPage() {
             <div class="summary-grid">
               <div class="summary-item aging-current">
                 <h4>Current</h4>
-                <div class="value">${formatCurrency(data.summary.current)}</div>
+                <div class="value">${fmt(data.summary.current)}</div>
               </div>
               <div class="summary-item aging-1to30">
                 <h4>1-30 Days</h4>
-                <div class="value">${formatCurrency(data.summary.days1to30)}</div>
+                <div class="value">${fmt(data.summary.days1to30)}</div>
               </div>
               <div class="summary-item aging-31to60">
                 <h4>31-60 Days</h4>
-                <div class="value">${formatCurrency(data.summary.days31to60)}</div>
+                <div class="value">${fmt(data.summary.days31to60)}</div>
               </div>
               <div class="summary-item aging-61to90">
                 <h4>61-90 Days</h4>
-                <div class="value">${formatCurrency(data.summary.days61to90)}</div>
+                <div class="value">${fmt(data.summary.days61to90)}</div>
               </div>
               <div class="summary-item aging-over90">
                 <h4>Over 90 Days</h4>
-                <div class="value">${formatCurrency(data.summary.over90)}</div>
+                <div class="value">${fmt(data.summary.over90)}</div>
               </div>
             </div>
           </div>
@@ -284,12 +288,12 @@ export default function APAgingPage() {
                 <tr class="vendor-row ${vendor.over90 > 0 || vendor.days61to90 > 0 ? 'critical-vendor' : ''}">
                   <td><strong>${vendor.vendorName}</strong></td>
                   <td class="type-${vendor.vendorType.toLowerCase().replace(/\s+/g, '')}">${vendor.vendorType}</td>
-                  <td class="number">${formatCurrency(vendor.totalAmount)}</td>
-                  <td class="number overdue-low">${formatCurrency(vendor.current)}</td>
-                  <td class="number ${vendor.days1to30 > 0 ? 'overdue-medium' : ''}">${formatCurrency(vendor.days1to30)}</td>
-                  <td class="number ${vendor.days31to60 > 0 ? 'overdue-medium' : ''}">${formatCurrency(vendor.days31to60)}</td>
-                  <td class="number ${vendor.days61to90 > 0 ? 'overdue-high' : ''}">${formatCurrency(vendor.days61to90)}</td>
-                  <td class="number ${vendor.over90 > 0 ? 'overdue-high' : ''}">${formatCurrency(vendor.over90)}</td>
+                  <td class="number">${fmt(vendor.totalAmount)}</td>
+                  <td class="number overdue-low">${fmt(vendor.current)}</td>
+                  <td class="number ${vendor.days1to30 > 0 ? 'overdue-medium' : ''}">${fmt(vendor.days1to30)}</td>
+                  <td class="number ${vendor.days31to60 > 0 ? 'overdue-medium' : ''}">${fmt(vendor.days31to60)}</td>
+                  <td class="number ${vendor.days61to90 > 0 ? 'overdue-high' : ''}">${fmt(vendor.days61to90)}</td>
+                  <td class="number ${vendor.over90 > 0 ? 'overdue-high' : ''}">${fmt(vendor.over90)}</td>
                   <td>${vendor.paymentTerms}</td>
                 </tr>
               `).join('')}
@@ -485,7 +489,7 @@ export default function APAgingPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Payables</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalPayables || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalPayables || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -517,23 +521,23 @@ export default function APAgingPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200 border-l-4 border-l-green-500">
                 <p className="text-xs text-green-600 font-medium">Current</p>
-                <FitNumber value={formatCurrency(data?.summary?.current || 0)} className="font-bold text-green-700 mt-1" />
+                <FitNumber value={fmt(data?.summary?.current || 0)} className="font-bold text-green-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200 border-l-4 border-l-yellow-500">
                 <p className="text-xs text-yellow-600 font-medium">1-30 Days</p>
-                <FitNumber value={formatCurrency(data?.summary?.days1to30 || 0)} className="font-bold text-yellow-700 mt-1" />
+                <FitNumber value={fmt(data?.summary?.days1to30 || 0)} className="font-bold text-yellow-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200 border-l-4 border-l-orange-500">
                 <p className="text-xs text-orange-600 font-medium">31-60 Days</p>
-                <FitNumber value={formatCurrency(data?.summary?.days31to60 || 0)} className="font-bold text-orange-700 mt-1" />
+                <FitNumber value={fmt(data?.summary?.days31to60 || 0)} className="font-bold text-orange-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200 border-l-4 border-l-red-500">
                 <p className="text-xs text-red-600 font-medium">61-90 Days</p>
-                <FitNumber value={formatCurrency(data?.summary?.days61to90 || 0)} className="font-bold text-red-700 mt-1" />
+                <FitNumber value={fmt(data?.summary?.days61to90 || 0)} className="font-bold text-red-700 mt-1" />
               </div>
               <div className="text-center p-4 rounded-lg bg-red-100 border border-red-300 border-l-4 border-l-red-600">
                 <p className="text-xs text-red-700 font-medium">Over 90 Days</p>
-                <FitNumber value={formatCurrency(data?.summary?.over90 || 0)} className="font-bold text-red-800 mt-1" />
+                <FitNumber value={fmt(data?.summary?.over90 || 0)} className="font-bold text-red-800 mt-1" />
               </div>
             </div>
           </div>
@@ -605,37 +609,37 @@ export default function APAgingPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(vendor.totalAmount)}
+                          {fmt(vendor.totalAmount)}
                         </td>
                         <td className={cn(
                           "px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums",
                           getOverdueColor(vendor.current, 'current')
                         )}>
-                          {formatCurrency(vendor.current)}
+                          {fmt(vendor.current)}
                         </td>
                         <td className={cn(
                           "px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums",
                           getOverdueColor(vendor.days1to30, '1to30')
                         )}>
-                          {formatCurrency(vendor.days1to30)}
+                          {fmt(vendor.days1to30)}
                         </td>
                         <td className={cn(
                           "px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums",
                           getOverdueColor(vendor.days31to60, '31to60')
                         )}>
-                          {formatCurrency(vendor.days31to60)}
+                          {fmt(vendor.days31to60)}
                         </td>
                         <td className={cn(
                           "px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums",
                           getOverdueColor(vendor.days61to90, '61to90')
                         )}>
-                          {formatCurrency(vendor.days61to90)}
+                          {fmt(vendor.days61to90)}
                         </td>
                         <td className={cn(
                           "px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums",
                           getOverdueColor(vendor.over90, 'over90')
                         )}>
-                          {formatCurrency(vendor.over90)}
+                          {fmt(vendor.over90)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700">
                           {vendor.paymentTerms}

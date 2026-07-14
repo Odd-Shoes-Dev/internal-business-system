@@ -12,7 +12,8 @@ import {
   ArrowTrendingUpIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -54,6 +55,7 @@ interface SalesByCustomerData {
     business: { count: number; revenue: number };
     government: { count: number; revenue: number };
   };
+  currency: string;
 }
 
 export default function SalesByCustomerPage() {
@@ -66,6 +68,8 @@ export default function SalesByCustomerPage() {
   const [customerType, setCustomerType] = useState('all');
   const [sortBy, setSortBy] = useState('totalSales');
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchSalesByCustomer = async () => {
     setIsLoading(true);
@@ -239,15 +243,15 @@ export default function SalesByCustomerPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Sales</h4>
-                <div class="value">${formatCurrency(data.summary.totalSales)}</div>
+                <div class="value">${fmt(data.summary.totalSales)}</div>
               </div>
               <div class="summary-item">
                 <h4>Avg per Customer</h4>
-                <div class="value">${formatCurrency(data.summary.averageSalePerCustomer)}</div>
+                <div class="value">${fmt(data.summary.averageSalePerCustomer)}</div>
               </div>
               <div class="summary-item">
                 <h4>Top Customer</h4>
-                <div class="value">${formatCurrency(data.summary.topCustomerRevenue)}</div>
+                <div class="value">${fmt(data.summary.topCustomerRevenue)}</div>
               </div>
             </div>
           </div>
@@ -269,9 +273,9 @@ export default function SalesByCustomerPage() {
                 <tr class="customer-row">
                   <td><strong>${customer.customerName}</strong></td>
                   <td class="type-${customer.customerType.toLowerCase()}">${customer.customerType}</td>
-                  <td class="number">${formatCurrency(customer.totalSales)}</td>
+                  <td class="number">${fmt(customer.totalSales)}</td>
                   <td class="number">${customer.invoiceCount}</td>
-                  <td class="number">${formatCurrency(customer.averageSale)}</td>
+                  <td class="number">${fmt(customer.averageSale)}</td>
                   <td class="number growth-${customer.salesGrowth > 0 ? 'positive' : customer.salesGrowth < 0 ? 'negative' : 'neutral'}">
                     ${customer.salesGrowth > 0 ? '+' : ''}${customer.salesGrowth.toFixed(1)}%
                   </td>
@@ -431,7 +435,7 @@ export default function SalesByCustomerPage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Sales</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalSales || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalSales || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -441,7 +445,7 @@ export default function SalesByCustomerPage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg per Customer</p>
-                  <FitNumber value={formatCurrency(data?.summary?.averageSalePerCustomer || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.averageSalePerCustomer || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -451,7 +455,7 @@ export default function SalesByCustomerPage() {
                 <ArrowTrendingUpIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Top Customer</p>
-                  <FitNumber value={formatCurrency(data?.summary?.topCustomerRevenue || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.topCustomerRevenue || 0)} className="font-bold text-gray-900" />
                   <p className="text-xs text-gray-500 truncate">{data?.summary?.topCustomerName || 'N/A'}</p>
                 </div>
               </div>
@@ -466,19 +470,19 @@ export default function SalesByCustomerPage() {
                 <BuildingOfficeIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-blue-600">Individual</p>
                 <FitNumber value={data?.customerTypes?.individual?.count || 0} className="font-bold text-blue-700" />
-                <p className="text-sm text-blue-600">{formatCurrency(data?.customerTypes?.individual?.revenue || 0)}</p>
+                <p className="text-sm text-blue-600">{fmt(data?.customerTypes?.individual?.revenue || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-green-600">Business</p>
                 <FitNumber value={data?.customerTypes?.business?.count || 0} className="font-bold text-green-700" />
-                <p className="text-sm text-green-600">{formatCurrency(data?.customerTypes?.business?.revenue || 0)}</p>
+                <p className="text-sm text-green-600">{fmt(data?.customerTypes?.business?.revenue || 0)}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
                 <BuildingOfficeIcon className="w-8 h-8 text-red-500 mx-auto mb-2" />
                 <p className="text-sm font-medium text-red-600">Government</p>
                 <FitNumber value={data?.customerTypes?.government?.count || 0} className="font-bold text-red-700" />
-                <p className="text-sm text-red-600">{formatCurrency(data?.customerTypes?.government?.revenue || 0)}</p>
+                <p className="text-sm text-red-600">{fmt(data?.customerTypes?.government?.revenue || 0)}</p>
               </div>
             </div>
           </div>
@@ -541,13 +545,13 @@ export default function SalesByCustomerPage() {
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(customer.totalSales)}
+                          {fmt(customer.totalSales)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
                           {customer.invoiceCount}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                          {formatCurrency(customer.averageSale)}
+                          {fmt(customer.averageSale)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums">
                           <span className={cn('font-medium', getGrowthColor(customer.salesGrowth))}>

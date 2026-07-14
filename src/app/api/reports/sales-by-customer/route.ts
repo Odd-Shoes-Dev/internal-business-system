@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface CustomerSale {
@@ -24,6 +24,7 @@ interface SalesByCustomerData {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   summary: {
     totalCustomers: number;
     totalSales: number;
@@ -71,26 +72,32 @@ export async function GET(request: NextRequest) {
     const customerType = searchParams.get('customerType') || 'all';
     const sortBy = searchParams.get('sortBy') || 'totalSales';
 
-    const invoicesResult = await db.query(
-      `SELECT i.id,
-              i.customer_id,
-              i.invoice_date,
-              i.total,
-              i.currency,
-              c.id AS customer_ref_id,
-              c.name AS customer_name,
-              c.company_name AS customer_company_name,
-              c.customer_type
-       FROM invoices i
-       LEFT JOIN customers c ON c.id = i.customer_id
-       WHERE i.company_id = $1
-         AND i.invoice_date >= $2::date
-         AND i.invoice_date <= $3::date
-         AND i.status <> 'void'
-       ORDER BY i.invoice_date ASC`,
-      [companyId, startDate, endDate]
-    );
+    const [invoicesResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT i.id,
+                i.customer_id,
+                i.invoice_date,
+                i.total,
+                i.currency,
+                c.id AS customer_ref_id,
+                c.name AS customer_name,
+                c.company_name AS customer_company_name,
+                c.customer_type
+         FROM invoices i
+         LEFT JOIN customers c ON c.id = i.customer_id
+         WHERE i.company_id = $1
+           AND i.invoice_date >= $2::date
+           AND i.invoice_date <= $3::date
+           AND i.status <> 'void'
+         ORDER BY i.invoice_date ASC`,
+        [companyId, startDate, endDate]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
     const invoices = invoicesResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     // Fetch invoice lines to get product details
     const invoiceIds = (invoices || []).map(inv => inv.id);
@@ -161,24 +168,7 @@ export async function GET(request: NextRequest) {
       
       // Convert total to USD for reporting
       const total = parseFloat(invoice.total);
-      const totalBase = await convertCurrency(
-        {
-          rpc: async (fn: string, args: any) => {
-            if (fn !== 'convert_currency') {
-              return { data: null, error: new Error('Unsupported RPC function') };
-            }
-            const result = await db.query<{ value: number }>(
-              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-            );
-            return { data: result.rows[0]?.value ?? null, error: null };
-          },
-        },
-        total,
-        (invoice.currency || baseCurrency) as SupportedCurrency,
-        baseCurrency as SupportedCurrency,
-        endDate
-      ) || total;
+      const totalBase = convertCurrency(total, invoice.currency || baseCurrency, baseCurrency, ratesMap);
       
       customer.totalSales += totalBase;
       customer.invoiceCount += 1;
@@ -264,6 +254,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
+      currency: baseCurrency,
       summary: {
         totalCustomers,
         totalSales,

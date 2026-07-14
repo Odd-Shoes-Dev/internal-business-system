@@ -21,6 +21,7 @@ interface VendorData {
 
 interface VendorStatementData {
   vendor: VendorData;
+  currency: string;
   statementPeriod: {
     startDate: string;
     endDate: string;
@@ -59,6 +60,12 @@ export async function GET(request: NextRequest) {
     if (companyAccessError) {
       return companyAccessError;
     }
+
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
 
     const vendorId = searchParams.get('vendorId');
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
@@ -229,6 +236,7 @@ export async function GET(request: NextRequest) {
 
     const response: VendorStatementData = {
       vendor: vendorData,
+      currency: baseCurrency,
       statementPeriod: {
         startDate,
         endDate

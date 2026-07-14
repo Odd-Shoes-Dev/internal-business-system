@@ -10,7 +10,8 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
@@ -24,6 +25,7 @@ interface TrialBalanceAccount {
 
 interface TrialBalanceData {
   asOfDate: string;
+  currency: string;
   accounts: TrialBalanceAccount[];
   totals: {
     totalDebits: number;
@@ -38,6 +40,8 @@ export default function TrialBalancePage() {
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
   const [showZeroBalances, setShowZeroBalances] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   useEffect(() => {
     if (!company?.id) return;
@@ -198,8 +202,8 @@ export default function TrialBalancePage() {
 
           <div class="balance-status ${data?.totals?.isBalanced ? 'balanced' : 'unbalanced'}">
             ${data?.totals?.isBalanced 
-              ? `✓ Trial Balance is in Balance - Total Debits and Credits: ${formatCurrency(data?.totals?.totalDebits || 0)}`
-              : `⚠ Trial Balance is Out of Balance - Difference: ${formatCurrency(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}`
+              ? `✓ Trial Balance is in Balance - Total Debits and Credits: ${fmt(data?.totals?.totalDebits || 0)}`
+              : `⚠ Trial Balance is Out of Balance - Difference: ${fmt(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}`
             }
           </div>
 
@@ -231,8 +235,8 @@ export default function TrialBalancePage() {
                     <tr class="account-row">
                       <td>${account.accountCode}</td>
                       <td>${account.accountName}</td>
-                      <td class="amount">${account.debit > 0 ? formatCurrency(account.debit) : ''}</td>
-                      <td class="amount">${account.credit > 0 ? formatCurrency(account.credit) : ''}</td>
+                      <td class="amount">${account.debit > 0 ? fmt(account.debit) : ''}</td>
+                      <td class="amount">${account.credit > 0 ? fmt(account.credit) : ''}</td>
                     </tr>
                   `).join('')}
                 `).join('')}
@@ -240,8 +244,8 @@ export default function TrialBalancePage() {
             <tfoot>
               <tr class="totals-row">
                 <td colspan="2">TOTAL</td>
-                <td class="amount">${formatCurrency(data?.totals?.totalDebits || 0)}</td>
-                <td class="amount">${formatCurrency(data?.totals?.totalCredits || 0)}</td>
+                <td class="amount">${fmt(data?.totals?.totalDebits || 0)}</td>
+                <td class="amount">${fmt(data?.totals?.totalCredits || 0)}</td>
               </tr>
             </tfoot>
           </table>
@@ -249,16 +253,16 @@ export default function TrialBalancePage() {
           <div class="summary">
             <div class="summary-card">
               <h3>Total Debit Balances</h3>
-              <div class="value">${formatCurrency(data?.totals?.totalDebits || 0)}</div>
+              <div class="value">${fmt(data?.totals?.totalDebits || 0)}</div>
             </div>
             <div class="summary-card">
               <h3>Total Credit Balances</h3>
-              <div class="value">${formatCurrency(data?.totals?.totalCredits || 0)}</div>
+              <div class="value">${fmt(data?.totals?.totalCredits || 0)}</div>
             </div>
             <div class="summary-card">
               <h3>Difference</h3>
               <div class="value" style="color: ${data?.totals?.isBalanced ? '#22c55e' : '#ef4444'}">
-                ${formatCurrency(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
+                ${fmt(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
               </div>
             </div>
           </div>
@@ -400,7 +404,7 @@ export default function TrialBalancePage() {
                 <div>
                   <p className="text-sm sm:text-base font-medium text-green-800">Trial Balance is in Balance</p>
                   <p className="text-xs sm:text-sm text-green-600">
-                    Total Debits and Credits both equal {formatCurrency(data?.totals?.totalDebits || 0)}
+                    Total Debits and Credits both equal {fmt(data?.totals?.totalDebits || 0)}
                   </p>
                 </div>
               </>
@@ -411,7 +415,7 @@ export default function TrialBalancePage() {
                   <p className="text-sm sm:text-base font-medium text-red-800">Trial Balance is Out of Balance</p>
                   <p className="text-xs sm:text-sm text-red-600">
                     Difference:{' '}
-                    {formatCurrency(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
+                    {fmt(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
                   </p>
                 </div>
               </>
@@ -479,10 +483,10 @@ export default function TrialBalancePage() {
                                     {account.accountName}
                                   </td>
                                   <td className="px-3 sm:px-6 py-2 sm:py-3 text-right tabular-nums text-xs sm:text-sm w-24 sm:w-40">
-                                    {account.debit > 0 ? formatCurrency(account.debit) : ''}
+                                    {account.debit > 0 ? fmt(account.debit) : ''}
                                   </td>
                                   <td className="px-3 sm:px-6 py-2 sm:py-3 text-right tabular-nums text-xs sm:text-sm w-24 sm:w-40">
-                                    {account.credit > 0 ? formatCurrency(account.credit) : ''}
+                                    {account.credit > 0 ? fmt(account.credit) : ''}
                                   </td>
                                 </tr>
                               ))}
@@ -499,10 +503,10 @@ export default function TrialBalancePage() {
                       TOTAL
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
-                      {formatCurrency(data?.totals?.totalDebits || 0)}
+                      {fmt(data?.totals?.totalDebits || 0)}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
-                      {formatCurrency(data?.totals?.totalCredits || 0)}
+                      {fmt(data?.totals?.totalCredits || 0)}
                     </td>
                   </tr>
                 </tfoot>
@@ -515,13 +519,13 @@ export default function TrialBalancePage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-gray-500">Total Debit Balances</p>
               <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">
-                {formatCurrency(data?.totals?.totalDebits || 0)}
+                {fmt(data?.totals?.totalDebits || 0)}
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-gray-500">Total Credit Balances</p>
               <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">
-                {formatCurrency(data?.totals?.totalCredits || 0)}
+                {fmt(data?.totals?.totalCredits || 0)}
               </p>
             </div>
             <div
@@ -537,7 +541,7 @@ export default function TrialBalancePage() {
                   data?.totals?.isBalanced ? 'text-green-600' : 'text-red-600'
                 )}
               >
-                {formatCurrency(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
+                {fmt(Math.abs((data?.totals?.totalDebits || 0) - (data?.totals?.totalCredits || 0)))}
               </p>
             </div>
           </div>

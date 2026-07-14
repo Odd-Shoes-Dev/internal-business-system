@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { convertCurrency, SupportedCurrency } from '@/lib/currency';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorAging {
@@ -49,27 +49,33 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'totalAmount';
     const showCriticalOnly = searchParams.get('showCriticalOnly') === 'true';
 
-    const billsResult = await db.query(
-      `SELECT b.id,
-              b.bill_number,
-              b.bill_date,
-              b.due_date,
-              b.total,
-              b.amount_paid,
-              b.currency,
-              b.status,
-              b.payment_terms,
-              v.id AS vendor_ref_id,
-              v.name AS vendor_name,
-              v.company_name AS vendor_company_name
-       FROM bills b
-       LEFT JOIN vendors v ON v.id = b.vendor_id
-       WHERE b.company_id = $1
-         AND b.status = ANY($2::text[])
-       ORDER BY b.vendor_id ASC`,
-      [companyId, ['pending_approval', 'approved', 'partial']]
-    );
+    const [billsResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT b.id,
+                b.bill_number,
+                b.bill_date,
+                b.due_date,
+                b.total,
+                b.amount_paid,
+                b.currency,
+                b.status,
+                b.payment_terms,
+                v.id AS vendor_ref_id,
+                v.name AS vendor_name,
+                v.company_name AS vendor_company_name
+         FROM bills b
+         LEFT JOIN vendors v ON v.id = b.vendor_id
+         WHERE b.company_id = $1
+           AND b.status = ANY($2::text[])
+         ORDER BY b.vendor_id ASC`,
+        [companyId, ['pending_approval', 'approved', 'partial']]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
     const bills = billsResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
     // Group bills by vendor and calculate aging
     const vendorMap = new Map<string, VendorAging>();
@@ -81,28 +87,10 @@ export async function GET(request: NextRequest) {
 
       const vendorId = bill.vendor_ref_id;
       const balance = parseFloat(bill.total || '0') - parseFloat(bill.amount_paid || '0');
-      
-      if (balance <= 0) continue; // Skip fully paid bills
 
-      // Convert balance to USD for reporting
-      const balanceBase = await convertCurrency(
-        {
-          rpc: async (fn: string, args: any) => {
-            if (fn !== 'convert_currency') {
-              return { data: null, error: new Error('Unsupported RPC function') };
-            }
-            const result = await db.query<{ value: number }>(
-              `SELECT convert_currency($1::numeric, $2::text, $3::text, $4::date) AS value`,
-              [args.p_amount, args.p_from_currency, args.p_to_currency, args.p_date]
-            );
-            return { data: result.rows[0]?.value ?? null, error: null };
-          },
-        },
-        balance,
-        (bill.currency || baseCurrency) as SupportedCurrency,
-        baseCurrency as SupportedCurrency,
-        reportDate
-      ) || balance;
+      if (balance <= 0) continue;
+
+      const balanceBase = convertCurrency(balance, bill.currency || baseCurrency, baseCurrency, ratesMap);
 
       const dueDate = new Date(bill.due_date);
       const daysOverdue = Math.floor((reportDateObj.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -184,30 +172,31 @@ export async function GET(request: NextRequest) {
     // Calculate summary
     const summary = {
       totalVendors: vendors.length,
-      totalOutstanding: vendors.reduce((sum, v) => sum + v.totalAmount, 0),
-      currentTotal: vendors.reduce((sum, v) => sum + v.current, 0),
-      days1to30Total: vendors.reduce((sum, v) => sum + v.days1to30, 0),
-      days31to60Total: vendors.reduce((sum, v) => sum + v.days31to60, 0),
-      days61to90Total: vendors.reduce((sum, v) => sum + v.days61to90, 0),
-      over90Total: vendors.reduce((sum, v) => sum + v.over90, 0),
+      totalPayables: vendors.reduce((sum, v) => sum + v.totalAmount, 0),
+      current: vendors.reduce((sum, v) => sum + v.current, 0),
+      days1to30: vendors.reduce((sum, v) => sum + v.days1to30, 0),
+      days31to60: vendors.reduce((sum, v) => sum + v.days31to60, 0),
+      days61to90: vendors.reduce((sum, v) => sum + v.days61to90, 0),
+      over90: vendors.reduce((sum, v) => sum + v.over90, 0),
       criticalVendors: vendors.filter(v => v.over90 > 0 || v.days61to90 > 0).length,
-      averageDaysOverdue: vendors.length > 0 
-        ? vendors.reduce((sum, v) => sum + v.averagePaymentDays, 0) / vendors.length 
+      averagePaymentDays: vendors.length > 0
+        ? vendors.reduce((sum, v) => sum + v.averagePaymentDays, 0) / vendors.length
         : 0,
     };
 
     // Calculate percentages
-    const totalOutstanding = summary.totalOutstanding;
+    const totalPayables = summary.totalPayables;
     const agingDistribution = {
-      current: totalOutstanding > 0 ? (summary.currentTotal / totalOutstanding) * 100 : 0,
-      days1to30: totalOutstanding > 0 ? (summary.days1to30Total / totalOutstanding) * 100 : 0,
-      days31to60: totalOutstanding > 0 ? (summary.days31to60Total / totalOutstanding) * 100 : 0,
-      days61to90: totalOutstanding > 0 ? (summary.days61to90Total / totalOutstanding) * 100 : 0,
-      over90: totalOutstanding > 0 ? (summary.over90Total / totalOutstanding) * 100 : 0,
+      current: totalPayables > 0 ? (summary.current / totalPayables) * 100 : 0,
+      days1to30: totalPayables > 0 ? (summary.days1to30 / totalPayables) * 100 : 0,
+      days31to60: totalPayables > 0 ? (summary.days31to60 / totalPayables) * 100 : 0,
+      days61to90: totalPayables > 0 ? (summary.days61to90 / totalPayables) * 100 : 0,
+      over90: totalPayables > 0 ? (summary.over90 / totalPayables) * 100 : 0,
     };
 
     const response = {
       reportDate,
+      currency: baseCurrency,
       summary,
       agingDistribution,
       vendors,

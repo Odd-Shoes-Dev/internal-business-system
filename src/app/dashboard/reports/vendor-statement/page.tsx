@@ -11,7 +11,8 @@ import {
   CurrencyDollarIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { FitNumber } from '@/components/ui/fit-number';
@@ -53,6 +54,7 @@ interface VendorStatementData {
     days61to90: number;
     over90: number;
   };
+  currency: string;
 }
 
 export default function VendorStatementPage() {
@@ -65,6 +67,8 @@ export default function VendorStatementPage() {
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   useEffect(() => {
     const loadVendors = async () => {
@@ -297,25 +301,25 @@ export default function VendorStatementPage() {
               <div>
                 <div class="summary-item">
                   <span>Beginning Balance</span>
-                  <span>${formatCurrency(data.summary.beginningBalance)}</span>
+                  <span>${fmt(data.summary.beginningBalance)}</span>
                 </div>
                 <div class="summary-item">
                   <span>Total Purchases</span>
-                  <span>${formatCurrency(data.summary.totalPurchases)}</span>
+                  <span>${fmt(data.summary.totalPurchases)}</span>
                 </div>
                 <div class="summary-item">
                   <span>Ending Balance</span>
-                  <span>${formatCurrency(data.summary.endingBalance)}</span>
+                  <span>${fmt(data.summary.endingBalance)}</span>
                 </div>
               </div>
               <div>
                 <div class="summary-item">
                   <span>Total Payments</span>
-                  <span>${formatCurrency(data.summary.totalPayments)}</span>
+                  <span>${fmt(data.summary.totalPayments)}</span>
                 </div>
                 <div class="summary-item">
                   <span>Adjustments</span>
-                  <span>${formatCurrency(data.summary.totalAdjustments)}</span>
+                  <span>${fmt(data.summary.totalAdjustments)}</span>
                 </div>
               </div>
             </div>
@@ -339,8 +343,8 @@ export default function VendorStatementPage() {
                   <td class="type-${transaction.type.toLowerCase()}">${transaction.type}</td>
                   <td>${transaction.reference}</td>
                   <td>${transaction.description}</td>
-                  <td class="amount">${formatCurrency(transaction.amount)}</td>
-                  <td class="amount">${formatCurrency(transaction.balance)}</td>
+                  <td class="amount">${fmt(transaction.amount)}</td>
+                  <td class="amount">${fmt(transaction.balance)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -349,23 +353,23 @@ export default function VendorStatementPage() {
           <div class="aging">
             <div class="aging-card">
               <h4>Current</h4>
-              <div class="value">${formatCurrency(data.aging.current)}</div>
+              <div class="value">${fmt(data.aging.current)}</div>
             </div>
             <div class="aging-card">
               <h4>1-30 Days</h4>
-              <div class="value">${formatCurrency(data.aging.days1to30)}</div>
+              <div class="value">${fmt(data.aging.days1to30)}</div>
             </div>
             <div class="aging-card">
               <h4>31-60 Days</h4>
-              <div class="value">${formatCurrency(data.aging.days31to60)}</div>
+              <div class="value">${fmt(data.aging.days31to60)}</div>
             </div>
             <div class="aging-card">
               <h4>61-90 Days</h4>
-              <div class="value">${formatCurrency(data.aging.days61to90)}</div>
+              <div class="value">${fmt(data.aging.days61to90)}</div>
             </div>
             <div class="aging-card">
               <h4>Over 90 Days</h4>
-              <div class="value">${formatCurrency(data.aging.over90)}</div>
+              <div class="value">${fmt(data.aging.over90)}</div>
             </div>
           </div>
         </body>
@@ -536,19 +540,19 @@ export default function VendorStatementPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Beginning Balance</span>
-                  <span className="tabular-nums">{formatCurrency(data.summary.beginningBalance)}</span>
+                  <span className="tabular-nums">{fmt(data.summary.beginningBalance)}</span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Total Purchases</span>
-                  <span className="tabular-nums">{formatCurrency(data.summary.totalPurchases)}</span>
+                  <span className="tabular-nums">{fmt(data.summary.totalPurchases)}</span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Total Payments</span>
-                  <span className="tabular-nums text-green-600">{formatCurrency(data.summary.totalPayments)}</span>
+                  <span className="tabular-nums text-green-600">{fmt(data.summary.totalPayments)}</span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm pt-2 border-t border-gray-200 font-semibold">
                   <span className="text-gray-900">Ending Balance</span>
-                  <span className="tabular-nums text-blueox-primary">{formatCurrency(data.summary.endingBalance)}</span>
+                  <span className="tabular-nums text-blueox-primary">{fmt(data.summary.endingBalance)}</span>
                 </div>
               </div>
             </div>
@@ -581,23 +585,23 @@ export default function VendorStatementPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-xs text-green-600 font-medium">Current</p>
-                <FitNumber value={formatCurrency(data.aging.current)} className="font-bold text-green-700 mt-1" />
+                <FitNumber value={fmt(data.aging.current)} className="font-bold text-green-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-xs text-blue-600 font-medium">1-30 Days</p>
-                <FitNumber value={formatCurrency(data.aging.days1to30)} className="font-bold text-blue-700 mt-1" />
+                <FitNumber value={fmt(data.aging.days1to30)} className="font-bold text-blue-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-yellow-50 border border-yellow-200">
                 <p className="text-xs text-yellow-600 font-medium">31-60 Days</p>
-                <FitNumber value={formatCurrency(data.aging.days31to60)} className="font-bold text-yellow-700 mt-1" />
+                <FitNumber value={fmt(data.aging.days31to60)} className="font-bold text-yellow-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-orange-50 border border-orange-200">
                 <p className="text-xs text-orange-600 font-medium">61-90 Days</p>
-                <FitNumber value={formatCurrency(data.aging.days61to90)} className="font-bold text-orange-700 mt-1" />
+                <FitNumber value={fmt(data.aging.days61to90)} className="font-bold text-orange-700 mt-1" />
               </div>
               <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
                 <p className="text-xs text-red-600 font-medium">Over 90 Days</p>
-                <FitNumber value={formatCurrency(data.aging.over90)} className="font-bold text-red-700 mt-1" />
+                <FitNumber value={fmt(data.aging.over90)} className="font-bold text-red-700 mt-1" />
               </div>
             </div>
           </div>
@@ -667,11 +671,11 @@ export default function VendorStatementPage() {
                             'font-medium',
                             transaction.amount > 0 ? 'text-red-600' : 'text-green-600'
                           )}>
-                            {formatCurrency(transaction.amount)}
+                            {fmt(transaction.amount)}
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(transaction.balance)}
+                          {fmt(transaction.balance)}
                         </td>
                       </tr>
                     ))

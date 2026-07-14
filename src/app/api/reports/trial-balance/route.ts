@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
       return companyAccessError;
     }
 
-    const asOfDate = searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
+    const asOfDate = searchParams.get('as_of_date') || searchParams.get('asOfDate') || new Date().toISOString().split('T')[0];
+
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
 
     const accountsResult = await db.query(
       `SELECT id, code, name, account_type, normal_balance
@@ -92,15 +98,13 @@ export async function GET(request: NextRequest) {
     const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
     return NextResponse.json({
-      data: {
-        asOfDate,
-        accounts: trialBalance,
-        totals: {
-          debit: totalDebits,
-          credit: totalCredits,
-        },
+      asOfDate,
+      currency: baseCurrency,
+      accounts: trialBalance,
+      totals: {
+        totalDebits,
+        totalCredits,
         isBalanced,
-        difference: totalDebits - totalCredits,
       },
     });
   } catch (error: any) {

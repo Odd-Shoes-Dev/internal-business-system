@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface JournalEntry {
@@ -87,34 +88,40 @@ export async function GET(request: NextRequest) {
 
     let linesByEntryId = new Map<string, any[]>();
     if (entryIds.length > 0) {
-      const linesResult = await db.query(
-        `SELECT jl.id,
-                jl.journal_entry_id,
-                jl.line_number,
-                jl.account_id,
-                jl.debit,
-                jl.credit,
-                COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
-                jl.debit * COALESCE(
-                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), baseCurrency, je.entry_date::date),
-                  1
-                ) AS base_debit,
-                jl.credit * COALESCE(
-                  convert_currency(1, COALESCE(NULLIF(jl.currency,''),'USD'), baseCurrency, je.entry_date::date),
-                  1
-                ) AS base_credit,
-                jl.description,
-                a.code AS account_code,
-                a.name AS account_name
-         FROM journal_lines jl
-         JOIN journal_entries je ON je.id = jl.journal_entry_id
-         LEFT JOIN accounts a ON a.id = jl.account_id
-         WHERE jl.journal_entry_id = ANY($1::uuid[])
-         ORDER BY jl.line_number ASC`,
-        [entryIds]
-      );
+      const [linesResult, ratesResult] = await Promise.all([
+        db.query(
+          `SELECT jl.id,
+                  jl.journal_entry_id,
+                  jl.line_number,
+                  jl.account_id,
+                  jl.debit,
+                  jl.credit,
+                  COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
+                  COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
+                  COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit,
+                  jl.description,
+                  a.code AS account_code,
+                  a.name AS account_name
+           FROM journal_lines jl
+           JOIN journal_entries je ON je.id = jl.journal_entry_id
+           LEFT JOIN accounts a ON a.id = jl.account_id
+           WHERE jl.journal_entry_id = ANY($1::uuid[])
+           ORDER BY jl.line_number ASC`,
+          [entryIds]
+        ),
+        db.query(
+          `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+        ),
+      ]);
+
+      const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
+      const conv = (amount: number, currency: string) =>
+        convertCurrency(amount, currency || baseCurrency, baseCurrency, ratesMap);
 
       for (const line of linesResult.rows) {
+        const lineCurrency = line.currency || baseCurrency;
+        line.base_debit = conv(parseFloat(line.debit) || 0, lineCurrency);
+        line.base_credit = conv(parseFloat(line.credit) || 0, lineCurrency);
         const current = linesByEntryId.get(line.journal_entry_id) || [];
         current.push(line);
         linesByEntryId.set(line.journal_entry_id, current);
@@ -192,6 +199,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate,
       },
+      currency: baseCurrency,
       summary,
       entries: filteredEntries,
     };

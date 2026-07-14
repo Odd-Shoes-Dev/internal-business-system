@@ -12,7 +12,8 @@ import {
   ClockIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -62,6 +63,7 @@ interface DepreciationData {
     accumulated: number;
     bookValue: number;
   }>;
+  currency: string;
 }
 
 export default function DepreciationSchedulePage() {
@@ -75,6 +77,8 @@ export default function DepreciationSchedulePage() {
   const [sortBy, setSortBy] = useState('purchaseDate');
   const [isLoading, setIsLoading] = useState(false);
   const [showSchedule, setShowSchedule] = useState<string | null>(null);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchDepreciationData = async () => {
     setIsLoading(true);
@@ -258,7 +262,7 @@ export default function DepreciationSchedulePage() {
                 <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Original Cost</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalOriginalCost || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalOriginalCost || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -268,7 +272,7 @@ export default function DepreciationSchedulePage() {
                 <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Book Value</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalCurrentValue || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalCurrentValue || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -278,7 +282,7 @@ export default function DepreciationSchedulePage() {
                 <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Accumulated</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalAccumulatedDepreciation || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalAccumulatedDepreciation || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -288,7 +292,7 @@ export default function DepreciationSchedulePage() {
                 <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Annual Dep.</p>
-                  <FitNumber value={formatCurrency(data?.summary?.annualDepreciationExpense || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.annualDepreciationExpense || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -298,7 +302,7 @@ export default function DepreciationSchedulePage() {
                 <CogIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly Dep.</p>
-                  <FitNumber value={formatCurrency(data?.summary?.monthlyDepreciationExpense || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.monthlyDepreciationExpense || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -323,7 +327,7 @@ export default function DepreciationSchedulePage() {
                     <BuildingOfficeIcon className={`w-8 h-8 text-${color}-500 mx-auto mb-2`} />
                     <p className={`text-sm font-medium text-${color}-600`}>{category}</p>
                     <p className={`text-lg font-bold text-${color}-700`}>{stats.count}</p>
-                    <p className={`text-sm text-${color}-600`}>{formatCurrency(stats.bookValue)}</p>
+                    <p className={`text-sm text-${color}-600`}>{fmt(stats.bookValue)}</p>
                   </div>
                 );
               })}
@@ -405,16 +409,16 @@ export default function DepreciationSchedulePage() {
                           {formatDate(asset.purchaseDate)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(asset.purchasePrice)}
+                          {fmt(asset.purchasePrice)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-red-600">
-                          {formatCurrency(asset.accumulatedDepreciation)}
+                          {fmt(asset.accumulatedDepreciation)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums font-medium text-gray-900">
-                          {formatCurrency(asset.currentBookValue)}
+                          {fmt(asset.currentBookValue)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right tabular-nums text-gray-700">
-                          {formatCurrency(asset.annualDepreciation)}
+                          {fmt(asset.annualDepreciation)}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                           <button
@@ -461,7 +465,7 @@ export default function DepreciationSchedulePage() {
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Purchase Price</p>
-                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(asset.purchasePrice)}</p>
+                            <p className="text-sm font-semibold text-gray-900">{fmt(asset.purchasePrice)}</p>
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Useful Life</p>
@@ -469,7 +473,7 @@ export default function DepreciationSchedulePage() {
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Salvage Value</p>
-                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(asset.residualValue)}</p>
+                            <p className="text-sm font-semibold text-gray-900">{fmt(asset.residualValue)}</p>
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Method</p>
@@ -492,10 +496,10 @@ export default function DepreciationSchedulePage() {
                               {asset.depreciationSchedule?.map((schedule: any, index: number) => (
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="px-4 py-2 text-sm text-gray-900">{schedule.year}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(schedule.beginningValue)}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-red-600">{formatCurrency(schedule.depreciation)}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-red-600">{formatCurrency(schedule.accumulatedDepreciation)}</td>
-                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(schedule.endingValue)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{fmt(schedule.beginningValue)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-red-600">{fmt(schedule.depreciation)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-red-600">{fmt(schedule.accumulatedDepreciation)}</td>
+                                  <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{fmt(schedule.endingValue)}</td>
                                 </tr>
                               ))}
                             </tbody>
