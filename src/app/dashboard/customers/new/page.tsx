@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CurrencySelect } from '@/components/ui';
@@ -31,12 +31,18 @@ export default function NewCustomerPage() {
     state: '',
     zip_code: '',
     country: 'Uganda',
-    currency: 'USD',
+    currency: company?.currency || 'USD',
     tax_id: '',
     payment_terms: 30,
     credit_limit: 0,
     notes: '',
   });
+
+  useEffect(() => {
+    if (company?.currency) {
+      setFormData(prev => ({ ...prev, currency: company.currency }));
+    }
+  }, [company?.currency]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
