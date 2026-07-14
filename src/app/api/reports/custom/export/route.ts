@@ -53,10 +53,10 @@ const fieldDisplayNames: Record<string, string> = {
   last_movement_date: 'Last Movement',
 };
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(amount);
 }
 
@@ -377,7 +377,7 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string, 
                   
                   // Format based on field type
                   if (fieldId.includes('amount') || fieldId.includes('cost') || fieldId.includes('value') || fieldId.includes('sales') || fieldId.includes('purchase')) {
-                    return `<td class="number">${formatCurrency(Number(value))}</td>`;
+                    return `<td class="number">${formatCurrency(Number(value), companySettings?.currency)}</td>`;
                   } else if (fieldId.includes('date')) {
                     return `<td>${formatDate(value)}</td>`;
                   } else if (fieldId.includes('count') || fieldId.includes('quantity')) {

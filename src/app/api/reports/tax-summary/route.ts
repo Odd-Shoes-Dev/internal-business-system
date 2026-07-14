@@ -101,15 +101,15 @@ export async function GET(request: NextRequest) {
     const startDate = `${taxYear}-01-01`;
     const endDate = `${taxYear}-12-31`;
 
-    // Fetch invoices for revenue (paid and partial)
+    // Fetch invoices for revenue (all non-void, non-draft, non-cancelled)
     const invoicesResult = await db.query(
       `SELECT total_amount, amount_paid, status, issue_date
        FROM invoices
        WHERE company_id = $1
          AND issue_date >= $2::date
          AND issue_date <= $3::date
-         AND status = ANY($4::text[])`,
-      [companyId, startDate, endDate, ['paid', 'partial']]
+         AND status NOT IN ('draft', 'void', 'cancelled')`,
+      [companyId, startDate, endDate]
     );
     const invoices = invoicesResult.rows;
 
@@ -127,15 +127,15 @@ export async function GET(request: NextRequest) {
     );
     const expenses = expensesResult.rows;
 
-    // Fetch bills for additional deductions
+    // Fetch bills for additional deductions (all non-void, non-draft, non-cancelled)
     const billsResult = await db.query(
       `SELECT total_amount, amount_paid, category, description, bill_date
        FROM bills
        WHERE company_id = $1
          AND bill_date >= $2::date
          AND bill_date <= $3::date
-         AND status = ANY($4::text[])`,
-      [companyId, startDate, endDate, ['paid', 'partial']]
+         AND status NOT IN ('draft', 'void', 'cancelled')`,
+      [companyId, startDate, endDate]
     );
     const bills = billsResult.rows;
 

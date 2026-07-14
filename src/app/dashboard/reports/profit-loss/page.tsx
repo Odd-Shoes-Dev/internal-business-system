@@ -65,7 +65,7 @@ export default function ProfitLossReportPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, data?.currency || company?.currency || 'USD');
+    return currencyFormatter(amount, data?.currency || 'USD');
   };
 
   const formatDate = (dateString: string) => {

@@ -317,9 +317,16 @@ export async function POST(request: NextRequest) {
       sorts: config.sorts.length,
     };
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const currency = companyRow.rows[0]?.currency || 'USD';
+
     console.log('Returning response with', filteredRows.length, 'rows');
     return NextResponse.json({
       config,
+      currency,
       summary,
       rows: filteredRows,
     });
