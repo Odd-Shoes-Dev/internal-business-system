@@ -83,7 +83,7 @@ export default function GeneralLedgerPage() {
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchGeneralLedger = async () => {
     setIsLoading(true);

@@ -68,12 +68,13 @@ export default function VendorStatementPage() {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   useEffect(() => {
+    if (!company?.id) return;
     const loadVendors = async () => {
       try {
-        const response = await fetch('/api/vendors?active=true');
+        const response = await fetch(`/api/vendors?company_id=${company.id}&active=true`);
         const result = await response.json();
         if (result.data && Array.isArray(result.data)) {
           const vendorList = result.data.map((v: any) => ({
@@ -87,7 +88,7 @@ export default function VendorStatementPage() {
       }
     };
     loadVendors();
-  }, []);
+  }, [company?.id]);
 
   const fetchStatement = async () => {
     if (!vendorId || !company?.id) return;

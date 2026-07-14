@@ -81,7 +81,7 @@ export default function JournalEntriesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchJournalEntries = async () => {
     setIsLoading(true);

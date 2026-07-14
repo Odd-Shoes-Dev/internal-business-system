@@ -41,7 +41,7 @@ export default function TrialBalancePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showZeroBalances, setShowZeroBalances] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   useEffect(() => {
     if (!company?.id) return;

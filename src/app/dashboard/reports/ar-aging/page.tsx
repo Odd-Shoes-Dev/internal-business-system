@@ -46,6 +46,8 @@ export default function ARAgingPage() {
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const cur = () => data?.currency || company?.currency;
+
   useEffect(() => {
     if (!company?.id) return;
     fetchReport();
@@ -204,12 +206,12 @@ export default function ARAgingPage() {
           <div class="summary">
             <div class="summary-card">
               <h3>Total Receivables</h3>
-              <div class="value">${formatCurrency(data?.summary?.totalReceivables || 0, data?.currency)}</div>
+              <div class="value">${formatCurrency(data?.summary?.totalReceivables || 0, cur())}</div>
             </div>
             ${(data?.summary?.buckets || []).map(bucket => `
               <div class="summary-card">
                 <h3>${bucket.label}</h3>
-                <div class="value">${formatCurrency(bucket.amount, data?.currency)}</div>
+                <div class="value">${formatCurrency(bucket.amount, cur())}</div>
                 <div class="count">${bucket.count} invoices</div>
               </div>
             `).join('')}
@@ -231,24 +233,24 @@ export default function ARAgingPage() {
               ${(data?.customers || []).map(customer => `
                 <tr class="customer-row">
                   <td>${customer.customerName}</td>
-                  <td class="amount aging-current">${customer.current > 0 ? formatCurrency(customer.current, data?.currency) : '-'}</td>
-                  <td class="amount aging-30">${customer.days1to30 > 0 ? formatCurrency(customer.days1to30, data?.currency) : '-'}</td>
-                  <td class="amount aging-60">${customer.days31to60 > 0 ? formatCurrency(customer.days31to60, data?.currency) : '-'}</td>
-                  <td class="amount aging-90">${customer.days61to90 > 0 ? formatCurrency(customer.days61to90, data?.currency) : '-'}</td>
-                  <td class="amount aging-over90">${customer.over90 > 0 ? formatCurrency(customer.over90, data?.currency) : '-'}</td>
-                  <td class="amount" style="font-weight: bold">${formatCurrency(customer.total, data?.currency)}</td>
+                  <td class="amount aging-current">${customer.current > 0 ? formatCurrency(customer.current, cur()) : '-'}</td>
+                  <td class="amount aging-30">${customer.days1to30 > 0 ? formatCurrency(customer.days1to30, cur()) : '-'}</td>
+                  <td class="amount aging-60">${customer.days31to60 > 0 ? formatCurrency(customer.days31to60, cur()) : '-'}</td>
+                  <td class="amount aging-90">${customer.days61to90 > 0 ? formatCurrency(customer.days61to90, cur()) : '-'}</td>
+                  <td class="amount aging-over90">${customer.over90 > 0 ? formatCurrency(customer.over90, cur()) : '-'}</td>
+                  <td class="amount" style="font-weight: bold">${formatCurrency(customer.total, cur())}</td>
                 </tr>
               `).join('')}
             </tbody>
             <tfoot>
               <tr class="totals-row">
                 <td>TOTAL</td>
-                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.current, 0), data?.currency)}</td>
-                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days1to30, 0), data?.currency)}</td>
-                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days31to60, 0), data?.currency)}</td>
-                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days61to90, 0), data?.currency)}</td>
-                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.over90, 0), data?.currency)}</td>
-                <td class="amount">${formatCurrency(data?.summary?.totalReceivables || 0, data?.currency)}</td>
+                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.current, 0), cur())}</td>
+                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days1to30, 0), cur())}</td>
+                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days31to60, 0), cur())}</td>
+                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.days61to90, 0), cur())}</td>
+                <td class="amount">${formatCurrency((data?.customers || []).reduce((sum, c) => sum + c.over90, 0), cur())}</td>
+                <td class="amount">${formatCurrency(data?.summary?.totalReceivables || 0, cur())}</td>
               </tr>
             </tfoot>
           </table>
@@ -338,14 +340,14 @@ export default function ARAgingPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-gray-500">Total Receivables</p>
               <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">
-                {formatCurrency(data?.summary?.totalReceivables || 0, data?.currency)}
+                {formatCurrency(data?.summary?.totalReceivables || 0, cur())}
               </p>
             </div>
             {(data?.summary?.buckets || []).map((bucket, index) => (
               <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
                 <p className="text-xs sm:text-sm text-gray-500">{bucket.label}</p>
                 <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">
-                  {formatCurrency(bucket.amount, data?.currency)}
+                  {formatCurrency(bucket.amount, cur())}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">{bucket.count} invoices</p>
               </div>
@@ -368,7 +370,7 @@ export default function ARAgingPage() {
                       getAgingColor(bucket.label)
                     )}
                     style={{ width: `${percentage}%` }}
-                    title={`${bucket.label}: ${formatCurrency(bucket.amount, data?.currency)} (${percentage.toFixed(1)}%)`}
+                    title={`${bucket.label}: ${formatCurrency(bucket.amount, cur())} (${percentage.toFixed(1)}%)`}
                   >
                     {percentage >= 10 && `${percentage.toFixed(0)}%`}
                   </div>
@@ -442,15 +444,15 @@ export default function ARAgingPage() {
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
-                          {customer.current > 0 ? formatCurrency(customer.current, data?.currency) : '-'}
+                          {customer.current > 0 ? formatCurrency(customer.current, cur()) : '-'}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
-                          {customer.days1to30 > 0 ? formatCurrency(customer.days1to30, data?.currency) : '-'}
+                          {customer.days1to30 > 0 ? formatCurrency(customer.days1to30, cur()) : '-'}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
                           {customer.days31to60 > 0 ? (
                             <span className="text-yellow-600 font-medium">
-                              {formatCurrency(customer.days31to60, data?.currency)}
+                              {formatCurrency(customer.days31to60, cur())}
                             </span>
                           ) : (
                             '-'
@@ -459,7 +461,7 @@ export default function ARAgingPage() {
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
                           {customer.days61to90 > 0 ? (
                             <span className="text-orange-600 font-medium">
-                              {formatCurrency(customer.days61to90, data?.currency)}
+                              {formatCurrency(customer.days61to90, cur())}
                             </span>
                           ) : (
                             '-'
@@ -468,14 +470,14 @@ export default function ARAgingPage() {
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
                           {customer.over90 > 0 ? (
                             <span className="text-red-600 font-medium">
-                              {formatCurrency(customer.over90, data?.currency)}
+                              {formatCurrency(customer.over90, cur())}
                             </span>
                           ) : (
                             '-'
                           )}
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm font-semibold text-gray-900">
-                          {formatCurrency(customer.total, data?.currency)}
+                          {formatCurrency(customer.total, cur())}
                         </td>
                       </tr>
                     ))
@@ -511,7 +513,7 @@ export default function ARAgingPage() {
                         )}
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-right tabular-nums text-xs sm:text-sm">
-                        {formatCurrency(data?.summary?.totalReceivables || 0, data?.currency)}
+                        {formatCurrency(data?.summary?.totalReceivables || 0, cur())}
                       </td>
                     </tr>
                   </tfoot>
