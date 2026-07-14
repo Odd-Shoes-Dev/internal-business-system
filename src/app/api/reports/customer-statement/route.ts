@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { INVOICE_OUTSTANDING_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface CustomerTransaction {
@@ -209,7 +210,7 @@ export async function GET(request: NextRequest) {
        WHERE customer_id = $1
          AND company_id = $2
          AND invoice_date <= $3::date
-         AND status <> 'paid' -- TODO(status-filters): reconcile with INVOICE_OUTSTANDING_EXCLUDED`,
+         AND status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
       [customerId, companyId, endDate]
     );
     const unpaidInvoices = unpaidInvoicesResult.rows;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BILL_OUTSTANDING_EXCLUDED, INVOICE_OUTSTANDING_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -66,22 +67,22 @@ export async function GET(request: NextRequest) {
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date < $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
+         WHERE company_id = $1 AND invoice_date < $2::date AND status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date <= $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
+         WHERE company_id = $1 AND invoice_date <= $2::date AND status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
         [companyId, endDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date < $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
+         WHERE company_id = $1 AND bill_date < $2::date AND status ${sqlNotIn(BILL_OUTSTANDING_EXCLUDED)}`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date <= $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
+         WHERE company_id = $1 AND bill_date <= $2::date AND status ${sqlNotIn(BILL_OUTSTANDING_EXCLUDED)}`,
         [companyId, endDate]
       ),
       db.query(

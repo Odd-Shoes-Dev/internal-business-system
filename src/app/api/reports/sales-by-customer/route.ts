@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { INVOICE_RECOGNIZED_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
          WHERE i.company_id = $1
            AND i.invoice_date >= $2::date
            AND i.invoice_date <= $3::date
-           AND i.status <> 'void' -- TODO(status-filters): reconcile with INVOICE_RECOGNIZED_EXCLUDED (draft/cancelled counted here)
+           AND i.status ${sqlNotIn(INVOICE_RECOGNIZED_EXCLUDED)}
          ORDER BY i.invoice_date ASC`,
         [companyId, startDate, endDate]
       ),
