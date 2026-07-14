@@ -18,6 +18,7 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { buildRatesMap, convertCurrency as convertFx } from '@/lib/exchange-rates';
 
 interface Invoice {
   id: string;
@@ -86,6 +87,7 @@ export default function InvoiceDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [customerCredits, setCustomerCredits] = useState<{ id: string; payment_number: string; available_credit: number; currency: string }[]>([]);
   const [applyingCredit, setApplyingCredit] = useState<string | null>(null);
+  const [ratesMap, setRatesMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchInvoice();
@@ -167,13 +169,21 @@ export default function InvoiceDetailPage() {
 
       setPayments(parsedPayments);
 
-      // Fetch customer credits if invoice is unpaid
+      // Fetch customer credits + exchange rates if invoice is unpaid
       if (parsedInvoice.status !== 'paid' && parsedInvoice.status !== 'void' && parsedInvoice.status !== 'cancelled' && invoiceData.customer_id) {
         try {
-          const creditsRes = await fetch(`/api/customers/${invoiceData.customer_id}/credits`, { credentials: 'include' });
+          const [creditsRes, ratesRes] = await Promise.all([
+            fetch(`/api/customers/${invoiceData.customer_id}/credits`, { credentials: 'include' }),
+            fetch('/api/exchange-rates', { credentials: 'include' }),
+          ]);
           if (creditsRes.ok) {
             const creditsPayload = await creditsRes.json();
             setCustomerCredits(creditsPayload.data || []);
+          }
+          if (ratesRes.ok) {
+            const ratesPayload = await ratesRes.json();
+            const rows = ratesPayload.data || [];
+            setRatesMap(buildRatesMap(rows, parsedInvoice.currency || 'USD'));
           }
         } catch { /* non-fatal */ }
       }
@@ -201,10 +211,10 @@ export default function InvoiceDetailPage() {
     return currencyFormatter(amount, currency as any);
   };
 
-  const applyCredit = async (paymentId: string, availableCredit: number) => {
+  const applyCredit = async (paymentId: string, amountInInvoiceCurrency: number) => {
     if (!invoice) return;
     const balanceDue = invoice.total_amount - invoice.amount_paid;
-    const amountToApply = Math.min(availableCredit, balanceDue);
+    const amountToApply = Math.min(amountInInvoiceCurrency, balanceDue);
     if (amountToApply <= 0) return;
 
     setApplyingCredit(paymentId);
@@ -952,24 +962,49 @@ export default function InvoiceDetailPage() {
               <div className="space-y-2">
                 {customerCredits.map((credit) => {
                   const balanceDue = invoice.total_amount - invoice.amount_paid;
-                  const applyAmount = Math.min(Number(credit.available_credit), balanceDue);
+                  const availableCredit = Number(credit.available_credit);
+                  const currencyMatch = credit.currency === invoice.currency;
+
+                  // Convert credit to invoice currency for application
+                  const convertedAmount = currencyMatch
+                    ? availableCredit
+                    : convertFx(availableCredit, credit.currency, invoice.currency, ratesMap);
+                  const applyAmount = Math.min(convertedAmount, balanceDue);
+                  const hasRate = currencyMatch || (ratesMap[credit.currency] !== undefined);
+
                   return (
                     <div key={credit.id} className="flex items-center justify-between gap-3 bg-white/60 rounded-xl px-3 py-2">
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-sm font-medium text-gray-900">{credit.payment_number}</span>
                         <span className="text-xs text-gray-500 ml-2">
-                          {currencyFormatter(Number(credit.available_credit), credit.currency as any)} available
+                          {currencyFormatter(availableCredit, credit.currency as any)} available
                         </span>
+                        {!currencyMatch && hasRate && (
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            ≈ {currencyFormatter(convertedAmount, invoice.currency as any)} at today's rate
+                          </p>
+                        )}
+                        {!currencyMatch && !hasRate && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            No exchange rate available for {credit.currency} → {invoice.currency}
+                          </p>
+                        )}
                       </div>
-                      <button
-                        onClick={() => applyCredit(credit.id, Number(credit.available_credit))}
-                        disabled={applyingCredit === credit.id}
-                        className="flex-shrink-0 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {applyingCredit === credit.id
-                          ? 'Applying...'
-                          : `Apply ${currencyFormatter(applyAmount, credit.currency as any)}`}
-                      </button>
+                      {hasRate ? (
+                        <button
+                          onClick={() => applyCredit(credit.id, convertedAmount)}
+                          disabled={applyingCredit === credit.id}
+                          className="flex-shrink-0 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {applyingCredit === credit.id
+                            ? 'Applying...'
+                            : `Apply ${currencyFormatter(applyAmount, invoice.currency as any)}`}
+                        </button>
+                      ) : (
+                        <span className="flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg cursor-not-allowed">
+                          No rate available
+                        </span>
+                      )}
                     </div>
                   );
                 })}
