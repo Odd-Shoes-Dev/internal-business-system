@@ -15,6 +15,7 @@ import {
   TrashIcon,
   ChevronUpDownIcon,
   CheckIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product, DocumentType } from '@/types/database';
 
@@ -49,6 +50,7 @@ export default function NewInvoicePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [taxRate] = useState(0);
+  const [customerCredit, setCustomerCredit] = useState<{ total: number; currency: string } | null>(null);
 
   // Get query parameters from URL (for booking-generated invoices)
   const bookingId = searchParams.get('booking_id');
@@ -312,11 +314,23 @@ export default function NewInvoicePage() {
                 <input type="hidden" {...register('customer_id', { required: 'Customer is required' })} />
                 <Combobox
                   value={selectedCustomer}
-                  onChange={(customer: Customer | null) => {
+                  onChange={async (customer: Customer | null) => {
                     setSelectedCustomer(customer);
                     setValue('customer_id', customer?.id || '', { shouldValidate: true });
                     if (customer?.currency) {
                       setValue('currency', customer.currency as any);
+                    }
+                    setCustomerCredit(null);
+                    if (customer?.id) {
+                      try {
+                        const res = await fetch(`/api/customers/${customer.id}/credits`, { credentials: 'include' });
+                        if (res.ok) {
+                          const payload = await res.json();
+                          if ((payload.total_credit || 0) > 0) {
+                            setCustomerCredit({ total: payload.total_credit, currency: payload.currency || 'USD' });
+                          }
+                        }
+                      } catch { /* non-fatal */ }
                     }
                   }}
                 >
@@ -372,6 +386,15 @@ export default function NewInvoicePage() {
                 </Combobox>
                 {errors.customer_id && (
                   <p className="form-error">{errors.customer_id.message}</p>
+                )}
+                {customerCredit && (
+                  <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                    <CreditCardIcon className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <p className="text-xs text-amber-800 flex-1">
+                      This customer has <span className="font-semibold">{currencyFormatter(customerCredit.total, customerCredit.currency as any)}</span> in unapplied credits.
+                      After saving, you can apply them to this invoice from the receipt page.
+                    </p>
+                  </div>
                 )}
               </div>
 

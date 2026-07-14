@@ -14,6 +14,8 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   MapPinIcon,
+  CreditCardIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -36,8 +38,21 @@ interface Invoice {
 export default function CustomerDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  interface Credit {
+    id: string;
+    payment_number: string;
+    payment_date: string;
+    amount: number;
+    currency: string;
+    available_credit: number;
+    payment_method: string;
+  }
+
   const [customer, setCustomer] = useState<CustomerType | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [credits, setCredits] = useState<Credit[]>([]);
+  const [totalCredit, setTotalCredit] = useState(0);
+  const [creditCurrency, setCreditCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
@@ -61,6 +76,15 @@ export default function CustomerDetailPage({ params }: PageProps) {
       const customerData = payload?.data || null;
       setCustomer(customerData);
       setInvoices(customerData?.recent_invoices || []);
+
+      // Load unapplied credits
+      const creditsRes = await fetch(`/api/customers/${id}/credits`, { credentials: 'include' });
+      if (creditsRes.ok) {
+        const creditsPayload = await creditsRes.json();
+        setCredits(creditsPayload.data || []);
+        setTotalCredit(creditsPayload.total_credit || 0);
+        setCreditCurrency(creditsPayload.currency || 'USD');
+      }
     } catch (error) {
       console.error('Failed to load customer:', error);
     } finally {
@@ -314,6 +338,48 @@ export default function CustomerDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Unapplied Credits */}
+      {totalCredit > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl shadow-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-amber-200 flex items-center gap-3">
+            <CreditCardIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-amber-900">Unapplied Credits</h3>
+              <p className="text-sm text-amber-700">
+                {formatCurrency(totalCredit, creditCurrency)} available — not yet linked to any invoice
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/invoices/new?customer_id=${id}`}
+              className="btn-primary text-sm flex-shrink-0"
+            >
+              Create Invoice
+            </Link>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {credits.map((credit) => (
+              <div key={credit.id} className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{credit.payment_number}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(credit.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {' · '}{credit.payment_method}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-semibold text-amber-800">
+                    {formatCurrency(Number(credit.available_credit), credit.currency)}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    of {formatCurrency(Number(credit.amount), credit.currency)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Invoices */}
       <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl">

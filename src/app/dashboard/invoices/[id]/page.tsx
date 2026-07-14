@@ -84,6 +84,8 @@ export default function InvoiceDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [customerCredits, setCustomerCredits] = useState<{ id: string; payment_number: string; available_credit: number; currency: string }[]>([]);
+  const [applyingCredit, setApplyingCredit] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvoice();
@@ -165,6 +167,17 @@ export default function InvoiceDetailPage() {
 
       setPayments(parsedPayments);
 
+      // Fetch customer credits if invoice is unpaid
+      if (parsedInvoice.status !== 'paid' && parsedInvoice.status !== 'void' && parsedInvoice.status !== 'cancelled' && invoiceData.customer_id) {
+        try {
+          const creditsRes = await fetch(`/api/customers/${invoiceData.customer_id}/credits`, { credentials: 'include' });
+          if (creditsRes.ok) {
+            const creditsPayload = await creditsRes.json();
+            setCustomerCredits(creditsPayload.data || []);
+          }
+        } catch { /* non-fatal */ }
+      }
+
       // Fetch related booking if booking_id exists
       if (parsedInvoice.booking_id) {
         const bookingResponse = await fetch(`/api/bookings/${parsedInvoice.booking_id}`, {
@@ -186,6 +199,33 @@ export default function InvoiceDetailPage() {
   const formatCurrency = (amount: number) => {
     const currency = invoice?.currency || 'USD';
     return currencyFormatter(amount, currency as any);
+  };
+
+  const applyCredit = async (paymentId: string, availableCredit: number) => {
+    if (!invoice) return;
+    const balanceDue = invoice.total_amount - invoice.amount_paid;
+    const amountToApply = Math.min(availableCredit, balanceDue);
+    if (amountToApply <= 0) return;
+
+    setApplyingCredit(paymentId);
+    try {
+      const res = await fetch(`/api/receipts/${paymentId}/apply`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoice.id, amount_applied: amountToApply }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to apply credit');
+      }
+      await fetchInvoice();
+    } catch (error: any) {
+      console.error('Failed to apply credit:', error);
+      alert(error.message || 'Failed to apply credit');
+    } finally {
+      setApplyingCredit(null);
+    }
   };
 
   const formatDate = (date: string) => {
@@ -899,6 +939,45 @@ export default function InvoiceDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Unapplied Credits Banner */}
+      {customerCredits.length > 0 && invoice.status !== 'paid' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <CreditCardIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900 mb-2">
+                This customer has unapplied credits
+              </p>
+              <div className="space-y-2">
+                {customerCredits.map((credit) => {
+                  const balanceDue = invoice.total_amount - invoice.amount_paid;
+                  const applyAmount = Math.min(Number(credit.available_credit), balanceDue);
+                  return (
+                    <div key={credit.id} className="flex items-center justify-between gap-3 bg-white/60 rounded-xl px-3 py-2">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{credit.payment_number}</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          {currencyFormatter(Number(credit.available_credit), credit.currency as any)} available
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => applyCredit(credit.id, Number(credit.available_credit))}
+                        disabled={applyingCredit === credit.id}
+                        className="flex-shrink-0 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {applyingCredit === credit.id
+                          ? 'Applying...'
+                          : `Apply ${currencyFormatter(applyAmount, credit.currency as any)}`}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
