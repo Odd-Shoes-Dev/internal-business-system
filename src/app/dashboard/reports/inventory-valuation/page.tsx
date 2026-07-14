@@ -96,7 +96,7 @@ export default function InventoryValuationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showLotDetails, setShowLotDetails] = useState<string | null>(null);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchCategories = async () => {
     try {

@@ -67,12 +67,13 @@ export default function CustomerStatementPage() {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   useEffect(() => {
+    if (!company?.id) return;
     const loadCustomers = async () => {
       try {
-        const response = await fetch('/api/customers?active=true');
+        const response = await fetch(`/api/customers?company_id=${company.id}&active=true`);
         const result = await response.json();
         if (result.data && Array.isArray(result.data)) {
           const customerList = result.data.map((c: any) => ({
@@ -86,7 +87,7 @@ export default function CustomerStatementPage() {
       }
     };
     loadCustomers();
-  }, []);
+  }, [company?.id]);
 
   const fetchStatement = async () => {
     if (!customerId || !company?.id) return;

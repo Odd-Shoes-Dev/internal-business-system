@@ -69,7 +69,7 @@ export default function SalesByCustomerPage() {
   const [sortBy, setSortBy] = useState('totalSales');
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchSalesByCustomer = async () => {
     setIsLoading(true);

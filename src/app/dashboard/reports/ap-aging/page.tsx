@@ -73,7 +73,7 @@ export default function APAgingPage() {
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchAPAging = async () => {
     setIsLoading(true);

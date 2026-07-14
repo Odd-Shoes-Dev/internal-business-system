@@ -91,7 +91,7 @@ export default function TaxSummaryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDeductionDetails, setShowDeductionDetails] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchTaxSummary = async () => {
     setIsLoading(true);

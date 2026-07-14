@@ -84,7 +84,7 @@ export default function PurchasesByVendorPage() {
   const [minAmount, setMinAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchPurchasesByVendor = async () => {
     setIsLoading(true);

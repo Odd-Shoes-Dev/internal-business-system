@@ -78,7 +78,7 @@ export default function DepreciationSchedulePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSchedule, setShowSchedule] = useState<string | null>(null);
 
-  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
 
   const fetchDepreciationData = async () => {
     setIsLoading(true);

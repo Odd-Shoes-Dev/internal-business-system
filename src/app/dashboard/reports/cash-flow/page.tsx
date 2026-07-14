@@ -282,7 +282,7 @@ export default function CashFlowPage() {
     }
   };
 
-  const cur = data?.currency;
+  const cur = data?.currency || company?.currency;
   const fmt = (amount: number) => formatCurrency(amount, cur);
 
   const renderAmount = (amount: number) => (
