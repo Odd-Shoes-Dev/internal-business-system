@@ -53,6 +53,8 @@ export default function CustomerDetailPage({ params }: PageProps) {
   const [credits, setCredits] = useState<Credit[]>([]);
   const [totalCredit, setTotalCredit] = useState(0);
   const [creditCurrency, setCreditCurrency] = useState('USD');
+  const [outstandingBalance, setOutstandingBalance] = useState<number | null>(null);
+  const [balanceCurrency, setBalanceCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
@@ -77,8 +79,16 @@ export default function CustomerDetailPage({ params }: PageProps) {
       setCustomer(customerData);
       setInvoices(customerData?.recent_invoices || []);
 
-      // Load unapplied credits
-      const creditsRes = await fetch(`/api/customers/${id}/credits`, { credentials: 'include' });
+      // Load outstanding balance and unapplied credits in parallel
+      const [balanceRes, creditsRes] = await Promise.all([
+        fetch(`/api/customers/${id}/balance`, { credentials: 'include' }),
+        fetch(`/api/customers/${id}/credits`, { credentials: 'include' }),
+      ]);
+      if (balanceRes.ok) {
+        const balancePayload = await balanceRes.json();
+        setOutstandingBalance(balancePayload.outstandingBalance ?? 0);
+        setBalanceCurrency(balancePayload.currency || 'USD');
+      }
       if (creditsRes.ok) {
         const creditsPayload = await creditsRes.json();
         setCredits(creditsPayload.data || []);
@@ -123,12 +133,11 @@ export default function CustomerDetailPage({ params }: PageProps) {
     return currencyFormatter(amount, currency as any);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Not set';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return 'Not set';
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   if (loading) {
@@ -319,10 +328,38 @@ export default function CustomerDetailPage({ params }: PageProps) {
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-4 sm:p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Account Summary</h2>
           <div className="space-y-3 sm:space-y-4">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Current Balance</p>
-              <FitNumber value={formatCurrency(customer.current_balance || 0)} className="font-bold text-gray-900" />
+            {/* Outstanding invoices */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-gray-500">Outstanding Balance</p>
+              <p className={`text-sm sm:text-base font-bold ${outstandingBalance && outstandingBalance > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                {outstandingBalance !== null
+                  ? formatCurrency(outstandingBalance, balanceCurrency)
+                  : formatCurrency(customer.current_balance || 0)}
+              </p>
             </div>
+
+            {/* Unapplied credits */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-gray-500">Unapplied Credits</p>
+              <p className={`text-sm sm:text-base font-bold ${totalCredit > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {totalCredit > 0 ? `− ${formatCurrency(totalCredit, creditCurrency)}` : formatCurrency(0, balanceCurrency)}
+              </p>
+            </div>
+
+            {/* Net balance */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+              <p className="text-xs sm:text-sm font-semibold text-gray-700">Net Balance</p>
+              {(() => {
+                const net = (outstandingBalance ?? 0) - totalCredit;
+                return (
+                  <p className={`text-sm sm:text-base font-bold ${net > 0 ? 'text-red-600' : net < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    {formatCurrency(Math.abs(net), balanceCurrency)}
+                    {net < 0 && <span className="ml-1 text-xs font-normal text-green-600">(credit)</span>}
+                  </p>
+                );
+              })()}
+            </div>
+
             <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200">
               <div>
                 <p className="text-xs sm:text-sm text-gray-500">Payment Terms</p>

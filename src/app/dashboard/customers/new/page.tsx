@@ -345,7 +345,7 @@ export default function NewCustomerPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Credit Limit ($)
+                Credit Limit ({formData.currency || 'USD'})
               </label>
               <input
                 type="number"
