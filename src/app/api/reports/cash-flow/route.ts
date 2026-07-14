@@ -110,14 +110,14 @@ export async function GET(request: NextRequest) {
       const [beginTxResult, periodTxResult] = await Promise.all([
         db.query(
           `SELECT amount FROM bank_transactions
-           WHERE company_id = $1 AND bank_account_id = $2 AND transaction_date < $3::date`,
-          [companyId, account.id, startDate]
+           WHERE bank_account_id = $1 AND transaction_date < $2::date`,
+          [account.id, startDate]
         ),
         db.query(
           `SELECT amount FROM bank_transactions
-           WHERE company_id = $1 AND bank_account_id = $2
-             AND transaction_date >= $3::date AND transaction_date <= $4::date`,
-          [companyId, account.id, startDate, endDate]
+           WHERE bank_account_id = $1
+             AND transaction_date >= $2::date AND transaction_date <= $3::date`,
+          [account.id, startDate, endDate]
         ),
       ]);
 

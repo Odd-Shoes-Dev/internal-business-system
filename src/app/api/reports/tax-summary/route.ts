@@ -104,18 +104,18 @@ export async function GET(request: NextRequest) {
 
     // Fetch invoices for revenue (all non-void, non-draft, non-cancelled)
     const invoicesResult = await db.query(
-      `SELECT total_amount, amount_paid, status, issue_date
+      `SELECT total, amount_paid, status, invoice_date
        FROM invoices
        WHERE company_id = $1
-         AND issue_date >= $2::date
-         AND issue_date <= $3::date
+         AND invoice_date >= $2::date
+         AND invoice_date <= $3::date
          AND status ${sqlNotIn(INVOICE_RECOGNIZED_EXCLUDED)}`,
       [companyId, startDate, endDate]
     );
     const invoices = invoicesResult.rows;
 
     // Calculate gross revenue from invoices
-    const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
+    const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
 
     // Fetch expenses for deductions
     const expensesResult = await db.query(
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch bills for additional deductions (all non-void, non-draft, non-cancelled)
     const billsResult = await db.query(
-      `SELECT total_amount, amount_paid, category, description, bill_date
+      `SELECT total, amount_paid, bill_date
        FROM bills
        WHERE company_id = $1
          AND bill_date >= $2::date
@@ -142,8 +142,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch assets for depreciation calculation
     const assetsResult = await db.query(
-      `SELECT purchase_price, depreciation_method, useful_life_months, accumulated_depreciation, purchase_date
-       FROM assets
+      `SELECT purchase_price, useful_life_months, accumulated_depreciation, purchase_date
+       FROM fixed_assets
        WHERE company_id = $1
          AND purchase_date <= $2::date
          AND status = 'active'`,
@@ -178,8 +178,8 @@ export async function GET(request: NextRequest) {
     });
 
     (bills || []).forEach(bill => {
-      const category = bill.category || 'Vendor Payments';
-      expenseCategories[category] = (expenseCategories[category] || 0) + (parseFloat(bill.amount_paid) || 0);
+      const category = 'Vendor Payments';
+      expenseCategories[category] = (expenseCategories[category] || 0) + (parseFloat(bill.total) || 0);
     });
 
     // Create itemized deductions from categories
