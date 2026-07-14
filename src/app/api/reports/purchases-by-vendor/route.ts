@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
          WHERE b.company_id = $1
            AND b.bill_date >= $2::date
            AND b.bill_date <= $3::date
-           AND b.status <> 'void'
+           AND b.status <> 'void' -- TODO(status-filters): reconcile with BILL_RECOGNIZED_EXCLUDED (draft/cancelled counted here)
          ORDER BY b.bill_date ASC`,
         [companyId, startDate, endDate]
       ),

@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
          WHERE i.company_id = $1
            AND i.invoice_date >= $2::date
            AND i.invoice_date <= $3::date
-           AND i.status <> 'void'
+           AND i.status <> 'void' -- TODO(status-filters): reconcile with INVOICE_RECOGNIZED_EXCLUDED (draft/cancelled counted here)
          ORDER BY i.invoice_date ASC`,
         [companyId, startDate, endDate]
       ),

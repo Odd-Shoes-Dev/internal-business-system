@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
        WHERE vendor_id = $1
          AND company_id = $2
          AND bill_date <= $3::date
-         AND status <> 'paid'`,
+         AND status <> 'paid' -- TODO(status-filters): reconcile with BILL_OUTSTANDING_EXCLUDED`,
       [vendorId, companyId, endDate]
     );
     const unpaidBills = unpaidBillsResult.rows;

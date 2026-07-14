@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
+import { BILL_OUTSTANDING_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface VendorAging {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
          FROM bills b
          LEFT JOIN vendors v ON v.id = b.vendor_id
          WHERE b.company_id = $1
-           AND b.status NOT IN ('paid', 'void', 'draft', 'cancelled')
+           AND b.status ${sqlNotIn(BILL_OUTSTANDING_EXCLUDED)}
          ORDER BY b.vendor_id ASC`,
         [companyId]
       ),

@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
        WHERE customer_id = $1
          AND company_id = $2
          AND invoice_date <= $3::date
-         AND status <> 'paid'`,
+         AND status <> 'paid' -- TODO(status-filters): reconcile with INVOICE_OUTSTANDING_EXCLUDED`,
       [customerId, companyId, endDate]
     );
     const unpaidInvoices = unpaidInvoicesResult.rows;

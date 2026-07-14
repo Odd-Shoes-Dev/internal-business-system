@@ -66,22 +66,22 @@ export async function GET(request: NextRequest) {
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date < $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND invoice_date < $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date <= $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND invoice_date <= $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
         [companyId, endDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date < $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND bill_date < $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date <= $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND bill_date <= $2::date AND status <> 'paid' -- TODO(status-filters): reconcile with OUTSTANDING_EXCLUDED (includes void/draft/cancelled here)`,
         [companyId, endDate]
       ),
       db.query(

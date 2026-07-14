@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { BILL_RECOGNIZED_EXCLUDED, INVOICE_RECOGNIZED_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 
 interface TaxDeduction {
   category: string;
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
        WHERE company_id = $1
          AND issue_date >= $2::date
          AND issue_date <= $3::date
-         AND status NOT IN ('draft', 'void', 'cancelled')`,
+         AND status ${sqlNotIn(INVOICE_RECOGNIZED_EXCLUDED)}`,
       [companyId, startDate, endDate]
     );
     const invoices = invoicesResult.rows;
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
        WHERE company_id = $1
          AND bill_date >= $2::date
          AND bill_date <= $3::date
-         AND status NOT IN ('draft', 'void', 'cancelled')`,
+         AND status ${sqlNotIn(BILL_RECOGNIZED_EXCLUDED)}`,
       [companyId, startDate, endDate]
     );
     const bills = billsResult.rows;
