@@ -20,6 +20,7 @@ interface ReportLine {
 
 interface ProfitLossData {
   period: { startDate: string; endDate: string };
+  currency: string;
   revenue: { items: ReportLine[]; total: number };
   costOfSales: { items: ReportLine[]; total: number };
   grossProfit: number;
@@ -64,7 +65,7 @@ export default function ProfitLossReportPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, (company?.currency || 'USD') as any);
+    return currencyFormatter(amount, data?.currency || company?.currency || 'USD');
   };
 
   const formatDate = (dateString: string) => {

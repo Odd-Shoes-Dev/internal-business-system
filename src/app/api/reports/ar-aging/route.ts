@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
     const asOfDate = searchParams.get('as_of_date') || searchParams.get('asOfDate') || new Date().toISOString().split('T')[0];
     const customerId = searchParams.get('customer_id');
 
-    const params: any[] = [companyId, ['sent', 'partial', 'overdue'], asOfDate];
+    const params: any[] = [companyId, asOfDate];
     const where: string[] = [
       'i.company_id = $1',
-      'i.status = ANY($2::text[])',
-      'i.invoice_date <= $3::date',
+      "i.status NOT IN ('paid', 'void', 'cancelled', 'draft')",
+      'i.invoice_date <= $2::date',
     ];
     if (customerId) {
       params.push(customerId);

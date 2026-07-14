@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 interface ProductSale {
   productId: string;
@@ -253,6 +254,21 @@ function calculateCategoryBreakdown(products: ProductSale[]): CategoryData[] {
 
 export async function GET(request: NextRequest) {
   try {
+    const { db, user, errorResponse } = await requireSessionUser();
+    if (errorResponse || !user) return errorResponse!;
+
+    const companyId = getCompanyIdFromRequest(request);
+    if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+
+    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    if (companyAccessError) return companyAccessError;
+
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -299,7 +315,7 @@ export async function GET(request: NextRequest) {
         startDate,
         endDate
       },
-      currency: 'USD',
+      currency: baseCurrency,
       summary: {
         totalProducts,
         totalRevenue: Math.round(totalRevenue),
