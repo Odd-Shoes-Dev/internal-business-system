@@ -72,7 +72,7 @@ export default function JournalEntriesPage() {
   const { company } = useCompany();
   const [data, setData] = useState<JournalEntriesData | null>(null);
   const [startDate, setStartDate] = useState(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+    new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [entryType, setEntryType] = useState('all');

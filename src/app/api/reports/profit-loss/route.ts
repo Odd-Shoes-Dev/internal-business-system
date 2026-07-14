@@ -31,45 +31,26 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start_date') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
 
-    // Get all revenue accounts (4xxx)
-    const revenueAccountsResult = await db.query(
-      `SELECT id, code, name
-       FROM accounts
-       WHERE company_id = $1
-         AND code >= '4000'
-         AND code < '5000'
-       ORDER BY code ASC`,
-      [companyId]
-    );
-    const revenueAccounts = revenueAccountsResult.rows;
-
-    // Get all expense accounts (5xxx-9xxx)
-    const expenseAccountsResult = await db.query(
-      `SELECT id, code, name
-       FROM accounts
-       WHERE company_id = $1
-         AND code >= '5000'
-       ORDER BY code ASC`,
-      [companyId]
-    );
-    const expenseAccounts = expenseAccountsResult.rows;
-
-    // Get journal entry lines and exchange rates in parallel
+    // Get journal lines with account info and exchange rates in parallel.
+    // Filter on je.company_id (not accounts.company_id) so the report works
+    // regardless of whether accounts were seeded with the correct company_id.
     const [entriesResult, ratesResult] = await Promise.all([
       db.query(
-        `SELECT jl.account_id,
+        `SELECT a.code AS account_code,
+                a.name AS account_name,
                 jl.debit,
                 jl.credit,
-                COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
-                COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
-                COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit
+                COALESCE(NULLIF(jl.currency, ''), $4) AS currency
          FROM journal_lines jl
          INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+         LEFT JOIN accounts a ON a.id = jl.account_id
          WHERE je.company_id = $1
            AND je.status = 'posted'
            AND je.entry_date >= $2::date
-           AND je.entry_date <= $3::date`,
-        [companyId, startDate, endDate]
+           AND je.entry_date <= $3::date
+           AND a.code >= '4000'
+         ORDER BY a.code ASC`,
+        [companyId, startDate, endDate, baseCurrency]
       ),
       db.query(
         `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
@@ -80,38 +61,24 @@ export async function GET(request: NextRequest) {
     const conv = (amount: number, currency: string) =>
       convertCurrency(amount, currency || baseCurrency, baseCurrency, ratesMap);
 
-    // Calculate totals by account (all amounts in company base currency)
-    const accountTotals: Record<string, { debit: number; credit: number }> = {};
-
+    // Accumulate totals by account code
+    const accountTotals: Record<string, { name: string; debit: number; credit: number }> = {};
     entries?.forEach((entry: any) => {
-      if (!accountTotals[entry.account_id]) {
-        accountTotals[entry.account_id] = { debit: 0, credit: 0 };
+      const code = entry.account_code;
+      if (!code) return;
+      if (!accountTotals[code]) {
+        accountTotals[code] = { name: entry.account_name || code, debit: 0, credit: 0 };
       }
       const lineCurrency = entry.currency || baseCurrency;
-      accountTotals[entry.account_id].debit += conv(parseFloat(entry.debit) || 0, lineCurrency);
-      accountTotals[entry.account_id].credit += conv(parseFloat(entry.credit) || 0, lineCurrency);
+      accountTotals[code].debit += conv(parseFloat(entry.debit) || 0, lineCurrency);
+      accountTotals[code].credit += conv(parseFloat(entry.credit) || 0, lineCurrency);
     });
 
-    // Build revenue section
+    // Build revenue section (4xxx — credit balance)
     const revenue: any[] = [];
     let totalRevenue = 0;
 
-    revenueAccounts?.forEach((account) => {
-      const totals = accountTotals[account.id] || { debit: 0, credit: 0 };
-      // Revenue accounts have credit balance
-      const balance = totals.credit - totals.debit;
-      if (balance !== 0) {
-        revenue.push({
-          code: account.code,
-          name: account.name,
-          amount: balance,
-        });
-        totalRevenue += balance;
-      }
-    });
-
-
-    // Build expense sections
+    // Build expense sections (5xxx+ — debit balance)
     const costOfSales: any[] = [];
     const operatingExpenses: any[] = [];
     const otherExpenses: any[] = [];
@@ -119,29 +86,32 @@ export async function GET(request: NextRequest) {
     let totalOperatingExpenses = 0;
     let totalOtherExpenses = 0;
 
-    expenseAccounts?.forEach((account) => {
-      const totals = accountTotals[account.id] || { debit: 0, credit: 0 };
-      // Expense accounts have debit balance
-      const balance = totals.debit - totals.credit;
-      if (balance !== 0) {
-        const item = {
-          code: account.code,
-          name: account.name,
-          amount: balance,
-        };
-
-        if (account.code.startsWith('51')) {
-          costOfSales.push(item);
-          totalCostOfSales += balance;
-        } else if (account.code.startsWith('5') || account.code.startsWith('6')) {
-          operatingExpenses.push(item);
-          totalOperatingExpenses += balance;
+    Object.entries(accountTotals)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([code, { name, debit, credit }]) => {
+        if (code >= '4000' && code < '5000') {
+          const balance = credit - debit;
+          if (balance !== 0) {
+            revenue.push({ code, name, amount: balance });
+            totalRevenue += balance;
+          }
         } else {
-          otherExpenses.push(item);
-          totalOtherExpenses += balance;
+          const balance = debit - credit;
+          if (balance !== 0) {
+            const item = { code, name, amount: balance };
+            if (code.startsWith('51')) {
+              costOfSales.push(item);
+              totalCostOfSales += balance;
+            } else if (code.startsWith('5') || code.startsWith('6')) {
+              operatingExpenses.push(item);
+              totalOperatingExpenses += balance;
+            } else {
+              otherExpenses.push(item);
+              totalOtherExpenses += balance;
+            }
+          }
         }
-      }
-    });
+      });
 
 
     const grossProfit = totalRevenue - totalCostOfSales;
