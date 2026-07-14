@@ -66,9 +66,9 @@ export async function GET(request: NextRequest) {
          FROM bills b
          LEFT JOIN vendors v ON v.id = b.vendor_id
          WHERE b.company_id = $1
-           AND b.status = ANY($2::text[])
+           AND b.status NOT IN ('paid', 'void', 'draft', 'cancelled')
          ORDER BY b.vendor_id ASC`,
-        [companyId, ['pending_approval', 'approved', 'partial']]
+        [companyId]
       ),
       db.query(
         `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`

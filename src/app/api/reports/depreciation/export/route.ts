@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanySettings } from '@/lib/company-settings';
 
-function formatCurrency(amount: number): string {
+function formatCurrency(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -197,11 +197,11 @@ export async function GET(request: NextRequest) {
               </div>
               <div class="summary-item">
                 <h4>Original Cost</h4>
-                <div class="value">${formatCurrency(data.summary.totalOriginalCost)}</div>
+                <div class="value">${formatCurrency(data.summary.totalOriginalCost, companySettings.currency)}</div>
               </div>
               <div class="summary-item">
                 <h4>Current Book Value</h4>
-                <div class="value">${formatCurrency(data.summary.totalCurrentValue)}</div>
+                <div class="value">${formatCurrency(data.summary.totalCurrentValue, companySettings.currency)}</div>
               </div>
             </div>
           </div>
@@ -224,10 +224,10 @@ export async function GET(request: NextRequest) {
                   <td><strong>${asset.assetName}</strong></td>
                   <td class="type-${(asset.category || 'other').toLowerCase().replace(/\s+/g, '-')}">${asset.category || 'N/A'}</td>
                   <td>${formatDate(asset.purchaseDate)}</td>
-                  <td class="number">${formatCurrency(asset.purchasePrice)}</td>
-                  <td class="number">${formatCurrency(asset.accumulatedDepreciation)}</td>
-                  <td class="number">${formatCurrency(asset.currentBookValue)}</td>
-                  <td class="number">${formatCurrency(asset.annualDepreciation)}</td>
+                  <td class="number">${formatCurrency(asset.purchasePrice, companySettings.currency)}</td>
+                  <td class="number">${formatCurrency(asset.accumulatedDepreciation, companySettings.currency)}</td>
+                  <td class="number">${formatCurrency(asset.currentBookValue, companySettings.currency)}</td>
+                  <td class="number">${formatCurrency(asset.annualDepreciation, companySettings.currency)}</td>
                 </tr>
               `).join('')}
             </tbody>

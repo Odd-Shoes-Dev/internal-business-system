@@ -622,7 +622,7 @@ export default function CustomReportsPage() {
                           
                           return (
                             <td key={fieldId} className="px-4 py-3 text-sm text-gray-900">
-                              {field?.type === 'currency' ? formatCurrency(value || 0, company?.currency) :
+                              {field?.type === 'currency' ? formatCurrency(value || 0, reportData?.currency || company?.currency) :
                                field?.type === 'date' ? formatDate(value) :
                                field?.type === 'number' ? (value || 0).toLocaleString() :
                                value || '-'}
