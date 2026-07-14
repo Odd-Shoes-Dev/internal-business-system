@@ -14,7 +14,9 @@ import {
   CalendarIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
+import { useCompany } from '@/contexts/company-context';
 
 interface DataSource {
   id: string;
@@ -128,6 +130,7 @@ const operators = [
 ];
 
 export default function CustomReportsPage() {
+  const { company } = useCompany();
   const [config, setConfig] = useState<CustomReportConfig>({
     name: '',
     description: '',
@@ -619,7 +622,7 @@ export default function CustomReportsPage() {
                           
                           return (
                             <td key={fieldId} className="px-4 py-3 text-sm text-gray-900">
-                              {field?.type === 'currency' ? formatCurrency(value || 0) :
+                              {field?.type === 'currency' ? formatCurrency(value || 0, company?.currency) :
                                field?.type === 'date' ? formatDate(value) :
                                field?.type === 'number' ? (value || 0).toLocaleString() :
                                value || '-'}

@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/reports/profit-loss
@@ -53,20 +54,31 @@ export async function GET(request: NextRequest) {
     );
     const expenseAccounts = expenseAccountsResult.rows;
 
-    // Get journal entry lines for the period
-    const entriesResult = await db.query(
-      `SELECT jl.account_id,
-              COALESCE(convert_currency(jl.debit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.debit) AS debit,
-              COALESCE(convert_currency(jl.credit, COALESCE(NULLIF(jl.currency,''),'USD'), '${baseCurrency}', je.entry_date::date), jl.credit) AS credit
-       FROM journal_lines jl
-       INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
-       WHERE je.company_id = $1
-         AND je.status = 'posted'
-         AND je.entry_date >= $2::date
-         AND je.entry_date <= $3::date`,
-      [companyId, startDate, endDate]
-    );
+    // Get journal entry lines and exchange rates in parallel
+    const [entriesResult, ratesResult] = await Promise.all([
+      db.query(
+        `SELECT jl.account_id,
+                jl.debit,
+                jl.credit,
+                COALESCE(NULLIF(jl.currency, ''), 'USD') AS currency,
+                COALESCE(NULLIF(jl.base_debit, 0), jl.debit) AS base_debit,
+                COALESCE(NULLIF(jl.base_credit, 0), jl.credit) AS base_credit
+         FROM journal_lines jl
+         INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+         WHERE je.company_id = $1
+           AND je.status = 'posted'
+           AND je.entry_date >= $2::date
+           AND je.entry_date <= $3::date`,
+        [companyId, startDate, endDate]
+      ),
+      db.query(
+        `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+      ),
+    ]);
     const entries = entriesResult.rows;
+    const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
+    const conv = (amount: number, currency: string) =>
+      convertCurrency(amount, currency || baseCurrency, baseCurrency, ratesMap);
 
     // Calculate totals by account (all amounts in company base currency)
     const accountTotals: Record<string, { debit: number; credit: number }> = {};
@@ -75,8 +87,9 @@ export async function GET(request: NextRequest) {
       if (!accountTotals[entry.account_id]) {
         accountTotals[entry.account_id] = { debit: 0, credit: 0 };
       }
-      accountTotals[entry.account_id].debit += parseFloat(entry.debit) || 0;
-      accountTotals[entry.account_id].credit += parseFloat(entry.credit) || 0;
+      const lineCurrency = entry.currency || baseCurrency;
+      accountTotals[entry.account_id].debit += conv(parseFloat(entry.debit) || 0, lineCurrency);
+      accountTotals[entry.account_id].credit += conv(parseFloat(entry.credit) || 0, lineCurrency);
     });
 
     // Build revenue section
@@ -138,6 +151,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: {
         period: { startDate, endDate },
+        currency: baseCurrency,
         revenue: {
           items: revenue,
           total: totalRevenue,

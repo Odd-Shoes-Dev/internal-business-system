@@ -15,7 +15,8 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -49,6 +50,7 @@ interface JournalEntriesData {
     startDate: string;
     endDate: string;
   };
+  currency: string;
   summary: {
     totalEntries: number;
     totalDebits: number;
@@ -78,6 +80,8 @@ export default function JournalEntriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
+
+  const fmt = (amount: number) => formatCurrency(amount, data?.currency);
 
   const fetchJournalEntries = async () => {
     setIsLoading(true);
@@ -279,11 +283,11 @@ export default function JournalEntriesPage() {
               </div>
               <div class="summary-item">
                 <h4>Total Debits</h4>
-                <div class="value">${formatCurrency(data.summary.totalDebits)}</div>
+                <div class="value">${fmt(data.summary.totalDebits)}</div>
               </div>
               <div class="summary-item">
                 <h4>Total Credits</h4>
-                <div class="value">${formatCurrency(data.summary.totalCredits)}</div>
+                <div class="value">${fmt(data.summary.totalCredits)}</div>
               </div>
             </div>
           </div>
@@ -540,7 +544,7 @@ export default function JournalEntriesPage() {
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Debits (USD)</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalDebits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -550,7 +554,7 @@ export default function JournalEntriesPage() {
                 <ArrowDownTrayIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 rotate-180" />
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Total Credits (USD)</p>
-                  <FitNumber value={formatCurrency(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
+                  <FitNumber value={fmt(data?.summary?.totalCredits || 0)} className="font-bold text-gray-900" />
                 </div>
               </div>
             </div>
@@ -651,10 +655,10 @@ export default function JournalEntriesPage() {
                     <div className="flex items-center justify-between text-xs sm:text-sm">
                       <div className="flex gap-4">
                         <span className="text-red-600 font-medium">
-                          Debit: {formatCurrency(entry.originalTotalDebit, (entry.entryCurrency || 'USD') as any)}
+                          Debit: {formatCurrency(entry.originalTotalDebit, entry.entryCurrency || 'USD')}
                         </span>
                         <span className="text-green-600 font-medium">
-                          Credit: {formatCurrency(entry.originalTotalCredit, (entry.entryCurrency || 'USD') as any)}
+                          Credit: {formatCurrency(entry.originalTotalCredit, entry.entryCurrency || 'USD')}
                         </span>
                       </div>
                       <span className="text-gray-500">{entry.lineItems.length} line items</span>
