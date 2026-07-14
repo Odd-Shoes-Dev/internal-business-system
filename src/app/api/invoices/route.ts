@@ -226,8 +226,8 @@ export async function POST(request: NextRequest) {
       tax_amount: taxAmount,
       discount_amount: discountAmount,
       total,
-      amount_paid: 0,
-      status: invoiceData.status || 'draft',
+      amount_paid: documentType === 'receipt' ? total : 0,
+      status: documentType === 'receipt' ? 'paid' : (invoiceData.status || 'draft'),
       ar_account_id: arAccount.rows[0]?.id || null,
       created_by: user.id,
       document_type: documentType,
@@ -378,7 +378,27 @@ export async function POST(request: NextRequest) {
       return invoice;
     });
 
-    return NextResponse.json({ data: createdInvoice }, { status: 201 });
+    // Check if the customer has unapplied credits that could be applied to this invoice
+    let unappliedCredit = 0;
+    try {
+      const creditResult = await db.query<{ available_credit: string }>(
+        `SELECT pr.amount - COALESCE(SUM(pa.amount_applied), 0) AS available_credit
+         FROM payments_received pr
+         LEFT JOIN payment_applications pa ON pa.payment_id = pr.id
+         WHERE pr.customer_id = $1
+         GROUP BY pr.id
+         HAVING pr.amount - COALESCE(SUM(pa.amount_applied), 0) > 0.01`,
+        [invoiceDataToInsert.customer_id]
+      );
+      unappliedCredit = creditResult.rows.reduce(
+        (sum, row) => sum + Number(row.available_credit), 0
+      );
+    } catch { /* non-fatal */ }
+
+    return NextResponse.json({
+      data: createdInvoice,
+      unapplied_credit: unappliedCredit,
+    }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

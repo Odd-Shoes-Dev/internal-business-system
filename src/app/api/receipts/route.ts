@@ -196,6 +196,11 @@ export async function POST(request: NextRequest) {
     }
     const paymentNumber = `PMT-${year}-${nextNumber.toString().padStart(5, '0')}`;
 
+    // Accept simple invoice_id shorthand — most receipts are one payment against one invoice
+    if (body.invoice_id && (!body.invoice_applications || body.invoice_applications.length === 0)) {
+      body.invoice_applications = [{ invoice_id: body.invoice_id, amount_applied: body.amount }];
+    }
+
     // Validate invoice applications if provided
     const applications = body.invoice_applications || [];
     let totalApplied = 0;

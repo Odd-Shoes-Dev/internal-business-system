@@ -262,10 +262,16 @@ export default function InventoryAdjustmentPage() {
                         <td>
                           <input
                             type="number"
-                            value={line.adjustment_quantity}
-                            onChange={(e) =>
-                              updateLine(index, 'adjustment_quantity', parseFloat(e.target.value) || 0)
-                            }
+                            value={line.adjustment_quantity === 0 ? '' : line.adjustment_quantity}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              updateLine(index, 'adjustment_quantity', raw === '' || raw === '-' ? 0 : parseFloat(raw) || 0);
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value === '' || e.target.value === '-') {
+                                updateLine(index, 'adjustment_quantity', 0);
+                              }
+                            }}
                             className="input text-sm text-center"
                             step="0.01"
                             placeholder="0"

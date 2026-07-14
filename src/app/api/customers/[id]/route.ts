@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, context: any) {
 
     // Get recent invoices
     const invoices = await db.query(
-      `SELECT id, invoice_number, invoice_date, total, amount_paid, status
+      `SELECT id, invoice_number, invoice_date, due_date, total, currency, amount_paid, status
        FROM invoices
        WHERE customer_id = $1
        ORDER BY invoice_date DESC

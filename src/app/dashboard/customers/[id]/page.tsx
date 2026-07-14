@@ -14,6 +14,8 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   MapPinIcon,
+  CreditCardIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -36,8 +38,23 @@ interface Invoice {
 export default function CustomerDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  interface Credit {
+    id: string;
+    payment_number: string;
+    payment_date: string;
+    amount: number;
+    currency: string;
+    available_credit: number;
+    payment_method: string;
+  }
+
   const [customer, setCustomer] = useState<CustomerType | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [credits, setCredits] = useState<Credit[]>([]);
+  const [totalCredit, setTotalCredit] = useState(0);
+  const [creditCurrency, setCreditCurrency] = useState('USD');
+  const [outstandingBalance, setOutstandingBalance] = useState<number | null>(null);
+  const [balanceCurrency, setBalanceCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
@@ -61,6 +78,23 @@ export default function CustomerDetailPage({ params }: PageProps) {
       const customerData = payload?.data || null;
       setCustomer(customerData);
       setInvoices(customerData?.recent_invoices || []);
+
+      // Load outstanding balance and unapplied credits in parallel
+      const [balanceRes, creditsRes] = await Promise.all([
+        fetch(`/api/customers/${id}/balance`, { credentials: 'include' }),
+        fetch(`/api/customers/${id}/credits`, { credentials: 'include' }),
+      ]);
+      if (balanceRes.ok) {
+        const balancePayload = await balanceRes.json();
+        setOutstandingBalance(balancePayload.outstandingBalance ?? 0);
+        setBalanceCurrency(balancePayload.currency || 'USD');
+      }
+      if (creditsRes.ok) {
+        const creditsPayload = await creditsRes.json();
+        setCredits(creditsPayload.data || []);
+        setTotalCredit(creditsPayload.total_credit || 0);
+        setCreditCurrency(creditsPayload.currency || 'USD');
+      }
     } catch (error) {
       console.error('Failed to load customer:', error);
     } finally {
@@ -99,12 +133,11 @@ export default function CustomerDetailPage({ params }: PageProps) {
     return currencyFormatter(amount, currency as any);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Not set';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return 'Not set';
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   if (loading) {
@@ -295,10 +328,38 @@ export default function CustomerDetailPage({ params }: PageProps) {
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl p-4 sm:p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Account Summary</h2>
           <div className="space-y-3 sm:space-y-4">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">Current Balance</p>
-              <FitNumber value={formatCurrency(customer.current_balance || 0)} className="font-bold text-gray-900" />
+            {/* Outstanding invoices */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-gray-500">Outstanding Balance</p>
+              <p className={`text-sm sm:text-base font-bold ${outstandingBalance && outstandingBalance > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                {outstandingBalance !== null
+                  ? formatCurrency(outstandingBalance, balanceCurrency)
+                  : formatCurrency(customer.current_balance || 0)}
+              </p>
             </div>
+
+            {/* Unapplied credits */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-gray-500">Unapplied Credits</p>
+              <p className={`text-sm sm:text-base font-bold ${totalCredit > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {totalCredit > 0 ? `− ${formatCurrency(totalCredit, creditCurrency)}` : formatCurrency(0, balanceCurrency)}
+              </p>
+            </div>
+
+            {/* Net balance */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+              <p className="text-xs sm:text-sm font-semibold text-gray-700">Net Balance</p>
+              {(() => {
+                const net = (outstandingBalance ?? 0) - totalCredit;
+                return (
+                  <p className={`text-sm sm:text-base font-bold ${net > 0 ? 'text-red-600' : net < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    {formatCurrency(Math.abs(net), balanceCurrency)}
+                    {net < 0 && <span className="ml-1 text-xs font-normal text-green-600">(credit)</span>}
+                  </p>
+                );
+              })()}
+            </div>
+
             <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-200">
               <div>
                 <p className="text-xs sm:text-sm text-gray-500">Payment Terms</p>
@@ -314,6 +375,48 @@ export default function CustomerDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Unapplied Credits */}
+      {totalCredit > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl shadow-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-amber-200 flex items-center gap-3">
+            <CreditCardIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-amber-900">Unapplied Credits</h3>
+              <p className="text-sm text-amber-700">
+                {formatCurrency(totalCredit, creditCurrency)} available — not yet linked to any invoice
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/invoices/new?customer_id=${id}`}
+              className="btn-primary text-sm flex-shrink-0"
+            >
+              Create Invoice
+            </Link>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {credits.map((credit) => (
+              <div key={credit.id} className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{credit.payment_number}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(credit.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {' · '}{credit.payment_method}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-semibold text-amber-800">
+                    {formatCurrency(Number(credit.available_credit), credit.currency)}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    of {formatCurrency(Number(credit.amount), credit.currency)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Invoices */}
       <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl">

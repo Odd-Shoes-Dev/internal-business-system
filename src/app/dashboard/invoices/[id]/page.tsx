@@ -18,6 +18,7 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { buildRatesMap, convertCurrency as convertFx } from '@/lib/exchange-rates';
 
 interface Invoice {
   id: string;
@@ -84,6 +85,9 @@ export default function InvoiceDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [customerCredits, setCustomerCredits] = useState<{ id: string; payment_number: string; available_credit: number; currency: string }[]>([]);
+  const [applyingCredit, setApplyingCredit] = useState<string | null>(null);
+  const [ratesMap, setRatesMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchInvoice();
@@ -165,6 +169,25 @@ export default function InvoiceDetailPage() {
 
       setPayments(parsedPayments);
 
+      // Fetch customer credits + exchange rates if invoice is unpaid
+      if (parsedInvoice.status !== 'paid' && parsedInvoice.status !== 'void' && parsedInvoice.status !== 'cancelled' && invoiceData.customer_id) {
+        try {
+          const [creditsRes, ratesRes] = await Promise.all([
+            fetch(`/api/customers/${invoiceData.customer_id}/credits`, { credentials: 'include' }),
+            fetch('/api/exchange-rates', { credentials: 'include' }),
+          ]);
+          if (creditsRes.ok) {
+            const creditsPayload = await creditsRes.json();
+            setCustomerCredits(creditsPayload.data || []);
+          }
+          if (ratesRes.ok) {
+            const ratesPayload = await ratesRes.json();
+            const rows = ratesPayload.data || [];
+            setRatesMap(buildRatesMap(rows, parsedInvoice.currency || 'USD'));
+          }
+        } catch { /* non-fatal */ }
+      }
+
       // Fetch related booking if booking_id exists
       if (parsedInvoice.booking_id) {
         const bookingResponse = await fetch(`/api/bookings/${parsedInvoice.booking_id}`, {
@@ -186,6 +209,33 @@ export default function InvoiceDetailPage() {
   const formatCurrency = (amount: number) => {
     const currency = invoice?.currency || 'USD';
     return currencyFormatter(amount, currency as any);
+  };
+
+  const applyCredit = async (paymentId: string, amountInInvoiceCurrency: number) => {
+    if (!invoice) return;
+    const balanceDue = invoice.total_amount - invoice.amount_paid;
+    const amountToApply = Math.min(amountInInvoiceCurrency, balanceDue);
+    if (amountToApply <= 0) return;
+
+    setApplyingCredit(paymentId);
+    try {
+      const res = await fetch(`/api/receipts/${paymentId}/apply`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_id: invoice.id, amount_applied: amountToApply }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to apply credit');
+      }
+      await fetchInvoice();
+    } catch (error: any) {
+      console.error('Failed to apply credit:', error);
+      alert(error.message || 'Failed to apply credit');
+    } finally {
+      setApplyingCredit(null);
+    }
   };
 
   const formatDate = (date: string) => {
@@ -899,6 +949,70 @@ export default function InvoiceDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Unapplied Credits Banner */}
+      {customerCredits.length > 0 && invoice.status !== 'paid' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <CreditCardIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-900 mb-2">
+                This customer has unapplied credits
+              </p>
+              <div className="space-y-2">
+                {customerCredits.map((credit) => {
+                  const balanceDue = invoice.total_amount - invoice.amount_paid;
+                  const availableCredit = Number(credit.available_credit);
+                  const currencyMatch = credit.currency === invoice.currency;
+
+                  // Convert credit to invoice currency for application
+                  const convertedAmount = currencyMatch
+                    ? availableCredit
+                    : convertFx(availableCredit, credit.currency, invoice.currency, ratesMap);
+                  const applyAmount = Math.min(convertedAmount, balanceDue);
+                  const hasRate = currencyMatch || (ratesMap[credit.currency] !== undefined);
+
+                  return (
+                    <div key={credit.id} className="flex items-center justify-between gap-3 bg-white/60 rounded-xl px-3 py-2">
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium text-gray-900">{credit.payment_number}</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          {currencyFormatter(availableCredit, credit.currency as any)} available
+                        </span>
+                        {!currencyMatch && hasRate && (
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            ≈ {currencyFormatter(convertedAmount, invoice.currency as any)} at today's rate
+                          </p>
+                        )}
+                        {!currencyMatch && !hasRate && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            No exchange rate available for {credit.currency} → {invoice.currency}
+                          </p>
+                        )}
+                      </div>
+                      {hasRate ? (
+                        <button
+                          onClick={() => applyCredit(credit.id, convertedAmount)}
+                          disabled={applyingCredit === credit.id}
+                          className="flex-shrink-0 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {applyingCredit === credit.id
+                            ? 'Applying...'
+                            : `Apply ${currencyFormatter(applyAmount, invoice.currency as any)}`}
+                        </button>
+                      ) : (
+                        <span className="flex-shrink-0 px-3 py-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg cursor-not-allowed">
+                          No rate available
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}

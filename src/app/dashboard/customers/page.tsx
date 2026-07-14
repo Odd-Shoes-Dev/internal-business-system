@@ -333,7 +333,7 @@ export default function CustomersPage() {
                     <div>
                       <span className="text-sm text-gray-600">Credit Limit:</span>
                       <span className="ml-2 font-semibold text-blueox-primary-dark">
-                        {formatCurrency(customer.credit_limit)}
+                        {formatCurrency(customer.credit_limit, customer.currency || 'USD')}
                       </span>
                     </div>
                     <Link

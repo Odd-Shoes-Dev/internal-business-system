@@ -1,53 +1,96 @@
 // Currency utilities for multi-currency support
 // Handles formatting, conversion, and exchange rate fetching
 
-export type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'UGX';
+export type SupportedCurrency = string;
 
 export interface CurrencyInfo {
-  code: SupportedCurrency;
+  code: string;
   symbol: string;
   name: string;
   decimals: number;
 }
 
-export const SUPPORTED_CURRENCIES: Record<SupportedCurrency, CurrencyInfo> = {
-  USD: { code: 'USD', symbol: '$', name: 'US Dollar', decimals: 2 },
-  EUR: { code: 'EUR', symbol: '€', name: 'Euro', decimals: 2 },
-  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', decimals: 2 },
-  UGX: { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', decimals: 0 },
+// Keep for backwards-compat — used by CurrencySelect and other UI pickers
+export const SUPPORTED_CURRENCIES: Record<string, CurrencyInfo> = {
+  USD: { code: 'USD', symbol: '$',   name: 'US Dollar',          decimals: 2 },
+  EUR: { code: 'EUR', symbol: '€',   name: 'Euro',               decimals: 2 },
+  GBP: { code: 'GBP', symbol: '£',   name: 'British Pound',      decimals: 2 },
+  UGX: { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling',   decimals: 0 },
+  KES: { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling',    decimals: 2 },
+  TZS: { code: 'TZS', symbol: 'TSh', name: 'Tanzanian Shilling', decimals: 0 },
+  RWF: { code: 'RWF', symbol: 'Fr',  name: 'Rwandan Franc',      decimals: 0 },
+  NGN: { code: 'NGN', symbol: '₦',   name: 'Nigerian Naira',     decimals: 2 },
+  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi',      decimals: 2 },
+  ZAR: { code: 'ZAR', symbol: 'R',   name: 'South African Rand', decimals: 2 },
+  ETB: { code: 'ETB', symbol: 'Br',  name: 'Ethiopian Birr',     decimals: 2 },
+  INR: { code: 'INR', symbol: '₹',   name: 'Indian Rupee',       decimals: 2 },
+  CNY: { code: 'CNY', symbol: '¥',   name: 'Chinese Yuan',       decimals: 2 },
+  JPY: { code: 'JPY', symbol: '¥',   name: 'Japanese Yen',       decimals: 0 },
+  AED: { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham',         decimals: 2 },
+  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar',    decimals: 2 },
+  AUD: { code: 'AUD', symbol: 'A$',  name: 'Australian Dollar',  decimals: 2 },
+  CHF: { code: 'CHF', symbol: 'Fr',  name: 'Swiss Franc',        decimals: 2 },
+  SEK: { code: 'SEK', symbol: 'kr',  name: 'Swedish Krona',      decimals: 2 },
+  NOK: { code: 'NOK', symbol: 'kr',  name: 'Norwegian Krone',    decimals: 2 },
+  DKK: { code: 'DKK', symbol: 'kr',  name: 'Danish Krone',       decimals: 2 },
 };
 
-export const DEFAULT_CURRENCY: SupportedCurrency = 'USD';
+export const DEFAULT_CURRENCY = 'USD';
 
 /**
- * Format amount as currency string with proper symbol and decimals
+ * Format amount as currency string.
+ * Uses the known symbol table first; falls back to Intl for any other ISO code.
  */
 export function formatCurrency(
   amount: number,
-  currencyCode: SupportedCurrency = DEFAULT_CURRENCY
+  currencyCode: string = DEFAULT_CURRENCY
 ): string {
-  const currency = SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES[DEFAULT_CURRENCY];
-  
-  const formatted = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: currency.decimals,
-    maximumFractionDigits: currency.decimals,
-  }).format(amount);
+  const code = (currencyCode || DEFAULT_CURRENCY).toUpperCase();
+  const known = SUPPORTED_CURRENCIES[code];
 
-  return `${currency.symbol} ${formatted}`;
+  if (known) {
+    const formatted = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: known.decimals,
+      maximumFractionDigits: known.decimals,
+    }).format(amount);
+    return `${known.symbol} ${formatted}`;
+  }
+
+  // Fallback: let Intl resolve the symbol for any other ISO 4217 code
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      currencyDisplay: 'symbol',
+    }).format(amount);
+  } catch {
+    // Truly unknown code — show code as prefix
+    return `${code} ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)}`;
+  }
 }
 
 /**
- * Get currency symbol
+ * Get currency symbol — uses known table, falls back to Intl
  */
-export function getCurrencySymbol(currencyCode: SupportedCurrency): string {
-  return SUPPORTED_CURRENCIES[currencyCode]?.symbol || currencyCode;
+export function getCurrencySymbol(currencyCode: string): string {
+  const code = (currencyCode || DEFAULT_CURRENCY).toUpperCase();
+  if (SUPPORTED_CURRENCIES[code]) return SUPPORTED_CURRENCIES[code].symbol;
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: code, currencyDisplay: 'symbol' })
+      .formatToParts(0);
+    return parts.find(p => p.type === 'currency')?.value || code;
+  } catch {
+    return code;
+  }
 }
 
 /**
- * Get currency info
+ * Get currency info — falls back gracefully for any ISO code
  */
-export function getCurrencyInfo(currencyCode: SupportedCurrency): CurrencyInfo {
-  return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES[DEFAULT_CURRENCY];
+export function getCurrencyInfo(currencyCode: string): CurrencyInfo {
+  const code = (currencyCode || DEFAULT_CURRENCY).toUpperCase();
+  if (SUPPORTED_CURRENCIES[code]) return SUPPORTED_CURRENCIES[code];
+  return { code, symbol: getCurrencySymbol(code), name: code, decimals: 2 };
 }
 
 /**
