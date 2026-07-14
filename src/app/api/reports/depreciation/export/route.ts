@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanySettings } from '@/lib/company-settings';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return currencyFormatter(amount, currency);
 }
 
 function formatDate(dateString: string): string {

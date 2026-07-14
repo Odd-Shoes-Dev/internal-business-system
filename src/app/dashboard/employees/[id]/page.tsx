@@ -61,6 +61,7 @@ interface Employee {
 
 export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { company } = useCompany();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [allowances, setAllowances] = useState<any[]>([]);
   const [deductions, setDeductions] = useState<any[]>([]);
@@ -128,12 +129,8 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'UGX') => {
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = company?.currency || 'USD') => {
+    return currencyFormatter(amount, currency);
   };
 
   const formatDate = (date: string | null) => {

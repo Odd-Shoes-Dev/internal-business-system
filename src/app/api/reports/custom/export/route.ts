@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanySettings } from '@/lib/company-settings';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface CustomReportConfig {
   name: string;
@@ -54,10 +55,7 @@ const fieldDisplayNames: Record<string, string> = {
 };
 
 function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
+  return currencyFormatter(amount, currency);
 }
 
 function formatDate(dateString: string): string {

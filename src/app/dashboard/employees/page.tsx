@@ -225,13 +225,9 @@ export default function EmployeesPage() {
     }
   };
 
-  const formatCurrency = (amount: number | null, currency: string = 'UGX') => {
+  const formatCurrency = (amount: number | null, currency: string = company?.currency || 'USD') => {
     if (!amount) return '-';
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
+    return currencyFormatter(amount, currency);
   };
 
   const formatDate = (date: string | null) => {

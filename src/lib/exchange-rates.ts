@@ -71,3 +71,18 @@ export function getExchangeRate(
   const toRate = ratesMap[to] ?? 1;
   return fromRate / toRate;
 }
+
+/**
+ * Server-side: fetch the global exchange_rates table and build a rates map
+ * keyed to the given base currency. Fetch once per request, then use
+ * convertCurrency()/getExchangeRate() synchronously for every amount.
+ */
+export async function getRatesMap(
+  db: { query: (sql: string, params?: any[]) => Promise<{ rows: any[] }> },
+  baseCurrency: string
+): Promise<Record<string, number>> {
+  const result = await db.query(
+    `SELECT from_currency, to_currency, rate, effective_date::text FROM exchange_rates ORDER BY effective_date DESC`
+  );
+  return buildRatesMap(result.rows, baseCurrency);
+}

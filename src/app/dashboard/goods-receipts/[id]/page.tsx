@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -47,6 +49,7 @@ export default async function GoodsReceiptDetailPage({ params }: { params: Promi
 }
 
 function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
+  const { company } = useCompany();
   const [goodsReceipt, setGoodsReceipt] = useState<GoodsReceipt | null>(null);
   const [lines, setLines] = useState<GRLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,16 +228,10 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
                     <td className="text-right">{Number(line.purchase_order_line?.quantity || 0).toFixed(2)}</td>
                     <td className="text-right">{Number(line.quantity_received || 0).toFixed(2)}</td>
                     <td className="text-right">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD',
-                      }).format(Number(line.unit_cost || 0))}
+                      {formatCurrency(Number(line.unit_cost || 0), company?.currency)}
                     </td>
                     <td className="text-right">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD',
-                      }).format(Number(line.line_total ?? Number(line.quantity_received || 0) * Number(line.unit_cost || 0)))}
+                      {formatCurrency(Number(line.line_total ?? Number(line.quantity_received || 0) * Number(line.unit_cost || 0)), company?.currency)}
                     </td>
                   </tr>
                 ))}
@@ -245,10 +242,7 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
                     Total:
                   </td>
                   <td className="text-right font-semibold">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD',
-                    }).format(total)}
+                    {formatCurrency(total, company?.currency)}
                   </td>
                 </tr>
               </tfoot>

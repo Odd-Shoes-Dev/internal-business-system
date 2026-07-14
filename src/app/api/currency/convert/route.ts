@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrency, getRatesMap } from '@/lib/exchange-rates';
 import { requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/currency/convert - Convert amount between currencies
@@ -26,17 +27,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ data: { converted_amount: amount } });
     }
 
-    const conversion = await db.query<{ converted: number | null }>(
-      'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-      [amount, fromCurrency, toCurrency, date]
-    );
-
-    const converted = conversion.rows[0]?.converted;
-    if (converted === null || converted === undefined) {
+    const ratesMap = await getRatesMap(db, toCurrency);
+    if (!(fromCurrency in ratesMap)) {
       return NextResponse.json({ error: 'No exchange rate available' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: { converted_amount: Number(converted) } });
+    const converted = convertCurrency(amount, fromCurrency, toCurrency, ratesMap);
+    return NextResponse.json({ data: { converted_amount: converted } });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

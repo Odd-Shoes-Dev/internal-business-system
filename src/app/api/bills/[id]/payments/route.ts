@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccountIdByCode } from '@/lib/accounting/provider-accounting';
+import { getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/bills/:id/payments - List payments for a bill
@@ -248,11 +249,13 @@ export async function POST(
           const journalEntryId = journalEntry.rows[0]?.id;
           if (journalEntryId) {
             const billCurrency = bill.currency || 'USD';
-            const rateResult = await tx.query<{ rate: number | null }>(
-              `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
-              [billCurrency, body.payment_date]
+            const companyRow = await tx.query<{ currency: string }>(
+              'SELECT currency FROM companies WHERE id = $1',
+              [bill.company_id]
             );
-            const exchangeRate = Number(rateResult.rows[0]?.rate) || 1;
+            const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+            const ratesMap = await getRatesMap(tx, baseCurrency);
+            const exchangeRate = getExchangeRate(billCurrency, baseCurrency, ratesMap);
             const baseAmount = paymentAmount * exchangeRate;
 
             await tx.query(

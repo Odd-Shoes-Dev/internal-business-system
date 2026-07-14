@@ -235,12 +235,7 @@ export default function PayrollPage() {
 
     const payCurrency = (company?.currency || 'USD') as SupportedCurrency;
     const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('en-UG', {
-        style: 'currency',
-        currency: payCurrency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount);
+      return currencyFormatter(amount, payCurrency);
     };
 
     const formatDate = (date: string | null) => {

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ModuleGuard } from '@/components/module-guard';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import type { Booking, BookingStatus } from '@/types/breco';
 import {
   PlusIcon,
@@ -64,6 +66,7 @@ interface BookingWithRelations extends Booking {
 
 export default function BookingsPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [bookings, setBookings] = useState<BookingWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,12 +153,8 @@ export default function BookingsPage() {
     });
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = company?.currency || 'USD') => {
+    return currencyFormatter(amount, currency);
   };
 
   const getDaysUntilTravel = (dateString: string) => {

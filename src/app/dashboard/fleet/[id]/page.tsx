@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -60,6 +62,7 @@ interface VehicleImage {
 
 export default function VehicleDetailPage() {
   const params = useParams();
+  const { company } = useCompany();
   const router = useRouter();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [images, setImages] = useState<VehicleImage[]>([]);
@@ -119,13 +122,8 @@ export default function VehicleDetailPage() {
     }
   };
 
-  const formatPrice = (price: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: currency === 'UGX' ? 0 : 2,
-      maximumFractionDigits: currency === 'UGX' ? 0 : 2,
-    }).format(price);
+  const formatPrice = (price: number, currency: string = company?.currency || 'USD') => {
+    return currencyFormatter(price, currency);
   };
 
   const formatDate = (dateString: string | null) => {

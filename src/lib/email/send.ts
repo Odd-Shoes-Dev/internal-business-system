@@ -1,4 +1,5 @@
 import { render } from '@react-email/components';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { TrialReminderEmail } from './templates/trial-reminder';
 import { PaymentSuccessEmail } from './templates/payment-success';
 import { PaymentFailedEmail } from './templates/payment-failed';
@@ -180,18 +181,12 @@ export async function sendWelcomeEmail(params: {
  * Format currency for email display
  */
 export function formatCurrencyForEmail(amount: number, currency: string): string {
+  // UGX is a zero-decimal currency in Stripe — amount is not in cents
   if (currency === 'UGX') {
-    return `UGX ${amount.toLocaleString('en-UG')}`;
+    return currencyFormatter(amount, 'UGX');
   }
 
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  return formatter.format(amount / 100); // Stripe amounts are in cents
+  return currencyFormatter(amount / 100, currency); // Stripe amounts are in cents
 }
 
 /**

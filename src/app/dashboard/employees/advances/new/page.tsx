@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { formatCurrency } from '@/lib/currency';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -216,11 +217,7 @@ export default function NewSalaryAdvancePage() {
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm font-medium text-blue-900 mb-1">Monthly Deduction Preview:</p>
               <p className="text-2xl font-bold text-blue-900">
-                {new Intl.NumberFormat('en-UG', {
-                  style: 'currency',
-                  currency: 'UGX',
-                  minimumFractionDigits: 0,
-                }).format(parseFloat(formData.amount) / parseInt(formData.repayment_months))}
+                {formatCurrency(parseFloat(formData.amount) / parseInt(formData.repayment_months), company?.currency)}
               </p>
               <p className="text-xs text-blue-700 mt-1">
                 This amount will be deducted from the employee's salary each month for {formData.repayment_months} {parseInt(formData.repayment_months) === 1 ? 'month' : 'months'}

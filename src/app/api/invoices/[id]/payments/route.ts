@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrency, getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/invoices/[id]/payments - Record payment
@@ -119,11 +120,13 @@ export async function POST(request: NextRequest, context: any) {
         const journalEntryId = journalEntry.rows[0]?.id;
         if (journalEntryId) {
           const invCurrency = invoice.currency || 'USD';
-          const rateResult = await tx.query<{ rate: number | null }>(
-            `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
-            [invCurrency, body.payment_date]
+          const companyRow = await tx.query<{ currency: string }>(
+            'SELECT currency FROM companies WHERE id = $1',
+            [invoice.company_id]
           );
-          const exchangeRate = Number(rateResult.rows[0]?.rate) || 1;
+          const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+          const ratesMap = await getRatesMap(tx, baseCurrency);
+          const exchangeRate = getExchangeRate(invCurrency, baseCurrency, ratesMap);
           const baseAmount = Number(body.amount) * exchangeRate;
 
           await tx.query(
@@ -163,19 +166,17 @@ export async function POST(request: NextRequest, context: any) {
       const booking = bookingResult.rows[0];
 
       if (booking) {
+        const bookingRatesMap = await getRatesMap(db, booking.currency);
         let totalPaidAcrossInvoices = 0;
 
         for (const inv of allBookingInvoices.rows) {
           const invAmountPaid = Number(inv.amount_paid || 0);
-          if (inv.currency === booking.currency) {
-            totalPaidAcrossInvoices += invAmountPaid;
-          } else {
-            const convertedAmount = await db.query<{ converted: number | null }>(
-              'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-              [invAmountPaid, inv.currency, booking.currency, new Date().toISOString().split('T')[0]]
-            );
-            totalPaidAcrossInvoices += convertedAmount.rows[0]?.converted ?? invAmountPaid;
-          }
+          totalPaidAcrossInvoices += convertCurrency(
+            invAmountPaid,
+            inv.currency || booking.currency,
+            booking.currency,
+            bookingRatesMap
+          );
         }
 
         let newBookingStatus = booking.status;

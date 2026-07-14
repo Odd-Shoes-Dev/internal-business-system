@@ -179,13 +179,9 @@ export default function FleetPage() {
     });
   };
 
-  const formatCurrency = (amount: number | null) => {
+  const formatCurrency = (amount: number | null, currency: string = company?.currency || 'USD') => {
     if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
+    return currencyFormatter(amount, currency);
   };
 
   const vehicleTypes = ['Safari Van', 'Land Cruiser', 'Minibus', 'Sedan', 'SUV', 'Coaster Bus', 'Pickup Truck'];

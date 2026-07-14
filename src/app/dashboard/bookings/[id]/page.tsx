@@ -6,6 +6,8 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import type { Booking, BookingStatus } from '@/types/breco';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CalendarDaysIcon,
@@ -108,6 +110,7 @@ interface BookingDetailPageProps {
 
 export default function BookingDetailPage({ params }: BookingDetailPageProps) {
   const router = useRouter();
+  const { company } = useCompany();
   const [booking, setBooking] = useState<BookingWithRelations | null>(null);
   const [relatedInvoices, setRelatedInvoices] = useState<InvoiceSummary[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
@@ -712,11 +715,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     <div>
                       <span className="text-xs text-gray-500 block">Daily Rate</span>
                       <p className="font-semibold text-blueox-primary mt-1">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: booking.currency || 'USD',
-                          minimumFractionDigits: 0,
-                        }).format(booking.vehicle.daily_rate_usd || 0)}
+                        {formatCurrency(booking.vehicle.daily_rate_usd || 0, booking.currency || company?.currency)}
                       </p>
                     </div>
                   </div>

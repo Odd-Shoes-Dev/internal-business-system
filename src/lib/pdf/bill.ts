@@ -1,5 +1,7 @@
 // Bill PDF Generation Utility
 
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
+
 interface CompanyInfo {
   name: string;
   logo_url: string | null;
@@ -24,10 +26,7 @@ export function generateBillHTML(data: BillPDFData): string {
   const { bill, vendor, lines } = data;
   
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, bill.currency || 'USD');
   };
 
   const formatDate = (dateString: string) => {

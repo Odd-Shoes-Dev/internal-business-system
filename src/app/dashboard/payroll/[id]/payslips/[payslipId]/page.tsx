@@ -223,11 +223,7 @@ export default function PayslipDetailPage({
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: (payslip as any).currency || company?.currency || 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
+    return currencyFormatter(amount, (payslip as any).currency || company?.currency || 'USD');
   };
 
   const formatDate = (date: string) => {
