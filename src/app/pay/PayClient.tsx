@@ -159,7 +159,9 @@ export default function PayClient({ invoiceId }: { invoiceId?: string }) {
       if (!invoiceRes.ok) {
         throw new Error('Invoice not found');
       }
-      const invoiceData = await invoiceRes.json();
+      const invoiceJson = await invoiceRes.json();
+      // API returns { data: invoice }
+      const invoiceData = invoiceJson.data || invoiceJson;
       setInvoice(invoiceData);
 
       if (invoiceData.status === 'paid') {

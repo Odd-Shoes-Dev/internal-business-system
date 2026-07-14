@@ -138,7 +138,7 @@ export default function InventoryDetailPage() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number, currency: string = item?.currency || 'USD') => {
     return currencyFormatter(amount, currency as any);
   };
 

@@ -50,6 +50,7 @@ interface FixedAsset {
 export default function AssetDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [asset, setAsset] = useState<FixedAsset | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -82,7 +83,7 @@ export default function AssetDetailPage() {
 
   const formatCurrency = (amount: number | string) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return currencyFormatter(num, 'USD');
+    return currencyFormatter(num, (asset as any)?.currency || company?.currency || 'USD');
   };
 
   const formatDate = (dateString: string) => {

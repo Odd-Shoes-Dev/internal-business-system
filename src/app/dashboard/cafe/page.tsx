@@ -96,10 +96,7 @@ export default function CafeDashboardPage() {
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
+    return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
   };
 
   if (loading) {

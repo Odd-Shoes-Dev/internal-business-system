@@ -72,7 +72,7 @@ export default function CustomersPage() {
     }
   };
 
-  const formatCurrency = (amount: number | null, currency: string = 'USD') => {
+  const formatCurrency = (amount: number | null, currency: string = company?.currency || 'USD') => {
     if (!amount) return currencyFormatter(0, currency as any);
     return currencyFormatter(amount, currency as any);
   };

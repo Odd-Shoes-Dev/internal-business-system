@@ -143,7 +143,7 @@ export default function VendorDetailPage({ params }: PageProps) {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number, currency: string = company?.currency || 'USD') => {
     return currencyFormatter(amount, currency as any);
   };
 

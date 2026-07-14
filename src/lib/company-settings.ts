@@ -211,18 +211,4 @@ export function formatCompanyAddress(company: Partial<CompanySettings>): string 
   return parts.join(', ');
 }
 
-/**
- * Get currency symbol
- */
-export function getCurrencySymbol(currency: string): string {
-  const symbols: Record<string, string> = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'UGX': 'UGX',
-    'KES': 'KES',
-    'TZS': 'TZS',
-  };
-  
-  return symbols[currency] || currency;
-}
+// getCurrencySymbol lives in @/lib/currency — do not re-add a duplicate here.
