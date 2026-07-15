@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { uploadToImageKit } from '@/lib/imagekit';
 
 export const runtime = 'nodejs';
@@ -29,14 +29,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Image size must be less than 2MB' }, { status: 400 });
     }
 
-    // Verify the user belongs to this company
-    const profileResult = await db.query(
-      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-    if (profileResult.rows[0]?.company_id !== companyId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
