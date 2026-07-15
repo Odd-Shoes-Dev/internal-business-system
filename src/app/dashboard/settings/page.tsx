@@ -316,21 +316,14 @@ export default function SettingsPage() {
 
     setUploadingLogo(true);
     try {
-      const publicUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(new Error('Failed to read image file'));
-        reader.readAsDataURL(file);
-      });
+      const form = new FormData();
+      form.append('file', file);
+      form.append('company_id', company.id);
 
-      const response = await fetch('/api/companies/me', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch('/api/companies/logo', {
+        method: 'POST',
         credentials: 'include',
-        body: JSON.stringify({
-          company_id: company.id,
-          logo_url: publicUrl,
-        }),
+        body: form,
       });
 
       if (!response.ok) {
@@ -338,6 +331,7 @@ export default function SettingsPage() {
         throw new Error(payload.error || 'Failed to upload logo');
       }
 
+      const { url: publicUrl } = await response.json();
       setLogoPreview(publicUrl);
       companyForm.setValue('logo_url', publicUrl);
       toast.success('Logo uploaded successfully!');
