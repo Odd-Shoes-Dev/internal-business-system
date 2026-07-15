@@ -116,12 +116,12 @@ export async function POST(request: NextRequest) {
       `INSERT INTO customers (
          company_id, customer_number, name, company_name, email, phone, tax_id,
          address_line1, address_line2, city, state, zip_code, country,
-         payment_terms, credit_limit, notes, is_active
+         payment_terms, credit_limit, notes, is_active, currency
        )
        VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17
+         $14, $15, $16, $17, $18
        )
        RETURNING *`,
       [
@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
         body.credit_limit || 0,
         body.notes || null,
         body.is_active !== false,
+        body.currency || null,
       ]
     );
 
