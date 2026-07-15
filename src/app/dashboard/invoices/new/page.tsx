@@ -103,6 +103,12 @@ export default function NewInvoicePage() {
     loadData();
   }, [company?.id]);
 
+  useEffect(() => {
+    if (company?.currency && !prefilledCurrency) {
+      setValue('currency', company.currency as 'USD' | 'EUR' | 'GBP' | 'UGX');
+    }
+  }, [company?.currency]);
+
   // Pre-fill form when coming from booking page
   useEffect(() => {
     if (prefilledCustomerId && customers.length > 0) {

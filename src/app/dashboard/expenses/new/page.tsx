@@ -50,6 +50,9 @@ export default function NewExpensePage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   useEffect(() => {
     if (company) {
+      if (company.currency) {
+        setFormData(prev => ({ ...prev, currency: company.currency }));
+      }
       fetchVendors();
       fetchExpenseAccounts();
     }

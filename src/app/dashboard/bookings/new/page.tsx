@@ -104,6 +104,9 @@ export default function NewBookingPage() {
     if (!company?.id) {
       return;
     }
+    if (company.currency) {
+      setFormData(prev => ({ ...prev, currency: company.currency as 'USD' | 'EUR' | 'GBP' | 'UGX' }));
+    }
     loadData();
   }, [company?.id]);
 

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { CurrencySelect } from '@/components/ui';
+import { useCompany } from '@/contexts/company-context';
 
 export default function NewBankAccountPage() {
   const router = useRouter();
+  const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +23,12 @@ export default function NewBankAccountPage() {
     is_primary: false,
     is_active: true,
   });
+
+  useEffect(() => {
+    if (company?.currency) {
+      setFormData(prev => ({ ...prev, currency: company.currency }));
+    }
+  }, [company?.currency]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
