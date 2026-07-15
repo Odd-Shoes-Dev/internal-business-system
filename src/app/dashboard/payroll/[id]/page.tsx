@@ -167,8 +167,8 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo_bg.png" alt="Breco Safaris Logo" style="width: 120px; margin-bottom: 15px;" />
-            <h1>Breco Safaris Ltd</h1>
+            ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company?.name || ''}" style="width: 120px; margin-bottom: 15px;" onerror="this.style.display='none'">` : ''}
+            <h1>${company?.name || ''}</h1>
             <h2>Payroll Summary</h2>
             <p>${period.period_name}</p>
             <p>${formatDate(period.start_date)} - ${formatDate(period.end_date)}</p>

@@ -72,7 +72,7 @@ export default function ARAgingPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Accounts Receivable Aging - Breco Safaris Ltd</title>
+          <title>Accounts Receivable Aging - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 

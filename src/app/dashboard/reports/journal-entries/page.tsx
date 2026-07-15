@@ -109,7 +109,7 @@ export default function JournalEntriesPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Journal Entries Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - Breco Safaris Ltd</title>
+          <title>Journal Entries Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -258,12 +258,13 @@ export default function JournalEntriesPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo.png" alt="Breco Safaris Logo" class="logo" />
+            ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company?.name || ''}" class="logo" onerror="this.style.display='none'">` : ''}
             <div class="company-info">
-              <h1>Breco Safaris Ltd</h1>
-              <div class="address">Kampala Road Plot 14 Eagen House, Russel Street, P.O.Box 144011, Kampala, Uganda</div>
-              <div class="address">Tel: +256 782 884 933, +256 772 891 729 • Email: brecosafaris@gmail.com</div>
-              <div class="address">URA TIN: 1014756280 • URSB Reg. No: 80020001634842</div>
+              <h1>${company?.name || ''}</h1>
+              ${company?.address ? `<div class="address">${company.address}</div>` : ''}
+              ${company?.city || company?.country ? `<div class="address">${[company?.city, company?.country].filter(Boolean).join(', ')}</div>` : ''}
+              ${company?.phone || company?.email ? `<div class="address">${[company?.phone ? 'Tel: ' + company.phone : '', company?.email ? 'Email: ' + company.email : ''].filter(Boolean).join(' • ')}</div>` : ''}
+              ${company?.tax_id ? `<div class="address">TIN: ${company.tax_id}</div>` : ''}
             </div>
           </div>
           

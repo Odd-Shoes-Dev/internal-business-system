@@ -114,7 +114,7 @@ export default function ExpenseDetailPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Expense #${expense.expense_number} - Breco Safaris Ltd</title>
+          <title>Expense #${expense.expense_number} - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 

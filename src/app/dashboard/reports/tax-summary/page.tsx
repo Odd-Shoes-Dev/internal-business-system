@@ -238,7 +238,7 @@ export default function TaxSummaryPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo.png" alt="${company?.name || 'Company'} Logo" class="logo" />
+            ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company?.name || ''}" class="logo" onerror="this.style.display='none'">` : ''}
             <div class="company-info">
               <h1>${company?.name || 'Company Name'}</h1>
               <div class="address">${company?.address || ''}</div>
