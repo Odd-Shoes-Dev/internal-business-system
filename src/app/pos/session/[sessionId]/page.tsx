@@ -119,7 +119,17 @@ export default function TillPage() {
   }, [search, products]);
 
   useEffect(() => {
-    const handle = () => {
+    const handle = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Don't steal focus from inputs, selects, textareas, or buttons in the payment panel
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.closest('button') ||
+        target.closest('[data-payment-panel]')
+      ) return;
       if (!showCloseModal && !lastReceipt) barcodeInputRef.current?.focus();
     };
     document.addEventListener('click', handle);
@@ -523,7 +533,7 @@ export default function TillPage() {
             </div>
 
             {/* Totals + payment */}
-            <div className="border-t p-4 space-y-4" style={{ borderColor: 'var(--pos-border)' }}>
+            <div className="border-t p-4 space-y-4" data-payment-panel style={{ borderColor: 'var(--pos-border)' }}>
               {/* Totals */}
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between" style={{ color: 'var(--pos-text-muted)' }}>
@@ -574,6 +584,8 @@ export default function TillPage() {
                     placeholder={`Cash tendered (${currency})`}
                     value={tendered}
                     onChange={e => setTendered(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    onFocus={e => e.stopPropagation()}
                   />
                   {tenderedAmount >= total && total > 0 && (
                     <div className="flex justify-between text-xs px-1 font-semibold" style={{ color: '#34d399' }}>
@@ -596,6 +608,8 @@ export default function TillPage() {
                   placeholder="Transaction reference (optional)"
                   value={mobileRef}
                   onChange={e => setMobileRef(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  onFocus={e => e.stopPropagation()}
                 />
               )}
 
