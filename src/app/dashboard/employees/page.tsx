@@ -39,6 +39,7 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>(searchParams.get('department') || 'all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ export default function EmployeesPage() {
     nssf_number: '',
     tin: '',
     date_of_birth: '',
-    hire_date: '',
+    hire_date: new Date().toISOString().split('T')[0],
     job_title: '',
     department: 'Operations',
     employment_type: 'full_time' as 'full_time' | 'part_time' | 'contract' | 'casual',
@@ -93,9 +94,9 @@ export default function EmployeesPage() {
 
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!company) return;
-    
+    setIsSaving(true);
     try {
       const response = await fetch('/api/employees', {
         method: 'POST',
@@ -126,7 +127,7 @@ export default function EmployeesPage() {
         nssf_number: '',
         tin: '',
         date_of_birth: '',
-        hire_date: '',
+        hire_date: new Date().toISOString().split('T')[0],
         job_title: '',
         department: 'Operations',
         employment_type: 'full_time',
@@ -144,6 +145,8 @@ export default function EmployeesPage() {
     } catch (error: any) {
       console.error('Error creating employee:', error);
       toast.error(error.message || 'Failed to add employee');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -572,12 +575,13 @@ export default function EmployeesPage() {
                 <h3 className="font-medium text-gray-900 mb-3">Employment Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="form-group">
-                    <label className="label">Job Title</label>
+                    <label className="label">Job Title *</label>
                     <input
                       type="text"
                       value={formData.job_title}
                       onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                       className="input"
+                      required
                     />
                   </div>
                   <div className="form-group">
@@ -688,8 +692,8 @@ export default function EmployeesPage() {
               </div>
 
               <div className="flex items-center gap-4 pt-4 border-t">
-                <button type="submit" className="btn-primary">
-                  Add Employee
+                <button type="submit" className="btn-primary" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Add Employee'}
                 </button>
                 <button
                   type="button"
