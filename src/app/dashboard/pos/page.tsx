@@ -173,11 +173,11 @@ export default function POSManagerPage() {
         {/* Today's summary */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white/90 rounded-2xl border border-blueox-primary/20 shadow p-5">
-            <p className="text-sm text-gray-500">Today's Revenue</p>
+            <p className="text-sm text-gray-500">Today&apos;s Revenue</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(todaySales, currency)}</p>
           </div>
           <div className="bg-white/90 rounded-2xl border border-blueox-primary/20 shadow p-5">
-            <p className="text-sm text-gray-500">Today's Transactions</p>
+            <p className="text-sm text-gray-500">Today&apos;s Transactions</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{todayTxCount}</p>
           </div>
         </div>
