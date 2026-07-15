@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, ComboboxButton } from '@headlessui/react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -53,6 +53,8 @@ interface CustomerInvoice {
 
 export default function NewReceiptPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledInvoiceId = searchParams.get('invoice_id');
   const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerQuery, setCustomerQuery] = useState('');
@@ -63,6 +65,7 @@ export default function NewReceiptPage() {
   const [invoiceQuery, setInvoiceQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isManualInvoiceEntry, setIsManualInvoiceEntry] = useState(false);
+  const invoicePrefilledRef = useRef(false);
   const defaultTaxRate = (company?.sales_tax_rate ?? 0) / 100;
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [previousCurrency, setPreviousCurrency] = useState(company?.currency || 'USD');
@@ -197,6 +200,7 @@ export default function NewReceiptPage() {
 
   // Load customer invoices when customer changes; reset invoice selection
   useEffect(() => {
+    if (invoicePrefilledRef.current) return; // don't reset when prefilling from URL
     setSelectedInvoice(null);
     setInvoiceQuery('');
     setIsManualInvoiceEntry(false);
@@ -207,6 +211,64 @@ export default function NewReceiptPage() {
       setCustomerInvoices([]);
     }
   }, [watchCustomerId]);
+
+  // Pre-fill from invoice_id query param
+  useEffect(() => {
+    if (!prefilledInvoiceId || !company?.id || invoicePrefilledRef.current) return;
+    const prefill = async () => {
+      try {
+        const res = await fetch(`/api/invoices/${prefilledInvoiceId}`, { credentials: 'include' });
+        if (!res.ok) return;
+        const payload = await res.json();
+        const inv = payload.data;
+        if (!inv) return;
+
+        invoicePrefilledRef.current = true;
+
+        // Set customer
+        setValue('customer_id', inv.customer_id);
+        if (inv.customer) {
+          setSelectedCustomer(inv.customer);
+        }
+
+        // Set currency
+        if (inv.currency) setValue('currency', inv.currency);
+
+        // Build invoice entry for selectedInvoice state
+        const balanceDue = Number(inv.total) - Number(inv.amount_paid || 0);
+        const invoiceEntry: CustomerInvoice = {
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          total: Number(inv.total),
+          amount_paid: Number(inv.amount_paid || 0),
+          balance_due: balanceDue,
+          invoice_date: inv.invoice_date,
+          status: inv.status,
+        };
+        setCustomerInvoices([invoiceEntry]);
+        setSelectedInvoice(invoiceEntry);
+        setValue('reference_invoice_number', inv.invoice_number);
+        setValue('amount_paid', balanceDue);
+
+        // Populate line items
+        const lines = (inv.invoice_lines || [])
+          .sort((a: any, b: any) => a.line_number - b.line_number)
+          .map((line: any) => ({
+            product_id: line.product_id || '',
+            product_name: '',
+            description: line.description,
+            quantity: Number(line.quantity),
+            unit_price: Number(line.unit_price),
+            discount_percent: Number(line.discount_percent || 0),
+            tax_rate: Number(line.tax_rate || 0),
+          }));
+        if (lines.length > 0) setValue('lines', lines);
+      } catch (e) {
+        console.error('Failed to prefill invoice:', e);
+      }
+    };
+    prefill();
+  }, [prefilledInvoiceId, company?.id]);
 
   const handleInvoiceSelect = async (invoiceNumber: string) => {
     if (!invoiceNumber || invoiceNumber === 'MANUAL') {
@@ -602,7 +664,12 @@ export default function NewReceiptPage() {
 
               <div className="form-group md:col-span-2">
                 <label className="label">Related Invoice Number (Optional)</label>
-                {!isManualInvoiceEntry ? (
+                {prefilledInvoiceId && selectedInvoice ? (
+                  <div className="input bg-gray-50 text-gray-700 flex items-center justify-between">
+                    <span>{selectedInvoice.invoice_number} — Balance: {formatCurrency(selectedInvoice.balance_due)}</span>
+                    <span className="text-xs text-gray-400 ml-2">linked from invoice</span>
+                  </div>
+                ) : !isManualInvoiceEntry ? (
                   <Combobox
                     value={selectedInvoice}
                     onChange={(invoice: CustomerInvoice | null) => {
@@ -697,7 +764,7 @@ export default function NewReceiptPage() {
                       Select from List
                     </button>
                   </div>
-                )}
+                ) }
                 <p className="text-sm text-gray-500 mt-1">
                   {isManualInvoiceEntry
                     ? 'Type external/physical invoice number and enter items manually below'
