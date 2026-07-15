@@ -41,7 +41,7 @@ export const TrialReminderEmail = ({
           <Text style={text}>Hi {companyName} team,</Text>
           
           <Text style={text}>
-            Your BlueOx free trial will end <strong>{urgency}</strong>. We hope you've enjoyed exploring our platform!
+            Your BlueOx free trial will end <strong>{urgency}</strong>. We hope you&apos;ve enjoyed exploring our platform!
           </Text>
 
           <Section style={warningBox}>
@@ -72,7 +72,7 @@ export const TrialReminderEmail = ({
           </Text>
           <Text style={smallText}>
             • Your data will be preserved for 30 days<br />
-            • You'll lose access to all modules<br />
+            • You&apos;ll lose access to all modules<br />
             • You can upgrade anytime to restore access
           </Text>
 
