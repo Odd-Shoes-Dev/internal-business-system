@@ -143,18 +143,23 @@ export async function POST(request: NextRequest) {
     const invoice = invoiceResult.rows[0];
 
     // Create invoice lines
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const lineTotal = item.unit_price * item.quantity;
+      const taxAmount = lineTotal * (item.tax_rate || 0);
       await db.query(
-        `INSERT INTO invoice_lines (invoice_id, product_id, description, quantity, unit_price, tax_rate, amount)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO invoice_lines (invoice_id, product_id, description, line_number, quantity, unit_price, tax_rate, tax_amount, line_total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           invoice.id,
           item.product_id || null,
           item.name,
+          idx + 1,
           item.quantity,
           item.unit_price,
           item.tax_rate || 0,
-          item.unit_price * item.quantity,
+          taxAmount,
+          lineTotal,
         ]
       );
     }
@@ -181,22 +186,29 @@ export async function POST(request: NextRequest) {
 
     // Create payment records (one per payment method)
     for (const payment of payments) {
-      await db.query(
+      const paymentResult = await db.query(
         `INSERT INTO payments_received (
-           company_id, customer_id, invoice_id, amount, currency,
+           company_id, customer_id, payment_number, amount, currency,
            payment_date, payment_method, source, pos_session_id,
            reference_number
-         ) VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, 'pos', $7, $8)`,
+         ) VALUES ($1, $2, generate_payment_number(), $3, $4, CURRENT_DATE, $5, 'pos', $6, $7)
+         RETURNING id`,
         [
           company_id,
           customer_id || null,
-          invoice.id,
           payment.amount,
           currency,
           payment.method,
           session_id,
           payment.reference || null,
         ]
+      );
+
+      // Link payment to invoice via payment_applications
+      await db.query(
+        `INSERT INTO payment_applications (payment_id, invoice_id, amount_applied)
+         VALUES ($1, $2, $3)`,
+        [paymentResult.rows[0].id, invoice.id, payment.amount]
       );
     }
 
