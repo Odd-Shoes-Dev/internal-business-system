@@ -427,6 +427,16 @@ export default function NewReceiptPage() {
         }
       }
 
+      // If a linked invoice was selected, update its amount_paid and status
+      if (selectedInvoice?.id && amountPaid > 0) {
+        await fetch(`/api/invoices/${selectedInvoice.id}/apply-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ amount: amountPaid }),
+        });
+      }
+
       // Keep local totals consistent with UI expectations.
       const _computedTotals = { subtotal, tax_amount, total };
       void _computedTotals;
