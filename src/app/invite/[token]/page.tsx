@@ -113,7 +113,7 @@ export default function AcceptInvitePage() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircleIcon className="w-8 h-8 text-green-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">You're in!</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">You&apos;re in!</h2>
           <p className="text-gray-500">Redirecting to your dashboard...</p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function AcceptInvitePage() {
 
         <div className="text-center space-y-4">
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold text-blueox-primary">You're Invited!</h1>
+            <h1 className="text-4xl font-bold text-blueox-primary">You&apos;re Invited!</h1>
             <p className="text-xl text-gray-600 font-medium">
               Join {invitation?.company_name} on BlueOx
             </p>

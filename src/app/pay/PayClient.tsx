@@ -8,7 +8,7 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 import {
   CheckCircleIcon,
   DocumentTextIcon,
@@ -28,6 +28,7 @@ interface Invoice {
   amount_paid: number;
   status: string;
   due_date: string;
+  currency?: string;
 }
 
 function PaymentForm({ invoice, clientSecret }: { invoice: Invoice; clientSecret: string }) {
@@ -85,7 +86,7 @@ function PaymentForm({ invoice, clientSecret }: { invoice: Invoice; clientSecret
             <span className="text-lg font-semibold text-gray-700">Amount Due</span>
           </div>
           <span className="text-2xl lg:text-3xl font-bold text-blueox-primary-dark">
-            {formatCurrency(amountDue)}
+            {formatCurrency(amountDue, invoice.currency)}
           </span>
         </div>
       </div>
@@ -124,7 +125,7 @@ function PaymentForm({ invoice, clientSecret }: { invoice: Invoice; clientSecret
             Processing...
           </span>
         ) : (
-          `Pay ${formatCurrency(amountDue)}`
+          `Pay ${formatCurrency(amountDue, invoice.currency)}`
         )}
       </button>
 
@@ -158,7 +159,9 @@ export default function PayClient({ invoiceId }: { invoiceId?: string }) {
       if (!invoiceRes.ok) {
         throw new Error('Invoice not found');
       }
-      const invoiceData = await invoiceRes.json();
+      const invoiceJson = await invoiceRes.json();
+      // API returns { data: invoice }
+      const invoiceData = invoiceJson.data || invoiceJson;
       setInvoice(invoiceData);
 
       if (invoiceData.status === 'paid') {

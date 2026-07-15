@@ -991,7 +991,7 @@ export default function Home() {
               Is my data secure?
             </h3>
             <p className="text-gray-600">
-              Yes. We use bank-level encryption, maintain 99.9% uptime, and are GDPR compliant. Your company's data is completely isolated from other companies (multi-tenant architecture). We perform daily backups and have enterprise-grade security protocols.
+              Yes. We use bank-level encryption, maintain 99.9% uptime, and are GDPR compliant. Your company&apos;s data is completely isolated from other companies (multi-tenant architecture). We perform daily backups and have enterprise-grade security protocols.
             </p>
           </div>
 
@@ -1021,7 +1021,7 @@ export default function Home() {
               Can I cancel anytime?
             </h3>
             <p className="text-gray-600">
-              Yes. There are no long-term contracts. You can cancel your subscription anytime with one month's notice. If you cancel during your trial period, you won't be charged at all. We also provide data export so you can take your information with you.
+              Yes. There are no long-term contracts. You can cancel your subscription anytime with one month&apos;s notice. If you cancel during your trial period, you won&apos;t be charged at all. We also provide data export so you can take your information with you.
             </p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BILL_OUTSTANDING_EXCLUDED, INVOICE_OUTSTANDING_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -66,22 +67,22 @@ export async function GET(request: NextRequest) {
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date < $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND invoice_date < $2::date AND status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, invoice_date FROM invoices
-         WHERE company_id = $1 AND invoice_date <= $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND invoice_date <= $2::date AND status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
         [companyId, endDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date < $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND bill_date < $2::date AND status ${sqlNotIn(BILL_OUTSTANDING_EXCLUDED)}`,
         [companyId, startDate]
       ),
       db.query(
         `SELECT total, currency, bill_date FROM bills
-         WHERE company_id = $1 AND bill_date <= $2::date AND status <> 'paid'`,
+         WHERE company_id = $1 AND bill_date <= $2::date AND status ${sqlNotIn(BILL_OUTSTANDING_EXCLUDED)}`,
         [companyId, endDate]
       ),
       db.query(
@@ -109,14 +110,14 @@ export async function GET(request: NextRequest) {
       const [beginTxResult, periodTxResult] = await Promise.all([
         db.query(
           `SELECT amount FROM bank_transactions
-           WHERE company_id = $1 AND bank_account_id = $2 AND transaction_date < $3::date`,
-          [companyId, account.id, startDate]
+           WHERE bank_account_id = $1 AND transaction_date < $2::date`,
+          [account.id, startDate]
         ),
         db.query(
           `SELECT amount FROM bank_transactions
-           WHERE company_id = $1 AND bank_account_id = $2
-             AND transaction_date >= $3::date AND transaction_date <= $4::date`,
-          [companyId, account.id, startDate, endDate]
+           WHERE bank_account_id = $1
+             AND transaction_date >= $2::date AND transaction_date <= $3::date`,
+          [account.id, startDate, endDate]
         ),
       ]);
 

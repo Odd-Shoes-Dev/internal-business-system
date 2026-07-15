@@ -81,7 +81,7 @@ export default function SalesByProductPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/sales-by-product?startDate=${startDate}&endDate=${endDate}&category=${category}&sortBy=${sortBy}`
+        `/api/reports/sales-by-product?company_id=${company?.id}&startDate=${startDate}&endDate=${endDate}&category=${category}&sortBy=${sortBy}`
       );
       const result = await response.json();
       setData(result);
@@ -94,7 +94,7 @@ export default function SalesByProductPage() {
 
   useEffect(() => {
     fetchSalesByProduct();
-  }, [startDate, endDate, category, sortBy]);
+  }, [startDate, endDate, category, sortBy, company?.id]);
 
   const exportToPDF = () => {
     if (!data) return;

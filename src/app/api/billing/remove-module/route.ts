@@ -41,22 +41,22 @@ export async function POST(request: NextRequest) {
        LIMIT 1`,
       [profileRow.company_id, module_id]
     );
-    const module = moduleResult.rows[0];
+    const mod = moduleResult.rows[0];
 
-    if (!module) {
+    if (!mod) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
     }
 
-    if (module.is_trial_module) {
+    if (mod.is_trial_module) {
       return NextResponse.json({ error: 'Cannot remove trial modules' }, { status: 400 });
     }
 
     // Check if it's an included module or paid module
-    const isIncludedModule = module.is_included === true;
+    const isIncludedModule = mod.is_included === true;
 
     // Remove from Stripe subscription (only if it's a PAID module with Stripe item)
-    if (!isIncludedModule && module.stripe_subscription_item_id) {
-      await stripe.subscriptionItems.del(module.stripe_subscription_item_id, {
+    if (!isIncludedModule && mod.stripe_subscription_item_id) {
+      await stripe.subscriptionItems.del(mod.stripe_subscription_item_id, {
         proration_behavior: 'create_prorations',
       });
     }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
            removed_at = NOW(),
            updated_at = NOW()
        WHERE id = $1`,
-      [module.id]
+      [mod.id]
     );
 
     return NextResponse.json({

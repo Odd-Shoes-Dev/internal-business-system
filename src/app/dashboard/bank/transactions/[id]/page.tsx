@@ -40,6 +40,7 @@ interface BankTransaction {
 export default function TransactionDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { company } = useCompany();
   const [transaction, setTransaction] = useState<BankTransaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -92,7 +93,7 @@ export default function TransactionDetailPage({ params }: PageProps) {
   };
 
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+    return currencyFormatter(amount, company?.currency || 'USD');
   };
 
   const formatDate = (dateString: string) => {

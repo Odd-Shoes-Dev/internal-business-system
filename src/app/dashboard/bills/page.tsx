@@ -100,7 +100,7 @@ export default function BillsPage() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number, currency: string = company?.currency || 'USD') => {
     return currencyFormatter(amount, currency as any);
   };
 

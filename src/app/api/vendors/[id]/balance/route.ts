@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrency, getRatesMap } from '@/lib/exchange-rates';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(
@@ -30,9 +31,16 @@ export async function GET(
       [id]
     );
 
+    // Convert each bill's outstanding balance to the company base currency
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [(vendor.rows[0] as any).company_id]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+    const ratesMap = await getRatesMap(db, baseCurrency);
+
     let totalOutstanding = 0;
 
-    // Convert each bill's outstanding balance to USD
     for (const bill of bills.rows || []) {
       // Skip paid/void bills
       if (bill.status === 'paid' || bill.status === 'void') continue;
@@ -43,24 +51,12 @@ export async function GET(
 
       if (remaining <= 0) continue;
 
-      let remainingInUSD = remaining;
-
-      // Convert to USD if not already
-      if (bill.currency && bill.currency !== 'USD') {
-        const converted = await db.query<{ converted: number }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [remaining, bill.currency, 'USD', bill.bill_date]
-        );
-
-        remainingInUSD = converted.rows[0]?.converted ?? remaining;
-      }
-
-      totalOutstanding += remainingInUSD;
+      totalOutstanding += convertCurrency(remaining, bill.currency || baseCurrency, baseCurrency, ratesMap);
     }
 
     return NextResponse.json({
       outstandingBalance: totalOutstanding,
-      currency: 'USD',
+      currency: baseCurrency,
     });
   } catch (error) {
     console.error('Error calculating vendor balance:', error);

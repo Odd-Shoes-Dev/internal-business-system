@@ -298,13 +298,13 @@ export default function SelectModulesPage() {
             disabled={loading}
             className="text-gray-600 hover:text-blueox-primary transition-colors text-sm"
           >
-            Skip for now, I'll add modules later
+            Skip for now, I&apos;ll add modules later
           </button>
         </div>
 
         {/* Info Box */}
         <div className="mt-8 max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h4 className="font-semibold text-blueox-primary mb-2">What's included in your trial:</h4>
+          <h4 className="font-semibold text-blueox-primary mb-2">What&apos;s included in your trial:</h4>
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />

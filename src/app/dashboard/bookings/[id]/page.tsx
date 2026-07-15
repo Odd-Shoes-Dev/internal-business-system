@@ -6,6 +6,8 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import type { Booking, BookingStatus } from '@/types/breco';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { useCompany } from '@/contexts/company-context';
+import { formatCurrency } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CalendarDaysIcon,
@@ -108,6 +110,7 @@ interface BookingDetailPageProps {
 
 export default function BookingDetailPage({ params }: BookingDetailPageProps) {
   const router = useRouter();
+  const { company } = useCompany();
   const [booking, setBooking] = useState<BookingWithRelations | null>(null);
   const [relatedInvoices, setRelatedInvoices] = useState<InvoiceSummary[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
@@ -455,7 +458,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
             </div>
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Booking Not Found</h3>
-          <p className="text-gray-500 mb-6">The booking you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-500 mb-6">The booking you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           <Link 
             href="/dashboard/bookings" 
             className="inline-flex items-center gap-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg px-6 py-3 font-medium transition-all duration-200"
@@ -712,11 +715,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
                     <div>
                       <span className="text-xs text-gray-500 block">Daily Rate</span>
                       <p className="font-semibold text-blueox-primary mt-1">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: booking.currency || 'USD',
-                          minimumFractionDigits: 0,
-                        }).format(booking.vehicle.daily_rate_usd || 0)}
+                        {formatCurrency(booking.vehicle.daily_rate_usd || 0, booking.currency || company?.currency)}
                       </p>
                     </div>
                   </div>
@@ -1095,7 +1094,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
                               {payment.notes && (
                                 <p className="text-xs text-gray-600 italic mt-1">
-                                  "{payment.notes}"
+                                  &quot;{payment.notes}&quot;
                                 </p>
                               )}
                             </div>

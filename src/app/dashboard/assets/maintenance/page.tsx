@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -188,13 +189,11 @@ export default function AssetMaintenancePage() {
           <div className="card-body">
             <div className="text-sm text-gray-500">Total Cost (YTD)</div>
             <div className="text-2xl font-bold text-gray-900 mt-1">
-              {new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-              }).format(
+              {formatCurrency(
                 maintenances
                   .filter(m => m.status === 'completed')
-                  .reduce((sum, m) => sum + (m.cost || 0), 0)
+                  .reduce((sum, m) => sum + (m.cost || 0), 0),
+                company?.currency
               )}
             </div>
           </div>
@@ -311,10 +310,7 @@ export default function AssetMaintenancePage() {
                           {maintenance.performed_by_vendor || 'N/A'}
                         </td>
                         <td>
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                          }).format(maintenance.cost || 0)}
+                          {formatCurrency(maintenance.cost || 0, company?.currency)}
                         </td>
                         <td>
                           {maintenance.next_maintenance_date

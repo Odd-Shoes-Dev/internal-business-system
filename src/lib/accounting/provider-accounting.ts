@@ -1,3 +1,4 @@
+import { getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
 import type { DbProvider } from '@/lib/provider/types';
 
 type QueryResult<T = any> = { rows: T[]; rowCount: number };
@@ -50,13 +51,15 @@ export async function getAccountIdByCode(q: QueryExecutor, code: string, company
   return result.rows[0]?.id ?? null;
 }
 
-async function getExchangeRateToUSD(q: QueryExecutor, currency: string, date: string): Promise<number> {
-  if (!currency || currency === 'USD') return 1;
-  const result = await q.query<{ rate: number | null }>(
-    `SELECT convert_currency(1, $1, 'USD', $2::date) AS rate`,
-    [currency, date]
+async function getExchangeRateToBase(q: QueryExecutor, currency: string, companyId: string): Promise<number> {
+  const companyRow = await q.query<{ currency: string }>(
+    'SELECT currency FROM companies WHERE id = $1',
+    [companyId]
   );
-  return Number(result.rows[0]?.rate) || 1;
+  const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+  if (!currency || currency === baseCurrency) return 1;
+  const ratesMap = await getRatesMap(q, baseCurrency);
+  return getExchangeRate(currency, baseCurrency, ratesMap);
 }
 
 export async function createBillJournalEntryWithDb(
@@ -103,7 +106,7 @@ export async function createBillJournalEntryWithDb(
     }
 
     const currency = bill.currency || 'USD';
-    const exchangeRate = await getExchangeRateToUSD(q, currency, bill.bill_date);
+    const exchangeRate = await getExchangeRateToBase(q, currency, bill.company_id);
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
       'SELECT generate_journal_entry_number() AS entry_number'
@@ -175,7 +178,7 @@ export async function createInvoiceJournalEntryWithDb(
     }
 
     const currency = invoice.currency || 'USD';
-    const exchangeRate = await getExchangeRateToUSD(q, currency, invoice.invoice_date);
+    const exchangeRate = await getExchangeRateToBase(q, currency, invoice.company_id);
     const baseTotal = invoice.total * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
@@ -249,7 +252,7 @@ export async function createReceiptJournalEntryWithDb(
     }
 
     const currency = receipt.currency || 'USD';
-    const exchangeRate = await getExchangeRateToUSD(q, currency, receipt.receipt_date);
+    const exchangeRate = await getExchangeRateToBase(q, currency, receipt.company_id);
     const baseTotal = receipt.total * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(
@@ -338,7 +341,7 @@ export async function createExpenseJournalEntryWithDb(
     }
 
     const currency = expense.currency || 'USD';
-    const exchangeRate = await getExchangeRateToUSD(q, currency, expense.expense_date);
+    const exchangeRate = await getExchangeRateToBase(q, currency, expense.company_id);
     const baseAmount = expense.amount * exchangeRate;
 
     const entryNumberResult = await q.query<{ entry_number: string }>(

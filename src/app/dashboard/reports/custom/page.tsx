@@ -646,7 +646,7 @@ export default function CustomReportsPage() {
             <div className="text-center py-12">
               <TableCellsIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Report Generated</h3>
-              <p className="text-gray-500 mb-4">Configure your report and click "Run Report" to see results</p>
+              <p className="text-gray-500 mb-4">Configure your report and click &quot;Run Report&quot; to see results</p>
               <button
                 onClick={() => setActiveTab('config')}
                 className="btn-primary"

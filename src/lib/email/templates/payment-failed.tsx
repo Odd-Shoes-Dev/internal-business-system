@@ -84,10 +84,10 @@ export const PaymentFailedEmail = ({
             <strong>Timeline:</strong>
           </Text>
           <Text style={smallText}>
-            • We'll retry payment in 3 days<br />
-            • If payment fails again, we'll try 2 more times<br />
+            • We&apos;ll retry payment in 3 days<br />
+            • If payment fails again, we&apos;ll try 2 more times<br />
             • Your subscription will be cancelled after the final retry<br />
-            • You'll have 7 days to reactivate before data deletion
+            • You&apos;ll have 7 days to reactivate before data deletion
           </Text>
 
           <Hr style={hr} />

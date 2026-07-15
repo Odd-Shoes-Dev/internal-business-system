@@ -129,7 +129,7 @@ export default function CustomerDetailPage({ params }: PageProps) {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number, currency: string = customer?.currency || 'USD') => {
     return currencyFormatter(amount, currency as any);
   };
 

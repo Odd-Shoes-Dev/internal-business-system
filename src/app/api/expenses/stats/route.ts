@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrency, getRatesMap } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
@@ -46,6 +47,13 @@ export async function GET(request: NextRequest) {
       [companyId]
     );
 
+    const companyRow = await db.query<{ currency: string }>(
+      'SELECT currency FROM companies WHERE id = $1',
+      [companyId]
+    );
+    const baseCurrency = companyRow.rows[0]?.currency || 'USD';
+    const ratesMap = await getRatesMap(db, baseCurrency);
+
     let thisMonthTotal = 0;
     let pendingCount = 0;
     let approvedCount = 0;
@@ -53,19 +61,11 @@ export async function GET(request: NextRequest) {
 
     for (const expense of allExpenses.rows || []) {
       const amount = parseFloat(String(expense.total)) || 0;
-
-      let amountUSD = amount;
-      if (expense.currency && expense.currency !== 'USD') {
-        const converted = await db.query<{ converted: number | null }>(
-          'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-          [amount, expense.currency, 'USD', expense.expense_date]
-        );
-        amountUSD = parseFloat(String(converted.rows[0]?.converted)) || amount;
-      }
+      const amountBase = convertCurrency(amount, expense.currency || baseCurrency, baseCurrency, ratesMap);
 
       const expDate = String(expense.expense_date).slice(0, 10);
       if (expDate >= firstDayOfMonth && expDate <= lastDayOfMonth) {
-        thisMonthTotal += amountUSD;
+        thisMonthTotal += amountBase;
       }
 
       const status = String(expense.status || 'pending').toLowerCase();
@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       thisMonth: thisMonthTotal,
+      currency: baseCurrency,
       pendingApproval: pendingCount,
       approved: approvedCount,
       paid: paidCount,

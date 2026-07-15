@@ -151,8 +151,8 @@ export default function AddModulesPage() {
     let paidCount = 0;
     
     return selectedModules.reduce((total, moduleId, index) => {
-      const module = availableModules.find((m) => m.id === moduleId);
-      const price = module?.price || 0;
+      const mod = availableModules.find((m) => m.id === moduleId);
+      const price = mod?.price || 0;
       
       // First 'remaining' modules are free (included in quota)
       if (index >= remaining) {
@@ -348,7 +348,7 @@ export default function AddModulesPage() {
 
           <div className="space-y-3 mb-6">
             {selectedModules.map((moduleId, index) => {
-              const module = availableModules.find((m) => m.id === moduleId);
+              const mod = availableModules.find((m) => m.id === moduleId);
               const remaining = moduleQuota?.remaining || 0;
               const isIncluded = index < remaining;
               
@@ -357,7 +357,7 @@ export default function AddModulesPage() {
                   isIncluded ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-700 font-semibold">{module?.name}</span>
+                    <span className="text-gray-700 font-semibold">{mod?.name}</span>
                     {isIncluded && (
                       <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                         INCLUDED
@@ -365,7 +365,7 @@ export default function AddModulesPage() {
                     )}
                   </div>
                   <span className="font-bold text-gray-900 text-lg">
-                    {isIncluded ? 'Included' : `${currencySymbol} ${module?.price.toLocaleString()}`}
+                    {isIncluded ? 'Included' : `${currencySymbol} ${mod?.price.toLocaleString()}`}
                   </span>
                 </div>
               );
@@ -389,7 +389,7 @@ export default function AddModulesPage() {
                     <div>
                       <p className="text-purple-900 font-bold text-sm">Payment Required</p>
                       <p className="text-purple-700 text-xs mt-1">
-                        You'll be redirected to payment after clicking "Proceed to Payment"
+                        You&apos;ll be redirected to payment after clicking &quot;Proceed to Payment&quot;
                       </p>
                     </div>
                   </div>
@@ -449,15 +449,15 @@ export default function AddModulesPage() {
           <h3 className="font-bold text-blueox-primary-dark text-xl mb-6">Your Current Modules</h3>
           <div className="flex flex-wrap gap-3">
             {currentModules.map((moduleId) => {
-              const module = availableModules.find((m) => m.id === moduleId);
-              const IconComponent = module?.icon;
+              const mod = availableModules.find((m) => m.id === moduleId);
+              const IconComponent = mod?.icon;
               return (
                 <span
                   key={moduleId}
                   className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300/50 text-green-800 rounded-2xl font-bold shadow-md"
                 >
                   {IconComponent && <IconComponent className="w-5 h-5" />}
-                  {module?.name}
+                  {mod?.name}
                 </span>
               );
             })}

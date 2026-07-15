@@ -42,7 +42,7 @@ export const WelcomeEmail = ({
           <Text style={text}>Hi {userName},</Text>
           
           <Text style={text}>
-            Welcome aboard! Your <strong>{planName}</strong> trial has started, and you're all set to explore the full power of BlueOx Business Platform.
+            Welcome aboard! Your <strong>{planName}</strong> trial has started, and you&apos;re all set to explore the full power of BlueOx Business Platform.
           </Text>
 
           <Section style={highlightBox}>
@@ -124,7 +124,7 @@ export const WelcomeEmail = ({
           <Hr style={hr} />
 
           <Text style={footer}>
-            We're excited to have you on board!
+            We&apos;re excited to have you on board!
           </Text>
 
           <Text style={footer}>

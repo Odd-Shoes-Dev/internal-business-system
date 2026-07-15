@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
+import { INVOICE_OUTSTANDING_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/reports/ar-aging - Accounts Receivable Aging
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     const params: any[] = [companyId, asOfDate];
     const where: string[] = [
       'i.company_id = $1',
-      "i.status NOT IN ('paid', 'void', 'cancelled', 'draft')",
+      `i.status ${sqlNotIn(INVOICE_OUTSTANDING_EXCLUDED)}`,
       'i.invoice_date <= $2::date',
     ];
     if (customerId) {

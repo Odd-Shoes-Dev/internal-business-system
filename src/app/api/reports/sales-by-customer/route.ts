@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { INVOICE_RECOGNIZED_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -82,13 +83,13 @@ export async function GET(request: NextRequest) {
                 c.id AS customer_ref_id,
                 c.name AS customer_name,
                 c.company_name AS customer_company_name,
-                c.customer_type
+                CASE WHEN c.company_name IS NOT NULL AND c.company_name <> '' THEN 'Business' ELSE 'Individual' END AS customer_type
          FROM invoices i
          LEFT JOIN customers c ON c.id = i.customer_id
          WHERE i.company_id = $1
            AND i.invoice_date >= $2::date
            AND i.invoice_date <= $3::date
-           AND i.status <> 'void'
+           AND i.status ${sqlNotIn(INVOICE_RECOGNIZED_EXCLUDED)}
          ORDER BY i.invoice_date ASC`,
         [companyId, startDate, endDate]
       ),

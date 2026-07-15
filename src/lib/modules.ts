@@ -275,8 +275,8 @@ export function hasRouteAccess(route: string, enabledModules: string[]): boolean
 
   // Check if route belongs to any enabled module
   for (const moduleId of enabledModules) {
-    const module = AVAILABLE_MODULES[moduleId];
-    if (module && module.routes.some(r => route.startsWith(r))) {
+    const mod = AVAILABLE_MODULES[moduleId];
+    if (mod && mod.routes.some(r => route.startsWith(r))) {
       return true;
     }
   }
@@ -291,9 +291,9 @@ export function getAccessibleRoutes(enabledModules: string[]): string[] {
   const routes = [...AVAILABLE_MODULES.core.routes];
 
   for (const moduleId of enabledModules) {
-    const module = AVAILABLE_MODULES[moduleId];
-    if (module) {
-      routes.push(...module.routes);
+    const mod = AVAILABLE_MODULES[moduleId];
+    if (mod) {
+      routes.push(...mod.routes);
     }
   }
 
@@ -307,9 +307,9 @@ export function calculateMonthlyCost(enabledModules: string[]): number {
   let total = AVAILABLE_MODULES.core.monthlyFee;
 
   for (const moduleId of enabledModules) {
-    const module = AVAILABLE_MODULES[moduleId];
-    if (module) {
-      total += module.monthlyFee;
+    const mod = AVAILABLE_MODULES[moduleId];
+    if (mod) {
+      total += mod.monthlyFee;
     }
   }
 

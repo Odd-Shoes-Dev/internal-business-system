@@ -61,6 +61,7 @@ interface Employee {
 
 export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { company } = useCompany();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [allowances, setAllowances] = useState<any[]>([]);
   const [deductions, setDeductions] = useState<any[]>([]);
@@ -128,12 +129,8 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'UGX') => {
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = company?.currency || 'USD') => {
+    return currencyFormatter(amount, currency);
   };
 
   const formatDate = (date: string | null) => {
@@ -537,7 +534,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                 <UserIcon className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Employee Not Found</h3>
-              <p className="text-gray-500 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
+              <p className="text-gray-500 mb-6">The employee you&apos;re looking for doesn&apos;t exist or has been removed.</p>
               <Link
                 href="/dashboard/employees"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200"

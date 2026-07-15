@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorageServiceClient } from '@/lib/provider/get-storage-service-client';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { uploadToImageKit } from '@/lib/imagekit';
 
 export const runtime = 'nodejs';
 
@@ -53,32 +53,16 @@ export async function POST(request: NextRequest) {
     if (accessError) return accessError;
 
     const fileBuffer = parseBase64Data(dataBase64);
-    const maxBytes = 5 * 1024 * 1024;
-    if (fileBuffer.length > maxBytes) {
+    if (fileBuffer.length > 5 * 1024 * 1024) {
       return NextResponse.json({ error: 'File is too large (max 5MB)' }, { status: 400 });
     }
 
     const extension = getExtension(fileName, contentType);
-    const objectPath = `packages/${tourId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
 
-    const serviceClient = await getStorageServiceClient();
-    const { error: uploadError } = await serviceClient.storage
-      .from('tour-images')
-      .upload(objectPath, fileBuffer, {
-        contentType,
-        cacheControl: '3600',
-        upsert: false,
-      });
+    const result = await uploadToImageKit(fileBuffer, uniqueName, `tour-images/packages/${tourId}`, contentType);
 
-    if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
-    }
-
-    const {
-      data: { publicUrl },
-    } = serviceClient.storage.from('tour-images').getPublicUrl(objectPath);
-
-    return NextResponse.json({ data: { path: objectPath, public_url: publicUrl } }, { status: 201 });
+    return NextResponse.json({ data: { path: result.filePath, public_url: result.url } }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

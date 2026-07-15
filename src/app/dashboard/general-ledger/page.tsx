@@ -15,7 +15,8 @@ import {
   TrashIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 
 interface JournalEntry {
   id: string;

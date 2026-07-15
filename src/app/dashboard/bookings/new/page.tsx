@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
 import toast from 'react-hot-toast';
 import {
@@ -376,12 +377,8 @@ export default function NewBookingPage() {
     }
   };
 
-  const formatPrice = (price: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: currency === 'UGX' ? 0 : 2,
-    }).format(price);
+  const formatPrice = (price: number, currency: string = company?.currency || 'USD') => {
+    return currencyFormatter(price, currency);
   };
 
   if (loading) {

@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { BILL_RECOGNIZED_EXCLUDED, sqlNotIn } from '@/lib/status-filters';
 import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
          WHERE b.company_id = $1
            AND b.bill_date >= $2::date
            AND b.bill_date <= $3::date
-           AND b.status <> 'void'
+           AND b.status ${sqlNotIn(BILL_RECOGNIZED_EXCLUDED)}
          ORDER BY b.bill_date ASC`,
         [companyId, startDate, endDate]
       ),

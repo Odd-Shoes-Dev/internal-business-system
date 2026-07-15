@@ -1,4 +1,5 @@
 import { EMAIL_CONFIG } from './client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 // Lazily construct Resend client inside functions so missing API keys don't throw during
 // module import (which can break builds when environment variables are not provided).
@@ -54,10 +55,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   } = params;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
+    return currencyFormatter(amount, currency);
   };
 
   const formatDate = (date: string) => {
@@ -221,10 +219,7 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
   } = params;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
+    return currencyFormatter(amount, currency);
   };
 
   const formatDate = (date: string) => {

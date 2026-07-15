@@ -5,6 +5,7 @@ import {
   releaseReservedInventoryWithDb,
   restoreInventoryForInvoiceWithDb,
 } from '@/lib/accounting/provider-accounting';
+import { convertCurrency, getRatesMap } from '@/lib/exchange-rates';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/invoices/[id] - Get single invoice with lines
@@ -373,22 +374,19 @@ export async function PATCH(request: NextRequest, context: any) {
       const booking = bookingResult.rows[0];
 
       if (booking) {
+        const bookingRatesMap = await getRatesMap(db, booking.currency);
         let totalPaidAcrossInvoices = 0;
 
         for (const inv of allBookingInvoices.rows) {
           const invAmountPaid =
             inv.id === updatedInvoice.id ? newAmountPaid : Number(inv.amount_paid || 0);
 
-          if (inv.currency === booking.currency) {
-            totalPaidAcrossInvoices += invAmountPaid;
-          } else {
-            const convertedAmount = await db.query<{ converted: number | null }>(
-              'SELECT convert_currency($1, $2, $3, $4::date) AS converted',
-              [invAmountPaid, inv.currency, booking.currency, new Date().toISOString().split('T')[0]]
-            );
-
-            totalPaidAcrossInvoices += convertedAmount.rows[0]?.converted ?? invAmountPaid;
-          }
+          totalPaidAcrossInvoices += convertCurrency(
+            invAmountPaid,
+            inv.currency || booking.currency,
+            booking.currency,
+            bookingRatesMap
+          );
         }
 
         let newBookingStatus = booking.status;

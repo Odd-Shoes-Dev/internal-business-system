@@ -12,7 +12,8 @@ import {
   CheckCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency';
 
 interface LineItem {
   id: string;
@@ -525,10 +526,10 @@ export default function NewJournalEntryPage() {
                     Totals
                   </td>
                   <td className="px-3 sm:px-6 py-3 text-sm font-bold text-right tabular-nums text-red-600">
-                    {formatCurrency(getTotalDebits())}
+                    {formatCurrency(getTotalDebits(), company?.currency)}
                   </td>
                   <td className="px-3 sm:px-6 py-3 text-sm font-bold text-right tabular-nums text-green-600">
-                    {formatCurrency(getTotalCredits())}
+                    {formatCurrency(getTotalCredits(), company?.currency)}
                   </td>
                   <td className="px-3 sm:px-6 py-3 text-center">
                     {isBalanced() ? (
