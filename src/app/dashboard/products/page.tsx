@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -11,6 +12,7 @@ import {
   CubeIcon,
   XMarkIcon,
   CheckIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface Product {
@@ -41,12 +43,11 @@ const emptyForm = {
   unit_of_measure: 'each',
   is_taxable: false,
   tax_rate: 0,
-  track_inventory: false,
-  quantity_on_hand: 0,
 };
 
 export default function ProductsPage() {
-  const { company } = useCompany();
+  const { company, companyModules } = useCompany();
+  const hasInventory = companyModules.includes('inventory');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -94,8 +95,6 @@ export default function ProductsPage() {
       unit_of_measure: p.unit_of_measure,
       is_taxable: p.is_taxable,
       tax_rate: Number(p.tax_rate) * 100,
-      track_inventory: p.track_inventory,
-      quantity_on_hand: p.quantity_on_hand,
     });
     setShowModal(true);
   };
@@ -185,6 +184,27 @@ export default function ProductsPage() {
           </button>
         </div>
 
+        {/* Inventory module banner */}
+        {hasInventory ? (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <p className="text-sm text-green-800">
+              <span className="font-semibold">Stock Control is active.</span> Track quantities, adjustments, locations and more.
+            </p>
+            <Link href="/dashboard/inventory" className="inline-flex items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-900 transition-colors">
+              Go to Inventory <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Want stock control?</span> Enable the Inventory module to track quantities, reorder points, stock adjustments and more.
+            </p>
+            <Link href="/dashboard/billing/add-modules" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors">
+              Enable Inventory <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative max-w-sm">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -265,6 +285,15 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {hasInventory && p.product_type === 'inventory' && (
+                          <Link
+                            href={`/dashboard/inventory/${p.id}`}
+                            className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
+                            title="View stock"
+                          >
+                            <CubeIcon className="w-4 h-4" />
+                          </Link>
+                        )}
                         <button
                           onClick={() => openEdit(p)}
                           className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition-colors"
