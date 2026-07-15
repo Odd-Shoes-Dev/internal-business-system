@@ -101,7 +101,7 @@ export default function APAgingPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Accounts Payable Aging Report - ${formatDate(data.reportDate)} - Breco Safaris Ltd</title>
+          <title>Accounts Payable Aging Report - ${formatDate(data.reportDate)} - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 

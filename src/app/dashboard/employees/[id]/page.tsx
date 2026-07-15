@@ -301,13 +301,13 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         <body>
           <div class="header">
             <div class="company-section">
-              <img src="${window.location.origin}/assets/logo.jpg" alt="Breco Safaris" class="logo" onerror="this.style.display='none'">
+              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company?.name || ''}" class="logo" onerror="this.style.display='none'">` : ''}
               <div class="company-info">
-                <h1>Breco Safaris Ltd</h1>
-                <p class="address">Plot 123, Kampala Road</p>
-                <p class="address">Kampala, Uganda</p>
-                <p class="address">Tel: +256 123 456 789</p>
-                <p class="address">Email: info@brecosafaris.com</p>
+                <h1>${company?.name || ''}</h1>
+                ${company?.address ? `<p class="address">${company.address}</p>` : ''}
+                ${company?.city || company?.country ? `<p class="address">${[company?.city, company?.country].filter(Boolean).join(', ')}</p>` : ''}
+                ${company?.phone ? `<p class="address">Tel: ${company.phone}</p>` : ''}
+                ${company?.email ? `<p class="address">Email: ${company.email}</p>` : ''}
               </div>
             </div>
             <div class="document-header">

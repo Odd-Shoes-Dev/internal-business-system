@@ -334,10 +334,9 @@ export default function PayrollPage() {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/logo_bg.png" alt="Company Logo" class="logo" />
+            ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company?.name || ''}" class="logo" onerror="this.style.display='none'">` : ''}
             <div class="company-info">
-              <div class="company-name">Breco Safaris</div>
-              <div>Operations Department</div>
+              <div class="company-name">${company?.name || ''}</div>
             </div>
           </div>
 
@@ -387,7 +386,7 @@ export default function PayrollPage() {
 
           <div class="footer">
             <p>Generated on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-GB')}</p>
-            <p>Breco Safaris - Operations Department</p>
+            <p>${company?.name || ''}</p>
           </div>
         </body>
       </html>

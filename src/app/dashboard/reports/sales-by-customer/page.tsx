@@ -97,7 +97,7 @@ export default function SalesByCustomerPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Sales by Customer Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - Breco Safaris Ltd</title>
+          <title>Sales by Customer Report - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 

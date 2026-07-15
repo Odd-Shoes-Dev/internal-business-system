@@ -119,7 +119,7 @@ export default function CustomerStatementPage() {
     const printHTML = `
       <html>
         <head>
-          <title>Customer Statement - ${data.customer.name} - Breco Safaris Ltd</title>
+          <title>Customer Statement - ${data.customer.name} - ${company?.name || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
