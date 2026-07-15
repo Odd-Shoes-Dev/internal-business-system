@@ -225,10 +225,10 @@ export default function NewReceiptPage() {
 
         invoicePrefilledRef.current = true;
 
-        // Set customer
+        // Set customer — API returns customer data under `customers` (plural)
         setValue('customer_id', inv.customer_id);
-        if (inv.customer) {
-          setSelectedCustomer(inv.customer);
+        if (inv.customers) {
+          setSelectedCustomer(inv.customers);
         }
 
         // Set currency
