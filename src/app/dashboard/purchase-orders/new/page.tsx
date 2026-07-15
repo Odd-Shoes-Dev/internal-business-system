@@ -71,6 +71,9 @@ export default function NewPurchaseOrderPage() {
     if (!company?.id) {
       return;
     }
+    if (company.currency) {
+      setFormData(prev => ({ ...prev, currency: company.currency }));
+    }
     loadVendors();
     loadProducts();
   }, [company?.id]);
