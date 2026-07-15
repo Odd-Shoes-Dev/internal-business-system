@@ -323,6 +323,7 @@ export const MODULE_PRICING = {
     inventory: 75000,
     payroll: 95000,
     retail: 65000,
+    pos: 75000,
     currencySymbol: 'UGX',
   },
   ASIA: {
@@ -334,6 +335,7 @@ export const MODULE_PRICING = {
     inventory: 19,
     payroll: 25,
     retail: 17,
+    pos: 19,
     currencySymbol: '$',
   },
   EU: {
@@ -345,6 +347,7 @@ export const MODULE_PRICING = {
     inventory: 39,
     payroll: 49,
     retail: 35,
+    pos: 39,
     currencySymbol: '€',
   },
   GB: {
@@ -356,6 +359,7 @@ export const MODULE_PRICING = {
     inventory: 35,
     payroll: 45,
     retail: 31,
+    pos: 35,
     currencySymbol: '£',
   },
   US: {
@@ -367,6 +371,7 @@ export const MODULE_PRICING = {
     inventory: 39,
     payroll: 49,
     retail: 35,
+    pos: 39,
     currencySymbol: '$',
   },
   DEFAULT: {
@@ -378,6 +383,7 @@ export const MODULE_PRICING = {
     inventory: 39,
     payroll: 49,
     retail: 35,
+    pos: 39,
     currencySymbol: '$',
   },
 };

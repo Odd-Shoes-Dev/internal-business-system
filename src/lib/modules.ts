@@ -238,6 +238,31 @@ export const AVAILABLE_MODULES: Record<string, Module> = {
       '/dashboard/payroll',
     ],
   },
+
+  pos: {
+    id: 'pos',
+    name: 'Point of Sale',
+    description: 'Full-screen till with barcode scanner support, shift management, and thermal receipts',
+    icon: 'ShoppingCartIcon',
+    version: '1.0.0',
+    setupFee: 100,
+    monthlyFee: 39,
+    requiredModules: ['core'],
+    availableForSignup: true,
+    features: [
+      'Full-screen till interface',
+      'Barcode scanner support',
+      'Shift management with cash float',
+      'Multiple payment methods (cash, card, mobile money)',
+      'Thermal receipt printing (80mm)',
+      'Sales feed into accounting and reports automatically',
+      'Manager dashboard with shift history',
+    ],
+    routes: [
+      '/dashboard/pos',
+      '/pos',
+    ],
+  },
 };
 
 /**

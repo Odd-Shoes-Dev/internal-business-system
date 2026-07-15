@@ -90,6 +90,13 @@ export default function AddModulesPage() {
       icon: Calculator,
       price: pricing.modules.payroll,
     },
+    {
+      id: 'pos',
+      name: 'Point of Sale',
+      description: 'Full-screen till with barcode scanner, shift management, and thermal receipts',
+      icon: ShoppingCart,
+      price: pricing.modules.pos,
+    },
   ].filter(module => {
     // Only show modules that are available for signup
     const moduleInfo = AVAILABLE_MODULES[module.id];

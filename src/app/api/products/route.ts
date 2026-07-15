@@ -22,9 +22,19 @@ export async function GET(request: NextRequest) {
 
     const search = searchParams.get('search');
     const active = searchParams.get('active');
+    const barcode = searchParams.get('barcode');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
+
+    // Barcode lookup — returns single product immediately
+    if (barcode) {
+      const result = await db.query(
+        `SELECT * FROM products WHERE company_id = $1 AND barcode = $2 AND is_active = true LIMIT 1`,
+        [companyId, barcode]
+      );
+      return NextResponse.json({ data: result.rows[0] || null });
+    }
 
     const where: string[] = ['company_id = $1'];
     const params: any[] = [companyId];
@@ -86,6 +96,7 @@ export async function POST(request: NextRequest) {
       company_id,
       name,
       sku,
+      barcode,
       description,
       product_type = 'service',
       unit_price = 0,
@@ -109,18 +120,18 @@ export async function POST(request: NextRequest) {
 
     const result = await db.query(
       `INSERT INTO products (
-         company_id, name, sku, description, product_type,
+         company_id, name, sku, barcode, description, product_type,
          unit_price, cost_price, currency, unit_of_measure,
          is_taxable, tax_rate, track_inventory, quantity_on_hand,
          reorder_point, revenue_account_id, category_id, is_active
        ) VALUES (
-         $1, $2, $3, $4, $5,
-         $6, $7, $8, $9,
-         $10, $11, $12, $13,
-         $14, $15, $16, true
+         $1, $2, $3, $4, $5, $6,
+         $7, $8, $9, $10,
+         $11, $12, $13, $14,
+         $15, $16, $17, true
        ) RETURNING *`,
       [
-        company_id, name, sku || null, description || null, product_type,
+        company_id, name, sku || null, barcode || null, description || null, product_type,
         unit_price, cost_price, currency, unit_of_measure,
         is_taxable, tax_rate, track_inventory, quantity_on_hand,
         reorder_point || null, revenue_account_id || null, category_id || null,
