@@ -33,6 +33,7 @@ import {
   CakeIcon,
   CreditCardIcon,
   ShieldCheckIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -44,6 +45,14 @@ const navigationGroups = [
     roles: null, // all roles
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    ]
+  },
+  {
+    name: 'Point of Sale',
+    module: 'pos',
+    roles: ['admin', 'operations'],
+    items: [
+      { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon },
     ]
   },
   {
@@ -169,6 +178,8 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/inventory': ['admin', 'accountant', 'operations'],
   '/dashboard/fleet': ['admin', 'operations'],
   '/dashboard/hotels': ['admin', 'operations'],
+  '/dashboard/pos': ['admin', 'operations'],
+  '/pos': ['admin', 'operations'],
   '/dashboard/cafe': ['admin', 'operations'],
   '/dashboard/destinations': ['admin', 'operations'],
   '/dashboard/tours': ['admin', 'operations', 'sales', 'guide'],

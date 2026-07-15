@@ -50,9 +50,12 @@ const MODULE_NAMES: Record<string, string> = {
   tours: 'Tours & Safari',
   fleet: 'Fleet Management',
   hotels: 'Hotel Management',
-  cafe: 'Retail & Restaurant',
+  cafe: 'Cafe & Restaurant',
   security: 'Security Services',
   inventory: 'Inventory & Assets',
+  payroll: 'Payroll Processing',
+  retail: 'Retail & Shop',
+  pos: 'Point of Sale',
 };
 
 const PLAN_NAMES: Record<string, string> = {

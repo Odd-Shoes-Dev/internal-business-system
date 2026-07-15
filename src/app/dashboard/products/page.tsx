@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -13,12 +13,14 @@ import {
   XMarkIcon,
   CheckIcon,
   ArrowRightIcon,
+  QrCodeIcon,
 } from '@heroicons/react/24/outline';
 
 interface Product {
   id: string;
   name: string;
   sku: string | null;
+  barcode: string | null;
   description: string | null;
   product_type: string;
   unit_price: number;
@@ -35,6 +37,7 @@ interface Product {
 const emptyForm = {
   name: '',
   sku: '',
+  barcode: '',
   description: '',
   product_type: 'service',
   unit_price: 0,
@@ -56,8 +59,18 @@ export default function ProductsPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
 
+  // Scan-to-register state
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scanValue, setScanValue] = useState('');
+  const [scanResult, setScanResult] = useState<{ found: boolean; product?: Product } | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    if (company) loadProducts();
+    if (company) {
+      setForm(f => ({ ...f, currency: company.currency || 'USD' }));
+      loadProducts();
+    }
   }, [company, search]);
 
   const loadProducts = async () => {
@@ -78,7 +91,7 @@ export default function ProductsPage() {
 
   const openCreate = () => {
     setEditProduct(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, currency: company?.currency || 'USD' });
     setShowModal(true);
   };
 
@@ -87,6 +100,7 @@ export default function ProductsPage() {
     setForm({
       name: p.name,
       sku: p.sku || '',
+      barcode: p.barcode || '',
       description: p.description || '',
       product_type: p.product_type,
       unit_price: p.unit_price,
@@ -106,6 +120,7 @@ export default function ProductsPage() {
     try {
       const payload = {
         ...form,
+        barcode: form.barcode.trim() || null,
         tax_rate: form.is_taxable ? form.tax_rate / 100 : 0,
         company_id: company.id,
       };
@@ -165,6 +180,49 @@ export default function ProductsPage() {
     }
   };
 
+  // Scan to register
+  const openScanModal = () => {
+    setScanValue('');
+    setScanResult(null);
+    setShowScanModal(true);
+    setTimeout(() => scanInputRef.current?.focus(), 100);
+  };
+
+  const handleScanLookup = useCallback(async (barcode: string) => {
+    if (!barcode.trim() || !company) return;
+    setScanning(true);
+    try {
+      const res = await fetch(
+        `/api/products?company_id=${company.id}&barcode=${encodeURIComponent(barcode.trim())}`,
+        { credentials: 'include' }
+      );
+      const data = await res.json();
+      setScanResult({ found: !!data.data, product: data.data || undefined });
+    } catch {
+      toast.error('Lookup failed');
+    } finally {
+      setScanning(false);
+    }
+  }, [company]);
+
+  const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleScanLookup(scanValue);
+    }
+  };
+
+  const assignBarcodeToExisting = (product: Product) => {
+    setShowScanModal(false);
+    openEdit(product);
+    setForm(f => ({ ...f, barcode: scanValue.trim() }));
+  };
+
+  const createWithBarcode = () => {
+    setShowScanModal(false);
+    openCreate();
+    setForm(f => ({ ...f, barcode: scanValue.trim() }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -178,10 +236,16 @@ export default function ProductsPage() {
             </h1>
             <p className="text-gray-500 mt-1">Products, services and non-inventory items you sell — added to invoices and receipts</p>
           </div>
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <PlusIcon className="w-5 h-5" />
-            New Product
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={openScanModal} className="btn-secondary flex items-center gap-2">
+              <QrCodeIcon className="w-5 h-5" />
+              Scan Barcode
+            </button>
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+              <PlusIcon className="w-5 h-5" />
+              New Product
+            </button>
+          </div>
         </div>
 
         {/* Inventory module banner */}
@@ -235,7 +299,7 @@ export default function ProductsPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">SKU</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">SKU / Barcode</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Type</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-600">Unit Price</th>
                   <th className="text-center px-4 py-3 font-semibold text-gray-600">Tax</th>
@@ -250,7 +314,15 @@ export default function ProductsPage() {
                       <p className="font-medium text-gray-900">{p.name}</p>
                       {p.description && <p className="text-xs text-gray-400 truncate max-w-[200px]">{p.description}</p>}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{p.sku || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {p.sku && <p>{p.sku}</p>}
+                      {p.barcode && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                          <QrCodeIcon className="w-3 h-3" />{p.barcode}
+                        </p>
+                      )}
+                      {!p.sku && !p.barcode && '—'}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         p.product_type === 'service'
@@ -318,7 +390,7 @@ export default function ProductsPage() {
 
       {/* Create / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm lg:pl-64">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-lg font-bold text-gray-900">
@@ -341,7 +413,7 @@ export default function ProductsPage() {
                 />
               </div>
 
-              {/* SKU + Type */}
+              {/* SKU + Barcode */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">SKU / Code</label>
@@ -353,17 +425,28 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="label">Type</label>
-                  <select
+                  <label className="label">Barcode</label>
+                  <input
                     className="input"
-                    value={form.product_type}
-                    onChange={e => setForm(f => ({ ...f, product_type: e.target.value }))}
-                  >
-                    <option value="service">Service</option>
-                    <option value="inventory">Inventory Item</option>
-                    <option value="non_inventory">Non-Inventory</option>
-                  </select>
+                    placeholder="Scan or type barcode"
+                    value={form.barcode}
+                    onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
+                  />
                 </div>
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="label">Type</label>
+                <select
+                  className="input"
+                  value={form.product_type}
+                  onChange={e => setForm(f => ({ ...f, product_type: e.target.value }))}
+                >
+                  <option value="service">Service</option>
+                  <option value="inventory">Inventory Item</option>
+                  <option value="non_inventory">Non-Inventory</option>
+                </select>
               </div>
 
               {/* Description */}
@@ -462,6 +545,100 @@ export default function ProductsPage() {
               <button onClick={handleSave} disabled={saving} className="btn-primary">
                 {saving ? 'Saving...' : editProduct ? 'Update Product' : 'Create Product'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scan to Register Modal */}
+      {showScanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm lg:pl-64">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <QrCodeIcon className="w-5 h-5 text-blueox-primary" />
+                Scan to Register
+              </h2>
+              <button onClick={() => setShowScanModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                Scan a barcode with your scanner, or type it manually, then press Enter to look it up.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  ref={scanInputRef}
+                  className="input flex-1"
+                  placeholder="Scan or type barcode..."
+                  value={scanValue}
+                  onChange={e => { setScanValue(e.target.value); setScanResult(null); }}
+                  onKeyDown={handleScanKeyDown}
+                  autoComplete="off"
+                />
+                <button
+                  onClick={() => handleScanLookup(scanValue)}
+                  disabled={scanning || !scanValue.trim()}
+                  className="btn-primary px-4"
+                >
+                  {scanning ? '...' : 'Look up'}
+                </button>
+              </div>
+
+              {scanResult && (
+                <div className={`rounded-xl p-4 ${scanResult.found ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                  {scanResult.found && scanResult.product ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-green-800">
+                        Product found: <span className="font-bold">{scanResult.product.name}</span>
+                      </p>
+                      <p className="text-xs text-green-700">
+                        This product already has this barcode assigned. You can edit the product to update any details.
+                      </p>
+                      <button
+                        onClick={() => { setShowScanModal(false); openEdit(scanResult.product!); }}
+                        className="btn-secondary text-sm w-full"
+                      >
+                        Edit {scanResult.product.name}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-amber-800">
+                        No product found for barcode: <span className="font-mono">{scanValue}</span>
+                      </p>
+                      <p className="text-xs text-amber-700">
+                        Assign this barcode to an existing product, or create a new product with it.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={createWithBarcode}
+                          className="btn-primary text-sm"
+                        >
+                          Create New Product
+                        </button>
+                        <div className="relative group">
+                          <select
+                            className="input text-sm w-full"
+                            defaultValue=""
+                            onChange={e => {
+                              const product = products.find(p => p.id === e.target.value);
+                              if (product) assignBarcodeToExisting(product);
+                            }}
+                          >
+                            <option value="" disabled>Assign to existing…</option>
+                            {products.filter(p => p.is_active).map(p => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
