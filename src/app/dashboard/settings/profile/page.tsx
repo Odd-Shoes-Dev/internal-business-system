@@ -193,7 +193,7 @@ export default function ProfilePage() {
                 placeholder="your.email@example.com"
               />
               <p className="text-xs text-gray-500 mt-1">
-                You'll receive a confirmation email if you change your email address
+                You&apos;ll receive a confirmation email if you change your email address
               </p>
             </div>
 

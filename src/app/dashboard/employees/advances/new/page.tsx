@@ -220,7 +220,7 @@ export default function NewSalaryAdvancePage() {
                 {formatCurrency(parseFloat(formData.amount) / parseInt(formData.repayment_months), company?.currency)}
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                This amount will be deducted from the employee's salary each month for {formData.repayment_months} {parseInt(formData.repayment_months) === 1 ? 'month' : 'months'}
+                This amount will be deducted from the employee&apos;s salary each month for {formData.repayment_months} {parseInt(formData.repayment_months) === 1 ? 'month' : 'months'}
               </p>
             </div>
           )}

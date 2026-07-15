@@ -304,7 +304,7 @@ export default function NewInventoryTransferPage() {
           <div className="card-body">
             {lines.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No products added. Click "Add Product" to start.
+                No products added. Click &quot;Add Product&quot; to start.
               </div>
             ) : (
               <div className="overflow-x-auto">

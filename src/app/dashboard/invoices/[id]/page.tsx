@@ -981,7 +981,7 @@ export default function InvoiceDetailPage() {
                         </span>
                         {!currencyMatch && hasRate && (
                           <p className="text-xs text-amber-700 mt-0.5">
-                            ≈ {currencyFormatter(convertedAmount, invoice.currency as any)} at today's rate
+                            ≈ {currencyFormatter(convertedAmount, invoice.currency as any)} at today&apos;s rate
                           </p>
                         )}
                         {!currencyMatch && !hasRate && (

@@ -120,7 +120,7 @@ export default function ChartOfAccountsPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">How to Use Account Numbers</h3>
         <p className="text-sm text-blue-700">
-          When creating bills, expenses, or recording transactions, select the account number that best describes what you're paying for. 
+          When creating bills, expenses, or recording transactions, select the account number that best describes what you&apos;re paying for.
           For example, use <strong>5110</strong> for Gorilla Permits, <strong>6100</strong> for Salaries, or <strong>7510</strong> for Fuel.
         </p>
         </div>

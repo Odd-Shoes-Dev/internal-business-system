@@ -225,7 +225,7 @@ export default function InventoryAdjustmentPage() {
           <div className="card-body">
             {lines.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No adjustments added. Click "Add Product" to start.
+                No adjustments added. Click &quot;Add Product&quot; to start.
               </div>
             ) : (
               <div className="overflow-x-auto">

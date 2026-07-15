@@ -9,6 +9,14 @@ import toast from 'react-hot-toast';
 
 export default function SignUpPage() {
   const signupsEnabled = process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true';
+  const router = useRouter();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [loading, setLoading] = useState(false);
+
   if (!signupsEnabled) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -20,8 +28,8 @@ export default function SignUpPage() {
               </div>
               <h1 className="text-3xl font-bold text-blueox-primary">Signups Currently Disabled</h1>
               <p className="text-lg text-gray-600">Account creation is temporarily disabled. Please contact your administrator for access.</p>
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-[1.02]"
               >
                 Return to Sign In
@@ -32,13 +40,6 @@ export default function SignUpPage() {
       </div>
     );
   }
-  const router = useRouter();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();

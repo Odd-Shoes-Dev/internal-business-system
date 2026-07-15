@@ -130,7 +130,7 @@ export function CheckoutSuccessClient() {
 
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600 mb-4">
-              Questions? We're here to help!
+              Questions? We&apos;re here to help!
             </p>
             <a
               href="mailto:support@blueoox.com"
