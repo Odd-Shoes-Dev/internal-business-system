@@ -101,6 +101,11 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     };
 
+    // Convert empty strings to null for date fields so Postgres doesn't reject them
+    for (const dateField of ['hire_date', 'termination_date', 'date_of_birth']) {
+      if (updateData[dateField] === '') updateData[dateField] = null;
+    }
+
     // If terminating, set termination date
     if (body.employment_status === 'terminated' && !body.termination_date) {
       updateData.termination_date = new Date().toISOString().split('T')[0];

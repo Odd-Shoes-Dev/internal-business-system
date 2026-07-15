@@ -79,9 +79,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
-    if (!employeeData.employee_number || !employeeData.first_name || !employeeData.last_name || !employeeData.hire_date || !employeeData.job_title || !employeeData.basic_salary) {
-      return NextResponse.json(
-        { error: 'Missing required fields: employee_number, first_name, last_name, hire_date, job_title, basic_salary' },
+    const missing = [];
+    if (!employeeData.employee_number) missing.push('employee_number');
+    if (!employeeData.first_name) missing.push('first_name');
+    if (!employeeData.last_name) missing.push('last_name');
+    if (!employeeData.hire_date) missing.push('hire_date');
+    if (!employeeData.job_title) missing.push('job_title');
+    if (employeeData.basic_salary == null) missing.push('basic_salary');
+    if (missing.length > 0) {
+return NextResponse.json(
+        { error: `Missing required fields: ${missing.join(', ')}` },
         { status: 400 }
       );
     }
