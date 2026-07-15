@@ -247,7 +247,7 @@ export default function EditHotelPage() {
         const file = imageFiles[i];
         const form = new FormData();
         form.append('file', file);
-        form.append('hotel_id', hotelId as string);
+        form.append('hotel_id', params.id as string);
         const uploadRes = await fetch('/api/hotel-images/upload', {
           method: 'POST',
           credentials: 'include',
@@ -264,7 +264,7 @@ export default function EditHotelPage() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            hotel_id: hotelId,
+            hotel_id: params.id,
             image_url: url,
             is_primary: existingImages.length === 0 && i === primaryImageIndex,
             display_order: existingImages.length + i,
