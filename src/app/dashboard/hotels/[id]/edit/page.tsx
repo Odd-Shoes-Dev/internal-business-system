@@ -243,8 +243,33 @@ export default function EditHotelPage() {
         throw new Error('Hotel name is required');
       }
 
-      if (imageFiles.length > 0) {
-        throw new Error('Hotel image file upload is not configured yet. Use image URLs for now.');
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const form = new FormData();
+        form.append('file', file);
+        form.append('hotel_id', hotelId as string);
+        const uploadRes = await fetch('/api/hotel-images/upload', {
+          method: 'POST',
+          credentials: 'include',
+          body: form,
+        });
+        if (!uploadRes.ok) {
+          const uploadResult = await uploadRes.json().catch(() => ({}));
+          console.error('Failed to upload hotel image:', uploadResult.error || 'Unknown error');
+          continue;
+        }
+        const { url } = await uploadRes.json();
+        await fetch('/api/hotel-images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            hotel_id: hotelId,
+            image_url: url,
+            is_primary: existingImages.length === 0 && i === primaryImageIndex,
+            display_order: existingImages.length + i,
+          }),
+        });
       }
 
       // Delete removed images
