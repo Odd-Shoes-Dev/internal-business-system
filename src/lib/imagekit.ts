@@ -29,7 +29,7 @@ export async function uploadToImageKit(
   const fullFolder = `/${appFolder}/${folder}`;
 
   const form = new FormData();
-  const blob = new Blob([fileBuffer], { type: contentType });
+  const blob = new Blob([fileBuffer.buffer as ArrayBuffer], { type: contentType });
   form.append('file', blob, fileName);
   form.append('fileName', fileName);
   form.append('folder', fullFolder);
