@@ -24,6 +24,7 @@ interface ExpenseLine {
   amount: number;
   tax_amount: number;
   total: number;
+  converted_total: number;
   currency: string;
   payment_method: string;
   status: string;
@@ -182,7 +183,10 @@ export default function ExpensesReportPage() {
                   <td>${exp.description || '—'}</td>
                   <td>${exp.vendor_name || '—'}</td>
                   <td>${exp.payment_method || '—'}</td>
-                  <td class="amount">${fc(exp.total)}</td>
+                  <td class="amount">
+                    ${fc(exp.converted_total)}
+                    ${exp.currency !== currency ? `<br><span style="font-size:10px;color:#999">${exp.currency} ${Number(exp.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>` : ''}
+                  </td>
                 </tr>`
                 )
                 .join('')}
@@ -336,8 +340,8 @@ export default function ExpensesReportPage() {
           `"${(exp.vendor_name || '').replace(/"/g, '""')}"`,
           `"${(exp.account_name || '').replace(/"/g, '""')}"`,
           exp.payment_method || '',
-          exp.total,
-          exp.currency || data.currency,
+          exp.converted_total,
+          data.currency,
           exp.status,
         ].join(','));
       }
@@ -542,8 +546,13 @@ export default function ExpensesReportPage() {
                         <td className="px-3 py-3 text-gray-700">{exp.description || '—'}</td>
                         <td className="px-3 py-3 text-gray-600">{exp.vendor_name || '—'}</td>
                         <td className="px-3 py-3 text-gray-500 capitalize">{exp.payment_method || '—'}</td>
-                        <td className="pr-6 pl-3 py-3 text-right font-medium tabular-nums text-gray-900">
-                          {formatCurrency(exp.total)}
+                        <td className="pr-6 pl-3 py-3 text-right tabular-nums">
+                          <div className="font-medium text-gray-900">{formatCurrency(exp.converted_total)}</div>
+                          {exp.currency !== (data?.currency || 'USD') && (
+                            <div className="text-xs text-gray-400">
+                              {exp.currency} {Number(exp.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
