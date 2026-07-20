@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
 
       const newExpense = insertResult.rows[0];
 
-      if (body.status === 'paid') {
+      if (['approved', 'paid'].includes(body.status)) {
         const accountResult = await tx.query('SELECT code FROM accounts WHERE id = $1 AND company_id = $2 LIMIT 1', [body.expense_account_id, company_id]);
         const accountCode = accountResult.rows[0]?.code;
 

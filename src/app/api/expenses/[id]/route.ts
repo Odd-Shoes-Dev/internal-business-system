@@ -146,7 +146,7 @@ export async function PATCH(request: NextRequest, context: any) {
 
       const updated = updateResult.rows[0];
 
-      if (body.status === 'paid' && existing.status !== 'paid' && !existing.journal_entry_id) {
+      if (['approved', 'paid'].includes(body.status) && !['approved', 'paid'].includes(existing.status) && !existing.journal_entry_id) {
         const accountResult = await tx.query('SELECT code FROM accounts WHERE id = $1 AND company_id = $2 LIMIT 1', [updated.expense_account_id, existing.company_id]);
         const accountCode = accountResult.rows[0]?.code;
 
