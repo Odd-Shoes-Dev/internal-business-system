@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,17 +73,21 @@ export async function GET(request: NextRequest) {
     );
 
     const expenses = expensesResult.rows;
+    const companyCurrency = company?.currency || 'USD';
+    const ratesMap = await getRatesMap(db, companyCurrency);
 
-    // Group by category with subtotals
+    // Group by category with subtotals — convert each expense to company currency
     const categoryMap: Record<string, { items: typeof expenses; total: number }> = {};
     let grandTotal = 0;
 
     for (const exp of expenses) {
-      const cat = exp.category || 'Uncategorized';
+      const cat = exp.category || 'No Category';
       if (!categoryMap[cat]) categoryMap[cat] = { items: [], total: 0 };
-      categoryMap[cat].items.push(exp);
-      categoryMap[cat].total += Number(exp.total || 0);
-      grandTotal += Number(exp.total || 0);
+      const expCurrency = exp.currency || companyCurrency;
+      const converted = convertCurrency(Number(exp.total || 0), expCurrency, companyCurrency, ratesMap);
+      categoryMap[cat].items.push({ ...exp, converted_total: converted });
+      categoryMap[cat].total += converted;
+      grandTotal += converted;
     }
 
     const categories = Object.entries(categoryMap)
