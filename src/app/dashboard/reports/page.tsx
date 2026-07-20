@@ -102,6 +102,13 @@ const reports: ReportCard[] = [
     icon: ChartBarIcon,
     category: 'Payables',
   },
+  {
+    title: 'Expenses Report',
+    description: 'Paid expenses grouped by category with totals for any period',
+    href: '/dashboard/reports/expenses',
+    icon: DocumentTextIcon,
+    category: 'Payables',
+  },
   // Other
   {
     title: 'General Ledger',
