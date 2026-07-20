@@ -173,7 +173,7 @@ export default function ExpensesPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <p className="text-sm font-medium text-gray-600 mb-2">This Month (USD)</p>
+          <p className="text-sm font-medium text-gray-600 mb-2">This Month ({company?.currency || 'USD'})</p>
           <FitNumber value={formatCurrency(stats.thisMonth)} className="font-bold text-blueox-primary-dark" />
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
