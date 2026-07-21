@@ -12,6 +12,7 @@ import {
   FunnelIcon,
   ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
+import { FitNumber } from '@/components/ui/fit-number';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 
 interface ExpenseLine {
@@ -358,7 +359,7 @@ export default function ExpensesReportPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/reports" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
             <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
@@ -480,18 +481,18 @@ export default function ExpensesReportPage() {
 
       {/* Summary cards */}
       {data && !loading && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="text-sm text-gray-500">Total Expenses</div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">{data.totalExpenses}</div>
+            <FitNumber value={data.totalExpenses} className="font-bold text-gray-900 mt-1" />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="text-sm text-gray-500">Categories</div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">{data.categories.length}</div>
+            <FitNumber value={data.categories.length} className="font-bold text-gray-900 mt-1" />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="text-sm text-gray-500">Grand Total</div>
-            <div className="text-2xl font-bold text-[#1e3a5f] mt-1">{formatCurrency(data.grandTotal)}</div>
+            <FitNumber value={formatCurrency(data.grandTotal)} className="font-bold text-[#1e3a5f] mt-1" />
           </div>
         </div>
       )}
@@ -525,7 +526,8 @@ export default function ExpensesReportPage() {
                 </div>
 
                 {/* Expense rows */}
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
                   <thead>
                     <tr className="text-xs text-gray-400 uppercase tracking-wide">
                       <th className="pl-6 pr-3 py-2 text-left font-medium">Date</th>
@@ -568,6 +570,7 @@ export default function ExpensesReportPage() {
                     </tr>
                   </tfoot>
                 </table>
+                </div>
               </div>
             ))}
 
