@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useCompany } from '@/contexts/company-context';
 import { ModuleGuard } from '@/components/module-guard';
 import type { TourPackage, Destination } from '@/types/breco';
 import { formatCurrency, type SupportedCurrency } from '@/lib/currency';
@@ -39,6 +40,7 @@ interface TourPackageWithImages extends TourPackage {
 }
 
 export default function TourPackagesPage() {
+  const { company } = useCompany();
   const [packages, setPackages] = useState<TourPackageWithImages[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,13 +49,14 @@ export default function TourPackagesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchPackages();
     fetchDestinations();
-  }, []);
+  }, [company?.id]);
 
   const fetchPackages = async () => {
     try {
-      const response = await fetch('/api/tours');
+      const response = await fetch(`/api/tours?company_id=${company!.id}`);
       const result = await response.json();
       
       if (!response.ok) {
