@@ -249,7 +249,7 @@ export default function SettingsPage() {
         financialForm.reset({
           fiscal_year_start_month: data.fiscal_year_start_month || 1,
           default_payment_terms: data.default_payment_terms || 30,
-          sales_tax_rate: Number(data.sales_tax_rate) || 6.25,
+          sales_tax_rate: data.sales_tax_rate != null ? Number(data.sales_tax_rate) : 0,
           currency: data.currency || 'USD',
         });
       }
@@ -831,7 +831,7 @@ export default function SettingsPage() {
                   <input
                     type="number"
                     step="0.01"
-                    {...financialForm.register('sales_tax_rate', { valueAsNumber: true })}
+                    {...financialForm.register('sales_tax_rate', { valueAsNumber: true, min: 0 })}
                     className="input max-w-xs"
                   />
                 </div>

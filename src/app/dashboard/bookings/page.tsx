@@ -75,12 +75,13 @@ export default function BookingsPage() {
   const [dateFilter, setDateFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
   useEffect(() => {
+    if (!company?.id) return;
     fetchBookings();
-  }, []);
+  }, [company?.id]);
 
   const fetchBookings = async () => {
     try {
-      const response = await fetch('/api/bookings');
+      const response = await fetch(`/api/bookings?company_id=${company!.id}`);
       const result = await response.json();
       
       if (!response.ok) {
