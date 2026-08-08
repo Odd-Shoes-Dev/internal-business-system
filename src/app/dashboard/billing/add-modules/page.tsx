@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
-import { regionalPricing } from '@/lib/regional-pricing';
+import { MODULE_PRICING, PRICING } from '@/lib/regional-pricing';
+import type { Region } from '@/lib/regional-pricing';
 import { AVAILABLE_MODULES } from '@/lib/modules';
 import { Check, Loader2, Package, AlertCircle, Map, Truck, Building, Coffee, Shield, Box, Calculator, CreditCard, ShoppingCart } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
@@ -43,8 +44,9 @@ export default function AddModulesPage() {
     fetchData();
   }, []);
 
-  const pricing = regionalPricing[company?.region || 'DEFAULT'];
-  const currencySymbol = pricing.starter.currencySymbol;
+  const region = (company?.region || 'DEFAULT') as Region;
+  const modulePricing = MODULE_PRICING[region];
+  const currencySymbol = modulePricing.currencySymbol;
 
   // Get available modules - only those marked as availableForSignup
   const availableModules: Module[] = [
@@ -53,49 +55,49 @@ export default function AddModulesPage() {
       name: 'Tours & Safaris',
       description: 'Manage tour bookings, itineraries, and safari packages',
       icon: Map,
-      price: pricing.modules.tours,
+      price: modulePricing.tours,
     },
     {
       id: 'fleet',
       name: 'Fleet Management',
       description: 'Track vehicles, maintenance, and fuel consumption',
       icon: Truck,
-      price: pricing.modules.fleet,
+      price: modulePricing.fleet,
     },
     {
       id: 'hotels',
       name: 'Hotel Management',
       description: 'Hotel directory, room types, and reservations',
       icon: Building,
-      price: pricing.modules.hotels,
+      price: modulePricing.hotels,
     },
     {
       id: 'cafe',
       name: 'Cafe & Restaurant',
       description: 'POS, menu management, and table reservations',
       icon: Coffee,
-      price: pricing.modules.cafe,
+      price: modulePricing.cafe,
     },
     {
       id: 'inventory',
       name: 'Inventory Management',
       description: 'Stock tracking, warehousing, and supply chain',
       icon: Box,
-      price: pricing.modules.inventory,
+      price: modulePricing.inventory,
     },
     {
       id: 'payroll',
       name: 'Payroll Processing',
       description: 'Automated payroll, tax calculations, and payslip generation',
       icon: Calculator,
-      price: pricing.modules.payroll,
+      price: modulePricing.payroll,
     },
     {
       id: 'pos',
       name: 'Point of Sale',
       description: 'Full-screen till with barcode scanner, shift management, and thermal receipts',
       icon: ShoppingCart,
-      price: pricing.modules.pos,
+      price: modulePricing.pos,
     },
   ].filter(module => {
     // Only show modules that are available for signup
