@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       case 'membership.activated':
         await handleMembershipActivated(data);
         break;
+      case 'membership.deactivated':
       case 'membership.cancelled':
         await handleMembershipCancelled(data);
         break;
