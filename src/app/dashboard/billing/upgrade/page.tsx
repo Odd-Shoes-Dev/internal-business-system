@@ -344,8 +344,8 @@ export default function UpgradePage() {
         </button>
       </div>
 
-      {/* Trial Notice */}
-      {!currentSubscription?.stripe_subscription_id && (
+      {/* Trial Notice — only shown when on trial or no subscription yet */}
+      {(!currentSubscription || currentSubscription?.subscription?.status === 'trial') && (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Start your 14-day free trial • No credit card required

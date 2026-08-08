@@ -139,8 +139,12 @@ export default function AddModulesPage() {
 
       const result = await response.json();
 
-      // Paid modules → redirect directly to Whop checkout
+      // Paid modules → redirect to Whop checkout for first paid module.
+      // Whop supports one plan per checkout; remaining paid modules must be added separately.
       if (result.checkout_url) {
+        if (result.paid_pending?.length > 0) {
+          alert(`Payment is required for one module at a time. You'll be redirected to pay for the first paid module now. After payment, return here to add the remaining ${result.paid_pending.length} module(s).`);
+        }
         window.location.href = result.checkout_url;
         return;
       }
