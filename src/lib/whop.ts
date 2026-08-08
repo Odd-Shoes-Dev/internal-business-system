@@ -27,5 +27,6 @@ export async function unwrapWhopWebhook(payload: string, headers: Record<string,
   if (!client.webhooks || !client.webhooks.unwrap) {
     throw new Error('Whop SDK webhooks.unwrap not available');
   }
-  return client.webhooks.unwrap(payload, { headers });
+  const secret = process.env.WHOP_WEBHOOK_SECRET?.trim();
+  return client.webhooks.unwrap(payload, { headers, ...(secret ? { key: secret } : {}) });
 }
