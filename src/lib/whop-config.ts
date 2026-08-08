@@ -93,6 +93,14 @@ export const WHOP_MODULE_IDS: Record<string, Partial<Record<Region, string>>> = 
     "GB": "plan_9u43Fr9xldbnO",
     "US": "plan_n7ad2q9Gv5dCG",
     "DEFAULT": "plan_0NWcJyFbwsu5O"
+  },
+  "pos": {
+    "AFRICA": "plan_nDMS7NpPjow2z",
+    "ASIA": "plan_KwabOTTuHUQbV",
+    "EU": "plan_8e2txMsLdj3CX",
+    "GB": "plan_5tR8uBzc8gMEU",
+    "US": "plan_A4lKHLpb9IoVo",
+    "DEFAULT": "plan_J4Qrttpq28anb"
   }
 };
 

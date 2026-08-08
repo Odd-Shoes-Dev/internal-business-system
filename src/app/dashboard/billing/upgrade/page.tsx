@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
-import { regionalPricing } from '@/lib/regional-pricing';
+import { PRICING, MODULE_PRICING } from '@/lib/regional-pricing';
+import type { Region } from '@/lib/regional-pricing';
 import { Check, X, Loader2, Mail, MessageCircle, X as CloseIcon } from 'lucide-react';
 
 type BillingPeriod = 'monthly' | 'annual';
@@ -44,36 +45,23 @@ export default function UpgradePage() {
   }, []);
 
   // Get pricing for current region
-  const pricing = regionalPricing[company?.region || 'DEFAULT'];
-  const currencySymbol = pricing.starter.currencySymbol;
+  const region = (company?.region || 'DEFAULT') as Region;
+  const currencySymbol = PRICING.starter[region].symbol;
 
-  // Calculate total price in USD
+  // Calculate total price in USD for Whop $2500 limit check
   const calculateTotalPrice = () => {
-    const pricing = regionalPricing[company?.region || 'DEFAULT'];
-    const tierData = pricing[selectedPlan];
-    
-    let usdPrice = 0;
-    
-    // Get the base price in local currency
-    let localPrice: number;
-    if (billingPeriod === 'monthly') {
-      localPrice = tierData.monthly.max;
-    } else {
-      localPrice = tierData.annual;
-    }
-    
-    // Convert to USD based on currency
+    const tierPrice = PRICING[selectedPlan][region];
+    const localPrice = billingPeriod === 'monthly' ? tierPrice.monthly : tierPrice.annually;
+
     const exchangeRates: { [key: string]: number } = {
-      '$': 1.0,   // USD
-      '€': 1.10,  // EUR
-      '£': 1.27,  // GBP
-      'UGX': 0.00027, // UGX
+      'USD': 1.0,
+      'EUR': 1.10,
+      'GBP': 1.27,
+      'UGX': 0.00027,
     };
-    
-    const rate = exchangeRates[tierData.currencySymbol] || 1.0;
-    usdPrice = Math.round(localPrice * rate * 100) / 100;
-    
-    return usdPrice;
+
+    const rate = exchangeRates[tierPrice.currency] || 1.0;
+    return Math.round(localPrice * rate * 100) / 100;
   };
 
   const handleUpgrade = async () => {
@@ -148,13 +136,9 @@ export default function UpgradePage() {
   };
 
   const getPrice = (tier: PlanTier) => {
-    const tierData = pricing[tier];
-    if (billingPeriod === 'monthly') {
-      return `${currencySymbol} ${tierData.monthly.min.toLocaleString()}-${tierData.monthly.max.toLocaleString()}`;
-    } else {
-      const monthlyEquivalent = tierData.annual / 12;
-      return `${currencySymbol} ${Math.round(monthlyEquivalent).toLocaleString()}`;
-    }
+    const tierPrice = PRICING[tier][region];
+    const amount = billingPeriod === 'monthly' ? tierPrice.monthly : tierPrice.annually;
+    return `${currencySymbol} ${amount.toLocaleString()}`;
   };
 
   const plans = [

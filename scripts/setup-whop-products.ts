@@ -1,4 +1,5 @@
-import { regionalPricing, MODULE_PRICING } from '../src/lib/regional-pricing';
+import { PRICING, MODULE_PRICING } from '../src/lib/regional-pricing';
+import type { Region } from '../src/lib/regional-pricing';
 import fs from 'fs';
 import path from 'path';
 
@@ -111,13 +112,12 @@ async function main() {
   for (const tier of tiers) {
     // Monthly plans
     for (const region of regions) {
-      const regionData = (regionalPricing as any)[region]?.[tier];
+      const regionData = PRICING[tier]?.[region as Region];
       if (!regionData) continue;
-      const monthlyData = regionData.monthly;
-      if (!monthlyData) continue;
-      
-      const monthlyPrice = typeof monthlyData === 'object' ? monthlyData.max : monthlyData;
-      const currencySymbol = regionData.currencySymbol;
+      const monthlyPrice = regionData.monthly;
+      if (!monthlyPrice) continue;
+
+      const currencySymbol = regionData.symbol;
       const usdPrice = convertToUSD(monthlyPrice, currencySymbol);
       const planName = `${tier}-${region}-monthly`;
       
@@ -137,12 +137,12 @@ async function main() {
 
     // Annual plans
     for (const region of regions) {
-      const regionData = (regionalPricing as any)[region]?.[tier];
+      const regionData = PRICING[tier]?.[region as Region];
       if (!regionData) continue;
-      const annualPrice = regionData.annual;
+      const annualPrice = regionData.annually;
       if (!annualPrice) continue;
-      
-      const currencySymbol = regionData.currencySymbol;
+
+      const currencySymbol = regionData.symbol;
       const usdPrice = convertToUSD(annualPrice, currencySymbol);
       const planName = `${tier}-${region}-annual`;
       
@@ -181,7 +181,7 @@ async function main() {
       if (!price || typeof price !== 'number') continue;
       
       // Get currency from region's starter tier (all tiers in same region have same currency)
-      const currencySymbol = (regionalPricing as any)[region]?.starter?.currencySymbol || '$';
+      const currencySymbol = PRICING.starter[region as Region]?.symbol || '$';
       const usdPrice = convertToUSD(price, currencySymbol);
       const planName = `${moduleId}-${region}`;
       

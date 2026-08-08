@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { regionalPricing, MODULE_PRICING } from '@/lib/regional-pricing';
+import { PRICING, MODULE_PRICING } from '@/lib/regional-pricing';
+import type { Region } from '@/lib/regional-pricing';
 
 const BASE_URL = 'https://api.whop.com/api/v1';
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     for (const tier of tiers) {
       for (const region of regions) {
-        const price = (regionalPricing as any)[region]?.[tier]?.monthly;
+        const price = PRICING[tier as 'starter' | 'professional' | 'enterprise']?.[region as Region]?.monthly;
         if (!price) continue;
         const internalName = `${tier}-${region}-monthly`;
         const plan = await createPlan(apiKey, companyId, baseProduct.id, {
