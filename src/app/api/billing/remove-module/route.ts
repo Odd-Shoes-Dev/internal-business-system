@@ -7,8 +7,6 @@ export async function POST(request: NextRequest) {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    const stripe = await getStripe();
-
     const body = await request.json();
     const { module_id } = body;
 
@@ -56,6 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Remove from Stripe subscription (only if it's a PAID module with Stripe item)
     if (!isIncludedModule && mod.stripe_subscription_item_id) {
+      const stripe = await getStripe();
       await stripe.subscriptionItems.del(mod.stripe_subscription_item_id, {
         proration_behavior: 'create_prorations',
       });

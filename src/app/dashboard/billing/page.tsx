@@ -115,8 +115,12 @@ export default function BillingPage() {
   }
 
   async function handleManagePayment() {
-    if (!subscription?.stripe_subscription_id) return;
-    
+    // Whop subscribers manage payment directly on Whop
+    if (!subscription?.stripe_subscription_id) {
+      window.open('https://whop.com/hub', '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     setProcessingAction('manage-payment');
     try {
       const response = await fetch('/api/billing/customer-portal', {

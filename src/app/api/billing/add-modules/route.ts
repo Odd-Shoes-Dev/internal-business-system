@@ -142,14 +142,17 @@ export async function POST(request: NextRequest) {
     const currency = (settingsRow.base_currency || 'USD').toUpperCase();
     const addedIncluded = await insertModules(db, companyId, includedModuleIds, currency, isTrialActive, true);
 
-    // Any out-of-quota modules → always go to Whop checkout (trial or active)
+    // Out-of-quota modules → Whop checkout, one module per checkout session
     if (paidModuleIds.length > 0) {
       const region = ((companyRow?.region as Region) || 'DEFAULT') as Region;
-      const planIds = paidModuleIds
-        .map((m) => getModulePlanId(m, region))
-        .filter(Boolean) as string[];
 
-      if (planIds.length === 0) {
+      // Process only the first paid module — Whop supports one plan per checkout.
+      // The user will be redirected back to add remaining paid modules after payment.
+      const firstPaidModule = paidModuleIds[0];
+      const remainingPaidModules = paidModuleIds.slice(1);
+
+      const planId = getModulePlanId(firstPaidModule, region);
+      if (!planId) {
         return NextResponse.json(
           { error: 'No pricing available for selected modules in your region. Please contact support.' },
           { status: 400 }
@@ -159,11 +162,11 @@ export async function POST(request: NextRequest) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
       const whop = await getWhop();
       const checkout = await whop.checkoutConfigurations.create({
-        plan_id: planIds[0],
+        plan_id: planId,
         ...(appUrl.startsWith('https://') ? { redirect_url: `${appUrl}/dashboard/billing` } : {}),
         metadata: {
           company_id: companyId,
-          module_ids: paidModuleIds.join(','),
+          module_ids: firstPaidModule,
           action: 'add_modules',
         },
       });
@@ -172,8 +175,10 @@ export async function POST(request: NextRequest) {
         success: true,
         checkout_url: checkout.purchase_url,
         included_added: addedIncluded.length,
-        paid_pending: paidModuleIds,
-        message: `${addedIncluded.length} module(s) added. Redirecting to payment for ${paidModuleIds.length} additional module(s).`,
+        paid_pending: remainingPaidModules,
+        message: remainingPaidModules.length > 0
+          ? `${addedIncluded.length} module(s) added free. Redirecting to payment for ${firstPaidModule}. You can add the remaining ${remainingPaidModules.length} paid module(s) after payment.`
+          : `${addedIncluded.length} module(s) added. Redirecting to payment for 1 additional module.`,
       });
     }
 
