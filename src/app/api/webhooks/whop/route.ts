@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
-import { getWhop, unwrapWhopWebhook } from '@/lib/whop';
+import { unwrapWhopWebhook } from '@/lib/whop';
 import { mapCountryToRegion } from '@/lib/regional-pricing';
 
 
@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
   const headers = Object.fromEntries(request.headers);
 
   try {
-    const whop = await getWhop();
     const webhook = await unwrapWhopWebhook(bodyText, headers as any);
 
     const type = webhook.type;
@@ -72,6 +71,9 @@ async function handlePaymentSucceeded(payment: any) {
     }
   }
 
+  const periodDays = billingPeriod === 'annual' ? 365 : 30;
+  const periodEnd = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString();
+
   // Create subscription record
   await db.query(
     `INSERT INTO subscriptions (
@@ -91,7 +93,7 @@ async function handlePaymentSucceeded(payment: any) {
       companyId,
       planTier,
       billingPeriod,
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      periodEnd,
       (payment.amount || 0) / 100,
       payment.currency || metadata.currency || 'USD',
     ]
@@ -168,6 +170,20 @@ async function handlePaymentFailed(payment: any) {
     [companyId]
   );
   await db.query(
+    `UPDATE company_settings
+     SET subscription_status = 'past_due',
+         updated_at = NOW()
+     WHERE company_id = $1`,
+    [companyId]
+  );
+  await db.query(
+    `UPDATE companies
+     SET subscription_status = 'past_due',
+         updated_at = NOW()
+     WHERE id = $1`,
+    [companyId]
+  );
+  await db.query(
     `INSERT INTO billing_history (
        company_id,
        invoice_number,
@@ -197,6 +213,20 @@ async function handleMembershipCancelled(data: any) {
          cancelled_at = NOW(),
          updated_at = NOW()
      WHERE company_id = $1`,
+    [companyId]
+  );
+  await db.query(
+    `UPDATE company_settings
+     SET subscription_status = 'cancelled',
+         updated_at = NOW()
+     WHERE company_id = $1`,
+    [companyId]
+  );
+  await db.query(
+    `UPDATE companies
+     SET subscription_status = 'cancelled',
+         updated_at = NOW()
+     WHERE id = $1`,
     [companyId]
   );
   await db.query(
