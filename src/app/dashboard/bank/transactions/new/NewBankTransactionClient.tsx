@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { useCompany } from '@/contexts/company-context';
 
 interface BankAccount {
   id: string;
@@ -14,6 +15,7 @@ interface BankAccount {
 
 export default function NewBankTransactionClient({ initialType = 'deposit' }: { initialType?: string }) {
   const router = useRouter();
+  const { company } = useCompany();
   const type = initialType;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,13 +34,13 @@ export default function NewBankTransactionClient({ initialType = 'deposit' }: { 
   });
 
   useEffect(() => {
-    fetchAccounts();
+    if (company?.id) fetchAccounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [company?.id]);
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/bank-accounts?active=true');
+      const response = await fetch(`/api/bank-accounts?company_id=${company!.id}&active=true`);
       const result = await response.json();
       setAccounts(result.data || []);
       if (result.data && result.data.length > 0) {
@@ -84,6 +86,7 @@ export default function NewBankTransactionClient({ initialType = 'deposit' }: { 
 
       const payload = {
         ...formData,
+        company_id: company!.id,
         amount: formData.transaction_type === 'withdrawal' ? -Math.abs(formData.amount) : Math.abs(formData.amount),
       };
 
