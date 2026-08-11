@@ -7,11 +7,18 @@ import { ArrowLeftIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { CurrencySelect } from '@/components/ui';
 import { useCompany } from '@/contexts/company-context';
 
+interface GlAccount {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export default function NewBankAccountPage() {
   const router = useRouter();
   const { company } = useCompany();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [glAccounts, setGlAccounts] = useState<GlAccount[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +29,7 @@ export default function NewBankAccountPage() {
     currency: 'USD',
     is_primary: false,
     is_active: true,
+    gl_account_id: '',
   });
 
   useEffect(() => {
@@ -29,6 +37,14 @@ export default function NewBankAccountPage() {
       setFormData(prev => ({ ...prev, currency: company.currency }));
     }
   }, [company?.currency]);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/accounts?company_id=${company.id}&type=asset`)
+      .then(r => r.json())
+      .then(d => setGlAccounts(d.data || []))
+      .catch(() => {});
+  }, [company?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -179,6 +195,26 @@ export default function NewBankAccountPage() {
                 value={formData.currency}
                 onChange={handleChange}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                GL Account <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="gl_account_id"
+                value={formData.gl_account_id}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              >
+                <option value="">Select GL account...</option>
+                {glAccounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.code} – {acc.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="md:col-span-2 flex items-center gap-6">

@@ -65,8 +65,9 @@ export async function PATCH(
            currency = $5,
            is_primary = $6,
            is_active = $7,
+           gl_account_id = $8,
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
       [
         body.name,
@@ -76,6 +77,7 @@ export async function PATCH(
         body.currency,
         body.is_primary,
         body.is_active,
+        body.gl_account_id || null,
         params.id,
       ]
     );

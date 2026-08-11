@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
     const data = await db.query(
       `INSERT INTO bank_accounts (
          company_id, name, bank_name, account_number_encrypted, routing_number,
-         account_type, currency, is_primary, is_active
+         account_type, currency, is_primary, is_active, gl_account_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         body.company_id,
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         body.currency || 'USD',
         body.is_primary || false,
         body.is_active !== false,
+        body.gl_account_id || null,
       ]
     );
 
