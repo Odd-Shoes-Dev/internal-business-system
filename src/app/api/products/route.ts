@@ -33,7 +33,15 @@ export async function GET(request: NextRequest) {
         `SELECT * FROM products WHERE company_id = $1 AND barcode = $2 AND is_active = true LIMIT 1`,
         [companyId, barcode]
       );
-      return NextResponse.json({ data: result.rows[0] || null });
+      if (result.rows[0]) {
+        return NextResponse.json({ data: result.rows[0] });
+      }
+      // Check if the barcode exists on an inactive product so the UI can warn instead of silently offering to create a duplicate
+      const inactiveResult = await db.query(
+        `SELECT * FROM products WHERE company_id = $1 AND barcode = $2 AND is_active = false LIMIT 1`,
+        [companyId, barcode]
+      );
+      return NextResponse.json({ data: null, inactiveProduct: inactiveResult.rows[0] || null });
     }
 
     const where: string[] = ['company_id = $1'];
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(name ILIKE $${params.length} OR sku ILIKE $${params.length})`);
+      where.push(`(name ILIKE $${params.length} OR sku ILIKE $${params.length} OR barcode ILIKE $${params.length})`);
     }
 
     const whereSql = `WHERE ${where.join(' AND ')}`;
