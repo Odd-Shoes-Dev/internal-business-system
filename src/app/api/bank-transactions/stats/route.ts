@@ -84,9 +84,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Compute total balance across all accounts, converted to base currency
+    const accountBalances = await db.query<{ currency: string; balance: string }>(
+      `SELECT ba.currency, COALESCE(SUM(bt.amount), 0)::numeric AS balance
+       FROM bank_accounts ba
+       LEFT JOIN bank_transactions bt ON bt.bank_account_id = ba.id
+       WHERE ba.company_id = $1 AND ba.is_active = true
+       GROUP BY ba.id, ba.currency`,
+      [companyId]
+    );
+    const totalBalance = accountBalances.rows.reduce((sum, row) => {
+      return sum + convertCurrency(Number(row.balance), row.currency, baseCurrency, ratesMap);
+    }, 0);
+
     return NextResponse.json({
       totalDeposits,
       totalWithdrawals,
+      totalBalance,
       unreconciledCount,
       currency: baseCurrency,
     });

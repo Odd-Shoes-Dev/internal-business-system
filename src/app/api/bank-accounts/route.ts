@@ -19,17 +19,19 @@ export async function GET(request: NextRequest) {
     const active = searchParams.get('active');
 
     const params: any[] = [companyId];
-    let whereSql = 'WHERE company_id = $1';
+    let whereSql = 'WHERE ba.company_id = $1';
     if (active === 'true' || active === 'false') {
       params.push(active === 'true');
-      whereSql += ` AND is_active = $${params.length}`;
+      whereSql += ` AND ba.is_active = $${params.length}`;
     }
 
     const data = await db.query(
-      `SELECT *
-       FROM bank_accounts
+      `SELECT ba.*, COALESCE(SUM(bt.amount), 0)::numeric AS current_balance
+       FROM bank_accounts ba
+       LEFT JOIN bank_transactions bt ON bt.bank_account_id = ba.id
        ${whereSql}
-       ORDER BY name`,
+       GROUP BY ba.id
+       ORDER BY ba.name`,
       params
     );
 

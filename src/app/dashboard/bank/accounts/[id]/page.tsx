@@ -94,18 +94,14 @@ export default function BankAccountDetailPage({ params }: PageProps) {
     }
   };
 
+  const accountCurrency = account?.currency || company?.currency || 'USD';
+
   const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, (company?.currency || 'USD') as any);
+    return currencyFormatter(Math.abs(amount), accountCurrency as any);
   };
 
   const calculateBalance = () => {
-    return transactions.reduce((balance, transaction) => {
-      const isIncoming =
-        transaction.transaction_type === 'deposit' ||
-        transaction.transaction_type === 'transfer_in' ||
-        transaction.transaction_type === 'credit';
-      return balance + (isIncoming ? Number(transaction.amount || 0) : -Number(transaction.amount || 0));
-    }, 0);
+    return transactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   };
 
   const handleDelete = async () => {
@@ -235,7 +231,10 @@ export default function BankAccountDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-            <FitNumber value={formatCurrency(calculateBalance())} className="font-bold text-gray-900" />
+            <FitNumber
+              value={`${calculateBalance() < 0 ? '-' : ''}${formatCurrency(calculateBalance())}`}
+              className={`font-bold ${calculateBalance() < 0 ? 'text-red-600' : 'text-gray-900'}`}
+            />
           </div>
           <BanknotesIcon className="w-12 h-12 text-gray-300" />
         </div>

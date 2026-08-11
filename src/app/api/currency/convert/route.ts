@@ -2,6 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { convertCurrency, getRatesMap } from '@/lib/exchange-rates';
 import { requireSessionUser } from '@/lib/provider/route-guards';
 
+// GET /api/currency/convert?from=USD&to=UGX&amount=100
+export async function GET(request: NextRequest) {
+  try {
+    const { db, errorResponse } = await requireSessionUser();
+    if (errorResponse) return errorResponse;
+
+    const { searchParams } = new URL(request.url);
+    const from = searchParams.get('from')?.toUpperCase() || '';
+    const to = searchParams.get('to')?.toUpperCase() || '';
+    const amount = Number(searchParams.get('amount') || 0);
+
+    if (!from || !to) {
+      return NextResponse.json({ error: 'from and to are required' }, { status: 400 });
+    }
+    if (from === to) {
+      return NextResponse.json({ converted: amount });
+    }
+
+    const ratesMap = await getRatesMap(db, to);
+    if (!(from in ratesMap)) {
+      return NextResponse.json({ error: 'No exchange rate available' }, { status: 404 });
+    }
+
+    return NextResponse.json({ converted: convertCurrency(amount, from, to, ratesMap) });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 // POST /api/currency/convert - Convert amount between currencies
 export async function POST(request: NextRequest) {
   try {

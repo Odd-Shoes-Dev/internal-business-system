@@ -27,7 +27,10 @@ export default function BankPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalBalance: 0,
+    totalDeposits: 0,
+    totalWithdrawals: 0,
     unreconciledCount: 0,
+    currency: 'USD',
   });
 
   useEffect(() => {
@@ -57,19 +60,15 @@ export default function BankPage() {
       const transactionsResult = await transactionsResponse.json();
       const statsResult = await statsResponse.json();
 
-      const accountsData: BankAccountWithBalance[] = accountsResult.data || [];
-      setAccounts(accountsData);
-
-      // Calculate total balance from all bank accounts (convert to USD for now)
-      const totalBalance = accountsData.reduce((sum: number, account: BankAccountWithBalance) => {
-        return sum + (account.current_balance || 0);
-      }, 0) || 0;
-
+      setAccounts(accountsResult.data || []);
       setRecentTransactions(transactionsResult.data || []);
 
       setStats({
-        totalBalance,
+        totalBalance: statsResult.totalBalance || 0,
+        totalDeposits: statsResult.totalDeposits || 0,
+        totalWithdrawals: statsResult.totalWithdrawals || 0,
         unreconciledCount: statsResult.unreconciledCount || 0,
+        currency: statsResult.currency || company?.currency || 'USD',
       });
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -148,7 +147,7 @@ export default function BankPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
           <p className="text-sm font-medium text-gray-600 mb-2">Total Cash Balance</p>
-          <FitNumber value={formatCurrency(stats.totalBalance)} className="font-bold text-blueox-primary-dark" />
+          <FitNumber value={formatCurrency(stats.totalBalance, stats.currency)} className="font-bold text-blueox-primary-dark" />
           <p className="text-sm text-gray-500 mt-2">Across {accounts.length} accounts</p>
         </div>
         <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -162,14 +161,14 @@ export default function BankPage() {
             <div>
               <div className="flex items-center gap-1 text-green-600">
                 <ArrowUpIcon className="w-4 h-4" />
-                <span className="text-lg font-bold">$0</span>
+                <span className="text-lg font-bold">{formatCurrency(stats.totalDeposits, stats.currency)}</span>
               </div>
               <p className="text-xs text-gray-500">In</p>
             </div>
             <div>
               <div className="flex items-center gap-1 text-red-600">
                 <ArrowDownIcon className="w-4 h-4" />
-                <span className="text-lg font-bold">$0</span>
+                <span className="text-lg font-bold">{formatCurrency(stats.totalWithdrawals, stats.currency)}</span>
               </div>
               <p className="text-xs text-gray-500">Out</p>
             </div>
