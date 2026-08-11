@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 // POST /api/bank-transfers - Create a bank transfer
 export async function POST(request: NextRequest) {
@@ -67,24 +68,30 @@ export async function POST(request: NextRequest) {
     const referenceNumber = body.reference_number || `TRF-${Date.now().toString(36).toUpperCase()}`;
     const transferAmount = Math.abs(Number(body.amount));
 
+    // Convert to destination currency if accounts use different currencies
+    let creditAmount = transferAmount;
+    if (fromAccount.currency && toAccount.currency && fromAccount.currency !== toAccount.currency) {
+      const ratesMap = await getRatesMap(db, toAccount.currency);
+      creditAmount = convertCurrency(transferAmount, fromAccount.currency, toAccount.currency, ratesMap);
+    }
+
     const response = await db.transaction(async (tx) => {
       const txResult = await tx.query(
         `INSERT INTO bank_transactions (
-           company_id, bank_account_id, transaction_date, amount, description,
+           bank_account_id, transaction_date, amount, description,
            reference_number, transaction_type, is_reconciled
          ) VALUES
-           ($1, $2, $3::date, $4, $5, $6, 'transfer_out', false),
-           ($1, $7, $3::date, $8, $9, $6, 'transfer_in', false)
+           ($1, $2::date, $3, $4, $5, 'transfer_out', false),
+           ($6, $2::date, $7, $8, $5, 'transfer_in', false)
          RETURNING *`,
         [
-          fromAccount.company_id,
           body.from_account_id,
           body.transfer_date,
           -transferAmount,
           `Transfer to ${toAccount.name || 'account'}`,
           referenceNumber,
           body.to_account_id,
-          transferAmount,
+          creditAmount,
           `Transfer from ${fromAccount.name || 'account'}`,
         ]
       );
@@ -97,12 +104,11 @@ export async function POST(request: NextRequest) {
 
       const journalEntryResult = await tx.query(
         `INSERT INTO journal_entries (
-           company_id, entry_number, entry_date, description, reference, status,
+           entry_number, entry_date, description, reference, status,
            source_module, source_document_id, created_by, posted_by, posted_at
-         ) VALUES ($1, $2, $3::date, $4, $5, 'posted', 'bank', $6, $7, $7, NOW())
+         ) VALUES ($1, $2::date, $3, $4, 'posted', 'bank', $5, $6, $6, NOW())
          RETURNING *`,
         [
-          fromAccount.company_id,
           entryNumber,
           body.transfer_date,
           `Bank transfer: ${fromAccount.name} -> ${toAccount.name}`,
@@ -116,12 +122,11 @@ export async function POST(request: NextRequest) {
 
       await tx.query(
         `INSERT INTO journal_lines (
-           company_id, journal_entry_id, line_number, account_id, debit, credit, description
+           journal_entry_id, line_number, account_id, debit, credit, description
          ) VALUES
-           ($1, $2, 1, $3, $4, 0, $5),
-           ($1, $2, 2, $6, 0, $4, $7)`,
+           ($1, 1, $2, $3, 0, $4),
+           ($1, 2, $5, 0, $3, $6)`,
         [
-          fromAccount.company_id,
           journalEntry.id,
           toAccount.gl_account_id,
           transferAmount,
