@@ -33,22 +33,22 @@ export async function GET(request: NextRequest) {
     );
     const ratesMap = buildRatesMap(ratesResult.rows, baseCurrency);
 
-    const where: string[] = ['company_id = $1'];
+    const where: string[] = ['ba.company_id = $1'];
     const params: any[] = [companyId];
 
     if (accountId && accountId !== 'all') {
       params.push(accountId);
-      where.push(`bank_account_id = $${params.length}`);
+      where.push(`bt.bank_account_id = $${params.length}`);
     }
 
     if (type && type !== 'all') {
       params.push(type);
-      where.push(`transaction_type = $${params.length}`);
+      where.push(`bt.transaction_type = $${params.length}`);
     }
 
     if (reconciled && reconciled !== 'all') {
       params.push(reconciled === 'reconciled');
-      where.push(`is_reconciled = $${params.length}`);
+      where.push(`bt.is_reconciled = $${params.length}`);
     }
 
     const transactions = await db.query<{
@@ -57,8 +57,9 @@ export async function GET(request: NextRequest) {
       transaction_type: string;
       is_reconciled: boolean;
     }>(
-      `SELECT amount, currency, transaction_type, is_reconciled
-       FROM bank_transactions
+      `SELECT bt.amount, ba.currency, bt.transaction_type, bt.is_reconciled
+       FROM bank_transactions bt
+       JOIN bank_accounts ba ON ba.id = bt.bank_account_id
        WHERE ${where.join(' AND ')}`,
       params
     );

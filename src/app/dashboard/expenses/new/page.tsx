@@ -101,19 +101,24 @@ export default function NewExpensePage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files).filter(file => {
-        const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        return validTypes.includes(file.type) && file.size <= maxSize;
-      });
-      setAttachments(prev => [...prev, ...newFiles]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    const maxSize = 10 * 1024 * 1024;
+    if (!validTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload a PDF, PNG, or JPEG.');
+      return;
     }
+    if (file.size > maxSize) {
+      alert('File is too large. Maximum size is 10MB.');
+      return;
+    }
+    setAttachments([file]);
+    e.target.value = '';
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+  const removeAttachment = () => {
+    setAttachments([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -473,45 +478,40 @@ export default function NewExpensePage() {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Attachments
+                Receipt / Attachment
               </label>
-              <input
-                type="file"
-                id="file-upload"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="file-upload"
-                className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
-              >
-                <PaperClipIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
-                  Drag & drop receipt or click to upload
-                </p>
-                <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG up to 10MB</p>
-              </label>
-              
-              {attachments.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <PaperClipIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+              {attachments.length === 0 ? (
+                <>
+                  <input
+                    type="file"
+                    id="file-upload"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                  >
+                    <PaperClipIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">Click to upload receipt</p>
+                    <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG up to 10MB</p>
+                  </label>
+                </>
+              ) : (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <PaperClipIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-700">{attachments[0].name}</span>
+                    <span className="text-xs text-gray-500">({(attachments[0].size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeAttachment}
+                    className="text-red-500 hover:text-red-700 text-sm"
+                  >
+                    Remove
+                  </button>
                 </div>
               )}
             </div>

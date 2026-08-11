@@ -62,7 +62,7 @@ export default function ProductsPage() {
   // Scan-to-register state
   const [showScanModal, setShowScanModal] = useState(false);
   const [scanValue, setScanValue] = useState('');
-  const [scanResult, setScanResult] = useState<{ found: boolean; product?: Product } | null>(null);
+  const [scanResult, setScanResult] = useState<{ found: boolean; product?: Product; inactiveProduct?: Product } | null>(null);
   const [scanning, setScanning] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -197,7 +197,7 @@ export default function ProductsPage() {
         { credentials: 'include' }
       );
       const data = await res.json();
-      setScanResult({ found: !!data.data, product: data.data || undefined });
+      setScanResult({ found: !!data.data, product: data.data || undefined, inactiveProduct: data.inactiveProduct || undefined });
     } catch {
       toast.error('Lookup failed');
     } finally {
@@ -602,6 +602,21 @@ export default function ProductsPage() {
                         className="btn-secondary text-sm w-full"
                       >
                         Edit {scanResult.product.name}
+                      </button>
+                    </div>
+                  ) : scanResult.inactiveProduct ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-orange-800">
+                        Barcode belongs to an inactive product: <span className="font-bold">{scanResult.inactiveProduct.name}</span>
+                      </p>
+                      <p className="text-xs text-orange-700">
+                        This barcode is already registered but the product is inactive. Re-activate it instead of creating a duplicate.
+                      </p>
+                      <button
+                        onClick={() => { setShowScanModal(false); openEdit(scanResult.inactiveProduct!); }}
+                        className="btn-primary text-sm w-full"
+                      >
+                        Re-activate &amp; Edit {scanResult.inactiveProduct.name}
                       </button>
                     </div>
                   ) : (
