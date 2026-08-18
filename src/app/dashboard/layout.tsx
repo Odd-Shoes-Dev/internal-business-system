@@ -489,21 +489,21 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-blueox-primary/20">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
             {company?.logo_url ? (
               <Image
                 src={company.logo_url}
                 alt={company.name || 'Company Logo'}
                 width={36}
                 height={36}
-                className="rounded object-contain"
+                className="rounded object-contain flex-shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-black font-bold text-sm shadow-lg">
+              <div className="w-9 h-9 flex-shrink-0 rounded-xl bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center text-black font-bold text-sm shadow-lg">
                 {company?.name?.[0]?.toUpperCase() || 'C'}
               </div>
             )}
-            <span className="font-semibold text-blueox-primary-dark truncate">
+            <span className="font-semibold text-blueox-primary-dark truncate" title={company?.name || 'Company'}>
               {company?.name || 'Company'}
             </span>
           </Link>
