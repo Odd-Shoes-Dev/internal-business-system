@@ -45,8 +45,15 @@ export default function ARAgingPage() {
   const [data, setData] = useState<ARAgingData | null>(null);
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
+  const [docContacts, setDocContacts] = useState<{ type: string; label: string; value: string }[]>([]);
 
   const cur = () => data?.currency || company?.currency;
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' })
+      .then((r) => r.json()).then((p) => setDocContacts((p.data || []).filter((c: any) => c.show_on_documents))).catch(() => {});
+  }, [company?.id]);
 
   useEffect(() => {
     if (!company?.id) return;
@@ -194,7 +201,8 @@ export default function ARAgingPage() {
               <h1>${company?.name || 'Company'}</h1>
               ${company?.address ? `<div class="address">${company.address}</div>` : ''}
               ${company?.phone || company?.email ? `<div class="address">${company?.phone ? 'Tel: ' + company.phone : ''}${company?.phone && company?.email ? ' • ' : ''}${company?.email ? 'Email: ' + company.email : ''}</div>` : ''}
-              ${company?.tax_id || company?.registration_number ? `<div class="address">${company?.tax_id ? 'TIN: ' + company.tax_id : ''}${company?.tax_id && company?.registration_number ? ' • ' : ''}${company?.registration_number ? 'Reg. No: ' + company.registration_number : ''}</div>` : ''}
+              ${docContacts.map(c => `<div class="address">${c.label}: ${c.value}</div>`).join('')}
+              ${[company?.tax_id ? `TIN: ${company.tax_id}` : '', company?.registration_number ? `Reg. No: ${company.registration_number}` : '', company?.duns_number ? `DUNS: ${company.duns_number}` : ''].filter(Boolean).map(s => `<div class="address">${s}</div>`).join('')}
             </div>
           </div>
           
