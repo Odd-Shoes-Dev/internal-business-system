@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, context: any) {
 
     // Fetch company info
     const companyResult = await db.query<any>(
-      `SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, website
+      `SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, duns_number, website
        FROM companies
        WHERE id = $1
        LIMIT 1`,

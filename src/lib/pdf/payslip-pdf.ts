@@ -13,6 +13,7 @@ interface CompanyInfo {
   country: string | null;
   tax_id: string | null;
   registration_number: string | null;
+  duns_number: string | null;
   website: string | null;
 }
 

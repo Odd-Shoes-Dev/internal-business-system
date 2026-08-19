@@ -12,6 +12,8 @@ interface CompanyInfo {
   country: string | null;
   tax_id: string | null;
   registration_number: string | null;
+  duns_number: string | null;
+  contacts?: { type: 'email' | 'phone'; label: string; value: string }[];
   website: string | null;
 }
 
@@ -267,9 +269,9 @@ export function generateBillHTML(data: BillPDFData): string {
                 ${data.company.city || data.company.country ? `<p>${[data.company.city, data.company.country].filter(Boolean).join(', ')}</p>` : ''}
                 ${data.company.phone ? `<p>Tel: ${data.company.phone}</p>` : ''}
                 ${data.company.email ? `<p>Email: ${data.company.email}</p>` : ''}
+                ${(data.company.contacts || []).map(c => `<p>${c.label}: ${c.value}</p>`).join('')}
                 ${data.company.website ? `<p>Website: ${data.company.website}</p>` : ''}
-                ${data.company.tax_id ? `<p>Tax ID: ${data.company.tax_id}</p>` : ''}
-                ${data.company.registration_number ? `<p>Reg. No: ${data.company.registration_number}</p>` : ''}
+                ${[data.company.tax_id ? `TIN: ${data.company.tax_id}` : '', data.company.registration_number ? `Reg. No: ${data.company.registration_number}` : '', data.company.duns_number ? `DUNS: ${data.company.duns_number}` : ''].filter(Boolean).map(s => `<p>${s}</p>`).join('')}
               </div>
             </div>
           </div>
@@ -371,7 +373,7 @@ export function generateBillHTML(data: BillPDFData): string {
           <p>Thank you for your business!</p>
           <p style="margin-top: 8px;">${data.company.name}${data.company.address ? ' • ' + data.company.address : ''}${data.company.city ? ', ' + data.company.city : ''}</p>
           ${data.company.phone || data.company.email || data.company.website ? `<p>${[data.company.phone ? 'Tel: ' + data.company.phone : '', data.company.email ? 'Email: ' + data.company.email : '', data.company.website].filter(Boolean).join(' • ')}</p>` : ''}
-          ${data.company.tax_id || data.company.registration_number ? `<p>${[data.company.tax_id ? 'Tax ID: ' + data.company.tax_id : '', data.company.registration_number ? 'Reg. No: ' + data.company.registration_number : ''].filter(Boolean).join(' • ')}</p>` : ''}
+          ${[data.company.tax_id ? `TIN: ${data.company.tax_id}` : '', data.company.registration_number ? `Reg. No: ${data.company.registration_number}` : '', data.company.duns_number ? `DUNS: ${data.company.duns_number}` : ''].filter(Boolean).map(s => `<p>${s}</p>`).join('')}
         </div>
       </div>
     </body>

@@ -26,6 +26,8 @@ import {
   CheckCircleIcon,
   PencilIcon,
   CheckIcon,
+  PhoneIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
@@ -81,6 +83,7 @@ interface CompanyFormData {
   country: string;
   tax_id: string;
   registration_number: string;
+  duns_number: string;
   website: string;
   logo_url: string;
 }
@@ -90,6 +93,22 @@ interface FinancialFormData {
   default_payment_terms: number;
   sales_tax_rate: number;
   currency: string;
+}
+
+interface ContactDetail {
+  id: string;
+  type: 'email' | 'phone';
+  label: string;
+  value: string;
+  show_on_documents: boolean;
+  sort_order: number;
+}
+
+interface NewContactRow {
+  type: 'email' | 'phone';
+  label: string;
+  value: string;
+  show_on_documents: boolean;
 }
 
 export default function SettingsPage() {
@@ -117,8 +136,19 @@ export default function SettingsPage() {
   const companyForm = useForm<CompanyFormData>();
   const financialForm = useForm<FinancialFormData>();
 
+  const [contacts, setContacts] = useState<ContactDetail[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [savingContact, setSavingContact] = useState<string | null>(null);
+  const [deletingContact, setDeletingContact] = useState<string | null>(null);
+  const [newContact, setNewContact] = useState<NewContactRow | null>(null);
+  const [addingContact, setAddingContact] = useState(false);
+
   useEffect(() => {
     loadSettings();
+  }, [company?.id]);
+
+  useEffect(() => {
+    if (company?.id) loadContacts();
   }, [company?.id]);
 
   useEffect(() => {
@@ -214,6 +244,85 @@ export default function SettingsPage() {
     }
   };
 
+  const loadContacts = async () => {
+    if (!company?.id) return;
+    setLoadingContacts(true);
+    try {
+      const res = await fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load contacts');
+      const payload = await res.json();
+      setContacts(payload.data || []);
+    } catch {
+      toast.error('Failed to load contact details');
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleAddContact = async () => {
+    if (!company?.id || !newContact) return;
+    if (!newContact.label.trim() || !newContact.value.trim()) {
+      toast.error('Label and value are required');
+      return;
+    }
+    setAddingContact(true);
+    try {
+      const res = await fetch('/api/companies/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: company.id, ...newContact, sort_order: contacts.length }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to add contact');
+      setContacts((prev) => [...prev, payload.data]);
+      setNewContact(null);
+      toast.success('Contact added');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add contact');
+    } finally {
+      setAddingContact(false);
+    }
+  };
+
+  const handleUpdateContact = async (id: string, changes: Partial<ContactDetail>) => {
+    if (!company?.id) return;
+    setSavingContact(id);
+    try {
+      const res = await fetch(`/api/companies/contacts/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: company.id, ...changes }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Failed to update contact');
+      setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...payload.data } : c)));
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update contact');
+    } finally {
+      setSavingContact(null);
+    }
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    if (!company?.id) return;
+    setDeletingContact(id);
+    try {
+      const res = await fetch(`/api/companies/contacts/${id}?company_id=${encodeURIComponent(company.id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to delete contact');
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+      toast.success('Contact removed');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete contact');
+    } finally {
+      setDeletingContact(null);
+    }
+  };
+
   const loadSettings = async () => {
     if (!company?.id) return;
     
@@ -243,6 +352,7 @@ export default function SettingsPage() {
           country: data.country || 'Uganda',
           tax_id: data.tax_id || '',
           registration_number: data.registration_number || '',
+          duns_number: data.duns_number || '',
           website: data.website || '',
           logo_url: data.logo_url || '',
         });
@@ -279,6 +389,7 @@ export default function SettingsPage() {
           country: data.country,
           tax_id: data.tax_id,
           registration_number: data.registration_number,
+          duns_number: data.duns_number,
           website: data.website,
           logo_url: data.logo_url || logoPreview || null,
         }),
@@ -705,7 +816,7 @@ export default function SettingsPage() {
                   
                   <div className="grid lg:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-black">Tax ID</label>
+                      <label className="text-sm font-semibold text-black">TIN (Tax ID)</label>
                       <input
                         type="text"
                         {...companyForm.register('tax_id')}
@@ -713,14 +824,24 @@ export default function SettingsPage() {
                         placeholder="Tax identification number"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-black">Registration Number</label>
                       <input
                         type="text"
                         {...companyForm.register('registration_number')}
                         className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
-                        placeholder="Company registration number"
+                        placeholder="e.g. URSB number, Companies House no., CIN..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-black">DUNS Number</label>
+                      <input
+                        type="text"
+                        {...companyForm.register('duns_number')}
+                        className="w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blueox-primary focus:border-transparent transition-all duration-300 hover:border-blueox-primary/40"
+                        placeholder="Dun & Bradstreet number (optional)"
                       />
                     </div>
                   </div>
@@ -773,6 +894,159 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 
+                {/* Divider */}
+                <div className="border-t border-gray-200"></div>
+
+                {/* Contact Details Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 rounded-lg flex items-center justify-center">
+                        <PhoneIcon className="w-4 h-4 text-teal-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">Contact Details</h3>
+                        <p className="text-xs text-gray-500">Add multiple emails and phone numbers with custom labels</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewContact({ type: 'email', label: '', value: '', show_on_documents: false })}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all duration-200"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      Add Contact
+                    </button>
+                  </div>
+
+                  {loadingContacts ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {contacts.length === 0 && !newContact && (
+                        <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                          <EnvelopeIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-400">No additional contact details yet</p>
+                          <p className="text-xs text-gray-400">Click "Add Contact" to get started</p>
+                        </div>
+                      )}
+
+                      {contacts.map((contact) => (
+                        <div key={contact.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-200">
+                          <select
+                            value={contact.type}
+                            onChange={(e) => handleUpdateContact(contact.id, { type: e.target.value as 'email' | 'phone' })}
+                            className="text-sm border border-gray-200 rounded-lg px-2 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-24 flex-shrink-0"
+                          >
+                            <option value="email">Email</option>
+                            <option value="phone">Phone</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={contact.label}
+                            onChange={(e) => setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, label: e.target.value } : c))}
+                            onBlur={(e) => { if (e.target.value !== contact.label) handleUpdateContact(contact.id, { label: e.target.value }); }}
+                            placeholder="Label (e.g. Billing)"
+                            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-32 flex-shrink-0"
+                          />
+                          <input
+                            type={contact.type === 'email' ? 'email' : 'tel'}
+                            value={contact.value}
+                            onChange={(e) => setContacts((prev) => prev.map((c) => c.id === contact.id ? { ...c, value: e.target.value } : c))}
+                            onBlur={(e) => { if (e.target.value !== contact.value) handleUpdateContact(contact.id, { value: e.target.value }); }}
+                            placeholder={contact.type === 'email' ? 'email@company.com' : '+256 700 000 000'}
+                            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 flex-1 min-w-0"
+                          />
+                          <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer" title="Show on documents">
+                            <input
+                              type="checkbox"
+                              checked={contact.show_on_documents}
+                              onChange={(e) => handleUpdateContact(contact.id, { show_on_documents: e.target.checked })}
+                              className="w-3.5 h-3.5 rounded accent-blue-600"
+                            />
+                            <span className="text-xs text-gray-500 hidden sm:block">On docs</span>
+                          </label>
+                          {savingContact === contact.id ? (
+                            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
+                              <svg className="animate-spin w-4 h-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContact(contact.id)}
+                              disabled={deletingContact === contact.id}
+                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors flex-shrink-0 disabled:opacity-50"
+                              title="Remove"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* New contact row */}
+                      {newContact && (
+                        <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-3 border border-blue-200">
+                          <select
+                            value={newContact.type}
+                            onChange={(e) => setNewContact((prev) => prev ? { ...prev, type: e.target.value as 'email' | 'phone' } : null)}
+                            className="text-sm border border-blue-200 rounded-lg px-2 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-24 flex-shrink-0"
+                          >
+                            <option value="email">Email</option>
+                            <option value="phone">Phone</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={newContact.label}
+                            onChange={(e) => setNewContact((prev) => prev ? { ...prev, label: e.target.value } : null)}
+                            placeholder="Label (e.g. Billing)"
+                            className="text-sm border border-blue-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-32 flex-shrink-0"
+                            autoFocus
+                          />
+                          <input
+                            type={newContact.type === 'email' ? 'email' : 'tel'}
+                            value={newContact.value}
+                            onChange={(e) => setNewContact((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                            placeholder={newContact.type === 'email' ? 'email@company.com' : '+256 700 000 000'}
+                            className="text-sm border border-blue-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 flex-1 min-w-0"
+                          />
+                          <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer" title="Show on documents">
+                            <input
+                              type="checkbox"
+                              checked={newContact.show_on_documents}
+                              onChange={(e) => setNewContact((prev) => prev ? { ...prev, show_on_documents: e.target.checked } : null)}
+                              className="w-3.5 h-3.5 rounded accent-blue-600"
+                            />
+                            <span className="text-xs text-gray-500 hidden sm:block">On docs</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleAddContact}
+                            disabled={addingContact}
+                            className="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors flex-shrink-0 disabled:opacity-50"
+                            title="Save"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewContact(null)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors flex-shrink-0"
+                            title="Cancel"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Save Button */}
                 <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
                   <button

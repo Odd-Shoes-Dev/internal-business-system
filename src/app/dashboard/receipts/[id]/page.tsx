@@ -30,6 +30,7 @@ export default function ReceiptDetailPage() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [docContacts, setDocContacts] = useState<{ type: 'email' | 'phone'; label: string; value: string }[]>([]);
 
   useEffect(() => {
     if (!company?.id) {
@@ -37,6 +38,14 @@ export default function ReceiptDetailPage() {
     }
     fetchReceipt();
   }, [params.id, company?.id]);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((payload) => setDocContacts((payload.data || []).filter((c: any) => c.show_on_documents)))
+      .catch(() => {});
+  }, [company?.id]);
 
   const fetchReceipt = async () => {
     try {
@@ -343,7 +352,8 @@ export default function ReceiptDetailPage() {
                 ${company?.address ? `<p class="address">${company.address}</p>` : ''}
                 ${company?.phone ? `<p class="address">Tel: ${company.phone}</p>` : ''}
                 ${company?.email ? `<p class="address">Email: ${company.email}</p>` : ''}
-                ${company?.tax_id || company?.registration_number ? `<p class="address">${company?.tax_id ? `TIN: ${company.tax_id}` : ''}${company?.tax_id && company?.registration_number ? ' | ' : ''}${company?.registration_number ? `Reg. No: ${company.registration_number}` : ''}</p>` : ''}
+                ${docContacts.map(c => `<p class="address">${c.label}: ${c.value}</p>`).join('')}
+                ${[company?.tax_id ? `TIN: ${company.tax_id}` : '', company?.registration_number ? `Reg. No: ${company.registration_number}` : '', company?.duns_number ? `DUNS: ${company.duns_number}` : ''].filter(Boolean).map(s => `<p class="address">${s}</p>`).join('')}
               </div>
             </div>
             <div class="receipt-header">
@@ -863,9 +873,7 @@ export default function ReceiptDetailPage() {
             {company?.email && `Email: ${company.email}`}
           </p>
           <p>
-            {company?.tax_id && `TIN: ${company.tax_id}`}
-            {company?.tax_id && company?.registration_number && ' • '}
-            {company?.registration_number && `Reg. No: ${company.registration_number}`}
+            {[company?.tax_id ? `TIN: ${company.tax_id}` : '', company?.registration_number ? `Reg. No: ${company.registration_number}` : '', company?.duns_number ? `DUNS: ${company.duns_number}` : ''].filter(Boolean).join(' • ')}
           </p>
           <p className="mt-2 text-xs">This is an official receipt for accounting purposes.</p>
         </div>
