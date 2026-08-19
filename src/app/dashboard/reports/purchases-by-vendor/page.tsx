@@ -83,8 +83,15 @@ export default function PurchasesByVendorPage() {
   const [sortBy, setSortBy] = useState('totalPurchases');
   const [minAmount, setMinAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [docContacts, setDocContacts] = useState<{ type: string; label: string; value: string }[]>([]);
 
   const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' })
+      .then((r) => r.json()).then((p) => setDocContacts((p.data || []).filter((c: any) => c.show_on_documents))).catch(() => {});
+  }, [company?.id]);
 
   const fetchPurchasesByVendor = async () => {
     setIsLoading(true);
@@ -245,7 +252,8 @@ export default function PurchasesByVendorPage() {
               ${company?.address ? `<div class="address">${company.address}</div>` : ''}
               ${company?.city || company?.country ? `<div class="address">${[company?.city, company?.country].filter(Boolean).join(', ')}</div>` : ''}
               ${company?.phone || company?.email ? `<div class="address">${[company?.phone ? 'Tel: ' + company.phone : '', company?.email ? 'Email: ' + company.email : ''].filter(Boolean).join(' • ')}</div>` : ''}
-              ${company?.tax_id ? `<div class="address">TIN: ${company.tax_id}</div>` : ''}
+              ${docContacts.map(c => `<div class="address">${c.label}: ${c.value}</div>`).join('')}
+              ${[company?.tax_id ? `TIN: ${company.tax_id}` : '', company?.registration_number ? `Reg. No: ${company.registration_number}` : '', company?.duns_number ? `DUNS: ${company.duns_number}` : ''].filter(Boolean).map(s => `<div class="address">${s}</div>`).join('')}
             </div>
           </div>
           

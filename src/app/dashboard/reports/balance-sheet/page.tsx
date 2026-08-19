@@ -41,8 +41,15 @@ export default function BalanceSheetPage() {
   const [data, setData] = useState<BalanceSheetData | null>(null);
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(true);
+  const [docContacts, setDocContacts] = useState<{ type: string; label: string; value: string }[]>([]);
 
   const fmt = (amount: number) => formatCurrency(amount, data?.currency || company?.currency);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' })
+      .then((r) => r.json()).then((p) => setDocContacts((p.data || []).filter((c: any) => c.show_on_documents))).catch(() => {});
+  }, [company?.id]);
 
   useEffect(() => {
     if (!company?.id) return;
@@ -197,6 +204,8 @@ export default function BalanceSheetPage() {
               <div class="company-name">${company?.name || 'Company'}</div>
               ${company?.address ? `<div class="company-address">${company.address}</div>` : ''}
               ${company?.phone || company?.email ? `<div class="company-contact">${company?.phone ? `Tel: ${company.phone}` : ''}${company?.phone && company?.email ? ' • ' : ''}${company?.email ? `Email: ${company.email}` : ''}</div>` : ''}
+              ${docContacts.map(c => `<div class="company-contact">${c.label}: ${c.value}</div>`).join('')}
+              ${[company?.tax_id ? `TIN: ${company.tax_id}` : '', company?.registration_number ? `Reg. No: ${company.registration_number}` : '', company?.duns_number ? `DUNS: ${company.duns_number}` : ''].filter(Boolean).map(s => `<div class="company-contact">${s}</div>`).join('')}
             </div>
           </div>
           <div class="report-info">

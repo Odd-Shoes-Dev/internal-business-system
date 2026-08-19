@@ -613,7 +613,7 @@ export default function SettingsPage() {
         <div className="flex flex-col xl:flex-row gap-8">
           {/* Sidebar Navigation */}
           <div className="xl:w-80 shrink-0">
-            <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl p-6 shadow-xl">
+            <div className="bg-white/80 backdrop-blur-xl border border-blue-200 rounded-3xl p-6 shadow-xl xl:sticky xl:top-8">
               <div className="flex items-center gap-3 mb-6">
                 <SparklesIcon className="w-5 h-5 text-black" />
                 <h3 className="text-lg font-bold text-black">Settings Menu</h3>
