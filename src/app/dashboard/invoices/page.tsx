@@ -22,12 +22,13 @@ export default function InvoicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showVoided, setShowVoided] = useState(false);
 
   useEffect(() => {
     if (company) {
       loadInvoices();
     }
-  }, [company, statusFilter, typeFilter]);
+  }, [company, statusFilter, typeFilter, showVoided]);
 
   const loadInvoices = async () => {
     if (!company) return;
@@ -41,6 +42,10 @@ export default function InvoicesPage() {
 
       if (statusFilter !== 'all') {
         params.set('status', statusFilter);
+      }
+
+      if (showVoided) {
+        params.set('include_voided', 'true');
       }
 
       const response = await fetch(`/api/invoices?${params.toString()}`, {
@@ -184,8 +189,21 @@ export default function InvoicesPage() {
                 <option value="partial">Partial</option>
                 <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
-                <option value="void">Void</option>
               </select>
+            </div>
+
+            {/* Show voided toggle */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl">
+              <input
+                type="checkbox"
+                id="show-voided"
+                checked={showVoided}
+                onChange={(e) => setShowVoided(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
+              />
+              <label htmlFor="show-voided" className="text-sm text-gray-700 whitespace-nowrap cursor-pointer">
+                Show voided
+              </label>
             </div>
 
             {/* Document Type filter */}
