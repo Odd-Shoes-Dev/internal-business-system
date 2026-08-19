@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       registration_number: row.registration_number,
       duns_number: row.duns_number || null,
       fiscal_year_start: row.fiscal_year_start || null,
-      fiscal_year_start_month: row.fiscal_year_start_month || null,
+      fiscal_year_start_month: row.fiscal_year_start_month || (row.fiscal_year_start ? parseInt(row.fiscal_year_start.split('-')[0], 10) : null),
       default_payment_terms: row.cs_default_payment_terms ?? row.default_payment_terms ?? null,
       sales_tax_rate: row.cs_sales_tax_rate ?? row.sales_tax_rate ?? null,
       trial_ends_at: row.trial_ends_at,
@@ -130,6 +130,7 @@ export async function PUT(request: NextRequest) {
            website = COALESCE($11, website),
            logo_url = COALESCE($12, logo_url),
            fiscal_year_start = COALESCE($13::text, fiscal_year_start),
+           fiscal_year_start_month = COALESCE(CASE WHEN $13::text IS NOT NULL THEN SPLIT_PART($13::text, '-', 1)::integer ELSE NULL END, fiscal_year_start_month),
            currency = COALESCE($14, currency),
            updated_at = NOW()
        WHERE id = $1
