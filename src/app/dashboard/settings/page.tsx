@@ -929,7 +929,7 @@ export default function SettingsPage() {
                         <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                           <EnvelopeIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                           <p className="text-sm text-gray-400">No additional contact details yet</p>
-                          <p className="text-xs text-gray-400">Click "Add Contact" to get started</p>
+                          <p className="text-xs text-gray-400">Click &quot;Add Contact&quot; to get started</p>
                         </div>
                       )}
 
