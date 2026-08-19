@@ -130,7 +130,6 @@ export async function PUT(request: NextRequest) {
            website = COALESCE($11, website),
            logo_url = COALESCE($12, logo_url),
            fiscal_year_start = COALESCE($13::text, fiscal_year_start),
-           fiscal_year_start_month = COALESCE(CASE WHEN $13::text IS NOT NULL THEN SPLIT_PART($13::text, '-', 1)::integer ELSE NULL END, fiscal_year_start_month),
            currency = COALESCE($14, currency),
            updated_at = NOW()
        WHERE id = $1
