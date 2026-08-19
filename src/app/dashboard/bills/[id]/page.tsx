@@ -75,12 +75,21 @@ export default function BillDetailPage() {
   const [payments, setPayments] = useState<BillPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [docContacts, setDocContacts] = useState<{ type: 'email' | 'phone'; label: string; value: string }[]>([]);
 
   useEffect(() => {
     if (params.id) {
       loadBillDetails();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    fetch(`/api/companies/contacts?company_id=${encodeURIComponent(company.id)}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((payload) => setDocContacts((payload.data || []).filter((c: any) => c.show_on_documents)))
+      .catch(() => {});
+  }, [company?.id]);
 
   const loadBillDetails = async () => {
     try {
@@ -179,6 +188,8 @@ export default function BillDetailPage() {
           country: null,
           tax_id: company.tax_id,
           registration_number: company.registration_number,
+          duns_number: company.duns_number,
+          contacts: docContacts,
           website: null,
         },
       });

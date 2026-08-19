@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, context: any) {
       const lineItems = lineItemsResult.rows || [];
 
       const fullCompanyResult = await db.query<any>(
-        'SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, website FROM companies WHERE id = $1 LIMIT 1',
+        'SELECT name, logo_url, email, phone, address, city, country, tax_id, registration_number, duns_number, website FROM companies WHERE id = $1 LIMIT 1',
         [invoice.company_id]
       );
       const fullCompany = fullCompanyResult.rows[0];

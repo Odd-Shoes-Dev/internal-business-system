@@ -19,6 +19,7 @@ interface Company {
   subscription_plan: string;
   tax_id: string | null;
   registration_number: string | null;
+  duns_number: string | null;
   region?: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
   sales_tax_rate: number | null;
   default_payment_terms: number | null;
