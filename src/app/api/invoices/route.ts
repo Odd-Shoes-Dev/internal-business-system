@@ -43,9 +43,13 @@ export async function GET(request: NextRequest) {
     const where: string[] = ['i.company_id = $1'];
     const params: any[] = [companyId];
 
+    const includeVoided = searchParams.get('include_voided') === 'true';
+
     if (status && status !== 'all') {
       params.push(status);
       where.push(`i.status = $${params.length}`);
+    } else if (!includeVoided) {
+      where.push(`i.status != 'void'`);
     }
 
     if (customerId) {

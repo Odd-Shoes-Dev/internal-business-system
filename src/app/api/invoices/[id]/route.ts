@@ -476,11 +476,142 @@ export async function DELETE(request: NextRequest, context: any) {
         }
       }
 
-      const dataResult = await db.query<any>(
-        'UPDATE invoices SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *',
-        [resolvedParams.id, 'void']
-      );
+      await db.transaction(async (tx) => {
+        // Reverse the original invoice journal entry if one was posted
+        if (existing.journal_entry_id && existing.document_type === 'invoice') {
+          const originalLines = await tx.query<{
+            account_id: string; debit: number; credit: number;
+            currency: string; exchange_rate: number; base_debit: number; base_credit: number;
+          }>(
+            'SELECT account_id, debit, credit, currency, exchange_rate, base_debit, base_credit FROM journal_lines WHERE journal_entry_id = $1',
+            [existing.journal_entry_id]
+          );
 
+          if (originalLines.rows.length > 0) {
+            const reversalEntryNumber = await tx.query<{ entry_number: string }>(
+              'SELECT generate_journal_entry_number() AS entry_number'
+            );
+            const entryNumber = reversalEntryNumber.rows[0]?.entry_number;
+            if (entryNumber) {
+              const reversalEntry = await tx.query<{ id: string }>(
+                `INSERT INTO journal_entries (
+                   entry_number, entry_date, description, source_module, source_document_id,
+                   status, created_by, company_id
+                 ) VALUES ($1, NOW()::date, $2, 'invoice', $3, 'posted', $4, $5)
+                 RETURNING id`,
+                [
+                  entryNumber,
+                  `Void - Invoice ${existing.invoice_number}`,
+                  existing.id,
+                  user.id,
+                  existing.company_id,
+                ]
+              );
+              const reversalEntryId = reversalEntry.rows[0]?.id;
+              if (reversalEntryId) {
+                for (let i = 0; i < originalLines.rows.length; i++) {
+                  const line = originalLines.rows[i];
+                  await tx.query(
+                    `INSERT INTO journal_lines (
+                       journal_entry_id, line_number, account_id, debit, credit, description,
+                       currency, exchange_rate, base_debit, base_credit
+                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                    [
+                      reversalEntryId, i + 1, line.account_id,
+                      line.credit, line.debit,
+                      `Reversal - Void Invoice ${existing.invoice_number}`,
+                      line.currency, line.exchange_rate, line.base_credit, line.base_debit,
+                    ]
+                  );
+                }
+              }
+            }
+          }
+        }
+
+        // Void any outstanding payments and reverse their journal entries
+        if (existing.amount_paid > 0) {
+          const payments = await tx.query<{
+            id: string; amount: number; payment_method: string;
+          }>(
+            `SELECT id, amount, payment_method FROM invoice_payments WHERE invoice_id = $1`,
+            [existing.id]
+          );
+
+          for (const payment of payments.rows) {
+            // Find the journal entry that was created for this payment
+            const paymentJE = await tx.query<{ id: string }>(
+              `SELECT id FROM journal_entries WHERE source_module = 'invoice_payment' AND source_document_id = $1 LIMIT 1`,
+              [payment.id]
+            );
+
+            if (paymentJE.rows[0]?.id) {
+              const paymentLines = await tx.query<{
+                account_id: string; debit: number; credit: number;
+                currency: string; exchange_rate: number; base_debit: number; base_credit: number;
+              }>(
+                'SELECT account_id, debit, credit, currency, exchange_rate, base_debit, base_credit FROM journal_lines WHERE journal_entry_id = $1',
+                [paymentJE.rows[0].id]
+              );
+
+              if (paymentLines.rows.length > 0) {
+                const revNum = await tx.query<{ entry_number: string }>(
+                  'SELECT generate_journal_entry_number() AS entry_number'
+                );
+                const revEntryNumber = revNum.rows[0]?.entry_number;
+                if (revEntryNumber) {
+                  const revEntry = await tx.query<{ id: string }>(
+                    `INSERT INTO journal_entries (
+                       entry_number, entry_date, description, source_module, source_document_id,
+                       status, created_by, company_id
+                     ) VALUES ($1, NOW()::date, $2, 'invoice_payment', $3, 'posted', $4, $5)
+                     RETURNING id`,
+                    [
+                      revEntryNumber,
+                      `Void - Payment reversal for Invoice ${existing.invoice_number}`,
+                      payment.id,
+                      user.id,
+                      existing.company_id,
+                    ]
+                  );
+                  const revEntryId = revEntry.rows[0]?.id;
+                  if (revEntryId) {
+                    for (let i = 0; i < paymentLines.rows.length; i++) {
+                      const line = paymentLines.rows[i];
+                      await tx.query(
+                        `INSERT INTO journal_lines (
+                           journal_entry_id, line_number, account_id, debit, credit, description,
+                           currency, exchange_rate, base_debit, base_credit
+                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                        [
+                          revEntryId, i + 1, line.account_id,
+                          line.credit, line.debit,
+                          `Reversal - Void payment for Invoice ${existing.invoice_number}`,
+                          line.currency, line.exchange_rate, line.base_credit, line.base_debit,
+                        ]
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Zero out payments on the invoice
+          await tx.query(
+            'UPDATE invoices SET amount_paid = 0, updated_at = NOW() WHERE id = $1',
+            [existing.id]
+          );
+        }
+
+        // Mark invoice as void
+        await tx.query(
+          'UPDATE invoices SET status = $2, updated_at = NOW() WHERE id = $1',
+          [existing.id, 'void']
+        );
+      });
+
+      const dataResult = await db.query<any>('SELECT * FROM invoices WHERE id = $1 LIMIT 1', [existing.id]);
       return NextResponse.json({ data: dataResult.rows[0], message: 'Invoice voided' });
     }
   } catch (error: any) {

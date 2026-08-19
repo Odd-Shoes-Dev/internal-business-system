@@ -27,6 +27,7 @@ export default function BillsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<BillStatus>('all');
+  const [showVoided, setShowVoided] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({
@@ -42,7 +43,7 @@ export default function BillsPage() {
     if (!company) return;
     loadBills();
     loadStats();
-  }, [company, searchQuery, statusFilter, currentPage]);
+  }, [company, searchQuery, statusFilter, showVoided, currentPage]);
 
   const loadBills = async () => {
     if (!company) return;
@@ -61,6 +62,10 @@ export default function BillsPage() {
 
       if (statusFilter !== 'all') {
         params.set('status', statusFilter);
+      }
+
+      if (showVoided) {
+        params.set('include_voided', 'true');
       }
 
       const response = await fetch(`/api/bills?${params.toString()}`, {
@@ -230,10 +235,24 @@ export default function BillsPage() {
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
               <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
               </select>
+            </div>
+
+            {/* Show voided toggle */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-white/80 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl">
+              <input
+                type="checkbox"
+                id="bills-show-voided"
+                checked={showVoided}
+                onChange={(e) => { setShowVoided(e.target.checked); setCurrentPage(1); }}
+                className="w-4 h-4 rounded border-gray-300 text-blueox-primary focus:ring-blueox-primary"
+              />
+              <label htmlFor="bills-show-voided" className="text-sm text-gray-700 whitespace-nowrap cursor-pointer">
+                Show voided
+              </label>
             </div>
           </div>
         </div>
