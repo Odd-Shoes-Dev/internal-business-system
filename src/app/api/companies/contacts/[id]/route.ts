@@ -5,12 +5,12 @@ import {
 } from '@/lib/provider/route-guards';
 
 // PATCH /api/companies/contacts/[id]
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { company_id, type, label, value, show_on_documents, sort_order } = body;
 
@@ -48,12 +48,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE /api/companies/contacts/[id]
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const company_id = searchParams.get('company_id');
 
