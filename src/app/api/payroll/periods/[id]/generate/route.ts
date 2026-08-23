@@ -1,6 +1,15 @@
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Uganda URA PAYE monthly bracket calculation
+function calculateUgandaPAYE(monthlyGross: number): number {
+  if (monthlyGross <= 235000) return 0;
+  if (monthlyGross <= 335000) return (monthlyGross - 235000) * 0.10;
+  if (monthlyGross <= 410000) return 10000 + (monthlyGross - 335000) * 0.20;
+  if (monthlyGross <= 10000000) return 25000 + (monthlyGross - 410000) * 0.30;
+  return 25000 + (10000000 - 410000) * 0.30 + (monthlyGross - 10000000) * 0.40;
+}
+
 // POST /api/payroll/periods/[id]/generate - Generate payslips for all employees
 export async function POST(
   request: NextRequest,
@@ -25,12 +34,11 @@ export async function POST(
 
     // Fetch company payroll rates from settings
     const settingsResult = await db.query(
-      `SELECT income_tax_rate, nssf_employee_rate, nssf_employer_rate
+      `SELECT nssf_employee_rate, nssf_employer_rate
        FROM company_settings WHERE company_id = $1 LIMIT 1`,
       [companyId]
     );
     const settings = settingsResult.rows[0] || {};
-    const incomeTaxRate = Number(settings.income_tax_rate ?? 0) / 100;
     const nssfEmployeeRate = Number(settings.nssf_employee_rate ?? 0) / 100;
     const nssfEmployerRate = Number(settings.nssf_employer_rate ?? 0) / 100;
 
@@ -113,8 +121,8 @@ export async function POST(
       // Calculate gross salary
       const grossSalary = basicSalary + totalAllowances;
       
-      // Calculate deductions using company-configured rates
-      const taxDeduction = grossSalary * incomeTaxRate;
+      // Calculate PAYE using Uganda URA progressive brackets
+      const taxDeduction = calculateUgandaPAYE(grossSalary);
       const nhifDeduction = 0; // Not used — kept for DB compatibility
       const nssfDeduction = grossSalary * nssfEmployeeRate;
       const nssfEmployerDeduction = grossSalary * nssfEmployerRate;
