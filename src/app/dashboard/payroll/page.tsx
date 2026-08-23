@@ -549,7 +549,7 @@ export default function PayrollPage() {
         <div className="card p-6">
           <p className="text-sm text-gray-500 mb-1">This Month Net Pay</p>
           <p className="text-2xl font-bold text-gray-900">
-            {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (e.basic_salary || 0), 0))}
+            {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (Number(e.basic_salary) || 0), 0))}
           </p>
         </div>
         <div className="card p-6">
