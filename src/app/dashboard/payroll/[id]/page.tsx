@@ -377,7 +377,11 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {payslips.map((payslip) => (
-                <tr key={payslip.id} className="hover:bg-gray-50">
+                <tr
+                  key={payslip.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/dashboard/payroll/${periodId}/payslips/${payslip.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <p className="font-medium text-gray-900">
@@ -407,7 +411,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span className="text-gray-400">-</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/dashboard/payroll/${periodId}/payslips/${payslip.id}`}

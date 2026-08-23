@@ -123,8 +123,13 @@ export default function PayslipDetailPage({
         nssf_employee: Number(result.nssf_employee ?? result.nssf_deduction ?? 0),
         loan_deduction: Number(result.loan_deduction || 0),
         salary_advance: Number(result.salary_advance ?? result.advance_deduction ?? 0),
-        other_deductions: Number(result.other_deductions ?? result.deductions ?? 0),
-        total_deductions: Number(result.total_deductions ?? result.deductions ?? 0),
+        other_deductions: Number(result.other_deductions || 0),
+        total_deductions: Number(result.total_deductions)
+          || (Number(result.paye ?? result.tax_deduction ?? 0)
+            + Number(result.nssf_employee ?? result.nssf_deduction ?? 0)
+            + Number(result.loan_deduction || 0)
+            + Number(result.salary_advance ?? result.advance_deduction ?? 0)
+            + Number(result.other_deductions || 0)),
         net_salary: Number(result.net_salary || 0),
         nssf_employer: Number(result.nssf_employer || 0),
         payment_method: result.payment_method || 'bank_transfer',
@@ -146,9 +151,11 @@ export default function PayslipDetailPage({
         payroll_period: {
           period_name:
             result.period?.period_name ||
-            `${new Date(result.period?.period_start).toLocaleDateString()} - ${new Date(result.period?.period_end).toLocaleDateString()}`,
-          start_date: result.period?.start_date || result.period?.period_start,
-          end_date: result.period?.end_date || result.period?.period_end,
+            (result.period?.start_date && result.period?.end_date
+              ? `${new Date(result.period.start_date).toLocaleDateString()} - ${new Date(result.period.end_date).toLocaleDateString()}`
+              : 'Pay Period'),
+          start_date: result.period?.start_date,
+          end_date: result.period?.end_date,
           payment_date: result.period?.payment_date,
           status: result.period?.status || 'draft',
         },
@@ -161,7 +168,7 @@ export default function PayslipDetailPage({
       const housingAllowance = Number(result.housing_allowance || 0);
       const transportAllowance = Number(result.transport_allowance || 0);
       const otherAllowances = Number(result.other_allowances || 0);
-      const deductionsAmount = Number(result.deductions || 0);
+      const deductionsAmount = Number(result.other_deductions || 0);
 
       if (allowanceAmount > 0) {
         generatedItems.push({
@@ -506,7 +513,7 @@ export default function PayslipDetailPage({
                   <span class="breakdown-value negative">${formatCurrency(payslip.paye)}</span>
                 </div>
                 <div class="breakdown-item">
-                  <span class="breakdown-label">NSSF (Employee 5%)</span>
+                  <span class="breakdown-label">NSSF (Employee)</span>
                   <span class="breakdown-value negative">${formatCurrency(payslip.nssf_employee)}</span>
                 </div>
                 ${deductions.map(item => `
@@ -821,7 +828,7 @@ export default function PayslipDetailPage({
                 <span className="text-sm font-medium text-red-600">{formatCurrency(payslip.paye)}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-sm text-gray-600">NSSF (Employee 5%)</span>
+                <span className="text-sm text-gray-600">NSSF (Employee)</span>
                 <span className="text-sm font-medium text-red-600">{formatCurrency(payslip.nssf_employee)}</span>
               </div>
               {deductions.map((item) => (

@@ -16,14 +16,10 @@ export async function GET(
 
     const periodResult = await db.query(
       `SELECT pp.*,
-              upc.id AS created_by_user_id,
-              upc.full_name AS created_by_user_full_name,
-              upc.email AS created_by_user_email,
               upp.id AS processed_by_user_id,
               upp.full_name AS processed_by_user_full_name,
               upp.email AS processed_by_user_email
        FROM payroll_periods pp
-       LEFT JOIN user_profiles upc ON upc.id = pp.created_by
        LEFT JOIN user_profiles upp ON upp.id = pp.processed_by
        WHERE pp.id = $1
        LIMIT 1`,
@@ -45,7 +41,7 @@ export async function GET(
               e.id AS employee_ref_id,
               e.first_name,
               e.last_name,
-              e.employee_id
+              e.employee_number
        FROM payroll_payslips pps
        LEFT JOIN employees e ON e.id = pps.employee_id
        WHERE pps.payroll_period_id = $1`,
@@ -54,13 +50,6 @@ export async function GET(
 
     const period = {
       ...row,
-      created_by_user: row.created_by_user_id
-        ? {
-            id: row.created_by_user_id,
-            full_name: row.created_by_user_full_name,
-            email: row.created_by_user_email,
-          }
-        : null,
       processed_by_user: row.processed_by_user_id
         ? {
             id: row.processed_by_user_id,
@@ -75,7 +64,7 @@ export async function GET(
               id: p.employee_ref_id,
               first_name: p.first_name,
               last_name: p.last_name,
-              employee_id: p.employee_id,
+              employee_number: p.employee_number,
             }
           : null,
       })),

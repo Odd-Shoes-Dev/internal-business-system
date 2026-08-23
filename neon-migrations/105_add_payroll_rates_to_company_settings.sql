@@ -1,0 +1,4 @@
+ALTER TABLE company_settings
+  ADD COLUMN IF NOT EXISTS income_tax_rate NUMERIC(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS nssf_employee_rate NUMERIC(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS nssf_employer_rate NUMERIC(5,2) DEFAULT 0;

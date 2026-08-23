@@ -58,6 +58,7 @@ export default function EmployeesPage() {
     employment_type: 'full_time' as 'full_time' | 'part_time' | 'contract' | 'casual',
     pay_frequency: 'monthly' as 'weekly' | 'bi_weekly' | 'monthly',
     basic_salary: 0,
+    daily_rate: '' as number | '',
     salary_currency: 'UGX',
     bank_name: '',
     bank_account_number: '',
@@ -133,6 +134,7 @@ export default function EmployeesPage() {
         employment_type: 'full_time',
         pay_frequency: 'monthly',
         basic_salary: 0,
+        daily_rate: '' as number | '',
         salary_currency: 'UGX',
         bank_name: '',
         bank_account_number: '',
@@ -626,14 +628,27 @@ export default function EmployeesPage() {
                 <h3 className="font-medium text-gray-900 mb-3">Salary Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="form-group">
-                    <label className="label">Basic Salary</label>
+                    <label className="label">Basic Monthly Salary</label>
                     <input
                       type="number"
                       value={formData.basic_salary}
-                      onChange={(e) => setFormData({ ...formData, basic_salary: parseFloat(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, basic_salary: parseFloat(e.target.value) || 0 })}
                       className="input"
                       min="0"
                     />
+                  </div>
+                  <div className="form-group">
+                    <label className="label">Daily Rate <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <input
+                      type="number"
+                      value={formData.daily_rate}
+                      onChange={(e) => setFormData({ ...formData, daily_rate: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                      className="input"
+                      min="0"
+                      step="100"
+                      placeholder="Leave blank to auto-calculate"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">If set, used instead of salary ÷ working days</p>
                   </div>
                   <div className="form-group">
                     <label className="label">Currency</label>

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
@@ -23,6 +23,8 @@ import {
   SparklesIcon,
   UserGroupIcon,
   MinusCircleIcon,
+  EllipsisVerticalIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
@@ -37,6 +39,8 @@ interface PayrollPeriodWithPayslips extends PayrollPeriod {
 
 export default function PayrollPage() {
   const { company } = useCompany();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [payrollPeriods, setPayrollPeriods] = useState<PayrollPeriodWithPayslips[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +48,7 @@ export default function PayrollPage() {
   const [showProcessModal, setShowProcessModal] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriodWithPayslips | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [creatingPeriod, setCreatingPeriod] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,6 +60,16 @@ export default function PayrollPage() {
     working_days: '' as number | '',
   });
   const [employeeDays, setEmployeeDays] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!company?.id) {
@@ -84,7 +99,7 @@ export default function PayrollPage() {
         end_date: row.end_date || row.period_end,
         period_name:
           row.period_name ||
-          `${new Date(row.period_start).toLocaleDateString()} - ${new Date(row.period_end).toLocaleDateString()}`,
+          `${new Date(row.start_date).toLocaleDateString()} - ${new Date(row.end_date).toLocaleDateString()}`,
       }));
 
       setPayrollPeriods(mappedPeriods);
@@ -118,7 +133,7 @@ export default function PayrollPage() {
 
   const handleCreatePeriod = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setCreatingPeriod(true);
     try {
       if (!company?.id) {
         toast.error('No company selected');
@@ -130,8 +145,8 @@ export default function PayrollPage() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          period_start: formData.start_date,
-          period_end: formData.end_date,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
           payment_date: formData.payment_date,
           period_name: formData.period_name,
           period_type: formData.period_type,
@@ -140,7 +155,8 @@ export default function PayrollPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create payroll period');
+        toast.error(result.error || 'Failed to create payroll period');
+        return;
       }
       
       toast.success('Payroll period created');
@@ -157,6 +173,8 @@ export default function PayrollPage() {
     } catch (error) {
       console.error('Error creating payroll period:', error);
       toast.error('Failed to create payroll period');
+    } finally {
+      setCreatingPeriod(false);
     }
   };
 
@@ -514,7 +532,7 @@ export default function PayrollPage() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
             New Pay Period
@@ -524,61 +542,21 @@ export default function PayrollPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-blue-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Active Employees</p>
-              <p className="text-3xl font-extrabold text-blueox-primary-dark group-hover:text-blueox-primary transition-colors">
-                {employees.length}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-2xl group-hover:bg-blue-200 transition-colors">
-              <UserGroupIcon className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
+        <div className="card p-6">
+          <p className="text-sm text-gray-500 mb-1">Active Employees</p>
+          <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
         </div>
-        
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-green-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">This Month Payroll</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-blueox-primary-dark group-hover:text-green-600 transition-colors">
-                {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (e.basic_salary || 0), 0))}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-2xl group-hover:bg-green-200 transition-colors">
-              <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
+        <div className="card p-6">
+          <p className="text-sm text-gray-500 mb-1">This Month Net Pay</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {formatCurrency(currentPeriod?.total_net || employees.reduce((sum, e) => sum + (e.basic_salary || 0), 0))}
+          </p>
         </div>
-        
-        <div className="bg-white/80 backdrop-blur-xl border-l-4 border-red-500 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">Total Deductions</p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-red-600 group-hover:text-red-700 transition-colors">
-                {formatCurrency(currentPeriod?.total_deductions || 0)}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-2xl group-hover:bg-red-200 transition-colors">
-              <MinusCircleIcon className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tax Compliance Alert */}
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-xl border-l-4 border-amber-500 rounded-3xl p-6 mb-8 shadow-xl">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-amber-100 rounded-2xl flex-shrink-0">
-            <ExclamationTriangleIcon className="w-6 h-6 text-amber-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-amber-900 text-lg mb-2">Statutory Remittances</h3>
-            <p className="text-amber-700">
-              PAYE must be remitted to URA by the 15th of each month. NSSF contributions must be paid by the 15th following the pay period.
-            </p>
-          </div>
+        <div className="card p-6">
+          <p className="text-sm text-gray-500 mb-1">This Month Deductions</p>
+          <p className="text-2xl font-bold text-red-600">
+            {formatCurrency(currentPeriod?.total_deductions || 0)}
+          </p>
         </div>
       </div>
 
@@ -592,7 +570,7 @@ export default function PayrollPage() {
           <p className="text-gray-600 mb-8 max-w-md mx-auto">Create your first payroll period to get started</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
             New Pay Period
@@ -686,13 +664,29 @@ export default function PayrollPage() {
                     Print
                   </button>
 
-                  {period.status === 'draft' && (
-                    <button
-                      onClick={() => deletePeriod(period.id)}
-                      className="btn-sm btn-danger ml-auto"
-                    >
-                      Delete
-                    </button>
+                  {company?.role === 'admin' && (
+                    <div className="relative ml-auto" ref={openMenuId === period.id ? menuRef : undefined}>
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === period.id ? null : period.id)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                        title="More actions"
+                      >
+                        <EllipsisVerticalIcon className="w-5 h-5" />
+                      </button>
+                      {openMenuId === period.id && (
+                        <div className="absolute right-0 bottom-8 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[130px]">
+                          {period.status === 'draft' && (
+                            <button
+                              onClick={() => { setOpenMenuId(null); deletePeriod(period.id); }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -782,8 +776,18 @@ export default function PayrollPage() {
               </div>
 
               <div className="flex items-center gap-4 pt-4 border-t">
-                <button type="submit" className="btn-primary">
-                  Create Period
+                <button type="submit" disabled={creatingPeriod} className="btn-primary flex items-center gap-2">
+                  {creatingPeriod ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Period'
+                  )}
                 </button>
                 <button
                   type="button"
