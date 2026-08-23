@@ -322,7 +322,7 @@ export default function EmployeesPage() {
             {formatCurrency(
               employees
                 .filter(e => e.is_active)
-                .reduce((sum, e) => sum + (e.basic_salary || 0), 0),
+                .reduce((sum, e) => sum + (Number(e.basic_salary) || 0), 0),
               'UGX'
             )}
           </p>
@@ -431,7 +431,7 @@ export default function EmployeesPage() {
                     <td className="py-4 px-6 text-gray-900">{formatDate(employee.hire_date)}</td>
                     <td className="py-4 px-6">
                       <p className="font-semibold text-gray-900">
-                        {formatCurrency(employee.basic_salary, employee.salary_currency)}
+                        {formatCurrency(Number(employee.basic_salary) || 0, employee.salary_currency)}
                       </p>
                       <p className="text-xs text-gray-500 capitalize">{employee.pay_frequency}</p>
                     </td>
