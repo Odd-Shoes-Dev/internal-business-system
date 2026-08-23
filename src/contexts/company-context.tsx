@@ -22,6 +22,9 @@ interface Company {
   duns_number: string | null;
   region?: 'AFRICA' | 'ASIA' | 'EU' | 'GB' | 'US' | 'DEFAULT';
   sales_tax_rate: number | null;
+  income_tax_rate: number;
+  nssf_employee_rate: number;
+  nssf_employer_rate: number;
   default_payment_terms: number | null;
   fiscal_year_start: string | null;
   fiscal_year_start_month: number | null;

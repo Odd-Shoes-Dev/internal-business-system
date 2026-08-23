@@ -23,6 +23,17 @@ export async function POST(
       return companyAccessError;
     }
 
+    // Fetch company payroll rates from settings
+    const settingsResult = await db.query(
+      `SELECT income_tax_rate, nssf_employee_rate, nssf_employer_rate
+       FROM company_settings WHERE company_id = $1 LIMIT 1`,
+      [companyId]
+    );
+    const settings = settingsResult.rows[0] || {};
+    const incomeTaxRate = Number(settings.income_tax_rate ?? 0) / 100;
+    const nssfEmployeeRate = Number(settings.nssf_employee_rate ?? 0) / 100;
+    const nssfEmployerRate = Number(settings.nssf_employer_rate ?? 0) / 100;
+
     // Check period exists and is draft
     const periodResult = await db.query(
       `SELECT *
@@ -73,8 +84,8 @@ export async function POST(
     } catch {}
 
     // Working days divisor: use period's working_days if set, else calendar days in period
-    const start = new Date(period.period_start);
-    const end = new Date(period.period_end);
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
     const calendarDaysInPeriod = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const workingDaysInPeriod: number = period.working_days ?? calendarDaysInPeriod;
 
@@ -102,16 +113,11 @@ export async function POST(
       // Calculate gross salary
       const grossSalary = basicSalary + totalAllowances;
       
-      // Calculate deductions
-      // Tax (simplified - should be based on tax brackets)
-      const taxRate = 0.15; // 15% flat tax (example)
-      const taxDeduction = grossSalary * taxRate;
-      
-      // NHIF (National Health Insurance Fund - example rates)
-      const nhifDeduction = grossSalary * 0.025; // 2.5%
-      
-      // NSSF (National Social Security Fund - example rates)
-      const nssfDeduction = Math.min(grossSalary * 0.06, 500); // 6% up to max
+      // Calculate deductions using company-configured rates
+      const taxDeduction = grossSalary * incomeTaxRate;
+      const nhifDeduction = 0; // Not used — kept for DB compatibility
+      const nssfDeduction = grossSalary * nssfEmployeeRate;
+      const nssfEmployerDeduction = grossSalary * nssfEmployerRate;
       
       // Other deductions
       const loanDeduction = employee.loan_deduction || 0;
@@ -135,6 +141,8 @@ export async function POST(
         tax_deduction: taxDeduction,
         nhif_deduction: nhifDeduction,
         nssf_deduction: nssfDeduction,
+        nssf_employee: nssfDeduction,
+        nssf_employer: nssfEmployerDeduction,
         loan_deduction: loanDeduction,
         advance_deduction: advanceDeduction,
         net_salary: netSalary,
@@ -151,14 +159,16 @@ export async function POST(
            payroll_period_id, employee_id, basic_salary, allowances,
            housing_allowance, transport_allowance, other_allowances,
            gross_salary, deductions, tax_deduction, nhif_deduction,
-           nssf_deduction, loan_deduction, advance_deduction,
+           nssf_deduction, nssf_employee, nssf_employer,
+           loan_deduction, advance_deduction,
            net_salary, days_worked, status, created_by
          ) VALUES (
            $1, $2, $3, $4,
            $5, $6, $7,
            $8, $9, $10, $11,
            $12, $13, $14,
-           $15, $16, $17, $18
+           $15, $16,
+           $17, $18, $19, $20
          )
          RETURNING *`,
         [
@@ -174,6 +184,8 @@ export async function POST(
           p.tax_deduction,
           p.nhif_deduction,
           p.nssf_deduction,
+          p.nssf_employee,
+          p.nssf_employer,
           p.loan_deduction,
           p.advance_deduction,
           p.net_salary,

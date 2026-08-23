@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
               uc.role,
               c.*,
               cs.default_payment_terms AS cs_default_payment_terms,
-              cs.sales_tax_rate AS cs_sales_tax_rate
+              cs.sales_tax_rate AS cs_sales_tax_rate,
+              cs.income_tax_rate,
+              cs.nssf_employee_rate,
+              cs.nssf_employer_rate
        FROM user_companies uc
        INNER JOIN companies c ON c.id = uc.company_id
        LEFT JOIN company_settings cs ON cs.company_id = c.id
@@ -48,6 +51,9 @@ export async function GET(request: NextRequest) {
       fiscal_year_start_month: row.fiscal_year_start_month || (row.fiscal_year_start ? parseInt(row.fiscal_year_start.split('-')[0], 10) : null),
       default_payment_terms: row.cs_default_payment_terms ?? row.default_payment_terms ?? null,
       sales_tax_rate: row.cs_sales_tax_rate ?? row.sales_tax_rate ?? null,
+      income_tax_rate: row.income_tax_rate != null ? Number(row.income_tax_rate) : 0,
+      nssf_employee_rate: row.nssf_employee_rate != null ? Number(row.nssf_employee_rate) : 0,
+      nssf_employer_rate: row.nssf_employer_rate != null ? Number(row.nssf_employer_rate) : 0,
       trial_ends_at: row.trial_ends_at,
       region: row.region || 'DEFAULT',
       role: row.role,
@@ -113,6 +119,9 @@ export async function PUT(request: NextRequest) {
       fiscal_year_start,
       default_payment_terms,
       sales_tax_rate,
+      income_tax_rate,
+      nssf_employee_rate,
+      nssf_employer_rate,
       currency,
     } = body;
 
@@ -152,18 +161,30 @@ export async function PUT(request: NextRequest) {
       ]
     );
 
-    // Also update default_payment_terms and sales_tax_rate in company_settings if provided
-    if (typeof default_payment_terms === 'number' || typeof sales_tax_rate === 'number') {
+    // Also update company_settings fields if provided
+    if (
+      typeof default_payment_terms === 'number' ||
+      typeof sales_tax_rate === 'number' ||
+      typeof income_tax_rate === 'number' ||
+      typeof nssf_employee_rate === 'number' ||
+      typeof nssf_employer_rate === 'number'
+    ) {
       await db.query(
         `UPDATE company_settings
          SET default_payment_terms = COALESCE($2, default_payment_terms),
              sales_tax_rate = COALESCE($3, sales_tax_rate),
+             income_tax_rate = COALESCE($4, income_tax_rate),
+             nssf_employee_rate = COALESCE($5, nssf_employee_rate),
+             nssf_employer_rate = COALESCE($6, nssf_employer_rate),
              updated_at = NOW()
          WHERE company_id = $1`,
         [
           companyId,
           typeof default_payment_terms === 'number' ? default_payment_terms : null,
           typeof sales_tax_rate === 'number' ? sales_tax_rate : null,
+          typeof income_tax_rate === 'number' ? income_tax_rate : null,
+          typeof nssf_employee_rate === 'number' ? nssf_employee_rate : null,
+          typeof nssf_employer_rate === 'number' ? nssf_employer_rate : null,
         ]
       );
     }

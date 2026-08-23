@@ -17,15 +17,16 @@ export async function GET(
     const result = await db.query(
       `SELECT pps.*,
               e.id AS employee_ref_id,
-              e.employee_id,
+              e.employee_number,
               e.first_name,
               e.last_name,
               e.email AS employee_email,
               e.department,
-              e.position,
+              e.job_title,
               pp.id AS period_ref_id,
-              pp.period_start,
-              pp.period_end,
+              pp.period_name,
+              pp.start_date,
+              pp.end_date,
               pp.payment_date,
               pp.status AS period_status,
               pp.company_id
@@ -53,19 +54,20 @@ export async function GET(
       employee: payslip.employee_ref_id
         ? {
             id: payslip.employee_ref_id,
-            employee_id: payslip.employee_id,
+            employee_number: payslip.employee_number,
             first_name: payslip.first_name,
             last_name: payslip.last_name,
             email: payslip.employee_email,
             department: payslip.department,
-            position: payslip.position,
+            job_title: payslip.job_title,
           }
         : null,
       period: payslip.period_ref_id
         ? {
             id: payslip.period_ref_id,
-            period_start: payslip.period_start,
-            period_end: payslip.period_end,
+            period_name: payslip.period_name,
+            start_date: payslip.start_date,
+            end_date: payslip.end_date,
             payment_date: payslip.payment_date,
             status: payslip.period_status,
           }

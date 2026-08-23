@@ -92,6 +92,9 @@ interface FinancialFormData {
   fiscal_year_start_month: number;
   default_payment_terms: number;
   sales_tax_rate: number;
+  income_tax_rate: number;
+  nssf_employee_rate: number;
+  nssf_employer_rate: number;
   currency: string;
 }
 
@@ -360,8 +363,12 @@ export default function SettingsPage() {
           fiscal_year_start_month: data.fiscal_year_start_month || 1,
           default_payment_terms: data.default_payment_terms || 30,
           sales_tax_rate: data.sales_tax_rate != null ? Number(data.sales_tax_rate) : 0,
+          income_tax_rate: data.income_tax_rate != null ? Number(data.income_tax_rate) : 0,
+          nssf_employee_rate: data.nssf_employee_rate != null ? Number(data.nssf_employee_rate) : 0,
+          nssf_employer_rate: data.nssf_employer_rate != null ? Number(data.nssf_employer_rate) : 0,
           currency: data.currency || 'USD',
         });
+
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -473,6 +480,9 @@ export default function SettingsPage() {
           fiscal_year_start: fiscalYearStart,
           default_payment_terms: data.default_payment_terms,
           sales_tax_rate: data.sales_tax_rate,
+          income_tax_rate: data.income_tax_rate,
+          nssf_employee_rate: data.nssf_employee_rate,
+          nssf_employer_rate: data.nssf_employer_rate,
           currency: data.currency,
         }),
       });
@@ -1108,6 +1118,52 @@ export default function SettingsPage() {
                     {...financialForm.register('sales_tax_rate', { valueAsNumber: true, min: 0 })}
                     className="input max-w-xs"
                   />
+                </div>
+
+                <div className="border-t pt-4">
+                  <h3 className="font-medium text-gray-900 mb-1">Payroll Deduction Rates</h3>
+                  <p className="text-sm text-gray-500 mb-4">Set the rates used when generating payslips. These apply to all employees unless overridden.</p>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="form-group">
+                      <label className="label">Income Tax Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        {...financialForm.register('income_tax_rate', { valueAsNumber: true, min: 0 })}
+                        className="input"
+                        placeholder="e.g. 30"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Applied as flat % of gross salary (PAYE/flat tax)</p>
+                    </div>
+                    <div className="form-group">
+                      <label className="label">NSSF / Pension — Employee (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        {...financialForm.register('nssf_employee_rate', { valueAsNumber: true, min: 0 })}
+                        className="input"
+                        placeholder="e.g. 5"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Deducted from employee gross salary</p>
+                    </div>
+                    <div className="form-group">
+                      <label className="label">NSSF / Pension — Employer (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        {...financialForm.register('nssf_employer_rate', { valueAsNumber: true, min: 0 })}
+                        className="input"
+                        placeholder="e.g. 10"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Employer contribution on top of salary</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

@@ -95,13 +95,13 @@ export async function POST(
         account_id: salaryExpenseId,
         debit: totalGross,
         credit: 0,
-        description: `Payroll expense for period ${period.period_start} to ${period.period_end}`,
+        description: `Payroll expense for period ${period.start_date} to ${period.end_date}`,
       },
       {
         account_id: payrollPayableId,
         debit: 0,
         credit: totalNet,
-        description: `Net payroll payable for period ${period.period_start} to ${period.period_end}`,
+        description: `Net payroll payable for period ${period.start_date} to ${period.end_date}`,
       },
     ];
 
@@ -110,7 +110,7 @@ export async function POST(
         account_id: taxPayableId,
         debit: 0,
         credit: totalTax,
-        description: `Tax payable for period ${period.period_start} to ${period.period_end}`,
+        description: `Tax payable for period ${period.start_date} to ${period.end_date}`,
       });
     }
 
@@ -119,7 +119,7 @@ export async function POST(
         account_id: nhifPayableId,
         debit: 0,
         credit: totalNHIF,
-        description: `NHIF payable for period ${period.period_start} to ${period.period_end}`,
+        description: `NHIF payable for period ${period.start_date} to ${period.end_date}`,
       });
     }
 
@@ -128,7 +128,7 @@ export async function POST(
         account_id: nssfPayableId,
         debit: 0,
         credit: totalNSSF,
-        description: `NSSF payable for period ${period.period_start} to ${period.period_end}`,
+        description: `NSSF payable for period ${period.start_date} to ${period.end_date}`,
       });
     }
 
@@ -163,7 +163,7 @@ export async function POST(
           period.company_id,
           entryNumber,
           period.payment_date,
-          `Payroll for period ${period.period_start} to ${period.period_end}`,
+          `Payroll for period ${period.start_date} to ${period.end_date}`,
           periodId,
           user.id,
         ]

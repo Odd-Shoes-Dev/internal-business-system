@@ -98,10 +98,10 @@ return NextResponse.json(
       return companyAccessError;
     }
 
-    // Check for duplicate employee number
+    // Check for duplicate employee number within this company
     const existing = await db.query<{ id: string }>(
-      'SELECT id FROM employees WHERE employee_number = $1 LIMIT 1',
-      [employeeData.employee_number]
+      'SELECT id FROM employees WHERE employee_number = $1 AND company_id = $2 LIMIT 1',
+      [employeeData.employee_number, company_id]
     );
 
     if (existing.rows.length > 0) {
@@ -119,7 +119,7 @@ return NextResponse.json(
          date_of_birth, gender, nationality, address,
          emergency_contact_name, emergency_contact_phone,
          job_title, department, employment_type, employment_status,
-         hire_date, basic_salary, salary_currency, pay_frequency,
+         hire_date, basic_salary, daily_rate, salary_currency, pay_frequency,
          bank_name, bank_branch, bank_account_number, bank_account_name,
          is_active, notes
        ) VALUES (
@@ -128,9 +128,9 @@ return NextResponse.json(
          $11, $12, $13, $14,
          $15, $16,
          $17, $18, $19, $20,
-         $21, $22, $23, $24,
-         $25, $26, $27, $28,
-         $29, $30
+         $21, $22, $23, $24, $25,
+         $26, $27, $28, $29,
+         $30, $31
        )
        RETURNING *`,
       [
@@ -156,6 +156,7 @@ return NextResponse.json(
         'active',
         employeeData.hire_date,
         employeeData.basic_salary,
+        employeeData.daily_rate || null,
         employeeData.salary_currency || 'UGX',
         employeeData.pay_frequency || 'monthly',
         employeeData.bank_name || null,
