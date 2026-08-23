@@ -65,25 +65,39 @@ export async function POST(
       );
     }
 
-    // Calculate number of days in the period
+    // Read per-employee days from request body
+    let employee_days: Record<string, number> = {};
+    try {
+      const body = await request.json().catch(() => ({}));
+      employee_days = body.employee_days || {};
+    } catch {}
+
+    // Working days divisor: use period's working_days if set, else calendar days in period
     const start = new Date(period.period_start);
     const end = new Date(period.period_end);
-    const daysInPeriod = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const daysInMonth = 30; // Standard month for calculation
+    const calendarDaysInPeriod = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const workingDaysInPeriod: number = period.working_days ?? calendarDaysInPeriod;
 
     // Generate payslips for each employee
     const payslips = employees.map((employee: any) => {
-      const monthlySalary = employee.salary || 0;
-      
-      // Calculate basic salary (prorated if partial period)
-      const basicSalary = (monthlySalary * daysInPeriod) / daysInMonth;
-      
-      // Calculate allowances (example: housing, transport, etc.)
+      // Days this employee actually worked (defaults to full working days in period)
+      const daysWorked: number = employee_days[employee.id] ?? workingDaysInPeriod;
+
+      // Daily rate: use explicit daily_rate if set, otherwise derive from monthly salary
+      const monthlySalary = employee.basic_salary || employee.salary || 0;
+      const dailyRate: number = employee.daily_rate
+        ? Number(employee.daily_rate)
+        : monthlySalary / workingDaysInPeriod;
+
+      const basicSalary = dailyRate * daysWorked;
+
+      // Allowances prorated by days worked / working days
       const housingAllowance = employee.housing_allowance || 0;
       const transportAllowance = employee.transport_allowance || 0;
       const otherAllowances = employee.other_allowances || 0;
-      
-      const totalAllowances = (housingAllowance + transportAllowance + otherAllowances) * daysInPeriod / daysInMonth;
+      const prorateRatio = daysWorked / workingDaysInPeriod;
+
+      const totalAllowances = (housingAllowance + transportAllowance + otherAllowances) * prorateRatio;
       
       // Calculate gross salary
       const grossSalary = basicSalary + totalAllowances;
@@ -113,9 +127,9 @@ export async function POST(
         employee_id: employee.id,
         basic_salary: basicSalary,
         allowances: totalAllowances,
-        housing_allowance: (housingAllowance * daysInPeriod) / daysInMonth,
-        transport_allowance: (transportAllowance * daysInPeriod) / daysInMonth,
-        other_allowances: (otherAllowances * daysInPeriod) / daysInMonth,
+        housing_allowance: housingAllowance * prorateRatio,
+        transport_allowance: transportAllowance * prorateRatio,
+        other_allowances: otherAllowances * prorateRatio,
         gross_salary: grossSalary,
         deductions: totalDeductions,
         tax_deduction: taxDeduction,
@@ -124,7 +138,7 @@ export async function POST(
         loan_deduction: loanDeduction,
         advance_deduction: advanceDeduction,
         net_salary: netSalary,
-        days_worked: daysInPeriod,
+        days_worked: daysWorked,
         status: 'pending',
         created_by: user.id,
       };

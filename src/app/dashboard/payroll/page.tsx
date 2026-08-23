@@ -52,7 +52,9 @@ export default function PayrollPage() {
     start_date: '',
     end_date: '',
     payment_date: '',
+    working_days: '' as number | '',
   });
+  const [employeeDays, setEmployeeDays] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!company?.id) {
@@ -133,6 +135,7 @@ export default function PayrollPage() {
           payment_date: formData.payment_date,
           period_name: formData.period_name,
           period_type: formData.period_type,
+          working_days: formData.working_days !== '' ? Number(formData.working_days) : null,
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -148,6 +151,7 @@ export default function PayrollPage() {
         start_date: '',
         end_date: '',
         payment_date: '',
+        working_days: '',
       });
       fetchPayrollPeriods();
     } catch (error) {
@@ -170,6 +174,8 @@ export default function PayrollPage() {
         {
           method: 'POST',
           credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_days: employeeDays }),
         }
       );
       const result = await response.json().catch(() => ({}));
@@ -634,6 +640,7 @@ export default function PayrollPage() {
                     <button
                       onClick={() => {
                         setSelectedPeriod(period);
+                        setEmployeeDays({});
                         setShowProcessModal(true);
                       }}
                       className="btn-primary btn-sm flex items-center gap-1"
@@ -750,6 +757,20 @@ export default function PayrollPage() {
               </div>
 
               <div className="form-group">
+                <label className="label">Working Days in Period</label>
+                <input
+                  type="number"
+                  value={formData.working_days}
+                  onChange={(e) => setFormData({ ...formData, working_days: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                  className="input"
+                  min={1}
+                  max={31}
+                  placeholder="e.g. 22 for a 5-day-week month"
+                />
+                <p className="text-xs text-gray-400 mt-1">Actual working days excluding weekends & public holidays</p>
+              </div>
+
+              <div className="form-group">
                 <label className="label">Pay Date *</label>
                 <input
                   type="date"
@@ -780,29 +801,64 @@ export default function PayrollPage() {
       {/* Process Payroll Modal */}
       {showProcessModal && selectedPeriod && (
         <div className="modal-overlay" onClick={() => setShowProcessModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
             <div className="card-header">
-              <h2 className="text-lg font-semibold">Process Payroll</h2>
+              <h2 className="text-lg font-semibold">Process Payroll — {selectedPeriod.period_name}</h2>
             </div>
             <div className="card-body space-y-4">
-              <p className="text-gray-600">
-                This will generate payslips for <strong>{employees.length}</strong> active employees 
-                for the period <strong>{selectedPeriod.period_name}</strong>.
+              <p className="text-sm text-gray-500">
+                Working days for this period: <strong>{selectedPeriod.working_days ?? 'not set'}</strong>.
+                Edit days worked per employee below (defaults to working days in period).
               </p>
 
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <h4 className="font-medium">Calculations will include:</h4>
-                <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                  <li>PAYE (Pay As You Earn) - Uganda progressive tax rates</li>
-                  <li>NSSF Employee Contribution (5%)</li>
-                  <li>NSSF Employer Contribution (10%)</li>
-                  <li>Any configured allowances and deductions</li>
-                </ul>
+              {/* Days worked per employee */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Employee</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Job Title</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-600">Monthly Salary</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-600">Days Worked</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {employees.map((emp) => {
+                      const defaultDays = selectedPeriod.working_days ?? 30;
+                      const daysVal = employeeDays[emp.id] ?? defaultDays;
+                      return (
+                        <tr key={emp.id}>
+                          <td className="px-4 py-2 font-medium text-gray-900">
+                            {emp.first_name} {emp.last_name}
+                          </td>
+                          <td className="px-4 py-2 text-gray-500">{(emp as any).job_title || (emp as any).position || '—'}</td>
+                          <td className="px-4 py-2 text-right text-gray-700">
+                            {formatCurrency((emp as any).basic_salary || (emp as any).salary || 0)}
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={selectedPeriod.working_days ?? 31}
+                              value={daysVal}
+                              onChange={(e) => setEmployeeDays(prev => ({
+                                ...prev,
+                                [emp.id]: Number(e.target.value),
+                              }))}
+                              className="input text-center w-20 mx-auto block"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="bg-yellow-50 rounded-lg p-4">
+              <div className="bg-yellow-50 rounded-lg p-3">
                 <p className="text-sm text-yellow-700">
-                  <strong>Note:</strong> You can review and adjust individual payslips after processing.
+                  Employees with a <strong>daily rate</strong> set will use: daily rate × days worked.
+                  Others use: (monthly salary ÷ working days) × days worked.
                 </p>
               </div>
 

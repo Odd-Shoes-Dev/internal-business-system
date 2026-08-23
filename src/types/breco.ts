@@ -500,6 +500,7 @@ export interface PayrollPeriod {
   approved_by: string | null;
   approved_at: string | null;
   notes: string | null;
+  working_days: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { period_start, period_end, payment_date } = body;
+    const { period_start, period_end, payment_date, working_days } = body;
 
     // Validate required fields
     if (!period_start || !period_end || !payment_date) {
@@ -137,10 +137,10 @@ export async function POST(request: NextRequest) {
     // Create the payroll period
     const periodResult = await db.query(
       `INSERT INTO payroll_periods (
-         company_id, period_start, period_end, payment_date, status, created_by
-       ) VALUES ($1, $2::date, $3::date, $4::date, 'draft', $5)
+         company_id, period_start, period_end, payment_date, status, working_days, created_by
+       ) VALUES ($1, $2::date, $3::date, $4::date, 'draft', $5, $6)
        RETURNING *`,
-      [companyId, period_start, period_end, payment_date, user.id]
+      [companyId, period_start, period_end, payment_date, working_days ?? null, user.id]
     );
 
     const period = periodResult.rows[0];
