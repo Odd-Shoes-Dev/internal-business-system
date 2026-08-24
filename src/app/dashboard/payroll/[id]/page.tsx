@@ -1,11 +1,11 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
-import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 interface PayrollPeriod {
@@ -45,6 +45,19 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   const [loading, setLoading] = useState(true);
   const [periodId, setPeriodId] = useState<string>('');
   const [emailingSlugs, setEmailingSlugs] = useState<Set<string>>(new Set());
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -240,6 +253,25 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
     }
   };
 
+  const handleDeletePayslip = async (payslipId: string) => {
+    if (!confirm('Delete this payslip? This cannot be undone.')) return;
+    try {
+      const response = await fetch(`/api/payroll/payslips/${payslipId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        toast.error(result.error || 'Failed to delete payslip');
+        return;
+      }
+      toast.success('Payslip deleted');
+      setPayslips(prev => prev.filter(p => p.id !== payslipId));
+    } catch {
+      toast.error('Failed to delete payslip');
+    }
+  };
+
   const handleEmailPayslip = async (payslipId: string, employeeName: string) => {
     setEmailingSlugs(prev => new Set(prev).add(payslipId));
     
@@ -412,21 +444,25 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
                     <span className="text-gray-400">-</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/dashboard/payroll/${periodId}/payslips/${payslip.id}`}
-                        className="text-blueox-primary hover:text-blueox-primary/80 text-sm font-medium inline-flex items-center gap-1"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                        View
-                      </Link>
+                    <div className="relative flex justify-end">
                       <button
-                        onClick={() => handleEmailPayslip(payslip.id, `${payslip.employee.first_name} ${payslip.employee.last_name}`)}
-                        disabled={emailingSlugs.has(payslip.id) || !payslip.employee.first_name}
-                        className="text-gray-600 hover:text-gray-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={!payslip.employee.first_name ? 'No email on file' : 'Email payslip'}
+                        onClick={(e) => {
+                          if (openMenuId === payslip.id) {
+                            setOpenMenuId(null);
+                            return;
+                          }
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const estimatedMenuHeight = 170;
+                          const opensUpward = rect.bottom + estimatedMenuHeight > window.innerHeight;
+                          setMenuPos({
+                            top: opensUpward ? rect.top - estimatedMenuHeight - 4 : rect.bottom + 4,
+                            left: rect.right - 140,
+                          });
+                          setOpenMenuId(payslip.id);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
                       >
-                        <EnvelopeIcon className="w-4 h-4" />
+                        <EllipsisVerticalIcon className="w-5 h-5" />
                       </button>
                     </div>
                   </td>
@@ -442,6 +478,55 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </div>
+
+      {openMenuId && menuPos && (() => {
+        const payslip = payslips.find((p) => p.id === openMenuId);
+        if (!payslip) return null;
+        return (
+          <div
+            ref={menuRef}
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+            className="z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[140px]"
+          >
+            <Link
+              href={`/dashboard/payroll/${periodId}/payslips/${payslip.id}`}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <EyeIcon className="w-4 h-4" />
+              View
+            </Link>
+            {period?.status === 'draft' && (
+              <Link
+                href={`/dashboard/payroll/${periodId}/payslips/${payslip.id}/edit`}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                Edit
+              </Link>
+            )}
+            <button
+              onClick={() => {
+                setOpenMenuId(null);
+                handleEmailPayslip(payslip.id, `${payslip.employee.first_name} ${payslip.employee.last_name}`);
+              }}
+              disabled={emailingSlugs.has(payslip.id)}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+            >
+              <EnvelopeIcon className="w-4 h-4" />
+              Email
+            </button>
+            {period?.status === 'draft' && (
+              <button
+                onClick={() => { setOpenMenuId(null); handleDeletePayslip(payslip.id); }}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <TrashIcon className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
