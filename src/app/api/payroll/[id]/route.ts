@@ -54,7 +54,7 @@ export async function PATCH(
          WHERE code = ANY($1)
            AND (company_id = $2 OR company_id IS NULL)
          ORDER BY (company_id = $2) DESC`,
-        [['5100', '5120', '2200', '2210'], period.company_id]
+        [['6000', '6010', '2110', '2120'], period.company_id]
       );
 
       const accountMap = new Map<string, string>();
@@ -64,10 +64,10 @@ export async function PATCH(
         }
       }
 
-      const salaryExpenseAccountId = accountMap.get('5100');
-      const nssfExpenseAccountId = accountMap.get('5120');
-      const payePayableAccountId = accountMap.get('2200');
-      const nssfPayableAccountId = accountMap.get('2210');
+      const salaryExpenseAccountId = accountMap.get('6000');
+      const nssfExpenseAccountId = accountMap.get('6010');
+      const payePayableAccountId = accountMap.get('2110');
+      const nssfPayableAccountId = accountMap.get('2120');
 
       const bankAccountResult = await db.query(
         `SELECT id, name, gl_account_id
@@ -81,7 +81,7 @@ export async function PATCH(
 
       if (!salaryExpenseAccountId || !nssfExpenseAccountId || !payePayableAccountId || !nssfPayableAccountId) {
         return NextResponse.json({
-          error: 'Required GL accounts not found. Please ensure accounts 5100, 5120, 2200, 2210 exist in chart of accounts.',
+          error: 'Required GL accounts not found. Please ensure accounts 6000, 6010, 2110, 2120 exist in chart of accounts.',
         }, { status: 400 });
       }
 
@@ -94,7 +94,7 @@ export async function PATCH(
       // Calculate totals from payslips
       const totalGross = Number(period.total_gross || 0);
       const totalNet = Number(period.total_net || 0);
-      const totalPaye = Number(period.total_paye || 0);
+      const totalPaye = payslips.reduce((sum: number, p: any) => sum + Number(p.tax_deduction || 0), 0);
       const totalNssfEmployee = payslips.reduce((sum: number, p: any) => sum + Number(p.nssf_employee || 0), 0);
       const totalNssfEmployer = payslips.reduce((sum: number, p: any) => sum + Number(p.nssf_employer || 0), 0);
 
