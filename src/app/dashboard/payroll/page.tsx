@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
+import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import type { PayrollPeriod, Payslip, Employee } from '@/types/breco';
 import {
   PlusIcon,
@@ -60,6 +61,7 @@ export default function PayrollPage() {
     working_days: '' as number | '',
   });
   const [employeeDays, setEmployeeDays] = useState<Record<string, number>>({});
+  const [ratesMap, setRatesMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -77,7 +79,24 @@ export default function PayrollPage() {
     }
     fetchPayrollPeriods();
     fetchEmployees();
+    fetchExchangeRates();
   }, [company?.id]);
+
+  const fetchExchangeRates = async () => {
+    try {
+      if (!company?.id) {
+        return;
+      }
+      const response = await fetch(`/api/exchange-rates?company_id=${company.id}`, {
+        credentials: 'include',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      setRatesMap(buildRatesMap(result.data || [], company.currency || 'USD'));
+    } catch (error) {
+      console.error('Error fetching exchange rates:', error);
+    }
+  };
 
   const fetchPayrollPeriods = async () => {
     try {
@@ -837,7 +856,14 @@ export default function PayrollPage() {
                           </td>
                           <td className="px-4 py-2 text-gray-500">{(emp as any).job_title || (emp as any).position || '—'}</td>
                           <td className="px-4 py-2 text-right text-gray-700">
-                            {formatCurrency((emp as any).basic_salary || (emp as any).salary || 0)}
+                            {formatCurrency(
+                              convertCurrency(
+                                Number((emp as any).basic_salary || (emp as any).salary || 0),
+                                (emp as any).salary_currency || company?.currency || 'USD',
+                                company?.currency || 'USD',
+                                ratesMap
+                              )
+                            )}
                           </td>
                           <td className="px-4 py-2">
                             <input
