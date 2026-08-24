@@ -431,7 +431,7 @@ export function generatePayslipHTML(payslip: PayslipData): string {
                 <span class="breakdown-value negative">${formatCurrency(payslip.paye)}</span>
               </div>
               <div class="breakdown-item">
-                <span class="breakdown-label">NSSF (Employee 5%)</span>
+                <span class="breakdown-label">NSSF (Employee)</span>
                 <span class="breakdown-value negative">${formatCurrency(payslip.nssf_employee)}</span>
               </div>
               ${deductions.map(item => `
@@ -471,7 +471,7 @@ export function generatePayslipHTML(payslip: PayslipData): string {
                 <div class="summary-value deductions">${formatCurrency(payslip.total_deductions)}</div>
               </div>
               <div class="summary-item">
-                <div class="summary-label">NSSF Employer (10%)</div>
+                <div class="summary-label">NSSF Employer</div>
                 <div class="summary-value employer">${formatCurrency(payslip.nssf_employer)}</div>
               </div>
             </div>

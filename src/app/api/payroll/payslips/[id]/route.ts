@@ -201,7 +201,7 @@ export async function DELETE(
 
     // Check payslip exists and period is draft
     const payslipResult = await db.query(
-      `SELECT pps.id, pp.status AS period_status, pp.company_id
+      `SELECT pps.id, pps.payroll_period_id, pp.status AS period_status, pp.company_id
        FROM payroll_payslips pps
        LEFT JOIN payroll_periods pp ON pp.id = pps.payroll_period_id
        WHERE pps.id = $1
@@ -228,6 +228,30 @@ export async function DELETE(
 
     // Delete payslip
     await db.query('DELETE FROM payroll_payslips WHERE id = $1', [id]);
+
+    // Recalculate period totals from remaining payslips
+    const totalsResult = await db.query(
+      `SELECT
+         COALESCE(SUM(gross_salary), 0) AS total_gross,
+         COALESCE(SUM(deductions), 0) AS total_deductions,
+         COALESCE(SUM(net_salary), 0) AS total_net,
+         COUNT(*) AS employee_count
+       FROM payroll_payslips
+       WHERE payroll_period_id = $1`,
+      [payslip.payroll_period_id]
+    );
+    const totals = totalsResult.rows[0];
+
+    await db.query(
+      `UPDATE payroll_periods
+       SET total_gross = $2,
+           total_deductions = $3,
+           total_net = $4,
+           employee_count = $5,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [payslip.payroll_period_id, totals.total_gross, totals.total_deductions, totals.total_net, totals.employee_count]
+    );
 
     return NextResponse.json({ message: 'Payslip deleted successfully' });
   } catch (error: any) {

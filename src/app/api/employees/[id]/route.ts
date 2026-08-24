@@ -106,6 +106,11 @@ export async function PATCH(
       if (updateData[dateField] === '') updateData[dateField] = null;
     }
 
+    // Convert empty strings to null for numeric fields so Postgres doesn't reject them
+    for (const numericField of ['daily_rate', 'basic_salary']) {
+      if (updateData[numericField] === '') updateData[numericField] = null;
+    }
+
     // If terminating, set termination date
     if (body.employment_status === 'terminated' && !body.termination_date) {
       updateData.termination_date = new Date().toISOString().split('T')[0];
@@ -168,7 +173,7 @@ export async function DELETE(
     }
 
     // Check if employee has payslips
-    const payslips = await db.query('SELECT id FROM payslips WHERE employee_id = $1 LIMIT 1', [id]);
+    const payslips = await db.query('SELECT id FROM payroll_payslips WHERE employee_id = $1 LIMIT 1', [id]);
 
     if (payslips.rows.length > 0) {
       // Soft delete - mark as inactive instead of deleting
