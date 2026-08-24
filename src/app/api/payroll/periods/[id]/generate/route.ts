@@ -1,5 +1,6 @@
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
+import { getRatesMap, convertCurrency } from '@/lib/exchange-rates';
 
 // Uganda URA PAYE monthly bracket calculation
 function calculateUgandaPAYE(monthlyGross: number): number {
@@ -41,6 +42,12 @@ export async function POST(
     const settings = settingsResult.rows[0] || {};
     const nssfEmployeeRate = Number(settings.nssf_employee_rate ?? 0) / 100;
     const nssfEmployerRate = Number(settings.nssf_employer_rate ?? 0) / 100;
+
+    // Fetch company's default currency and exchange rates, so employee salaries
+    // recorded in a different currency get converted before payroll math runs.
+    const companyResult = await db.query('SELECT currency FROM companies WHERE id = $1 LIMIT 1', [companyId]);
+    const companyCurrency = companyResult.rows[0]?.currency || 'USD';
+    const ratesMap = await getRatesMap(db, companyCurrency);
 
     // Check period exists and is draft
     const periodResult = await db.query(
@@ -102,18 +109,25 @@ export async function POST(
       // Days this employee actually worked (defaults to full working days in period)
       const daysWorked: number = employee_days[employee.id] ?? workingDaysInPeriod;
 
+      // Convert employee salary figures to the company's default currency
+      // before running any payroll math, so mismatched currencies don't
+      // silently produce wrong numbers.
+      const employeeCurrency = employee.salary_currency || companyCurrency;
+      const toCompanyCurrency = (value: number) =>
+        convertCurrency(value, employeeCurrency, companyCurrency, ratesMap);
+
       // Daily rate: use explicit daily_rate if set, otherwise derive from monthly salary
-      const monthlySalary = employee.basic_salary || employee.salary || 0;
+      const monthlySalary = toCompanyCurrency(Number(employee.basic_salary || employee.salary || 0));
       const dailyRate: number = employee.daily_rate
-        ? Number(employee.daily_rate)
+        ? toCompanyCurrency(Number(employee.daily_rate))
         : monthlySalary / workingDaysInPeriod;
 
       const basicSalary = dailyRate * daysWorked;
 
       // Allowances prorated by days worked / working days
-      const housingAllowance = employee.housing_allowance || 0;
-      const transportAllowance = employee.transport_allowance || 0;
-      const otherAllowances = employee.other_allowances || 0;
+      const housingAllowance = toCompanyCurrency(Number(employee.housing_allowance || 0));
+      const transportAllowance = toCompanyCurrency(Number(employee.transport_allowance || 0));
+      const otherAllowances = toCompanyCurrency(Number(employee.other_allowances || 0));
       const prorateRatio = daysWorked / workingDaysInPeriod;
 
       const totalAllowances = (housingAllowance + transportAllowance + otherAllowances) * prorateRatio;
@@ -121,15 +135,20 @@ export async function POST(
       // Calculate gross salary
       const grossSalary = basicSalary + totalAllowances;
       
-      // Calculate PAYE using Uganda URA progressive brackets
-      const taxDeduction = calculateUgandaPAYE(grossSalary);
+      // Calculate PAYE using Uganda URA progressive brackets.
+      // The brackets are legally defined in UGX, so convert gross salary to UGX
+      // for the lookup regardless of the company's display currency, then
+      // convert the resulting tax back.
+      const grossSalaryUGX = convertCurrency(grossSalary, companyCurrency, 'UGX', ratesMap);
+      const taxDeductionUGX = calculateUgandaPAYE(grossSalaryUGX);
+      const taxDeduction = convertCurrency(taxDeductionUGX, 'UGX', companyCurrency, ratesMap);
       const nhifDeduction = 0; // Not used — kept for DB compatibility
       const nssfDeduction = grossSalary * nssfEmployeeRate;
       const nssfEmployerDeduction = grossSalary * nssfEmployerRate;
       
       // Other deductions
-      const loanDeduction = employee.loan_deduction || 0;
-      const advanceDeduction = employee.advance_deduction || 0;
+      const loanDeduction = toCompanyCurrency(Number(employee.loan_deduction || 0));
+      const advanceDeduction = toCompanyCurrency(Number(employee.advance_deduction || 0));
       
       const totalDeductions = taxDeduction + nhifDeduction + nssfDeduction + loanDeduction + advanceDeduction;
       
