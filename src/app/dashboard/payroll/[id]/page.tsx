@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
-import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 interface PayrollPeriod {
@@ -19,6 +19,7 @@ interface PayrollPeriod {
   total_gross: number;
   total_deductions: number;
   total_net: number;
+  working_days: number | null;
 }
 
 interface Payslip {
@@ -48,6 +49,10 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addableEmployees, setAddableEmployees] = useState<any[]>([]);
+  const [addForm, setAddForm] = useState({ employee_id: '', days_worked: '' as number | '', paye: true, nssf: true });
+  const [addingPayslip, setAddingPayslip] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -89,6 +94,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
         total_gross: Number(result.total_gross || 0),
         total_deductions: Number(result.total_deductions || 0),
         total_net: Number(result.total_net || 0),
+        working_days: result.working_days ?? null,
       };
 
       const payslipsData = ((result.payslips || []) as any[]).map((payslip) => ({
@@ -253,6 +259,57 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
     }
   };
 
+  const openAddPayslipModal = async () => {
+    if (!company?.id) return;
+    try {
+      const response = await fetch(`/api/employees?company_id=${company.id}`, { credentials: 'include' });
+      const result = await response.json().catch(() => ({}));
+      const allEmployees = (result.data || result || []) as any[];
+      const existingIds = new Set(payslips.map((p) => p.employee_id));
+      const eligible = allEmployees.filter((e: any) => !existingIds.has(e.id) && (e.is_active ?? true));
+      setAddableEmployees(eligible);
+      const defaultDays = period?.working_days ?? 30;
+      setAddForm({ employee_id: '', days_worked: defaultDays, paye: true, nssf: true });
+      setShowAddModal(true);
+    } catch {
+      toast.error('Failed to load employees');
+    }
+  };
+
+  const handleAddPayslip = async () => {
+    if (!addForm.employee_id) {
+      toast.error('Please select an employee');
+      return;
+    }
+    if (!company?.id) return;
+    setAddingPayslip(true);
+    try {
+      const response = await fetch(`/api/payroll/periods/${periodId}/payslips?company_id=${company.id}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: addForm.employee_id,
+          days_worked: addForm.days_worked === '' ? undefined : Number(addForm.days_worked),
+          paye: addForm.paye,
+          nssf: addForm.nssf,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast.error(result.error || 'Failed to add payslip');
+        return;
+      }
+      toast.success('Payslip added');
+      setShowAddModal(false);
+      fetchPeriodDetails(periodId);
+    } catch {
+      toast.error('Failed to add payslip');
+    } finally {
+      setAddingPayslip(false);
+    }
+  };
+
   const handleDeletePayslip = async (payslipId: string) => {
     const warning = period && period.status !== 'draft'
       ? 'This payslip belongs to a period that has already been processed. Deleting it will not reverse any related journal entry automatically. This cannot be undone. Continue?'
@@ -372,10 +429,19 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
 
       {/* Payslips Table */}
       <div className="card">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">
             Payslips ({payslips.length})
           </h2>
+          {period.status === 'draft' && (
+            <button
+              onClick={openAddPayslipModal}
+              className="btn-primary btn-sm flex items-center gap-1"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Employee
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -528,6 +594,88 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
           </div>
         );
       })()}
+
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <h2 className="text-lg font-semibold">Add Employee to Payroll</h2>
+            </div>
+            <div className="card-body space-y-4">
+              {addableEmployees.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  All active employees already have a payslip for this period.
+                </p>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label className="label">Employee *</label>
+                    <select
+                      value={addForm.employee_id}
+                      onChange={(e) => setAddForm({ ...addForm, employee_id: e.target.value })}
+                      className="input"
+                    >
+                      <option value="">Select an employee...</option>
+                      {addableEmployees.map((emp: any) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.first_name} {emp.last_name} — {emp.job_title || 'No title'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="label">Days Worked</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={addForm.days_worked}
+                      onChange={(e) => setAddForm({ ...addForm, days_worked: e.target.value === '' ? '' : Number(e.target.value) })}
+                      className="input"
+                    />
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={addForm.paye}
+                        onChange={(e) => setAddForm({ ...addForm, paye: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      Subject to PAYE
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={addForm.nssf}
+                        onChange={(e) => setAddForm({ ...addForm, nssf: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      Subject to NSSF
+                    </label>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-4 pt-4 border-t">
+                <button
+                  onClick={handleAddPayslip}
+                  disabled={addingPayslip || addableEmployees.length === 0}
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                >
+                  {addingPayslip ? 'Adding...' : 'Add Payslip'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
