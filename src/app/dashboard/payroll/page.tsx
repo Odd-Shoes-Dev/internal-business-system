@@ -444,7 +444,11 @@ export default function PayrollPage() {
   };
 
   const deletePeriod = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this payroll period? This will also delete all associated payslips.')) return;
+    const period = payrollPeriods.find(p => p.id === id);
+    const warning = period && period.status !== 'draft'
+      ? 'This payroll period has already been processed and may be posted to the general ledger. Deleting it will void the related journal entry and remove all associated payslips. This cannot be undone. Continue?'
+      : 'Are you sure you want to delete this payroll period? This will also delete all associated payslips.';
+    if (!confirm(warning)) return;
 
     try {
       const response = await fetch(`/api/payroll/periods/${id}`, {
@@ -453,9 +457,10 @@ export default function PayrollPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete payroll period');
+        toast.error(result.error || 'Failed to delete payroll period');
+        return;
       }
-      
+
       setPayrollPeriods(prev => prev.filter(p => p.id !== id));
       toast.success('Payroll period deleted');
     } catch (error) {
@@ -694,15 +699,13 @@ export default function PayrollPage() {
                       </button>
                       {openMenuId === period.id && (
                         <div className="absolute right-0 bottom-8 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[130px]">
-                          {period.status === 'draft' && (
-                            <button
-                              onClick={() => { setOpenMenuId(null); deletePeriod(period.id); }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                              Delete
-                            </button>
-                          )}
+                          <button
+                            onClick={() => { setOpenMenuId(null); deletePeriod(period.id); }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            Delete
+                          </button>
                         </div>
                       )}
                     </div>

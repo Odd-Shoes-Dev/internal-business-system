@@ -254,7 +254,10 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   };
 
   const handleDeletePayslip = async (payslipId: string) => {
-    if (!confirm('Delete this payslip? This cannot be undone.')) return;
+    const warning = period && period.status !== 'draft'
+      ? 'This payslip belongs to a period that has already been processed. Deleting it will not reverse any related journal entry automatically. This cannot be undone. Continue?'
+      : 'Delete this payslip? This cannot be undone.';
+    if (!confirm(warning)) return;
     try {
       const response = await fetch(`/api/payroll/payslips/${payslipId}`, {
         method: 'DELETE',
@@ -515,15 +518,13 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
               <EnvelopeIcon className="w-4 h-4" />
               Email
             </button>
-            {period?.status === 'draft' && (
-              <button
-                onClick={() => { setOpenMenuId(null); handleDeletePayslip(payslip.id); }}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <TrashIcon className="w-4 h-4" />
-                Delete
-              </button>
-            )}
+            <button
+              onClick={() => { setOpenMenuId(null); handleDeletePayslip(payslip.id); }}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+            >
+              <TrashIcon className="w-4 h-4" />
+              Delete
+            </button>
           </div>
         );
       })()}
