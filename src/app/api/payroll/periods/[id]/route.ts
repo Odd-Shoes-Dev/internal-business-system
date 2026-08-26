@@ -76,7 +76,7 @@ export async function GET(
   }
 }
 
-// DELETE /api/payroll/periods/[id] - Delete draft period
+// DELETE /api/payroll/periods/[id] - Delete a payroll period (any status)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -89,9 +89,8 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check period exists and is draft
     const periodResult = await db.query(
-      'SELECT id, company_id, status FROM payroll_periods WHERE id = $1 LIMIT 1',
+      'SELECT id, company_id, status, journal_entry_id FROM payroll_periods WHERE id = $1 LIMIT 1',
       [id]
     );
     const period = periodResult.rows[0];
@@ -105,10 +104,14 @@ export async function DELETE(
       return companyAccessError;
     }
 
-    if (period.status !== 'draft') {
-      return NextResponse.json(
-        { error: 'Can only delete draft payroll periods' },
-        { status: 400 }
+    // If this period was posted to the GL, void the journal entry first
+    // so we don't leave an orphaned posted entry in the books.
+    if (period.journal_entry_id) {
+      await db.query(
+        `UPDATE journal_entries
+         SET status = 'void', updated_at = NOW()
+         WHERE id = $1 AND status = 'posted'`,
+        [period.journal_entry_id]
       );
     }
 

@@ -1,15 +1,7 @@
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
-import { getRatesMap, convertCurrency } from '@/lib/exchange-rates';
-
-// Uganda URA PAYE monthly bracket calculation
-function calculateUgandaPAYE(monthlyGross: number): number {
-  if (monthlyGross <= 235000) return 0;
-  if (monthlyGross <= 335000) return (monthlyGross - 235000) * 0.10;
-  if (monthlyGross <= 410000) return 10000 + (monthlyGross - 335000) * 0.20;
-  if (monthlyGross <= 10000000) return 25000 + (monthlyGross - 410000) * 0.30;
-  return 25000 + (10000000 - 410000) * 0.30 + (monthlyGross - 10000000) * 0.40;
-}
+import { getRatesMap } from '@/lib/exchange-rates';
+import { calculatePayslip } from '@/lib/payroll/calculate-payslip';
 
 // POST /api/payroll/periods/[id]/generate - Generate payslips for all employees
 export async function POST(
@@ -74,13 +66,25 @@ export async function POST(
     // Delete existing payslips if any
     await db.query('DELETE FROM payroll_payslips WHERE payroll_period_id = $1', [periodId]);
 
-    // Get all active employees
+    // Read per-employee days, deduction exemptions, and excluded employees from request body
+    let employee_days: Record<string, number> = {};
+    let employee_exemptions: Record<string, { paye?: boolean; nssf?: boolean }> = {};
+    let excluded_employee_ids: string[] = [];
+    try {
+      const body = await request.json().catch(() => ({}));
+      employee_days = body.employee_days || {};
+      employee_exemptions = body.employee_exemptions || {};
+      excluded_employee_ids = body.excluded_employee_ids || [];
+    } catch {}
+
+    // Get all active employees, excluding anyone deliberately left out of this run
     const employeesResult = await db.query(
       `SELECT *
        FROM employees
        WHERE company_id = $1
-         AND COALESCE(is_active, true) = true`,
-      [companyId]
+         AND COALESCE(is_active, true) = true
+         AND NOT (id = ANY($2::uuid[]))`,
+      [companyId, excluded_employee_ids]
     );
     const employees = employeesResult.rows;
 
@@ -91,13 +95,6 @@ export async function POST(
       );
     }
 
-    // Read per-employee days from request body
-    let employee_days: Record<string, number> = {};
-    try {
-      const body = await request.json().catch(() => ({}));
-      employee_days = body.employee_days || {};
-    } catch {}
-
     // Working days divisor: use period's working_days if set, else calendar days in period
     const start = new Date(period.start_date);
     const end = new Date(period.end_date);
@@ -106,74 +103,24 @@ export async function POST(
 
     // Generate payslips for each employee
     const payslips = employees.map((employee: any) => {
-      // Days this employee actually worked (defaults to full working days in period)
       const daysWorked: number = employee_days[employee.id] ?? workingDaysInPeriod;
+      const exemption = employee_exemptions[employee.id] || {};
 
-      // Convert employee salary figures to the company's default currency
-      // before running any payroll math, so mismatched currencies don't
-      // silently produce wrong numbers.
-      const employeeCurrency = employee.salary_currency || companyCurrency;
-      const toCompanyCurrency = (value: number) =>
-        convertCurrency(value, employeeCurrency, companyCurrency, ratesMap);
+      const calc = calculatePayslip({
+        employee,
+        daysWorked,
+        workingDaysInPeriod,
+        companyCurrency,
+        ratesMap,
+        nssfEmployeeRate,
+        nssfEmployerRate,
+        isSubjectToPaye: exemption.paye !== false,
+        isSubjectToNssf: exemption.nssf !== false,
+      });
 
-      // Daily rate: use explicit daily_rate if set, otherwise derive from monthly salary
-      const monthlySalary = toCompanyCurrency(Number(employee.basic_salary || employee.salary || 0));
-      const dailyRate: number = employee.daily_rate
-        ? toCompanyCurrency(Number(employee.daily_rate))
-        : monthlySalary / workingDaysInPeriod;
-
-      const basicSalary = dailyRate * daysWorked;
-
-      // Allowances prorated by days worked / working days
-      const housingAllowance = toCompanyCurrency(Number(employee.housing_allowance || 0));
-      const transportAllowance = toCompanyCurrency(Number(employee.transport_allowance || 0));
-      const otherAllowances = toCompanyCurrency(Number(employee.other_allowances || 0));
-      const prorateRatio = daysWorked / workingDaysInPeriod;
-
-      const totalAllowances = (housingAllowance + transportAllowance + otherAllowances) * prorateRatio;
-      
-      // Calculate gross salary
-      const grossSalary = basicSalary + totalAllowances;
-      
-      // Calculate PAYE using Uganda URA progressive brackets.
-      // The brackets are legally defined in UGX, so convert gross salary to UGX
-      // for the lookup regardless of the company's display currency, then
-      // convert the resulting tax back.
-      const grossSalaryUGX = convertCurrency(grossSalary, companyCurrency, 'UGX', ratesMap);
-      const taxDeductionUGX = calculateUgandaPAYE(grossSalaryUGX);
-      const taxDeduction = convertCurrency(taxDeductionUGX, 'UGX', companyCurrency, ratesMap);
-      const nhifDeduction = 0; // Not used — kept for DB compatibility
-      const nssfDeduction = grossSalary * nssfEmployeeRate;
-      const nssfEmployerDeduction = grossSalary * nssfEmployerRate;
-      
-      // Other deductions
-      const loanDeduction = toCompanyCurrency(Number(employee.loan_deduction || 0));
-      const advanceDeduction = toCompanyCurrency(Number(employee.advance_deduction || 0));
-      
-      const totalDeductions = taxDeduction + nhifDeduction + nssfDeduction + loanDeduction + advanceDeduction;
-      
-      // Calculate net salary
-      const netSalary = grossSalary - totalDeductions;
-      
       return {
         payroll_period_id: periodId,
-        employee_id: employee.id,
-        basic_salary: basicSalary,
-        allowances: totalAllowances,
-        housing_allowance: housingAllowance * prorateRatio,
-        transport_allowance: transportAllowance * prorateRatio,
-        other_allowances: otherAllowances * prorateRatio,
-        gross_salary: grossSalary,
-        deductions: totalDeductions,
-        tax_deduction: taxDeduction,
-        nhif_deduction: nhifDeduction,
-        nssf_deduction: nssfDeduction,
-        nssf_employee: nssfDeduction,
-        nssf_employer: nssfEmployerDeduction,
-        loan_deduction: loanDeduction,
-        advance_deduction: advanceDeduction,
-        net_salary: netSalary,
-        days_worked: daysWorked,
+        ...calc,
         status: 'pending',
         created_by: user.id,
       };

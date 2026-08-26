@@ -186,7 +186,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/payroll/payslips/[id] - Delete payslip (only if period is draft)
+// DELETE /api/payroll/payslips/[id] - Delete payslip (any period status)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -199,7 +199,6 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check payslip exists and period is draft
     const payslipResult = await db.query(
       `SELECT pps.id, pps.payroll_period_id, pp.status AS period_status, pp.company_id
        FROM payroll_payslips pps
@@ -217,13 +216,6 @@ export async function DELETE(
     const companyAccessError = await requireCompanyAccess(user.id, payslip.company_id);
     if (companyAccessError) {
       return companyAccessError;
-    }
-
-    if (payslip.period_status !== 'draft') {
-      return NextResponse.json(
-        { error: 'Can only delete payslips for draft periods' },
-        { status: 400 }
-      );
     }
 
     // Delete payslip

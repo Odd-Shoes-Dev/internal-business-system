@@ -26,6 +26,7 @@ import {
   MinusCircleIcon,
   EllipsisVerticalIcon,
   TrashIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
@@ -61,6 +62,8 @@ export default function PayrollPage() {
     working_days: '' as number | '',
   });
   const [employeeDays, setEmployeeDays] = useState<Record<string, number>>({});
+  const [employeeExemptions, setEmployeeExemptions] = useState<Record<string, { paye: boolean; nssf: boolean }>>({});
+  const [excludedEmployeeIds, setExcludedEmployeeIds] = useState<Set<string>>(new Set());
   const [ratesMap, setRatesMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -212,7 +215,11 @@ export default function PayrollPage() {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employee_days: employeeDays }),
+          body: JSON.stringify({
+            employee_days: employeeDays,
+            employee_exemptions: employeeExemptions,
+            excluded_employee_ids: Array.from(excludedEmployeeIds),
+          }),
         }
       );
       const result = await response.json().catch(() => ({}));
@@ -444,7 +451,11 @@ export default function PayrollPage() {
   };
 
   const deletePeriod = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this payroll period? This will also delete all associated payslips.')) return;
+    const period = payrollPeriods.find(p => p.id === id);
+    const warning = period && period.status !== 'draft'
+      ? 'This payroll period has already been processed and may be posted to the general ledger. Deleting it will void the related journal entry and remove all associated payslips. This cannot be undone. Continue?'
+      : 'Are you sure you want to delete this payroll period? This will also delete all associated payslips.';
+    if (!confirm(warning)) return;
 
     try {
       const response = await fetch(`/api/payroll/periods/${id}`, {
@@ -453,9 +464,10 @@ export default function PayrollPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete payroll period');
+        toast.error(result.error || 'Failed to delete payroll period');
+        return;
       }
-      
+
       setPayrollPeriods(prev => prev.filter(p => p.id !== id));
       toast.success('Payroll period deleted');
     } catch (error) {
@@ -638,6 +650,8 @@ export default function PayrollPage() {
                       onClick={() => {
                         setSelectedPeriod(period);
                         setEmployeeDays({});
+                        setEmployeeExemptions({});
+                        setExcludedEmployeeIds(new Set());
                         setShowProcessModal(true);
                       }}
                       className="btn-primary btn-sm flex items-center gap-1"
@@ -694,15 +708,13 @@ export default function PayrollPage() {
                       </button>
                       {openMenuId === period.id && (
                         <div className="absolute right-0 bottom-8 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[130px]">
-                          {period.status === 'draft' && (
-                            <button
-                              onClick={() => { setOpenMenuId(null); deletePeriod(period.id); }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                              Delete
-                            </button>
-                          )}
+                          <button
+                            onClick={() => { setOpenMenuId(null); deletePeriod(period.id); }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            Delete
+                          </button>
                         </div>
                       )}
                     </div>
@@ -824,7 +836,7 @@ export default function PayrollPage() {
       {/* Process Payroll Modal */}
       {showProcessModal && selectedPeriod && (
         <div className="modal-overlay" onClick={() => setShowProcessModal(false)}>
-          <div className="modal max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="modal !max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
             <div className="card-header">
               <h2 className="text-lg font-semibold">Process Payroll — {selectedPeriod.period_name}</h2>
             </div>
@@ -843,12 +855,16 @@ export default function PayrollPage() {
                       <th className="px-4 py-2 text-left font-medium text-gray-600">Job Title</th>
                       <th className="px-4 py-2 text-right font-medium text-gray-600">Monthly Salary</th>
                       <th className="px-4 py-2 text-center font-medium text-gray-600">Days Worked</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-600">PAYE</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-600">NSSF</th>
+                      <th className="px-4 py-2 text-center font-medium text-gray-600"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {employees.map((emp) => {
+                    {employees.filter((emp) => !excludedEmployeeIds.has(emp.id)).map((emp) => {
                       const defaultDays = selectedPeriod.working_days ?? 30;
                       const daysVal = employeeDays[emp.id] ?? defaultDays;
+                      const exemption = employeeExemptions[emp.id] ?? { paye: true, nssf: true };
                       return (
                         <tr key={emp.id}>
                           <td className="px-4 py-2 font-medium text-gray-900">
@@ -878,6 +894,40 @@ export default function PayrollPage() {
                               className="input text-center w-20 mx-auto block"
                             />
                           </td>
+                          <td className="px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={exemption.paye}
+                              onChange={(e) => setEmployeeExemptions(prev => ({
+                                ...prev,
+                                [emp.id]: { ...exemption, paye: e.target.checked },
+                              }))}
+                              title="Subject to PAYE"
+                              className="w-4 h-4"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={exemption.nssf}
+                              onChange={(e) => setEmployeeExemptions(prev => ({
+                                ...prev,
+                                [emp.id]: { ...exemption, nssf: e.target.checked },
+                              }))}
+                              title="Subject to NSSF"
+                              className="w-4 h-4"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setExcludedEmployeeIds(prev => new Set(prev).add(emp.id))}
+                              className="text-gray-400 hover:text-red-600"
+                              title="Exclude from this payroll run"
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -885,10 +935,37 @@ export default function PayrollPage() {
                 </table>
               </div>
 
+              {excludedEmployeeIds.size > 0 && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Excluded from this run
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {employees.filter((emp) => excludedEmployeeIds.has(emp.id)).map((emp) => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => setExcludedEmployeeIds(prev => {
+                          const next = new Set(prev);
+                          next.delete(emp.id);
+                          return next;
+                        })}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-300 text-sm text-gray-700 hover:border-blueox-primary hover:text-blueox-primary"
+                      >
+                        {emp.first_name} {emp.last_name}
+                        <span className="text-xs text-blueox-primary font-medium">+ Add back</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-yellow-50 rounded-lg p-3">
                 <p className="text-sm text-yellow-700">
                   Employees with a <strong>daily rate</strong> set will use: daily rate × days worked.
                   Others use: (monthly salary ÷ working days) × days worked.
+                  Uncheck PAYE or NSSF for an employee who is not subject to that deduction.
+                  Click the × to exclude someone from this payroll run.
                 </p>
               </div>
 
