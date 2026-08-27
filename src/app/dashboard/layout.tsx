@@ -34,6 +34,7 @@ import {
   CreditCardIcon,
   ShieldCheckIcon,
   ShoppingCartIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -130,6 +131,7 @@ const navigationGroups = [
     roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Stock Control', href: '/dashboard/inventory', icon: CubeIcon },
+      { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon },
       { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
     ]
   },
@@ -176,6 +178,7 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/employees': ['admin', 'accountant', 'operations'],
   '/dashboard/assets': ['admin', 'accountant', 'operations'],
   '/dashboard/inventory': ['admin', 'accountant', 'operations'],
+  '/dashboard/requisitions': ['admin', 'accountant', 'operations'],
   '/dashboard/fleet': ['admin', 'operations'],
   '/dashboard/hotels': ['admin', 'operations'],
   '/dashboard/pos': ['admin', 'operations'],
@@ -222,6 +225,7 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showHeader, setShowHeader] = useState(true);
@@ -369,13 +373,17 @@ export default function DashboardLayout({
   const fetchNotifications = async (companyId: string) => {
     try {
       // Fetch recent notifications based on overdue invoices, bills, etc.
-      const [overdueInvoicesResponse, overdueBillsResponse] = await Promise.all([
+      const [overdueInvoicesResponse, overdueBillsResponse, requisitionActivityResponse] = await Promise.all([
         fetch(
           `/api/invoices?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
           { credentials: 'include' }
         ),
         fetch(
           `/api/bills?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
+          { credentials: 'include' }
+        ),
+        fetch(
+          `/api/requisitions/activity?company_id=${encodeURIComponent(companyId)}&limit=5`,
           { credentials: 'include' }
         ),
       ]);
@@ -385,6 +393,9 @@ export default function DashboardLayout({
         : [];
       const overdueBills = overdueBillsResponse.ok
         ? (await overdueBillsResponse.json()).data || []
+        : [];
+      const requisitionActivity = requisitionActivityResponse.ok
+        ? (await requisitionActivityResponse.json()).data || []
         : [];
 
       const notificationList: any[] = [];
@@ -411,6 +422,17 @@ export default function DashboardLayout({
         });
       });
 
+      requisitionActivity.forEach((event: any) => {
+        notificationList.push({
+          id: event.id,
+          type: event.type,
+          title: event.title,
+          message: event.message,
+          time: new Date(event.time).toLocaleDateString(),
+          href: event.href,
+        });
+      });
+
       setNotifications(notificationList.slice(0, 10));
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -418,6 +440,7 @@ export default function DashboardLayout({
   };
 
   const handleSignOut = async () => {
+    setSigningOut(true);
     await fetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
@@ -617,7 +640,9 @@ export default function DashboardLayout({
               >
                 <BellIcon className="w-5 h-5 text-blueox-primary" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-blueox-primary rounded-full" />
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {notifications.length > 99 ? '99+' : notifications.length}
+                  </span>
                 )}
               </button>
 
@@ -627,7 +652,7 @@ export default function DashboardLayout({
                     className="fixed inset-0 z-40"
                     onClick={() => setNotificationsOpen(false)}
                   />
-                  <div className="bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl animate-fade-in w-60 sm:w-80 -right-20 sm:right-0 max-w-[calc(100vw-1rem)]">
+                  <div className="bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl animate-fade-in absolute -right-20 sm:right-0 mt-2 w-60 sm:w-80 max-w-[calc(100vw-1rem)] z-50">
                     <div className="p-3 border-b border-blueox-primary/20">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-medium text-blueox-primary-dark">Notifications</h3>
@@ -734,10 +759,11 @@ export default function DashboardLayout({
                     <div className="border-t border-blueox-primary/20 py-1">
                       <button
                         onClick={handleSignOut}
-                        className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left flex items-center gap-2"
+                        disabled={signingOut}
+                        className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left flex items-center gap-2 disabled:opacity-60"
                       >
                         <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                        Sign Out
+                        {signingOut ? 'Signing out...' : 'Sign Out'}
                       </button>
                     </div>
                   </div>
