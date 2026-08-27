@@ -139,7 +139,7 @@ export default function NewRequisitionPage() {
             <ClipboardDocumentListIcon className="w-7 h-7 text-blueox-primary" />
             New Requisition
           </h1>
-          <p className="text-gray-500 mt-1">Fill in what the client requested — you'll process deliveries against it afterward</p>
+          <p className="text-gray-500 mt-1">Fill in what the client requested — you&apos;ll process deliveries against it afterward</p>
         </div>
 
         <div className="bg-white/90 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6 space-y-4">

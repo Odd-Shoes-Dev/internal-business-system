@@ -38,6 +38,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
+const NOTIFICATION_PAGE_SIZE = 10;
+
 // Navigation grouped by category - with module and role requirements
 const navigationGroups = [
   {
@@ -228,6 +230,7 @@ export default function DashboardLayout({
   const [signingOut, setSigningOut] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [visibleNotificationCount, setVisibleNotificationCount] = useState(NOTIFICATION_PAGE_SIZE);
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollYRef = useRef(0);
 
@@ -373,17 +376,21 @@ export default function DashboardLayout({
   const fetchNotifications = async (companyId: string) => {
     try {
       // Fetch recent notifications based on overdue invoices, bills, etc.
-      const [overdueInvoicesResponse, overdueBillsResponse, requisitionActivityResponse] = await Promise.all([
+      const [overdueInvoicesResponse, overdueBillsResponse, requisitionActivityResponse, readsResponse] = await Promise.all([
         fetch(
-          `/api/invoices?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
+          `/api/invoices?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=25`,
           { credentials: 'include' }
         ),
         fetch(
-          `/api/bills?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=5`,
+          `/api/bills?company_id=${encodeURIComponent(companyId)}&status=overdue&page=1&limit=25`,
           { credentials: 'include' }
         ),
         fetch(
-          `/api/requisitions/activity?company_id=${encodeURIComponent(companyId)}&limit=5`,
+          `/api/requisitions/activity?company_id=${encodeURIComponent(companyId)}&limit=20`,
+          { credentials: 'include' }
+        ),
+        fetch(
+          `/api/notifications/reads?company_id=${encodeURIComponent(companyId)}`,
           { credentials: 'include' }
         ),
       ]);
@@ -397,9 +404,13 @@ export default function DashboardLayout({
       const requisitionActivity = requisitionActivityResponse.ok
         ? (await requisitionActivityResponse.json()).data || []
         : [];
+      const readIds: string[] = readsResponse.ok
+        ? (await readsResponse.json()).data || []
+        : [];
+      const readIdSet = new Set(readIds);
 
       const notificationList: any[] = [];
-      
+
       overdueInvoices?.forEach((invoice: any) => {
         notificationList.push({
           id: `invoice-${invoice.id}`,
@@ -433,9 +444,46 @@ export default function DashboardLayout({
         });
       });
 
-      setNotifications(notificationList.slice(0, 10));
+      const withReadStatus = notificationList
+        .slice(0, 60)
+        .map((n) => ({ ...n, read: readIdSet.has(n.id) }));
+
+      setNotifications(withReadStatus);
+      setVisibleNotificationCount(NOTIFICATION_PAGE_SIZE);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markNotificationRead = async (notificationId: string) => {
+    if (!company?.id) return;
+    setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)));
+    try {
+      await fetch('/api/notifications/reads', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: company.id, notification_id: notificationId }),
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    if (!company?.id) return;
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await fetch('/api/notifications/reads', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: company.id, notification_ids: unreadIds }),
+      });
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
     }
   };
 
@@ -639,9 +687,9 @@ export default function DashboardLayout({
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
               >
                 <BellIcon className="w-5 h-5 text-blueox-primary" />
-                {notifications.length > 0 && (
+                {notifications.filter((n) => !n.read).length > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {notifications.length > 99 ? '99+' : notifications.length}
+                    {notifications.filter((n) => !n.read).length > 99 ? '99+' : notifications.filter((n) => !n.read).length}
                   </span>
                 )}
               </button>
@@ -654,31 +702,61 @@ export default function DashboardLayout({
                   />
                   <div className="bg-white/95 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-xl animate-fade-in absolute -right-20 sm:right-0 mt-2 w-60 sm:w-80 max-w-[calc(100vw-1rem)] z-50">
                     <div className="p-3 border-b border-blueox-primary/20">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <h3 className="text-sm font-medium text-blueox-primary-dark">Notifications</h3>
-                        <span className="text-xs text-blueox-primary/60">{notifications.length} items</span>
+                        <div className="flex items-center gap-2">
+                          {notifications.some((n) => !n.read) && (
+                            <button
+                              onClick={markAllNotificationsRead}
+                              className="text-xs text-blueox-primary hover:text-blueox-primary-dark hover:underline transition-colors"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                          <span className="text-xs text-blueox-primary/60">
+                            {Math.min(visibleNotificationCount, notifications.length)} of {notifications.length}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="py-1 max-h-80 overflow-y-auto">
+                    <div
+                      className="py-1 max-h-80 overflow-y-auto"
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+                        if (nearBottom) {
+                          setVisibleNotificationCount((prev) =>
+                            Math.min(prev + NOTIFICATION_PAGE_SIZE, notifications.length)
+                          );
+                        }
+                      }}
+                    >
                       {notifications.length === 0 ? (
                         <div className="p-4 text-center text-blueox-primary/60">
                           <BellIcon className="w-8 h-8 mx-auto text-blueox-primary/40 mb-2" />
                           <p className="text-sm">No new notifications</p>
                         </div>
                       ) : (
-                        notifications.map((notification) => (
+                        notifications.slice(0, visibleNotificationCount).map((notification) => (
                           <Link
                             key={notification.id}
                             href={notification.href}
-                            className="block px-4 py-3 hover:bg-blueox-primary/5 border-b border-blueox-primary/10 last:border-b-0 transition-colors"
-                            onClick={() => setNotificationsOpen(false)}
+                            className={`block px-4 py-3 hover:bg-blueox-primary/5 border-b border-blueox-primary/10 last:border-b-0 transition-colors ${
+                              notification.read ? 'opacity-60' : 'bg-blueox-primary/5'
+                            }`}
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              if (!notification.read) markNotificationRead(notification.id);
+                            }}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={`w-2 h-2 rounded-full mt-2 ${
-                                notification.type === 'overdue_invoice' ? 'bg-red-500' : 'bg-yellow-500'
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                notification.read
+                                  ? 'bg-transparent border border-blueox-primary/30'
+                                  : notification.type === 'overdue_invoice' ? 'bg-red-500' : 'bg-yellow-500'
                               }`} />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-blueox-primary-dark truncate">
+                                <p className={`text-sm truncate ${notification.read ? 'font-normal text-blueox-primary-dark/80' : 'font-medium text-blueox-primary-dark'}`}>
                                   {notification.title}
                                 </p>
                                 <p className="text-xs text-blueox-primary/60 mt-1">
