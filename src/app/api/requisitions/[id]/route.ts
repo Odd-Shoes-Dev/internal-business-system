@@ -109,16 +109,40 @@ export async function PATCH(
       );
     }
 
+    const setClauses: string[] = [];
+    const values: any[] = [id];
+    let idx = 2;
+
+    if ('client_name' in body) {
+      setClauses.push(`client_name = $${idx}`);
+      values.push(body.client_name);
+      idx++;
+    }
+    if ('delivery_location' in body) {
+      setClauses.push(`delivery_location = $${idx}`);
+      values.push(body.delivery_location ?? null);
+      idx++;
+    }
+    if ('notes' in body) {
+      setClauses.push(`notes = $${idx}`);
+      values.push(body.notes ?? null);
+      idx++;
+    }
+    if ('request_date' in body) {
+      setClauses.push(`request_date = $${idx}`);
+      values.push(body.request_date);
+      idx++;
+    }
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    setClauses.push('updated_at = NOW()');
+
     const result = await db.query(
-      `UPDATE stock_requisitions
-       SET client_name = COALESCE($2, client_name),
-           delivery_location = COALESCE($3, delivery_location),
-           notes = COALESCE($4, notes),
-           request_date = COALESCE($5, request_date),
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [id, body.client_name ?? null, body.delivery_location ?? null, body.notes ?? null, body.request_date ?? null]
+      `UPDATE stock_requisitions SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+      values
     );
 
     return NextResponse.json({ data: result.rows[0] });
