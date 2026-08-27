@@ -60,20 +60,43 @@ export async function PATCH(
       );
     }
 
-    const result = await db.query(
-      `UPDATE stock_requisition_lines
-       SET quantity_requested = $2, remarks = COALESCE($3, remarks), updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [lineId, newQuantity, body.remarks ?? null]
-    );
+    const result = await db.transaction(async (tx: any) => {
+      const lineResult = await tx.query(
+        `UPDATE stock_requisition_lines
+         SET quantity_requested = $2, remarks = COALESCE($3, remarks), updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [lineId, newQuantity, body.remarks ?? null]
+      );
 
-    // Raising the requested quantity on an otherwise-complete line reopens the requisition
-    if (requisition.status === 'partial' || requisition.status === 'open') {
-      // status recompute happens implicitly; nothing else to do here since it wasn't completed
-    }
+      const totalsResult = await tx.query(
+        `SELECT
+           COALESCE(SUM(quantity_requested), 0) AS total_requested,
+           COALESCE(SUM(quantity_delivered), 0) AS total_delivered
+         FROM stock_requisition_lines WHERE requisition_id = $1`,
+        [id]
+      );
+      const totals = totalsResult.rows[0];
+      const totalDelivered = Number(totals.total_delivered);
+      const totalRequested = Number(totals.total_requested);
+      const newStatus =
+        totalRequested > 0 && totalDelivered >= totalRequested
+          ? 'completed'
+          : totalDelivered > 0
+            ? 'partial'
+            : 'open';
 
-    return NextResponse.json({ data: result.rows[0] });
+      await tx.query(
+        `UPDATE stock_requisitions
+         SET status = $2::varchar, completed_at = CASE WHEN $2::varchar = 'completed' THEN NOW() ELSE completed_at END, updated_at = NOW()
+         WHERE id = $1`,
+        [id, newStatus]
+      );
+
+      return lineResult.rows[0];
+    });
+
+    return NextResponse.json({ data: result });
   } catch (error: any) {
     console.error('Error updating requisition item:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -120,7 +143,33 @@ export async function DELETE(
       );
     }
 
-    await db.query('DELETE FROM stock_requisition_lines WHERE id = $1', [lineId]);
+    await db.transaction(async (tx: any) => {
+      await tx.query('DELETE FROM stock_requisition_lines WHERE id = $1', [lineId]);
+
+      const totalsResult = await tx.query(
+        `SELECT
+           COALESCE(SUM(quantity_requested), 0) AS total_requested,
+           COALESCE(SUM(quantity_delivered), 0) AS total_delivered
+         FROM stock_requisition_lines WHERE requisition_id = $1`,
+        [id]
+      );
+      const totals = totalsResult.rows[0];
+      const totalDelivered = Number(totals.total_delivered);
+      const totalRequested = Number(totals.total_requested);
+      const newStatus =
+        totalRequested > 0 && totalDelivered >= totalRequested
+          ? 'completed'
+          : totalDelivered > 0
+            ? 'partial'
+            : 'open';
+
+      await tx.query(
+        `UPDATE stock_requisitions
+         SET status = $2::varchar, completed_at = CASE WHEN $2::varchar = 'completed' THEN NOW() ELSE completed_at END, updated_at = NOW()
+         WHERE id = $1`,
+        [id, newStatus]
+      );
+    });
 
     return NextResponse.json({ message: 'Item removed' });
   } catch (error: any) {

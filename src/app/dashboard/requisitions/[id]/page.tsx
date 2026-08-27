@@ -17,6 +17,7 @@ import {
   MagnifyingGlassIcon,
   LockClosedIcon,
   ArrowPathIcon,
+  PencilIcon,
 } from '@heroicons/react/24/outline';
 
 interface Line {
@@ -94,6 +95,15 @@ export default function RequisitionDetailPage() {
   const [addingItem, setAddingItem] = useState(false);
   const [productQuery, setProductQuery] = useState('');
   const [productResults, setProductResults] = useState<any[]>([]);
+  const [pendingProduct, setPendingProduct] = useState<any | null>(null);
+  const [pendingQty, setPendingQty] = useState('1');
+  const [pendingRemarks, setPendingRemarks] = useState('');
+  const [savingNewItem, setSavingNewItem] = useState(false);
+
+  // Edit line quantity
+  const [qtyEditTarget, setQtyEditTarget] = useState<Line | null>(null);
+  const [qtyEditValue, setQtyEditValue] = useState('');
+  const [savingQty, setSavingQty] = useState(false);
 
   // Process modal
   const [showProcess, setShowProcess] = useState(false);
@@ -109,6 +119,26 @@ export default function RequisitionDetailPage() {
   const [showClose, setShowClose] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [closing, setClosing] = useState(false);
+
+  // Void delivery modal
+  const [voidTarget, setVoidTarget] = useState<Delivery | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voiding, setVoiding] = useState(false);
+
+  // Edit delivery modal
+  const [editTarget, setEditTarget] = useState<Delivery | null>(null);
+  const [editDeliveryDate, setEditDeliveryDate] = useState('');
+  const [editDeliveredBy, setEditDeliveredBy] = useState('');
+  const [editReceivedBy, setEditReceivedBy] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Edit requisition details modal
+  const [showEditDetails, setShowEditDetails] = useState(false);
+  const [editClientName, setEditClientName] = useState('');
+  const [editDeliveryLocation, setEditDeliveryLocation] = useState('');
+  const [editReqNotes, setEditReqNotes] = useState('');
+  const [savingDetails, setSavingDetails] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -140,23 +170,43 @@ export default function RequisitionDetailPage() {
 
   const isEditable = requisition && (requisition.status === 'open' || requisition.status === 'partial');
 
-  const addItem = async (product: any) => {
+  const selectProductToAdd = (product: any) => {
+    setPendingProduct(product);
+    setPendingQty('1');
+    setPendingRemarks('');
+    setProductQuery('');
+    setProductResults([]);
+  };
+
+  const confirmAddItem = async () => {
+    if (!pendingProduct) return;
+    const qty = Number(pendingQty);
+    if (!(qty > 0)) {
+      toast.error('Enter a quantity greater than 0');
+      return;
+    }
+    setSavingNewItem(true);
     try {
       const res = await fetch(`/api/requisitions/${id}/lines`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: product.id, quantity_requested: 1 }),
+        body: JSON.stringify({
+          product_id: pendingProduct.id,
+          quantity_requested: qty,
+          remarks: pendingRemarks.trim() || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add item');
       toast.success('Item added');
-      setProductQuery('');
-      setProductResults([]);
+      setPendingProduct(null);
       setAddingItem(false);
       load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setSavingNewItem(false);
     }
   };
 
@@ -191,19 +241,76 @@ export default function RequisitionDetailPage() {
     }
   };
 
-  const updateQty = async (lineId: string, quantity_requested: number) => {
+  const openEditDetails = () => {
+    if (!requisition) return;
+    setEditClientName(requisition.client_name);
+    setEditDeliveryLocation(requisition.delivery_location || '');
+    setEditReqNotes(requisition.notes || '');
+    setShowEditDetails(true);
+  };
+
+  const submitEditDetails = async () => {
+    if (!editClientName.trim()) {
+      toast.error('Client name is required');
+      return;
+    }
+    setSavingDetails(true);
     try {
-      const res = await fetch(`/api/requisitions/${id}/lines/${lineId}`, {
+      const res = await fetch(`/api/requisitions/${id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity_requested }),
+        body: JSON.stringify({
+          client_name: editClientName.trim(),
+          delivery_location: editDeliveryLocation.trim() || null,
+          notes: editReqNotes.trim() || null,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update item');
+      if (!res.ok) throw new Error(data.error || 'Failed to update requisition details');
+      toast.success('Requisition details updated');
+      setShowEditDetails(false);
       load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const openQtyEdit = (line: Line) => {
+    setQtyEditTarget(line);
+    setQtyEditValue(String(line.quantity_requested));
+  };
+
+  const submitQtyEdit = async () => {
+    if (!qtyEditTarget) return;
+    const qty = Number(qtyEditValue);
+    if (!(qty > 0)) {
+      toast.error('Enter a quantity greater than 0');
+      return;
+    }
+    if (qty < Number(qtyEditTarget.quantity_delivered)) {
+      toast.error(`Cannot be less than the ${qtyEditTarget.quantity_delivered} already delivered`);
+      return;
+    }
+    setSavingQty(true);
+    try {
+      const res = await fetch(`/api/requisitions/${id}/lines/${qtyEditTarget.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity_requested: qty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update item');
+      toast.success('Quantity updated');
+      setQtyEditTarget(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingQty(false);
     }
   };
 
@@ -265,22 +372,65 @@ export default function RequisitionDetailPage() {
     }
   };
 
-  const voidDelivery = async (deliveryId: string) => {
-    const reason = prompt('Reason for voiding this delivery form? (stock and delivered quantities will be reversed)');
-    if (reason === null) return;
+  const openVoidModal = (delivery: Delivery) => {
+    setVoidTarget(delivery);
+    setVoidReason('');
+  };
+
+  const submitVoidDelivery = async () => {
+    if (!voidTarget) return;
+    setVoiding(true);
     try {
-      const res = await fetch(`/api/requisitions/${id}/deliveries/${deliveryId}/void`, {
+      const res = await fetch(`/api/requisitions/${id}/deliveries/${voidTarget.id}/void`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ void_reason: reason || null }),
+        body: JSON.stringify({ void_reason: voidReason.trim() || null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to void delivery');
       toast.success('Delivery voided and stock reversed');
+      setVoidTarget(null);
       load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setVoiding(false);
+    }
+  };
+
+  const openEditModal = (delivery: Delivery) => {
+    setEditTarget(delivery);
+    setEditDeliveryDate(delivery.delivery_date?.slice(0, 10) || '');
+    setEditDeliveredBy(delivery.delivered_by || '');
+    setEditReceivedBy(delivery.received_by || '');
+    setEditNotes(delivery.notes || '');
+  };
+
+  const submitEditDelivery = async () => {
+    if (!editTarget) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/requisitions/${id}/deliveries/${editTarget.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          delivery_date: editDeliveryDate || null,
+          delivered_by: editDeliveredBy,
+          received_by: editReceivedBy,
+          notes: editNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update delivery form');
+      toast.success('Delivery form updated');
+      setEditTarget(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -467,6 +617,11 @@ export default function RequisitionDetailPage() {
                 <PrinterIcon className="w-5 h-5" /> Print
               </button>
               {isEditable && (
+                <button onClick={openEditDetails} className="btn-secondary flex items-center gap-2">
+                  <PencilIcon className="w-5 h-5" /> Edit Details
+                </button>
+              )}
+              {isEditable && (
                 <button onClick={openProcess} className="btn-primary flex items-center gap-2">
                   <ClipboardDocumentListIcon className="w-5 h-5" /> Process
                 </button>
@@ -495,13 +650,16 @@ export default function RequisitionDetailPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Items ({Number(totalDelivered)} / {Number(totalRequested)} delivered)</h2>
             {isEditable && (
-              <button onClick={() => setAddingItem(v => !v)} className="btn-secondary flex items-center gap-1 text-sm">
+              <button
+                onClick={() => { setAddingItem(v => !v); setPendingProduct(null); setProductQuery(''); }}
+                className="btn-secondary flex items-center gap-1 text-sm"
+              >
                 <PlusIcon className="w-4 h-4" /> Add Item
               </button>
             )}
           </div>
 
-          {addingItem && (
+          {addingItem && !pendingProduct && (
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -519,7 +677,7 @@ export default function RequisitionDetailPage() {
                       key={p.id}
                       type="button"
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between"
-                      onClick={() => addItem(p)}
+                      onClick={() => selectProductToAdd(p)}
                     >
                       <span>{p.name}</span>
                       <span className="text-xs text-gray-400">{p.quantity_on_hand} {p.unit_of_measure} in stock</span>
@@ -527,6 +685,49 @@ export default function RequisitionDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {addingItem && pendingProduct && (
+            <div className="border border-blueox-primary/20 rounded-xl p-4 space-y-3 bg-blueox-primary/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{pendingProduct.name}</p>
+                  <p className="text-xs text-gray-400">{pendingProduct.quantity_on_hand} {pendingProduct.unit_of_measure} in stock</p>
+                </div>
+                <button type="button" onClick={() => setPendingProduct(null)} className="text-gray-400 hover:text-gray-600">
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    autoFocus
+                    className="input"
+                    value={pendingQty}
+                    onChange={e => setPendingQty(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Remarks</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={pendingRemarks}
+                    onChange={e => setPendingRemarks(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn-secondary text-sm" onClick={() => setPendingProduct(null)}>Cancel</button>
+                <button type="button" className="btn-primary text-sm" disabled={savingNewItem} onClick={confirmAddItem}>
+                  {savingNewItem ? 'Adding...' : 'Add Item'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -553,17 +754,15 @@ export default function RequisitionDetailPage() {
                       </td>
                       <td className="px-3 py-2">
                         {isEditable && !locked ? (
-                          <input
-                            type="number"
-                            min={Number(l.quantity_delivered)}
-                            step="any"
-                            defaultValue={l.quantity_requested}
-                            className="input w-24"
-                            onBlur={e => {
-                              const val = Number(e.target.value);
-                              if (val !== Number(l.quantity_requested) && val > 0) updateQty(l.id, val);
-                            }}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => openQtyEdit(l)}
+                            className="inline-flex items-center gap-1.5 text-gray-800 hover:text-blueox-primary transition-colors"
+                            title="Edit quantity"
+                          >
+                            {Number(l.quantity_requested)}
+                            <PencilIcon className="w-3.5 h-3.5 text-gray-400" />
+                          </button>
                         ) : (
                           Number(l.quantity_requested)
                         )}
@@ -641,12 +840,20 @@ export default function RequisitionDetailPage() {
                         <PrinterIcon className="w-4 h-4" /> Print
                       </button>
                       {d.status === 'active' && (
-                        <button
-                          onClick={() => voidDelivery(d.id)}
-                          className="text-red-600 hover:text-red-800 text-xs font-semibold px-3 py-1.5 border border-red-200 rounded-lg"
-                        >
-                          Void
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openEditModal(d)}
+                            className="btn-secondary flex items-center gap-1 text-xs px-3 py-1.5"
+                          >
+                            <PencilIcon className="w-4 h-4" /> Edit
+                          </button>
+                          <button
+                            onClick={() => openVoidModal(d)}
+                            className="text-red-600 hover:text-red-800 text-xs font-semibold px-3 py-1.5 border border-red-200 rounded-lg"
+                          >
+                            Void
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -760,6 +967,135 @@ export default function RequisitionDetailPage() {
               <button className="btn-secondary" onClick={() => setShowClose(false)}>Cancel</button>
               <button className="btn-primary" disabled={closing} onClick={closeRequisition}>
                 {closing ? 'Closing...' : 'Close Requisition'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Void delivery modal */}
+      {voidTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Void Delivery {voidTarget.delivery_number}</h3>
+            <p className="text-sm text-gray-600">
+              Stock and delivered quantities for this delivery will be reversed. The delivery form stays in the record, marked as voided.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Reason (optional)</label>
+              <textarea
+                className="input"
+                rows={2}
+                autoFocus
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="btn-secondary" onClick={() => setVoidTarget(null)}>Cancel</button>
+              <button
+                className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
+                disabled={voiding}
+                onClick={submitVoidDelivery}
+              >
+                {voiding ? 'Voiding...' : 'Void Delivery'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit requisition details modal */}
+      {showEditDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Edit Requisition Details</h3>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Client Name *</label>
+              <input type="text" className="input" value={editClientName} onChange={e => setEditClientName(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Delivery Location</label>
+              <input type="text" className="input" value={editDeliveryLocation} onChange={e => setEditDeliveryLocation(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <textarea className="input" rows={2} value={editReqNotes} onChange={e => setEditReqNotes(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="btn-secondary" onClick={() => setShowEditDetails(false)}>Cancel</button>
+              <button className="btn-primary" disabled={savingDetails} onClick={submitEditDetails}>
+                {savingDetails ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit line quantity modal */}
+      {qtyEditTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Edit Quantity</h3>
+            <p className="text-sm text-gray-600">{qtyEditTarget.product_name}</p>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Quantity Requested</label>
+              <input
+                type="number"
+                min={Number(qtyEditTarget.quantity_delivered)}
+                step="any"
+                autoFocus
+                className="input"
+                value={qtyEditValue}
+                onChange={e => setQtyEditValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitQtyEdit(); }}
+              />
+              {Number(qtyEditTarget.quantity_delivered) > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Cannot be less than {Number(qtyEditTarget.quantity_delivered)} already delivered
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="btn-secondary" onClick={() => setQtyEditTarget(null)}>Cancel</button>
+              <button className="btn-primary" disabled={savingQty} onClick={submitQtyEdit}>
+                {savingQty ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit delivery modal */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Edit Delivery {editTarget.delivery_number}</h3>
+            <p className="text-sm text-gray-600">
+              Quantities delivered cannot be changed here — void this delivery and process a new one for that. You can fix the date, names, and notes below.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Delivery Date</label>
+                <input type="date" className="input" value={editDeliveryDate} onChange={e => setEditDeliveryDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Delivered By</label>
+                <input type="text" className="input" value={editDeliveredBy} onChange={e => setEditDeliveredBy(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Received By</label>
+                <input type="text" className="input" value={editReceivedBy} onChange={e => setEditReceivedBy(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <textarea className="input" rows={2} value={editNotes} onChange={e => setEditNotes(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="btn-secondary" onClick={() => setEditTarget(null)}>Cancel</button>
+              <button className="btn-primary" disabled={savingEdit} onClick={submitEditDelivery}>
+                {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
