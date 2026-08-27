@@ -493,7 +493,7 @@ export default function DashboardLayout({
       method: 'POST',
       credentials: 'include',
     });
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   // Show skeleton layout (sidebar always visible) while checking authentication
