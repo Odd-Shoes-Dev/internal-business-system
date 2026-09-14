@@ -267,14 +267,34 @@ export async function POST(
                billCurrency, exchangeRate, baseAmount]
             );
 
-            await tx.query(
+            const cashLine = await tx.query<{ id: string }>(
               `INSERT INTO journal_lines (
                  journal_entry_id, line_number, account_id, debit, credit, description,
                  currency, exchange_rate, base_debit, base_credit
-               ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
+               ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)
+               RETURNING id`,
               [journalEntryId, cashAccountId, paymentAmount, `Payment - Bill ${bill.bill_number}`,
                billCurrency, exchangeRate, baseAmount]
             );
+
+            // Keep the Bank page in sync: a payment made from a specific bank
+            // account is also a withdrawal on that account's own transaction ledger.
+            if (body.bank_account_id) {
+              await tx.query(
+                `INSERT INTO bank_transactions (
+                   bank_account_id, transaction_date, transaction_type, description,
+                   amount, reference_number, matched_journal_line_id
+                 ) VALUES ($1, $2, 'withdrawal', $3, $4, $5, $6)`,
+                [
+                  body.bank_account_id,
+                  body.payment_date,
+                  `Payment for Bill ${bill.bill_number} - ${bill.vendor_name || 'Vendor'}`,
+                  -Math.abs(paymentAmount),
+                  body.reference || ref,
+                  cashLine.rows[0]?.id || null,
+                ]
+              );
+            }
           }
         }
       }

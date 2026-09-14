@@ -22,11 +22,18 @@ interface Bill {
   } | null;
 }
 
+interface BankAccountOption {
+  id: string;
+  name: string;
+  bank_name?: string;
+}
+
 export default function RecordBillPaymentPage() {
   const params = useParams();
   const router = useRouter();
   const { company } = useCompany();
   const [bill, setBill] = useState<Bill | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -66,15 +73,18 @@ export default function RecordBillPaymentPage() {
         vendor: data.vendors ? { name: data.vendors.name } : null,
       });
 
-      const companyQuery = company?.id ? `?company_id=${company.id}&active=true` : '?active=true';
+      const companyId = data.company_id || company?.id;
+      const companyQuery = companyId ? `?company_id=${companyId}&active=true` : '?active=true';
       const bankAccountsResponse = await fetch(`/api/bank-accounts${companyQuery}`, {
         credentials: 'include',
       });
       if (bankAccountsResponse.ok) {
         const bankAccountsResult = await bankAccountsResponse.json();
-        const firstBankAccount = (bankAccountsResult.data || [])[0];
-        if (firstBankAccount) {
-          setBankAccountId(firstBankAccount.id);
+        const accounts = bankAccountsResult.data || [];
+        setBankAccounts(accounts);
+        const primary = accounts.find((a: any) => a.is_primary) || accounts[0];
+        if (primary) {
+          setBankAccountId(primary.id);
         }
       }
 
@@ -110,8 +120,8 @@ export default function RecordBillPaymentPage() {
         throw new Error(`Amount cannot exceed balance due (${formatCurrency(balanceDue)})`);
       }
 
-      if (formData.payment_method !== 'cash' && !bankAccountId) {
-        throw new Error('No active bank account found. Please set up a bank account first.');
+      if (formData.payment_method !== 'cash' && bankAccounts.length > 0 && !bankAccountId) {
+        throw new Error('Please select which bank account this payment is from');
       }
 
       // Record payment via API
@@ -275,6 +285,34 @@ export default function RecordBillPaymentPage() {
               <option value="other">Other</option>
             </select>
           </div>
+
+          {formData.payment_method !== 'cash' && (
+            bankAccounts.length > 0 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Bank Account <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={bankAccountId}
+                  onChange={(e) => setBankAccountId(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
+                >
+                  <option value="">Select account...</option>
+                  {bankAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}{a.bank_name ? ` (${a.bank_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                No bank accounts set up yet — this payment will be recorded against your default cash account.{' '}
+                <Link href="/dashboard/bank" className="text-[#52b53b] hover:underline">Set one up</Link>
+              </p>
+            )
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

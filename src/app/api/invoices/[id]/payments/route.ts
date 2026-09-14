@@ -93,11 +93,27 @@ export async function POST(request: NextRequest, context: any) {
       const arAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
         '1100', invoice.company_id,
       ]);
-      const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
-        '1000', invoice.company_id,
-      ]);
 
-      if (arAccount.rowCount && cashAccount.rowCount) {
+      // Resolve which GL account cash actually lands in: the bank account's own
+      // linked GL account if one was chosen, otherwise the default Cash account.
+      let cashAccountId: string | null = null;
+      let bankAccount: { id: string; gl_account_id: string | null } | null = null;
+      if (body.bank_account_id) {
+        const bankAccountResult = await tx.query<{ id: string; gl_account_id: string | null }>(
+          'SELECT id, gl_account_id FROM bank_accounts WHERE id = $1 AND company_id = $2 LIMIT 1',
+          [body.bank_account_id, invoice.company_id]
+        );
+        bankAccount = bankAccountResult.rows[0] || null;
+        cashAccountId = bankAccount?.gl_account_id || null;
+      }
+      if (!cashAccountId) {
+        const cashAccount = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [
+          '1000', invoice.company_id,
+        ]);
+        cashAccountId = cashAccount.rows[0]?.id || null;
+      }
+
+      if (arAccount.rowCount && cashAccountId) {
         const entryNumber = await tx.query<{ entry_number: string }>(
           'SELECT generate_journal_entry_number() AS entry_number'
         );
@@ -129,12 +145,13 @@ export async function POST(request: NextRequest, context: any) {
           const exchangeRate = getExchangeRate(invCurrency, baseCurrency, ratesMap);
           const baseAmount = Number(body.amount) * exchangeRate;
 
-          await tx.query(
+          const cashLine = await tx.query<{ id: string }>(
             `INSERT INTO journal_lines (
                journal_entry_id, line_number, account_id, debit, credit, description,
                currency, exchange_rate, base_debit, base_credit
-             ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
-            [journalEntryId, cashAccount.rows[0].id, body.amount, 'Payment received',
+             ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)
+             RETURNING id`,
+            [journalEntryId, cashAccountId, body.amount, 'Payment received',
              invCurrency, exchangeRate, baseAmount]
           );
 
@@ -146,6 +163,25 @@ export async function POST(request: NextRequest, context: any) {
             [journalEntryId, arAccount.rows[0].id, body.amount, 'AR reduction',
              invCurrency, exchangeRate, baseAmount]
           );
+
+          // Keep the Bank page in sync: a payment received into a specific bank
+          // account is also a deposit on that account's own transaction ledger.
+          if (bankAccount) {
+            await tx.query(
+              `INSERT INTO bank_transactions (
+                 bank_account_id, transaction_date, transaction_type, description,
+                 amount, reference_number, matched_journal_line_id
+               ) VALUES ($1, $2, 'deposit', $3, $4, $5, $6)`,
+              [
+                bankAccount.id,
+                body.payment_date,
+                `Invoice payment received - ${body.payment_method}`,
+                Math.abs(Number(body.amount)),
+                body.reference || null,
+                cashLine.rows[0]?.id || null,
+              ]
+            );
+          }
         }
       }
 
