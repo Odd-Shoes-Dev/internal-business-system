@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { SparklesIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, UserPlusIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 export default function SignUpPage() {
@@ -16,6 +16,8 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!signupsEnabled) {
     return (
@@ -194,16 +196,27 @@ export default function SignUpPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-blueox-primary">
                   Password
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-4 border border-blueox-primary/20 rounded-2xl text-lg placeholder-gray-500 focus:border-blueox-primary focus:ring-2 focus:ring-blueox-primary/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-4 pr-12 border border-blueox-primary/20 rounded-2xl text-lg placeholder-gray-500 focus:border-blueox-primary focus:ring-2 focus:ring-blueox-primary/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {/* Confirm Password Field */}
@@ -211,16 +224,27 @@ export default function SignUpPage() {
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-blueox-primary">
                   Confirm Password
                 </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-4 border border-blueox-primary/20 rounded-2xl text-lg placeholder-gray-500 focus:border-blueox-primary focus:ring-2 focus:ring-blueox-primary/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-4 pr-12 border border-blueox-primary/20 rounded-2xl text-lg placeholder-gray-500 focus:border-blueox-primary focus:ring-2 focus:ring-blueox-primary/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(v => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {/* Create Account Button with Large Size for Visual Hierarchy */}
