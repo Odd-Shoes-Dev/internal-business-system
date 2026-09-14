@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccountIdByCode } from '@/lib/accounting/provider-accounting';
-import { getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
+import { convertCurrency, getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/bills/:id/payments - List payments for a bill
@@ -160,13 +160,15 @@ export async function POST(
 
     const outcome = await db.transaction(async (tx) => {
       let payFromAccountId: string | null = null;
+      let payFromCurrency: string | null = null;
 
       if (body.bank_account_id) {
-        const bankAccount = await tx.query<{ gl_account_id: string | null }>(
-          'SELECT gl_account_id FROM bank_accounts WHERE id = $1 LIMIT 1',
+        const bankAccount = await tx.query<{ gl_account_id: string | null; currency: string | null }>(
+          'SELECT gl_account_id, currency FROM bank_accounts WHERE id = $1 LIMIT 1',
           [body.bank_account_id]
         );
         payFromAccountId = bankAccount.rows[0]?.gl_account_id || null;
+        payFromCurrency = bankAccount.rows[0]?.currency || null;
       }
 
       const payment = await tx.query<any>(
@@ -279,7 +281,11 @@ export async function POST(
 
             // Keep the Bank page in sync: a payment made from a specific bank
             // account is also a withdrawal on that account's own transaction ledger.
+            // bank_transactions has no currency column - amount must be converted
+            // into the bank account's own currency, not left in the bill's.
             if (body.bank_account_id) {
+              const bankCurrency = payFromCurrency || billCurrency;
+              const bankTxAmount = convertCurrency(paymentAmount, billCurrency, bankCurrency, ratesMap);
               await tx.query(
                 `INSERT INTO bank_transactions (
                    bank_account_id, transaction_date, transaction_type, description,
@@ -289,7 +295,7 @@ export async function POST(
                   body.bank_account_id,
                   body.payment_date,
                   `Payment for Bill ${bill.bill_number} - ${bill.vendor_name || 'Vendor'}`,
-                  -Math.abs(paymentAmount),
+                  -Math.abs(bankTxAmount),
                   body.reference || ref,
                   cashLine.rows[0]?.id || null,
                 ]

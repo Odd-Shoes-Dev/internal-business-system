@@ -97,10 +97,10 @@ export async function POST(request: NextRequest, context: any) {
       // Resolve which GL account cash actually lands in: the bank account's own
       // linked GL account if one was chosen, otherwise the default Cash account.
       let cashAccountId: string | null = null;
-      let bankAccount: { id: string; gl_account_id: string | null } | null = null;
+      let bankAccount: { id: string; gl_account_id: string | null; currency: string | null } | null = null;
       if (body.bank_account_id) {
-        const bankAccountResult = await tx.query<{ id: string; gl_account_id: string | null }>(
-          'SELECT id, gl_account_id FROM bank_accounts WHERE id = $1 AND company_id = $2 LIMIT 1',
+        const bankAccountResult = await tx.query<{ id: string; gl_account_id: string | null; currency: string | null }>(
+          'SELECT id, gl_account_id, currency FROM bank_accounts WHERE id = $1 AND company_id = $2 LIMIT 1',
           [body.bank_account_id, invoice.company_id]
         );
         bankAccount = bankAccountResult.rows[0] || null;
@@ -166,7 +166,11 @@ export async function POST(request: NextRequest, context: any) {
 
           // Keep the Bank page in sync: a payment received into a specific bank
           // account is also a deposit on that account's own transaction ledger.
+          // bank_transactions has no currency column - amount must be converted
+          // into the bank account's own currency, not left in the invoice's.
           if (bankAccount) {
+            const bankCurrency = bankAccount.currency || invCurrency;
+            const bankTxAmount = convertCurrency(Number(body.amount), invCurrency, bankCurrency, ratesMap);
             await tx.query(
               `INSERT INTO bank_transactions (
                  bank_account_id, transaction_date, transaction_type, description,
@@ -176,7 +180,7 @@ export async function POST(request: NextRequest, context: any) {
                 bankAccount.id,
                 body.payment_date,
                 `Invoice payment received - ${body.payment_method}`,
-                Math.abs(Number(body.amount)),
+                Math.abs(bankTxAmount),
                 body.reference || null,
                 cashLine.rows[0]?.id || null,
               ]

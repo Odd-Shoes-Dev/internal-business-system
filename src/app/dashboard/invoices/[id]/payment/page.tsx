@@ -299,9 +299,13 @@ export default function RecordPaymentPage() {
             />
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={submitting} className="flex-1">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:pointer-events-none disabled:hover:scale-100"
+              >
                 {submitting ? 'Recording...' : 'Record Payment'}
-              </Button>
+              </button>
               <Link href={`/dashboard/invoices/${params.id}`}>
                 <Button type="button" variant="outline">
                   Cancel
