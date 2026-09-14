@@ -9,6 +9,17 @@ module.exports = {
     extend: {
       colors: {
         // BlueOx Business Platform brand colors - Professional Royal Blue Theme
+        //
+        // DO NOT add named keys here (primary, primary-dark, accent, success, warning, etc.)
+        // even though classes like `blueox-primary`, `blueox-accent`, `navy-600` appear
+        // throughout src/ and don't match any key below. Those classes are intentionally
+        // inert (Tailwind silently generates no CSS for them) - that no-op rendering IS
+        // the app's current, approved visual design. This was tried once (adding the
+        // matching named keys from globals.css's CSS custom properties) and reverted
+        // because it applied a much heavier navy/blue tint across ~2,400 usages at once,
+        // which broke the actual look the app is meant to have. If a specific element
+        // genuinely looks broken/invisible, fix that element inline/locally - do not
+        // "fix" it by adding keys here or renaming classes to match this palette.
         blueox: {
           // Professional Royal Blue Palette
           50: '#f0f4ff',

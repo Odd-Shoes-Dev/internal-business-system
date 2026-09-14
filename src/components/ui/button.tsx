@@ -4,6 +4,12 @@ import { forwardRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+// NOTE: `navy-600`/`navy-700`/`navy-500`/`navy-50` below don't match any Tailwind
+// color token (no `navy` family is defined in tailwind.config.js), so these classes
+// render with no color - that's the current, approved look for this button. Do not
+// "fix" this by adding a `navy` palette or renaming to `blueox-*` - that was tried
+// and reverted because it changed the app's visual design more broadly than intended.
+// If this specific button needs to look different, restyle it explicitly instead.
 const buttonVariants = cva(
   'inline-flex items-center justify-center rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
