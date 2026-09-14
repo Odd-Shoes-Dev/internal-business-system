@@ -106,19 +106,24 @@ export default function TransactionDetailPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blueox-primary/20 border-t-blueox-primary" />
       </div>
     );
   }
 
   if (!transaction) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Transaction not found</p>
-        <Link href="/dashboard/bank/transactions" className="btn-primary mt-4">
-          Back to Transactions
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Transaction not found</p>
+          <Link
+            href="/dashboard/bank/transactions"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+          >
+            Back to Transactions
+          </Link>
+        </div>
       </div>
     );
   }
@@ -126,23 +131,34 @@ export default function TransactionDetailPage({ params }: PageProps) {
   const isIncoming = transaction.amount > 0 || transaction.transaction_type === 'deposit' || transaction.transaction_type === 'transfer_in';
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto py-8 px-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/bank/transactions" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
+          <button
+            onClick={() => router.back()}
+            className="p-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 rounded-xl transition-all duration-300"
+            title="Go back"
+          >
+            <ArrowLeftIcon className="w-5 h-5 text-blueox-primary" />
+          </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Transaction Details</h1>
-            <p className="text-gray-500 mt-1">{formatDate(transaction.transaction_date)}</p>
+            <h1 className="text-2xl font-bold text-blueox-primary-dark">Transaction Details</h1>
+            <p className="text-gray-600 mt-1">{formatDate(transaction.transaction_date)}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="btn-ghost p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="p-2 bg-white/80 backdrop-blur-xl border border-red-200 hover:border-red-400 rounded-xl transition-all duration-300 text-red-600 disabled:opacity-50"
           >
             <TrashIcon className="w-5 h-5" />
           </button>
@@ -150,7 +166,7 @@ export default function TransactionDetailPage({ params }: PageProps) {
       </div>
 
       {/* Transaction Amount Card */}
-      <div className={`bg-white rounded-xl shadow-sm border-2 p-8 text-center ${
+      <div className={`bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border-2 p-8 text-center ${
         isIncoming ? 'border-green-200' : 'border-red-200'
       }`}>
         <div className={`inline-flex p-4 rounded-full mb-4 ${
@@ -173,8 +189,8 @@ export default function TransactionDetailPage({ params }: PageProps) {
       </div>
 
       {/* Transaction Details */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Transaction Information</h2>
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6">
+        <h2 className="text-sm font-semibold text-blueox-primary-dark mb-4 uppercase tracking-wide">Transaction Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">Bank Account</label>
@@ -233,11 +249,12 @@ export default function TransactionDetailPage({ params }: PageProps) {
       <div className="flex gap-3">
         <Link
           href={`/dashboard/bank/accounts/${transaction.bank_account_id}`}
-          className="btn-secondary flex-1 justify-center"
+          className="inline-flex items-center justify-center gap-2 flex-1 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 px-5 py-3 rounded-2xl font-semibold text-blueox-primary transition-all duration-300 hover:shadow-lg"
         >
-          <BanknotesIcon className="w-5 h-5 mr-2" />
+          <BanknotesIcon className="w-5 h-5" />
           View Account
         </Link>
+      </div>
       </div>
     </div>
   );

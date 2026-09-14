@@ -41,3 +41,5 @@ export {
 export { Avatar, AvatarGroup, AvatarWithStatus, StatusIndicator } from './avatar';
 export { Combobox, MultiCombobox } from './combobox';
 export { CurrencySelect } from './currency-select';
+export { FilterSearchBar } from './filter-search-bar';
+export type { FilterOption } from './filter-search-bar';
