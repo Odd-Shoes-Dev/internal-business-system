@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
-import { Button, Card, CardHeader, CardTitle, CardBody, Input, Select, Textarea, LoadingSpinner } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardBody, Input, Combobox, Textarea, LoadingSpinner } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 
@@ -245,10 +245,10 @@ export default function RecordPaymentPage() {
               />
             </div>
 
-            <Select
+            <Combobox
               label="Payment Method"
               value={formData.payment_method}
-              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, payment_method: value })}
               options={[
                 { value: 'bank_transfer', label: 'Bank Transfer' },
                 { value: 'check', label: 'Check' },
@@ -257,22 +257,22 @@ export default function RecordPaymentPage() {
                 { value: 'stripe', label: 'Stripe' },
                 { value: 'other', label: 'Other' },
               ]}
+              searchable={false}
               required
             />
 
             {formData.payment_method !== 'cash' && (
               bankAccounts.length > 0 ? (
-                <Select
+                <Combobox
                   label="Bank Account"
                   value={bankAccountId}
-                  onChange={(e) => setBankAccountId(e.target.value)}
-                  options={[
-                    { value: '', label: 'Select account...' },
-                    ...bankAccounts.map((a) => ({
-                      value: a.id,
-                      label: `${a.name}${a.bank_name ? ` (${a.bank_name})` : ''}`,
-                    })),
-                  ]}
+                  onChange={setBankAccountId}
+                  placeholder="Select account..."
+                  options={bankAccounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                    description: a.bank_name || undefined,
+                  }))}
                   required
                 />
               ) : (

@@ -9,6 +9,7 @@ import {
   CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
+import { Combobox } from '@/components/ui';
 
 interface Bill {
   id: string;
@@ -268,44 +269,35 @@ export default function RecordBillPaymentPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Method <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.payment_method}
-              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-              required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
-            >
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="check">Check</option>
-              <option value="cash">Cash</option>
-              <option value="credit_card">Credit Card</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+          <Combobox
+            label="Payment Method"
+            value={formData.payment_method}
+            onChange={(value) => setFormData({ ...formData, payment_method: value })}
+            options={[
+              { value: 'bank_transfer', label: 'Bank Transfer' },
+              { value: 'check', label: 'Check' },
+              { value: 'cash', label: 'Cash' },
+              { value: 'credit_card', label: 'Credit Card' },
+              { value: 'other', label: 'Other' },
+            ]}
+            searchable={false}
+            required
+          />
 
           {formData.payment_method !== 'cash' && (
             bankAccounts.length > 0 ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bank Account <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={bankAccountId}
-                  onChange={(e) => setBankAccountId(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
-                >
-                  <option value="">Select account...</option>
-                  {bankAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}{a.bank_name ? ` (${a.bank_name})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Combobox
+                label="Bank Account"
+                value={bankAccountId}
+                onChange={setBankAccountId}
+                placeholder="Select account..."
+                options={bankAccounts.map((a) => ({
+                  value: a.id,
+                  label: a.name,
+                  description: a.bank_name || undefined,
+                }))}
+                required
+              />
             ) : (
               <p className="text-xs text-gray-500">
                 No bank accounts set up yet — this payment will be recorded against your default cash account.{' '}
