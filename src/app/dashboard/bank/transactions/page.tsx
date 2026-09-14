@@ -129,31 +129,34 @@ export default function BankTransactionsPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blueox-primary/20 border-t-blueox-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blueox-primary/5 rounded-full blur-xl"></div>
+        <div className="absolute top-60 right-16 w-24 h-24 bg-blueox-accent/10 rounded-full blur-lg"></div>
+      </div>
+
+      <div className="relative max-w-6xl mx-auto py-8 px-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 rounded-xl transition-all duration-300"
             title="Go back"
           >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+            <ArrowLeftIcon className="w-5 h-5 text-blueox-primary" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Bank Transactions</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl font-bold text-blueox-primary-dark">Bank Transactions</h1>
+            <p className="text-sm text-gray-600 mt-1">
               View and manage all bank transactions
             </p>
           </div>
@@ -161,31 +164,33 @@ export default function BankTransactionsPage() {
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Link
             href="/dashboard/bank/transactions/new?type=deposit"
-            className="btn-secondary flex-1 sm:flex-none justify-center"
+            className="inline-flex items-center justify-center gap-2 flex-1 sm:flex-none bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 px-4 py-2.5 rounded-2xl font-semibold text-blueox-primary transition-all duration-300 hover:shadow-lg"
           >
-            <ArrowUpIcon className="w-5 h-5 mr-2" />
+            <ArrowUpIcon className="w-5 h-5" />
             Deposit
           </Link>
           <Link
             href="/dashboard/bank/transactions/new?type=withdrawal"
-            className="btn-secondary flex-1 sm:flex-none justify-center"
+            className="inline-flex items-center justify-center gap-2 flex-1 sm:flex-none bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 px-4 py-2.5 rounded-2xl font-semibold text-blueox-primary transition-all duration-300 hover:shadow-lg"
           >
-            <ArrowDownIcon className="w-5 h-5 mr-2" />
+            <ArrowDownIcon className="w-5 h-5" />
             Withdrawal
           </Link>
-          <Link href="/dashboard/bank/transactions/new" className="btn-primary w-full sm:w-auto justify-center">
-            <PlusIcon className="w-5 h-5 mr-2" />
+          <Link
+            href="/dashboard/bank/transactions/new"
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-5 py-2.5 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+          >
+            <PlusIcon className="w-5 h-5" />
             Add Transaction
           </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card mb-6">
-        <div className="p-4">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
-            <FunnelIcon className="w-5 h-5 text-gray-500" />
-            <h3 className="font-medium text-gray-900">Filters</h3>
+            <FunnelIcon className="w-5 h-5 text-blueox-primary" />
+            <h3 className="font-semibold text-blueox-primary-dark">Filters</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -195,7 +200,7 @@ export default function BankTransactionsPage() {
               <select
                 value={selectedAccount}
                 onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-xl border border-blueox-primary/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary/30 bg-white/80"
               >
                 <option value="all">All Accounts</option>
                 {accounts.map((account) => (
@@ -213,7 +218,7 @@ export default function BankTransactionsPage() {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-xl border border-blueox-primary/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary/30 bg-white/80"
               >
                 <option value="all">All Types</option>
                 <option value="deposit">Deposits</option>
@@ -229,7 +234,7 @@ export default function BankTransactionsPage() {
               <select
                 value={reconcileFilter}
                 onChange={(e) => setReconcileFilter(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-xl border border-blueox-primary/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blueox-primary/30 bg-white/80"
               >
                 <option value="all">All</option>
                 <option value="reconciled">Reconciled</option>
@@ -237,15 +242,14 @@ export default function BankTransactionsPage() {
               </select>
             </div>
           </div>
-        </div>
       </div>
 
       {/* Transactions List */}
-      <div className="card">
+      <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl shadow-xl overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-blueox-primary/5 border-b border-blueox-primary/10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
@@ -424,33 +428,28 @@ export default function BankTransactionsPage() {
 
       {/* Summary */}
       {transactions.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="card">
-            <div className="card-body">
-              <p className="text-sm text-gray-500">Total Deposits (USD)</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.totalDeposits)}
-              </p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg">
+            <p className="text-sm font-medium text-gray-600 mb-2">Total Deposits (USD)</p>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency(stats.totalDeposits)}
+            </p>
           </div>
-          <div className="card">
-            <div className="card-body">
-              <p className="text-sm text-gray-500">Total Withdrawals (USD)</p>
-              <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.totalWithdrawals)}
-              </p>
-            </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-6 shadow-lg">
+            <p className="text-sm font-medium text-gray-600 mb-2">Total Withdrawals (USD)</p>
+            <p className="text-2xl font-bold text-red-600">
+              {formatCurrency(stats.totalWithdrawals)}
+            </p>
           </div>
-          <div className="card">
-            <div className="card-body">
-              <p className="text-sm text-gray-500">Unreconciled</p>
-              <p className="text-2xl font-bold text-amber-600">
-                {stats.unreconciledCount}
-              </p>
-            </div>
+          <div className="bg-white/80 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-6 shadow-lg">
+            <p className="text-sm font-medium text-gray-600 mb-2">Unreconciled</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {stats.unreconciledCount}
+            </p>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

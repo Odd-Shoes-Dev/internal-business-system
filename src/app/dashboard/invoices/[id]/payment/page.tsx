@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
-import { Button, Card, CardHeader, CardTitle, CardBody, Input, Select, Textarea, LoadingSpinner } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardBody, Input, Combobox, Textarea, LoadingSpinner } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useCompany } from '@/contexts/company-context';
 
 interface Invoice {
   id: string;
@@ -19,13 +20,22 @@ interface Invoice {
   } | null;
 }
 
+interface BankAccountOption {
+  id: string;
+  name: string;
+  bank_name?: string;
+}
+
 export default function RecordPaymentPage() {
   const params = useParams();
   const router = useRouter();
+  const { company } = useCompany();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
+  const [bankAccountId, setBankAccountId] = useState('');
 
   const [formData, setFormData] = useState({
     payment_date: new Date().toISOString().split('T')[0],
@@ -59,7 +69,22 @@ export default function RecordPaymentPage() {
         currency: data.currency,
         customer: data.customers ? { name: data.customers.name } : null,
       });
-      
+
+      const companyId = data.company_id || company?.id;
+      const companyQuery = companyId ? `?company_id=${companyId}&active=true` : '?active=true';
+      const bankAccountsResponse = await fetch(`/api/bank-accounts${companyQuery}`, {
+        credentials: 'include',
+      });
+      if (bankAccountsResponse.ok) {
+        const bankAccountsResult = await bankAccountsResponse.json();
+        const accounts = bankAccountsResult.data || [];
+        setBankAccounts(accounts);
+        const primary = accounts.find((a: any) => a.is_primary) || accounts[0];
+        if (primary) {
+          setBankAccountId(primary.id);
+        }
+      }
+
       // Pre-fill with balance due
       const balanceDue = Number(data.total || 0) - Number(data.amount_paid || 0);
       setFormData((prev) => ({
@@ -89,6 +114,10 @@ export default function RecordPaymentPage() {
         throw new Error(`Amount cannot exceed balance due (${formatCurrency(balanceDue)})`);
       }
 
+      if (formData.payment_method !== 'cash' && bankAccounts.length > 0 && !bankAccountId) {
+        throw new Error('Please select which bank account received this payment');
+      }
+
       const response = await fetch(`/api/invoices/${params.id}/payments`, {
         method: 'POST',
         credentials: 'include',
@@ -99,6 +128,7 @@ export default function RecordPaymentPage() {
           payment_method: formData.payment_method,
           reference: formData.reference_number || null,
           notes: formData.notes || null,
+          bank_account_id: formData.payment_method !== 'cash' ? bankAccountId : null,
         }),
       });
 
@@ -215,10 +245,10 @@ export default function RecordPaymentPage() {
               />
             </div>
 
-            <Select
+            <Combobox
               label="Payment Method"
               value={formData.payment_method}
-              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, payment_method: value })}
               options={[
                 { value: 'bank_transfer', label: 'Bank Transfer' },
                 { value: 'check', label: 'Check' },
@@ -227,8 +257,31 @@ export default function RecordPaymentPage() {
                 { value: 'stripe', label: 'Stripe' },
                 { value: 'other', label: 'Other' },
               ]}
+              searchable={false}
               required
             />
+
+            {formData.payment_method !== 'cash' && (
+              bankAccounts.length > 0 ? (
+                <Combobox
+                  label="Bank Account"
+                  value={bankAccountId}
+                  onChange={setBankAccountId}
+                  placeholder="Select account..."
+                  options={bankAccounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                    description: a.bank_name || undefined,
+                  }))}
+                  required
+                />
+              ) : (
+                <p className="text-xs text-gray-500 -mt-1">
+                  No bank accounts set up yet — this payment will be recorded against your default cash account.{' '}
+                  <Link href="/dashboard/bank" className="text-blueox-primary hover:underline">Set one up</Link>
+                </p>
+              )
+            )}
 
             <Input
               label="Reference Number"
@@ -246,9 +299,13 @@ export default function RecordPaymentPage() {
             />
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={submitting} className="flex-1">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:pointer-events-none disabled:hover:scale-100"
+              >
                 {submitting ? 'Recording...' : 'Record Payment'}
-              </Button>
+              </button>
               <Link href={`/dashboard/invoices/${params.id}`}>
                 <Button type="button" variant="outline">
                   Cancel
