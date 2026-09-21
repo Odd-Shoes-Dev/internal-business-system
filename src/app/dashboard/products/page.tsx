@@ -15,6 +15,9 @@ import {
   ArrowRightIcon,
   QrCodeIcon,
 } from '@heroicons/react/24/outline';
+import { Combobox } from '@/components/ui/combobox';
+import { NumberInput } from '@/components/ui/number-input';
+import { getUnitOptions, isUnitAllowed, normalizeUnit } from '@/lib/units-of-measure';
 
 interface Product {
   id: string;
@@ -33,6 +36,12 @@ interface Product {
   quantity_on_hand: number;
   is_active: boolean;
 }
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  service: 'Service',
+  non_inventory: 'Product (no stock tracking)',
+  inventory: 'Stock Item (tracked in Stock Control)',
+};
 
 const emptyForm = {
   name: '',
@@ -91,7 +100,13 @@ export default function ProductsPage() {
 
   const openCreate = () => {
     setEditProduct(null);
-    setForm({ ...emptyForm, currency: company?.currency || 'USD' });
+    // Goods are created far more often than services, so default to the goods type:
+    // a tracked stock item when Stock Control is active, otherwise a plain priced product.
+    setForm({
+      ...emptyForm,
+      product_type: hasInventory ? 'inventory' : 'non_inventory',
+      currency: company?.currency || 'USD',
+    });
     setShowModal(true);
   };
 
@@ -106,7 +121,7 @@ export default function ProductsPage() {
       unit_price: p.unit_price,
       cost_price: p.cost_price,
       currency: p.currency,
-      unit_of_measure: p.unit_of_measure,
+      unit_of_measure: normalizeUnit(p.unit_of_measure),
       is_taxable: p.is_taxable,
       tax_rate: Number(p.tax_rate) * 100,
     });
@@ -118,12 +133,17 @@ export default function ProductsPage() {
     if (!company) return;
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         barcode: form.barcode.trim() || null,
         tax_rate: form.is_taxable ? form.tax_rate / 100 : 0,
         company_id: company.id,
       };
+      // Only set stock tracking when creating. Editing a type must not switch tracking off
+      // on an item that already has stock.
+      if (!editProduct) {
+        payload.track_inventory = hasInventory && form.product_type === 'inventory';
+      }
       let res: Response;
       if (editProduct) {
         res = await fetch(`/api/products/${editProduct.id}`, {
@@ -331,7 +351,7 @@ export default function ProductsPage() {
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-700'
                       }`}>
-                        {p.product_type}
+                        {PRODUCT_TYPE_LABELS[p.product_type]?.replace(/ \(.*\)$/, '') || p.product_type}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-medium">
@@ -441,12 +461,26 @@ export default function ProductsPage() {
                 <select
                   className="input"
                   value={form.product_type}
-                  onChange={e => setForm(f => ({ ...f, product_type: e.target.value }))}
+                  onChange={e => {
+                    const nextType = e.target.value;
+                    setForm(f => ({
+                      ...f,
+                      product_type: nextType,
+                      unit_of_measure: isUnitAllowed(f.unit_of_measure, nextType) ? f.unit_of_measure : 'each',
+                    }));
+                  }}
                 >
-                  <option value="service">Service</option>
-                  <option value="inventory">Inventory Item</option>
-                  <option value="non_inventory">Non-Inventory</option>
+                  <option value="service">{PRODUCT_TYPE_LABELS.service}</option>
+                  <option value="non_inventory">{PRODUCT_TYPE_LABELS.non_inventory}</option>
+                  {(hasInventory || form.product_type === 'inventory') && (
+                    <option value="inventory">{PRODUCT_TYPE_LABELS.inventory}</option>
+                  )}
                 </select>
+                {form.product_type === 'inventory' && !editProduct && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    New stock items start at 0. Add stock in Stock Control before selling.
+                  </p>
+                )}
               </div>
 
               {/* Description */}
@@ -464,13 +498,13 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Unit Price *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     step="0.01"
                     min="0"
                     className="input"
+                    placeholder="0.00"
                     value={form.unit_price}
-                    onChange={e => setForm(f => ({ ...f, unit_price: parseFloat(e.target.value) || 0 }))}
+                    onChange={n => setForm(f => ({ ...f, unit_price: n }))}
                   />
                 </div>
                 <div>
@@ -491,19 +525,12 @@ export default function ProductsPage() {
               {/* Unit of measure */}
               <div>
                 <label className="label">Unit of Measure</label>
-                <select
-                  className="input"
+                <Combobox
+                  options={getUnitOptions(form.unit_of_measure, form.product_type)}
                   value={form.unit_of_measure}
-                  onChange={e => setForm(f => ({ ...f, unit_of_measure: e.target.value }))}
-                >
-                  <option value="each">Each</option>
-                  <option value="hour">Hour</option>
-                  <option value="day">Day</option>
-                  <option value="month">Month</option>
-                  <option value="kg">Kg</option>
-                  <option value="litre">Litre</option>
-                  <option value="box">Box</option>
-                </select>
+                  onChange={value => setForm(f => ({ ...f, unit_of_measure: value }))}
+                  placeholder="Select unit..."
+                />
               </div>
 
               {/* Tax */}
@@ -525,15 +552,14 @@ export default function ProductsPage() {
                 {form.is_taxable && (
                   <div>
                     <label className="label">Tax Rate (%)</label>
-                    <input
-                      type="number"
+                    <NumberInput
                       step="0.01"
                       min="0"
                       max="100"
                       className="input"
                       placeholder="e.g. 18 for 18%"
                       value={form.tax_rate}
-                      onChange={e => setForm(f => ({ ...f, tax_rate: parseFloat(e.target.value) || 0 }))}
+                      onChange={n => setForm(f => ({ ...f, tax_rate: n }))}
                     />
                   </div>
                 )}

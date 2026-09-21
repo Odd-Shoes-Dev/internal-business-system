@@ -11,6 +11,9 @@ import { CategoryCombobox } from '@/components/ui/category-combobox';
 import { useCompany } from '@/contexts/company-context';
 import { type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
+import { Combobox } from '@/components/ui/combobox';
+import { NumberInput } from '@/components/ui/number-input';
+import { getUnitOptions, normalizeUnit } from '@/lib/units-of-measure';
 
 interface Category {
   id: string;
@@ -113,7 +116,7 @@ export default function EditInventoryItemPage() {
         name: data.name,
         description: data.description || '',
         category_id: data.category_id || '',
-        unit_of_measure: data.unit_of_measure,
+        unit_of_measure: normalizeUnit(data.unit_of_measure),
         unit_cost: parseFloat(data.cost_price),
         selling_price: parseFloat(data.unit_price),
         currency: data.currency || 'USD',
@@ -207,21 +210,7 @@ export default function EditInventoryItemPage() {
     }
   };
 
-  const unitsOfMeasure = [
-    { value: 'each', label: 'Each (ea)' },
-    { value: 'pair', label: 'Pair (pr)' },
-    { value: 'dozen', label: 'Dozen (doz)' },
-    { value: 'box', label: 'Box (bx)' },
-    { value: 'case', label: 'Case (cs)' },
-    { value: 'piece', label: 'Piece (pc)' },
-    { value: 'unit', label: 'Unit (u)' },
-    { value: 'pack', label: 'Pack (pk)' },
-    { value: 'set', label: 'Set' },
-    { value: 'kg', label: 'Kilogram (kg)' },
-    { value: 'lb', label: 'Pound (lb)' },
-    { value: 'liter', label: 'Liter (L)' },
-    { value: 'gallon', label: 'Gallon (gal)' },
-  ];
+  const unitsOfMeasure = getUnitOptions(formData.unit_of_measure, item?.product_type);
 
   const grossMargin = formData.selling_price > 0
     ? (((formData.selling_price - formData.unit_cost) / formData.selling_price) * 100).toFixed(1)
@@ -327,16 +316,12 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unit of Measure
               </label>
-              <select
-                name="unit_of_measure"
+              <Combobox
+                options={unitsOfMeasure}
                 value={formData.unit_of_measure}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-              >
-                {unitsOfMeasure.map((unit) => (
-                  <option key={unit.value} value={unit.value}>{unit.label}</option>
-                ))}
-              </select>
+                onChange={(value) => setFormData((prev) => ({ ...prev, unit_of_measure: value }))}
+                placeholder="Select unit..."
+              />
             </div>
 
             <div className="md:col-span-2">
@@ -403,11 +388,10 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unit Cost <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="unit_cost"
                 value={formData.unit_cost}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, unit_cost: v }))}
                 required
                 min="0"
                 step="0.01"
@@ -421,11 +405,10 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Selling Price <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="selling_price"
                 value={formData.selling_price}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, selling_price: v }))}
                 required
                 min="0"
                 step="0.01"
@@ -467,11 +450,10 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Quantity on Hand
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="quantity_on_hand"
                 value={formData.quantity_on_hand}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, quantity_on_hand: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="0"
@@ -483,11 +465,10 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Reorder Point
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="reorder_point"
                 value={formData.reorder_point}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, reorder_point: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="10"
@@ -499,11 +480,10 @@ export default function EditInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Reorder Quantity
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="reorder_quantity"
                 value={formData.reorder_quantity}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, reorder_quantity: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="50"

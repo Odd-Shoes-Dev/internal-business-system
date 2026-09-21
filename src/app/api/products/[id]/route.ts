@@ -99,9 +99,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const updates: string[] = [];
     const values: any[] = [id];
 
+    // A blank SKU/barcode must be stored as NULL, not ''. The database allows many NULLs but
+    // treats '' as a real value that has to be unique, so a second blank one would collide.
+    const nullWhenBlank = new Set(['sku', 'barcode']);
+
     for (const [key, column] of Object.entries(fieldMap)) {
       if (Object.prototype.hasOwnProperty.call(body, key)) {
-        values.push(body[key]);
+        const raw = body[key];
+        const value = nullWhenBlank.has(key) && typeof raw === 'string' && raw.trim() === '' ? null : raw;
+        values.push(value);
         updates.push(`${column} = $${values.length}`);
       }
     }
@@ -120,6 +126,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     return NextResponse.json({ data: updatedResult.rows[0] });
   } catch (error: any) {
+    if (error?.code === '23505' || /products_sku_key/.test(error?.message || '')) {
+      return NextResponse.json(
+        { error: 'That SKU is already used by another product. Choose a different SKU.' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
