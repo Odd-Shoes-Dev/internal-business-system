@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { CompanyProvider } from '@/contexts/company-context';
+import { DisableNumberWheel } from '@/components/disable-number-wheel';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -45,6 +46,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Business Platform" />
       </head>
       <body className={inter.className}>
+        <DisableNumberWheel />
         <CompanyProvider>
           {children}
         </CompanyProvider>

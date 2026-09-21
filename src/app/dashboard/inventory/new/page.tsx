@@ -11,6 +11,9 @@ import {
   CubeIcon,
 } from '@heroicons/react/24/outline';
 import { CategoryCombobox } from '@/components/ui/category-combobox';
+import { Combobox } from '@/components/ui/combobox';
+import { NumberInput } from '@/components/ui/number-input';
+import { getUnitOptions } from '@/lib/units-of-measure';
 
 interface Category {
   id: string;
@@ -145,24 +148,7 @@ export default function NewInventoryItemPage() {
     }
   };
 
-  const unitsOfMeasure = [
-    { value: 'each', label: 'Each' },
-    { value: 'pair', label: 'Pair' },
-    { value: 'set', label: 'Set' },
-    { value: 'box', label: 'Box' },
-    { value: 'case', label: 'Case' },
-    { value: 'pack', label: 'Pack' },
-    { value: 'lb', label: 'Pound (lb)' },
-    { value: 'oz', label: 'Ounce (oz)' },
-    { value: 'kg', label: 'Kilogram (kg)' },
-    { value: 'g', label: 'Gram (g)' },
-    { value: 'gal', label: 'Gallon' },
-    { value: 'l', label: 'Liter' },
-    { value: 'ft', label: 'Foot' },
-    { value: 'm', label: 'Meter' },
-    { value: 'sqft', label: 'Square Foot' },
-    { value: 'hour', label: 'Hour' },
-  ];
+  const unitsOfMeasure = getUnitOptions(formData.unit_of_measure, 'inventory');
 
   const grossMargin = formData.selling_price > 0 
     ? ((formData.selling_price - formData.unit_cost) / formData.selling_price * 100).toFixed(1)
@@ -285,16 +271,12 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unit of Measure
               </label>
-              <select
-                name="unit_of_measure"
+              <Combobox
+                options={unitsOfMeasure}
                 value={formData.unit_of_measure}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-              >
-                {unitsOfMeasure.map((unit) => (
-                  <option key={unit.value} value={unit.value}>{unit.label}</option>
-                ))}
-              </select>
+                onChange={(value) => setFormData((prev) => ({ ...prev, unit_of_measure: value }))}
+                placeholder="Select unit..."
+              />
             </div>
 
             <div className="flex items-center gap-6">
@@ -334,11 +316,10 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unit Cost <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="unit_cost"
                 value={formData.unit_cost}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, unit_cost: v }))}
                 required
                 min="0"
                 step="0.01"
@@ -352,11 +333,10 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Selling Price <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="selling_price"
                 value={formData.selling_price}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, selling_price: v }))}
                 required
                 min="0"
                 step="0.01"
@@ -398,11 +378,10 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Initial Quantity
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="quantity_on_hand"
                 value={formData.quantity_on_hand}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, quantity_on_hand: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="0"
@@ -414,11 +393,10 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Reorder Point
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="reorder_point"
                 value={formData.reorder_point}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, reorder_point: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="10"
@@ -430,11 +408,10 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Reorder Quantity
               </label>
-              <input
-                type="number"
+              <NumberInput
                 name="reorder_quantity"
                 value={formData.reorder_quantity}
-                onChange={handleChange}
+                onChange={(v) => setFormData((prev) => ({ ...prev, reorder_quantity: v }))}
                 min="0"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="50"
