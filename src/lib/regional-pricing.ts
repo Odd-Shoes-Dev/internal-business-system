@@ -255,18 +255,21 @@ export function getPrice(tier: 'starter' | 'professional' | 'enterprise', region
 
 // Format price with proper currency formatting
 export function formatPrice(price: number, currency: Currency): string {
+  // Callers sometimes pass database decimals, which arrive as text ("250000.00")
+  const amount = Number(price);
+
   if (currency === 'UGX') {
-    return `UGX ${price.toLocaleString('en-UG')}`;
+    return `UGX ${amount.toLocaleString('en-UG')}`;
   }
-  
+
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
-  
-  return formatter.format(price);
+
+  return formatter.format(amount);
 }
 
 // Get region name for display

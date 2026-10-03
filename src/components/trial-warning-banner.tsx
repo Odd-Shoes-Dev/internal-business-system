@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { XMarkIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { ENFORCE_READ_ONLY_AFTER_TRIAL } from '@/lib/subscription-access';
 
 interface TrialWarningProps {
   trialEndDate?: string;
@@ -99,7 +100,9 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
               {config.message}
             </p>
             <p className={`text-sm ${config.textColor} mt-1`}>
-              Upgrade to a paid plan to continue accessing your modules and data.
+              {isExpired && ENFORCE_READ_ONLY_AFTER_TRIAL
+                ? 'Your account is now read-only. You can still view and print your records, but you cannot add or change anything until you upgrade.'
+                : 'Upgrade to a paid plan to continue accessing your modules and data.'}
             </p>
             <div className="mt-4">
               <Link
