@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -211,7 +212,7 @@ export default function CustomReportsPage() {
 
   const runReport = async () => {
     if (!config.dataSource || config.selectedFields.length === 0) {
-      alert('Please select a data source and at least one field');
+      toast.error('Please select a data source and at least one field');
       return;
     }
 
@@ -228,7 +229,7 @@ export default function CustomReportsPage() {
       
       if (!response.ok) {
         console.error('Server error response:', data);
-        alert(`Failed to run report: ${data.error || 'Unknown error'}`);
+        toast.error(`Failed to run report: ${data.error || 'Unknown error'}`);
         return;
       }
       
@@ -237,7 +238,7 @@ export default function CustomReportsPage() {
       setActiveTab('preview');
     } catch (error) {
       console.error('Failed to run report:', error);
-      alert('Failed to run report. Please try again.');
+      toast.error('Failed to run report. Please try again.');
     } finally {
       setIsLoading(false);
     }

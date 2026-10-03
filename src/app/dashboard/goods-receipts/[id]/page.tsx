@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -305,8 +306,8 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
             <div className="flex gap-3">
               {canAccept && (
                 <button
-                  onClick={() => {
-                    if (confirm('Accept these goods? Inventory will be updated.')) {
+                  onClick={async () => {
+                    if (await confirmDialog('Accept these goods? Inventory will be updated.')) {
                       updateStatus('accepted');
                     }
                   }}
@@ -320,8 +321,8 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
 
               {canReject && (
                 <button
-                  onClick={() => {
-                    if (confirm('Reject these goods? They will NOT be added to inventory.')) {
+                  onClick={async () => {
+                    if (await confirmDialog('Reject these goods? They will NOT be added to inventory.')) {
                       updateStatus('rejected');
                     }
                   }}
@@ -335,8 +336,8 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
 
               {canReject && (
                 <button
-                  onClick={() => {
-                    if (confirm('Mark for return to vendor?')) {
+                  onClick={async () => {
+                    if (await confirmDialog('Mark for return to vendor?')) {
                       updateStatus('returned');
                     }
                   }}

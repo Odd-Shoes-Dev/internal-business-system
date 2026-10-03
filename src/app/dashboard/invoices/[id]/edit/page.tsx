@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -233,7 +234,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
     // Show confirmation for paid status
     if (newStatus === 'paid') {
-      if (!confirm('Mark this invoice as paid? This will create accounting journal entries.')) {
+      if (!await confirmDialog('Mark this invoice as paid? This will create accounting journal entries.')) {
         return;
       }
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -178,7 +179,7 @@ export default function EmployeesPage() {
   };
 
   const deleteEmployee = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this employee record?')) return;
+    if (!await confirmDialog('Are you sure you want to delete this employee record?')) return;
 
     try {
       const response = await fetch(`/api/employees/${id}`, {

@@ -1,5 +1,7 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -78,12 +80,12 @@ export default function DepreciationPage() {
   };
 
   const runDepreciation = async () => {
-    if (!confirm(`Run depreciation for ${selectedMonth}? This will create depreciation entries for all active assets.`)) {
+    if (!await confirmDialog(`Run depreciation for ${selectedMonth}? This will create depreciation entries for all active assets.`)) {
       return;
     }
 
     if (!company?.id) {
-      alert('No company selected');
+      toast.error('No company selected');
       return;
     }
 
@@ -123,7 +125,7 @@ export default function DepreciationPage() {
       await loadAssets(); // Reload to show updated values
     } catch (error) {
       console.error('Failed to run depreciation:', error);
-      alert('Failed to run depreciation. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to run depreciation. Please try again.');
     } finally {
       setProcessing(false);
     }

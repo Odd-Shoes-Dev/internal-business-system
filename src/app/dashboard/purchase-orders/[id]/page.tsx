@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -94,7 +95,7 @@ export default function PurchaseOrderDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this purchase order?')) return;
+    if (!await confirmDialog('Approve this purchase order?')) return;
 
     setActionLoading(true);
     try {
@@ -119,7 +120,7 @@ export default function PurchaseOrderDetailPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm('Cancel this purchase order? This action cannot be undone.')) return;
+    if (!await confirmDialog('Cancel this purchase order? This action cannot be undone.')) return;
 
     setActionLoading(true);
     try {

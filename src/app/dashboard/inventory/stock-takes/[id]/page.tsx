@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -87,7 +88,7 @@ function StockTakeDetailPageClient({ stockTakeId }: { stockTakeId: string }) {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this stock take? This will update inventory quantities.')) return;
+    if (!await confirmDialog('Approve this stock take? This will update inventory quantities.')) return;
 
     try {
       setUpdating(true);
@@ -111,7 +112,7 @@ function StockTakeDetailPageClient({ stockTakeId }: { stockTakeId: string }) {
   };
 
   const handleReject = async () => {
-    if (!confirm('Reject this stock take? This will mark it as cancelled.')) return;
+    if (!await confirmDialog('Reject this stock take? This will mark it as cancelled.')) return;
 
     try {
       setUpdating(true);

@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -211,7 +212,7 @@ export default function RequisitionDetailPage() {
   };
 
   const removeItem = async (lineId: string) => {
-    if (!confirm('Remove this item from the requisition?')) return;
+    if (!await confirmDialog('Remove this item from the requisition?')) return;
     try {
       const res = await fetch(`/api/requisitions/${id}/lines/${lineId}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
@@ -525,7 +526,7 @@ export default function RequisitionDetailPage() {
   };
 
   const reopenRequisition = async () => {
-    if (!confirm('Reopen this requisition?')) return;
+    if (!await confirmDialog('Reopen this requisition?')) return;
     try {
       const res = await fetch(`/api/requisitions/${id}/reopen`, { method: 'POST', credentials: 'include' });
       const data = await res.json();
@@ -538,7 +539,7 @@ export default function RequisitionDetailPage() {
   };
 
   const deleteRequisition = async () => {
-    if (!confirm('Delete this requisition? This cannot be undone.')) return;
+    if (!await confirmDialog('Delete this requisition? This cannot be undone.')) return;
     try {
       const res = await fetch(`/api/requisitions/${id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();

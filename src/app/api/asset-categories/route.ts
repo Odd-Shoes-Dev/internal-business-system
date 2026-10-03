@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,6 +10,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get('company_id');
+    if (!companyId) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
 
     const hasCompanyColumn = await db.query<{ exists: boolean }>(
       `SELECT EXISTS (
@@ -57,6 +63,12 @@ export async function POST(request: NextRequest) {
     if (!name) {
       return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
+    if (!company_id) {
+      return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
+    }
+
+    const accessError = await requireCompanyAccess(user.id, company_id);
+    if (accessError) return accessError;
 
     const hasCompanyColumn = await db.query<{ exists: boolean }>(
       `SELECT EXISTS (

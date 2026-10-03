@@ -1,5 +1,7 @@
 'use client';
 
+import toast from 'react-hot-toast';
+import { getApiError } from '@/lib/api-error';
 import { SUPPORT_EMAIL, supportMailto } from '@/lib/support';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -92,14 +94,14 @@ export default function UpgradePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        throw new Error(await getApiError(response, 'Failed to create checkout session'));
       }
 
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
       console.error('Upgrade error:', error);
-      alert('Failed to process upgrade. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to process upgrade. Please try again.');
       setLoading(false);
     }
   };
@@ -132,7 +134,7 @@ export default function UpgradePage() {
       router.push('/dashboard/billing');
     } catch (error) {
       console.error('Plan change error:', error);
-      alert('Failed to change plan. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to change plan. Please try again.');
     } finally {
       setLoading(false);
     }

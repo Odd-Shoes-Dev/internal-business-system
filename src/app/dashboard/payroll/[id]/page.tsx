@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -314,7 +315,7 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
     const warning = period && period.status !== 'draft'
       ? 'This payslip belongs to a period that has already been processed. Deleting it will not reverse any related journal entry automatically. This cannot be undone. Continue?'
       : 'Delete this payslip? This cannot be undone.';
-    if (!confirm(warning)) return;
+    if (!await confirmDialog(warning)) return;
     try {
       const response = await fetch(`/api/payroll/payslips/${payslipId}`, {
         method: 'DELETE',

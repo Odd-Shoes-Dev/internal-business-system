@@ -1,5 +1,8 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
+import { getApiError } from '@/lib/api-error';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreditCardIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -148,7 +151,7 @@ export default function BillingPage() {
   }
 
   async function handleCancelSubscription() {
-    if (!confirm('Are you sure you want to cancel your subscription? You will lose access at the end of your current billing period.')) {
+    if (!await confirmDialog('Are you sure you want to cancel your subscription? You will lose access at the end of your current billing period.')) {
       return;
     }
 
@@ -162,20 +165,20 @@ export default function BillingPage() {
       
       if (response.ok) {
         await fetchBillingData();
-        alert('Subscription cancelled. You will retain access until the end of your billing period.');
+        toast.success('Subscription cancelled. You will retain access until the end of your billing period.');
       } else {
-        alert('Failed to cancel subscription. Please try again.');
+        toast.error(await getApiError(response, 'Failed to cancel subscription. Please try again.'));
       }
     } catch (error) {
       console.error('Failed to cancel subscription:', error);
-      alert('Failed to cancel subscription. Please try again.');
+      toast.error('Failed to cancel subscription. Please try again.');
     } finally {
       setProcessingAction(null);
     }
   }
 
   async function handleRemoveModule(moduleId: string, moduleName: string) {
-    if (!confirm(`Remove ${moduleName}? This will take effect immediately.`)) {
+    if (!await confirmDialog(`Remove ${moduleName}? This will take effect immediately.`)) {
       return;
     }
 
@@ -189,14 +192,13 @@ export default function BillingPage() {
 
       if (response.ok) {
         await fetchBillingData();
-        alert(`${moduleName} removed successfully.`);
+        toast.success(`${moduleName} removed successfully.`);
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to remove module. Please try again.');
+        toast.error(await getApiError(response, 'Failed to remove module. Please try again.'));
       }
     } catch (error) {
       console.error('Failed to remove module:', error);
-      alert('Failed to remove module. Please try again.');
+      toast.error('Failed to remove module. Please try again.');
     } finally {
       setRemovingModuleId(null);
     }

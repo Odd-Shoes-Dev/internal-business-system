@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -173,7 +174,7 @@ export default function InventoryPage() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!company?.id || !confirm('Delete this category? Products in this category will be uncategorized.')) return;
+    if (!company?.id || !await confirmDialog('Delete this category? Products in this category will be uncategorized.')) return;
     try {
       const response = await fetch(`/api/product-categories/${id}?company_id=${company.id}`, {
         method: 'DELETE',

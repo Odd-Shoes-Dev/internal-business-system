@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -233,7 +234,7 @@ export default function NewJournalEntryPage() {
       
     } catch (error) {
       console.error('Error creating journal entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create journal entry. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to create journal entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -282,7 +283,7 @@ export default function NewJournalEntryPage() {
       
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert(error instanceof Error ? error.message : 'Failed to save draft. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to save draft. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

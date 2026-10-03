@@ -1,5 +1,8 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
+import { getApiError } from '@/lib/api-error';
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -109,7 +112,7 @@ export default function BankAccountDetailPage({ params }: PageProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${account?.name}"? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to delete "${account?.name}"? This action cannot be undone.`)) {
       return;
     }
 
@@ -120,14 +123,14 @@ export default function BankAccountDetailPage({ params }: PageProps) {
         credentials: 'include',
       });
       if (!response.ok) {
-        throw new Error('Failed to delete bank account');
+        throw new Error(await getApiError(response, 'This account may have transactions linked to it, so it cannot be deleted.'));
       }
 
-      alert('Bank account deleted successfully');
+      toast.success('Bank account deleted successfully');
       window.location.href = '/dashboard/bank/accounts';
     } catch (error) {
       console.error('Failed to delete bank account:', error);
-      alert('Failed to delete bank account. It may have associated transactions.');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete bank account.');
     } finally {
       setDeleting(false);
     }

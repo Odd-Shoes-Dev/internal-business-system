@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
@@ -175,7 +176,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
+    if (!await confirmDialog('Delete this product?')) return;
     try {
       const res = await fetch(`/api/products/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error('Failed to delete');

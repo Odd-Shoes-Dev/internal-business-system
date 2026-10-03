@@ -1,5 +1,7 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import {
@@ -54,7 +56,7 @@ export default function FiscalPeriodsPage() {
   };
 
   const handleClosePeriod = async (periodId: string, periodName: string) => {
-    if (!confirm(`Are you sure you want to close "${periodName}"?\n\nThis will prevent any modifications to transactions dated within this period.`)) {
+    if (!await confirmDialog(`Are you sure you want to close "${periodName}"?\n\nThis will prevent any modifications to transactions dated within this period.`)) {
       return;
     }
 
@@ -73,16 +75,16 @@ export default function FiscalPeriodsPage() {
       }
 
       await loadPeriods();
-      alert(`Period "${periodName}" has been closed successfully.`);
+      toast.success(`Period "${periodName}" has been closed successfully.`);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleReopenPeriod = async (periodId: string, periodName: string) => {
-    if (!confirm(`Are you sure you want to reopen "${periodName}"?\n\nThis will allow modifications to transactions within this period again.`)) {
+    if (!await confirmDialog(`Are you sure you want to reopen "${periodName}"?\n\nThis will allow modifications to transactions within this period again.`)) {
       return;
     }
 
@@ -101,9 +103,9 @@ export default function FiscalPeriodsPage() {
       }
 
       await loadPeriods();
-      alert(`Period "${periodName}" has been reopened successfully.`);
+      toast.success(`Period "${periodName}" has been reopened successfully.`);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     } finally {
       setActionLoading(null);
     }

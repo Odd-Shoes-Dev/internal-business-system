@@ -1,5 +1,7 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -197,7 +199,7 @@ export default function BillDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this bill for payment?')) return;
+    if (!await confirmDialog('Approve this bill for payment?')) return;
     
     setActionLoading(true);
     try {
@@ -216,14 +218,14 @@ export default function BillDetailPage() {
       await loadBillDetails();
     } catch (error: any) {
       console.error('Failed to approve bill:', error);
-      alert(error.message || 'Failed to approve bill');
+      toast.error(error.message || 'Failed to approve bill');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleVoid = async () => {
-    if (!confirm('Void this bill? This action cannot be undone.')) return;
+    if (!await confirmDialog('Void this bill? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {
@@ -239,13 +241,13 @@ export default function BillDetailPage() {
       router.push('/dashboard/bills');
     } catch (error: any) {
       console.error('Failed to void bill:', error);
-      alert(error.message || 'Failed to void bill');
+      toast.error(error.message || 'Failed to void bill');
       setActionLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Permanently delete this bill? This action cannot be undone.')) return;
+    if (!await confirmDialog('Permanently delete this bill? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {
@@ -261,13 +263,13 @@ export default function BillDetailPage() {
       router.push('/dashboard/bills');
     } catch (error: any) {
       console.error('Failed to delete bill:', error);
-      alert(error.message || 'Failed to delete bill');
+      toast.error(error.message || 'Failed to delete bill');
       setActionLoading(false);
     }
   };
 
   const handleChangeToDraft = async () => {
-    if (!confirm('Change this bill back to draft status? This will allow you to edit it.')) return;
+    if (!await confirmDialog('Change this bill back to draft status? This will allow you to edit it.')) return;
     
     setActionLoading(true);
     try {
@@ -286,7 +288,7 @@ export default function BillDetailPage() {
       await loadBillDetails();
     } catch (error: any) {
       console.error('Failed to change bill status:', error);
-      alert(error.message || 'Failed to change bill status');
+      toast.error(error.message || 'Failed to change bill status');
     } finally {
       setActionLoading(false);
     }

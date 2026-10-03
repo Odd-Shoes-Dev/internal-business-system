@@ -16,6 +16,13 @@ export const ENFORCE_READ_ONLY_AFTER_TRIAL = true;
 export const TRIAL_EXPIRED_MESSAGE =
   'Your trial has ended. Your account is read-only until you upgrade to a paid plan.';
 
+// A paid company stays fully usable for this many days after its paid period ends, so a late
+// renewal (or a manual one that has not been entered yet) does not lock the team out at once.
+export const PAID_GRACE_DAYS = 7;
+
+export const SUBSCRIPTION_EXPIRED_MESSAGE =
+  'Your subscription has ended. Your account is read-only until it is renewed. Please contact support.';
+
 export const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 // Writes under these paths stay allowed so an expired company can still pay, sign in/out,
@@ -44,4 +51,17 @@ export function isTrialExpired(
   if (status && status !== 'trial') return false;
   if (!trialEndsAt) return false;
   return new Date(trialEndsAt).getTime() < now;
+}
+
+// A paid company is "lapsed" when its status is still active but the paid period (plus the
+// grace days above) is over. With no period end on record we cannot tell, so it is not locked.
+export function isSubscriptionLapsed(
+  status: string | null | undefined,
+  periodEnd: string | Date | null | undefined,
+  now: number = Date.now()
+): boolean {
+  if (status !== 'active') return false;
+  if (!periodEnd) return false;
+  const graceMs = PAID_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  return new Date(periodEnd).getTime() + graceMs < now;
 }

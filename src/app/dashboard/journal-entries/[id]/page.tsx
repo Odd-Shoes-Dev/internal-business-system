@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -83,7 +84,7 @@ export default function EditJournalEntryPage() {
 
         // Check if entry is a draft
         if (entry.status !== 'draft') {
-          alert('Only draft entries can be edited');
+          toast.error('Only draft entries can be edited');
           router.push('/dashboard/general-ledger');
           return;
         }
@@ -107,7 +108,7 @@ export default function EditJournalEntryPage() {
         });
       } catch (error) {
         console.error('Error loading data:', error);
-        alert('Failed to load journal entry');
+        toast.error('Failed to load journal entry');
         router.push('/dashboard/general-ledger');
       } finally {
         setIsLoading(false);
@@ -258,7 +259,7 @@ export default function EditJournalEntryPage() {
       
     } catch (error) {
       console.error('Error updating journal entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update journal entry. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to update journal entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

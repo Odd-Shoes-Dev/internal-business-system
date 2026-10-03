@@ -1,5 +1,7 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -73,7 +75,7 @@ export default function ScheduledReportsPage() {
   };
 
   const deleteSchedule = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this scheduled report?')) {
+    if (!await confirmDialog('Are you sure you want to delete this scheduled report?')) {
       return;
     }
 
@@ -97,7 +99,7 @@ export default function ScheduledReportsPage() {
       });
 
       if (response.ok) {
-        alert('Report has been queued for immediate delivery!');
+        toast.success('Report has been queued for immediate delivery!');
       }
     } catch (error) {
       console.error('Failed to run report:', error);

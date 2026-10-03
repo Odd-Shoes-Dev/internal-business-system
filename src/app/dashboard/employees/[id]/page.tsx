@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
@@ -106,7 +107,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this employee? This action cannot be undone if they have payroll history.')) {
+    if (!await confirmDialog('Are you sure you want to delete this employee? This action cannot be undone if they have payroll history.')) {
       return;
     }
 

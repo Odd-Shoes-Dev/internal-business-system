@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -75,7 +76,7 @@ export default function AssetAssignmentsPage() {
   };
 
   const handleReturn = async (assignmentId: string) => {
-    if (!confirm('Mark this asset as returned?')) return;
+    if (!await confirmDialog('Mark this asset as returned?')) return;
 
     try {
       const condition = prompt('Enter asset condition at return (good/fair/poor/damaged):');

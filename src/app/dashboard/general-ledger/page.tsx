@@ -1,5 +1,7 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -72,7 +74,7 @@ export default function GeneralLedgerPage() {
   };
 
   const handleVoid = async (id: string, entryNumber: string) => {
-    if (!confirm(`Are you sure you want to void journal entry ${entryNumber}? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to void journal entry ${entryNumber}? This action cannot be undone.`)) {
       return;
     }
 
@@ -91,12 +93,12 @@ export default function GeneralLedgerPage() {
       await fetchEntries(); // Refresh the list
     } catch (error) {
       console.error('Error voiding entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to void entry');
+      toast.error(error instanceof Error ? error.message : 'Failed to void entry');
     }
   };
 
   const handleDelete = async (id: string, entryNumber: string) => {
-    if (!confirm(`Are you sure you want to delete journal entry ${entryNumber}? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to delete journal entry ${entryNumber}? This action cannot be undone.`)) {
       return;
     }
 
@@ -113,7 +115,7 @@ export default function GeneralLedgerPage() {
       await fetchEntries(); // Refresh the list
     } catch (error) {
       console.error('Error deleting entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete entry');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete entry');
     }
   };
 
