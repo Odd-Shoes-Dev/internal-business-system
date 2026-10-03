@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCompanyAdmin, requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 import { getWhop } from '@/lib/whop';
 import { getPlanId } from '@/lib/whop-config';
+import { getTestPlanOverride } from '@/lib/whop-test-mode';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 import type { Region } from '@/lib/regional-pricing';
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve Whop plan ID for the new plan
-    const whopPlanId = getPlanId(new_plan_tier, billing_period, region);
+    const whopPlanId = getTestPlanOverride(companyId) ?? getPlanId(new_plan_tier, billing_period, region);
     if (!whopPlanId) {
       return NextResponse.json({ error: 'Plan not available for your region' }, { status: 400 });
     }

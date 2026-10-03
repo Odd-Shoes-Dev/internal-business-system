@@ -3,6 +3,7 @@ import { getDbProvider } from '@/lib/provider';
 import { resolveUserCompanyId } from '@/lib/provider/route-guards';
 import { getWhop } from '@/lib/whop';
 import { getPlanId, getModulePlanId } from '@/lib/whop-config';
+import { getTestPlanOverride } from '@/lib/whop-test-mode';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 import type { Region } from '@/lib/regional-pricing';
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve Whop plan IDs
-    const basePlanId = getPlanId(plan_tier, billing_period, displayRegion);
+    const basePlanId = getTestPlanOverride(companyId) ?? getPlanId(plan_tier, billing_period, displayRegion);
     const modulePlanIds = (module_ids as string[]).map((m) => getModulePlanId(m, displayRegion)).filter(Boolean);
 
     const whop = await getWhop();
