@@ -44,6 +44,7 @@ export async function POST(
     );
 
     let userId: string;
+    let profileFullName: string | null = null;
 
     if ((existingUserResult.rowCount ?? 0) > 0) {
       const existingUser = existingUserResult.rows[0];
@@ -51,6 +52,7 @@ export async function POST(
         return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
       }
       userId = existingUser.id;
+      profileFullName = existingUser.full_name ?? null;
     } else {
       if (!fullName || !fullName.trim()) {
         return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
@@ -70,6 +72,7 @@ export async function POST(
         [invitation.email.toLowerCase(), fullName.trim(), passwordHash, invitation.role]
       );
       userId = newUserResult.rows[0].id;
+      profileFullName = fullName.trim();
     }
 
     const alreadyMember = await db.query(
@@ -88,6 +91,25 @@ export async function POST(
         console.error('[accept] user_companies INSERT failed:', ucErr?.message, ucErr?.code, ucErr?.detail);
         throw ucErr;
       }
+    }
+
+    // Several routes still find the user's company through user_profiles.company_id, and
+    // invited users have no profile row, so they would get "Company not found". Create one
+    // and fill in the company only if it is empty - never move an existing home company.
+    // No role is set here: profile roles are granted deliberately, not copied from invites
+    // (an invite role like "manager" is not even a valid profile role).
+    try {
+      await db.query(
+        `INSERT INTO user_profiles (id, email, full_name, is_active, company_id)
+         VALUES ($1, $2, $3, TRUE, $4)
+         ON CONFLICT (id) DO UPDATE
+         SET company_id = COALESCE(user_profiles.company_id, EXCLUDED.company_id),
+             updated_at = NOW()`,
+        [userId, invitation.email.toLowerCase(), profileFullName, invitation.company_id]
+      );
+    } catch (profileErr: any) {
+      // Non-fatal: membership (user_companies) is the source of truth and already saved.
+      console.error('[accept] user_profiles upsert failed:', profileErr?.message);
     }
 
     try {

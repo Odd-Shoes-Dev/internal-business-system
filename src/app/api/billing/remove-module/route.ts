@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +15,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's company and check permissions
-    const profile = await db.query<{ company_id: string; role: string }>(
-      'SELECT company_id, role FROM user_profiles WHERE id = $1 LIMIT 1',
+    const profile = await db.query<{ role: string }>(
+      'SELECT role FROM user_profiles WHERE id = $1 LIMIT 1',
       [user.id]
     );
     const profileRow = profile.rows[0];
 
-    if (!profileRow?.company_id) {
+    const companyId = await resolveUserCompanyId(user.id, body.company_id);
+    if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    if (profileRow.role !== 'owner' && profileRow.role !== 'admin') {
+    if (profileRow?.role !== 'owner' && profileRow?.role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
          AND module_id = $2
          AND is_active = TRUE
        LIMIT 1`,
-      [profileRow.company_id, module_id]
+      [companyId, module_id]
     );
     const mod = moduleResult.rows[0];
 
