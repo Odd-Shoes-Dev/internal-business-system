@@ -142,6 +142,17 @@ async function handlePaymentSucceeded(payment: any) {
     [companyId, planTier]
   );
 
+  // The dashboard reads companies.subscription_status, so a verified payment must
+  // activate it here. Nothing else (including client calls) is allowed to do so.
+  await db.query(
+    `UPDATE companies
+     SET subscription_status = 'active',
+         subscription_plan = COALESCE($2, subscription_plan),
+         updated_at = NOW()
+     WHERE id = $1`,
+    [companyId, planTier && billingPeriod ? `${planTier}-${billingPeriod}` : null]
+  );
+
   await db.query(
     `INSERT INTO billing_history (
        company_id,

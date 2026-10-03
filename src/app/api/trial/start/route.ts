@@ -96,13 +96,29 @@ export async function POST(request: NextRequest) {
     } else {
       companyId = existingCompanyId;
 
+      // A trial can only be started by a company still in its initial trial state.
+      // Paid, past-due, cancelled and expired companies must not be reset to a trial.
+      const currentResult = await db.query(
+        'SELECT subscription_status FROM companies WHERE id = $1 LIMIT 1',
+        [companyId]
+      );
+      const currentStatus = currentResult.rows[0]?.subscription_status as string | null | undefined;
+      if (currentStatus && currentStatus !== 'trial') {
+        return NextResponse.json(
+          { error: 'A trial cannot be started for this company. Please choose a paid plan instead.' },
+          { status: 409 }
+        );
+      }
+
+      // The signup trigger already gave the company a 30-day trial. Keep the earlier end
+      // date so calling this again can never extend it.
       await db.query(
         `UPDATE companies
          SET subscription_plan = $2,
              subscription_status = 'trial',
              region = $3,
              currency = $4,
-             trial_ends_at = $5,
+             trial_ends_at = LEAST(COALESCE(trial_ends_at, $5::timestamptz), $5::timestamptz),
              name = COALESCE($6, name),
              updated_at = NOW()
          WHERE id = $1`,
@@ -123,7 +139,7 @@ export async function POST(request: NextRequest) {
          SET subscription_status = 'trial',
              plan_tier = $2,
              billing_period = $3,
-             trial_end_date = $4,
+             trial_end_date = LEAST(COALESCE(trial_end_date, $4::timestamp), $4::timestamp),
              updated_at = NOW()
          WHERE company_id = $1`,
         [companyId, tier, billingPeriod, trialEndDate.toISOString()]

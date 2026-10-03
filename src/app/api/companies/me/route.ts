@@ -104,6 +104,21 @@ export async function PUT(request: NextRequest) {
       return companyAccessError;
     }
 
+    // Company details, tax IDs and tax rates are admin-level settings. Membership alone
+    // is not enough - the Settings page is admin-only, and the API must be too.
+    const roleResult = await db.query<{ role: string }>(
+      'SELECT role FROM user_companies WHERE user_id = $1 AND company_id = $2 LIMIT 1',
+      [user.id, companyId]
+    );
+    const companyRole = roleResult.rows[0]?.role;
+    const canManage = (companyRole && ['owner', 'admin'].includes(companyRole)) || user.role === 'admin';
+    if (!canManage) {
+      return NextResponse.json(
+        { error: 'Only a company owner or admin can change company settings' },
+        { status: 403 }
+      );
+    }
+
     const {
       name,
       email,
