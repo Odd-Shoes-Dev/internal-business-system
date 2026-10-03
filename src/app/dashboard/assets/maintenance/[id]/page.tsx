@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
@@ -85,7 +86,7 @@ function MaintenanceDetailPageClient({ maintenanceId }: { maintenanceId: string 
   };
 
   const handleMarkComplete = async () => {
-    if (!confirm('Mark this maintenance as completed?')) return;
+    if (!await confirmDialog('Mark this maintenance as completed?')) return;
 
     try {
       setUpdating(true);

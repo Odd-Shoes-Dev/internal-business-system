@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -637,7 +638,7 @@ export default function InvoiceDetailPage() {
   };
 
   const handleMarkAsPaid = async () => {
-    if (!confirm('Mark this invoice as paid? This will create accounting journal entries.')) return;
+    if (!await confirmDialog('Mark this invoice as paid? This will create accounting journal entries.')) return;
     
     setActionLoading('paid');
     try {
@@ -698,7 +699,7 @@ export default function InvoiceDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
+    if (!await confirmDialog('Are you sure you want to delete this invoice?')) return;
     
     setActionLoading('delete');
     try {
@@ -729,7 +730,7 @@ export default function InvoiceDetailPage() {
     if (!invoice) return;
     
     const docType = invoice.document_type === 'quotation' ? 'quotation' : 'proforma invoice';
-    if (!confirm(`Convert this ${docType} to a regular invoice? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Convert this ${docType} to a regular invoice? This action cannot be undone.`)) {
       return;
     }
 

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -74,7 +75,7 @@ export default function ScheduledReportsPage() {
   };
 
   const deleteSchedule = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this scheduled report?')) {
+    if (!await confirmDialog('Are you sure you want to delete this scheduled report?')) {
       return;
     }
 

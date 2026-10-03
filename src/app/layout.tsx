@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { TrialExpiredHandler } from '@/components/trial-expired-handler';
+import { ConfirmDialogHost } from '@/components/confirm-dialog';
 import { CompanyProvider } from '@/contexts/company-context';
 import { DisableNumberWheel } from '@/components/disable-number-wheel';
 
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <DisableNumberWheel />
         <TrialExpiredHandler />
+        <ConfirmDialogHost />
         <CompanyProvider>
           {children}
         </CompanyProvider>

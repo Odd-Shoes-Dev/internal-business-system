@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -122,7 +123,7 @@ export default function TourPackagesPage() {
   };
 
   const deletePackage = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this tour package?')) return;
+    if (!await confirmDialog('Are you sure you want to delete this tour package?')) return;
 
     try {
       const response = await fetch(`/api/tours/${id}`, {

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -455,7 +456,7 @@ export default function PayrollPage() {
     const warning = period && period.status !== 'draft'
       ? 'This payroll period has already been processed and may be posted to the general ledger. Deleting it will void the related journal entry and remove all associated payslips. This cannot be undone. Continue?'
       : 'Are you sure you want to delete this payroll period? This will also delete all associated payslips.';
-    if (!confirm(warning)) return;
+    if (!await confirmDialog(warning)) return;
 
     try {
       const response = await fetch(`/api/payroll/periods/${id}`, {

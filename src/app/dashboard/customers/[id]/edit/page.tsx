@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -138,7 +139,7 @@ export default function EditCustomerPage({ params }: PageProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+    if (!await confirmDialog('Are you sure you want to delete this customer? This action cannot be undone.')) {
       return;
     }
 

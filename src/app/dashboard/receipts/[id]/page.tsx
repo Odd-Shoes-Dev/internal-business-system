@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -477,7 +478,7 @@ export default function ReceiptDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this receipt?')) return;
+    if (!await confirmDialog('Are you sure you want to delete this receipt?')) return;
 
     try {
       const response = await fetch(`/api/invoices/${params.id}`, {

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -126,7 +127,7 @@ export default function AssetDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Permanently delete this asset? This action cannot be undone.')) return;
+    if (!await confirmDialog('Permanently delete this asset? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {

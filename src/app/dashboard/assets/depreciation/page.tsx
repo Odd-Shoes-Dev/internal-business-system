@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -79,7 +80,7 @@ export default function DepreciationPage() {
   };
 
   const runDepreciation = async () => {
-    if (!confirm(`Run depreciation for ${selectedMonth}? This will create depreciation entries for all active assets.`)) {
+    if (!await confirmDialog(`Run depreciation for ${selectedMonth}? This will create depreciation entries for all active assets.`)) {
       return;
     }
 

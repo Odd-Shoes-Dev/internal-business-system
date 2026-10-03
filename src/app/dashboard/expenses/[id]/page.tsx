@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -394,7 +395,7 @@ export default function ExpenseDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this expense?')) return;
+    if (!await confirmDialog('Approve this expense?')) return;
     
     setActionLoading(true);
     try {
@@ -449,7 +450,7 @@ export default function ExpenseDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Permanently delete this expense? This action cannot be undone.')) return;
+    if (!await confirmDialog('Permanently delete this expense? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {

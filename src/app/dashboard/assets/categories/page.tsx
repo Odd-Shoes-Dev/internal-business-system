@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
@@ -135,7 +136,7 @@ export default function AssetCategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category? Assets using it will have no category.')) {
+    if (!await confirmDialog('Are you sure you want to delete this category? Assets using it will have no category.')) {
       return;
     }
 

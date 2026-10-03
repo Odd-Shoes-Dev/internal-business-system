@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -198,7 +199,7 @@ export default function BillDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this bill for payment?')) return;
+    if (!await confirmDialog('Approve this bill for payment?')) return;
     
     setActionLoading(true);
     try {
@@ -224,7 +225,7 @@ export default function BillDetailPage() {
   };
 
   const handleVoid = async () => {
-    if (!confirm('Void this bill? This action cannot be undone.')) return;
+    if (!await confirmDialog('Void this bill? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {
@@ -246,7 +247,7 @@ export default function BillDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Permanently delete this bill? This action cannot be undone.')) return;
+    if (!await confirmDialog('Permanently delete this bill? This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {
@@ -268,7 +269,7 @@ export default function BillDetailPage() {
   };
 
   const handleChangeToDraft = async () => {
-    if (!confirm('Change this bill back to draft status? This will allow you to edit it.')) return;
+    if (!await confirmDialog('Change this bill back to draft status? This will allow you to edit it.')) return;
     
     setActionLoading(true);
     try {

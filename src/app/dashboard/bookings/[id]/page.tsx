@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -302,7 +303,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
 
   async function handleDelete() {
     if (!booking) return;
-    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) return;
+    if (!await confirmDialog('Are you sure you want to delete this booking? This action cannot be undone.')) return;
 
     try {
       const res = await fetch(`/api/bookings/${booking.id}`, {
@@ -355,7 +356,7 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
       
       // Warn if full invoice would exceed remaining
       if (amount > remainingToInvoice && remainingToInvoice > 0) {
-        const proceed = confirm(
+        const proceed = await confirmDialog(
           `Warning: This booking already has ${booking.currency} ${totalInvoiced.toFixed(2)} invoiced. ` +
           `Creating a full invoice for ${booking.currency} ${amount.toFixed(2)} will exceed the booking total. ` +
           `Remaining balance to invoice: ${booking.currency} ${remainingToInvoice.toFixed(2)}.\n\n` +

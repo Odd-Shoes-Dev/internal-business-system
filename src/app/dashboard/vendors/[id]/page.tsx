@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
@@ -118,7 +119,7 @@ export default function VendorDetailPage({ params }: PageProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${vendor?.name}"? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to delete "${vendor?.name}"? This action cannot be undone.`)) {
       return;
     }
 

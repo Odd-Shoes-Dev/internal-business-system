@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -73,7 +74,7 @@ export default function GeneralLedgerPage() {
   };
 
   const handleVoid = async (id: string, entryNumber: string) => {
-    if (!confirm(`Are you sure you want to void journal entry ${entryNumber}? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to void journal entry ${entryNumber}? This action cannot be undone.`)) {
       return;
     }
 
@@ -97,7 +98,7 @@ export default function GeneralLedgerPage() {
   };
 
   const handleDelete = async (id: string, entryNumber: string) => {
-    if (!confirm(`Are you sure you want to delete journal entry ${entryNumber}? This action cannot be undone.`)) {
+    if (!await confirmDialog(`Are you sure you want to delete journal entry ${entryNumber}? This action cannot be undone.`)) {
       return;
     }
 

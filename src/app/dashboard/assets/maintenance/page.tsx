@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -73,7 +74,7 @@ export default function AssetMaintenancePage() {
   };
 
   const handleComplete = async (maintenanceId: string) => {
-    if (!confirm('Mark this maintenance as completed?')) return;
+    if (!await confirmDialog('Mark this maintenance as completed?')) return;
 
     try {
       const cost = prompt('Enter actual cost:');

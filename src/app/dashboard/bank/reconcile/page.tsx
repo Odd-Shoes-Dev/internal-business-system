@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -123,7 +124,7 @@ export default function ReconcilePage() {
 
     const difference = calculateDifference();
     if (Math.abs(difference) > 0.01) {
-      if (!confirm(`There is a difference of ${formatCurrency(difference)}. Do you want to continue anyway?`)) {
+      if (!await confirmDialog(`There is a difference of ${formatCurrency(difference)}. Do you want to continue anyway?`)) {
         return;
       }
     }

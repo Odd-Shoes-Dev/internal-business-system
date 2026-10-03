@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -115,7 +116,7 @@ export default function InventoryDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+    if (!await confirmDialog('Are you sure you want to delete this item? This action cannot be undone.')) {
       return;
     }
 

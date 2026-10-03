@@ -1,5 +1,6 @@
 'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { getApiError } from '@/lib/api-error';
 import { useEffect, useState } from 'react';
@@ -150,7 +151,7 @@ export default function BillingPage() {
   }
 
   async function handleCancelSubscription() {
-    if (!confirm('Are you sure you want to cancel your subscription? You will lose access at the end of your current billing period.')) {
+    if (!await confirmDialog('Are you sure you want to cancel your subscription? You will lose access at the end of your current billing period.')) {
       return;
     }
 
@@ -177,7 +178,7 @@ export default function BillingPage() {
   }
 
   async function handleRemoveModule(moduleId: string, moduleName: string) {
-    if (!confirm(`Remove ${moduleName}? This will take effect immediately.`)) {
+    if (!await confirmDialog(`Remove ${moduleName}? This will take effect immediately.`)) {
       return;
     }
 

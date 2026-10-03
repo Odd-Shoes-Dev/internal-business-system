@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -104,7 +105,7 @@ export default function TourPackageDetailPage() {
   const handleDelete = async () => {
     if (!pkg) return;
     
-    if (!confirm('Are you sure you want to delete this tour package? This action cannot be undone.')) {
+    if (!await confirmDialog('Are you sure you want to delete this tour package? This action cannot be undone.')) {
       return;
     }
 
