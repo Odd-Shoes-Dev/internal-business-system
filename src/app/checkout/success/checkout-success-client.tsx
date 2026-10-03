@@ -1,5 +1,6 @@
 'use client';
 
+import { SUPPORT_EMAIL } from '@/lib/support';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -133,7 +134,7 @@ export function CheckoutSuccessClient() {
               Questions? We&apos;re here to help!
             </p>
             <a
-              href="mailto:support@blueoox.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-blueox-primary hover:text-blueox-primary-hover font-semibold"
             >
               Contact Support

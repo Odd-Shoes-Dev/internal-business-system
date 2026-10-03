@@ -2,6 +2,7 @@
  * Whop payment utilities for accessing plan IDs and generating checkout links
  */
 
+import { SUPPORT_EMAIL } from './support';
 import { WHOP_PLAN_IDS, WHOP_MODULE_IDS, getPlanId, getModulePlanId } from './whop-config';
 import { Region } from './regional-pricing';
 
@@ -61,7 +62,7 @@ export function planExists(tier: string, billingPeriod: string, region: Region):
  */
 export function getEnterpriseContactInfo() {
   return {
-    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@blueoox.com',
+    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || SUPPORT_EMAIL,
     whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_LINK || 'https://wa.me/256XXXXXXXXX',
     displayPhone: process.env.NEXT_PUBLIC_DISPLAY_PHONE || '+256-XXX-XXXX-XXX',
   };

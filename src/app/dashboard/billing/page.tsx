@@ -6,6 +6,7 @@ import { CreditCardIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, 
 import { formatPrice } from '@/lib/regional-pricing';
 import type { Currency } from '@/lib/regional-pricing';
 import { useCompany } from '@/contexts/company-context';
+import { SUPPORT_EMAIL, supportMailto } from '@/lib/support';
 
 interface Subscription {
   id: string;
@@ -315,8 +316,12 @@ export default function BillingPage() {
   const isPastDue = subscription.status === 'past_due';
   const isCancelled = subscription.status === 'cancelled';
   const daysRemaining = subscription.trial_end_date ? getDaysRemaining(subscription.trial_end_date) : 0;
-  const totalModuleCost = modules.filter(m => m.is_active && !m.is_trial_module).reduce((sum, m) => sum + m.monthly_price, 0);
-  const monthlyTotal = subscription.base_price_amount + totalModuleCost;
+  // Database decimals arrive as text ("0.00"), so convert before adding - otherwise "+"
+  // joins the text together and the total shows as NaN. Included and trial modules are free.
+  const totalModuleCost = modules
+    .filter(m => m.is_active && !m.is_trial_module && !m.is_included)
+    .reduce((sum, m) => sum + (Number(m.monthly_price) || 0), 0);
+  const monthlyTotal = (Number(subscription.base_price_amount) || 0) + totalModuleCost;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
@@ -340,6 +345,16 @@ export default function BillingPage() {
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl">
             Control your subscription, modules, and payment methods
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Paying by another method, or having an issue with billing?{' '}
+            <a
+              href={supportMailto(`Billing help${company?.name ? ` - ${company.name}` : ''}`)}
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Contact support
+            </a>{' '}
+            at {SUPPORT_EMAIL}.
           </p>
         </div>
 

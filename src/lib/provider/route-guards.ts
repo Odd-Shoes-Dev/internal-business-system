@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { getDbProvider } from '@/lib/provider';
+import {
+  ENFORCE_READ_ONLY_AFTER_TRIAL,
+  READ_ONLY_EXEMPT_PATH_PREFIXES,
+  TRIAL_EXPIRED_MESSAGE,
+  WRITE_METHODS,
+  isTrialExpired,
+} from '@/lib/subscription-access';
 
 export async function requireSessionUser() {
   const db = getDbProvider();
@@ -93,6 +101,39 @@ export async function requireCompanyAdmin(
   return NextResponse.json({ error: message }, { status: 403 });
 }
 
+// Read-only mode after a trial ends (see lib/subscription-access.ts). Only write requests
+// (POST/PUT/PATCH/DELETE) to a company whose trial has expired are refused; reads, printing
+// and the exempt paths (billing, auth, reports, ...) are untouched. Does nothing while the
+// master switch is off, and fails open if the request method cannot be determined.
+async function blockWriteIfTrialExpired(companyId: string) {
+  if (!ENFORCE_READ_ONLY_AFTER_TRIAL) return null;
+
+  let method = '';
+  let path = '';
+  try {
+    const requestHeaders = await headers();
+    method = (requestHeaders.get('x-request-method') || '').toUpperCase();
+    path = requestHeaders.get('x-request-path') || '';
+  } catch {
+    return null; // not inside a request (e.g. a script)
+  }
+
+  if (!WRITE_METHODS.includes(method)) return null;
+  if (READ_ONLY_EXEMPT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
+
+  const db = getDbProvider();
+  const result = await db.query<{ subscription_status: string | null; trial_ends_at: string | null }>(
+    'SELECT subscription_status, trial_ends_at FROM companies WHERE id = $1 LIMIT 1',
+    [companyId]
+  );
+  const company = result.rows[0];
+  if (company && isTrialExpired(company.subscription_status, company.trial_ends_at)) {
+    return NextResponse.json({ error: TRIAL_EXPIRED_MESSAGE, code: 'TRIAL_EXPIRED' }, { status: 402 });
+  }
+
+  return null;
+}
+
 export async function requireCompanyAccess(userId: string, companyId: string) {
   const db = getDbProvider();
   const hasAccess = await db.hasCompanyAccess(userId, companyId);
@@ -100,5 +141,5 @@ export async function requireCompanyAccess(userId: string, companyId: string) {
     return NextResponse.json({ error: 'Access denied to this company' }, { status: 403 });
   }
 
-  return null;
+  return blockWriteIfTrialExpired(companyId);
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { SUPPORT_EMAIL } from '@/lib/support';
 import { useState } from 'react';
 import {
   MagnifyingGlassIcon,
@@ -403,11 +404,11 @@ export default function DocumentationPage() {
               Need help? Contact our support team:
             </p>
             <a 
-              href="mailto:support@blueox.app" 
+              href={`mailto:${SUPPORT_EMAIL}`} 
               className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-accent to-blueox-primary hover:from-blueox-primary-hover hover:to-blueox-accent text-black px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               <SparklesIcon className="w-4 h-4" />
-              support@blueox.app
+              {SUPPORT_EMAIL}
             </a>
           </div>
           

@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       [company_id, email.toLowerCase().trim(), role, token, user.id, expiresAt]
     );
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://blueox.app';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://system.blueoxgroup.eu';
 
     await sendInvitationEmail({
       to: email,

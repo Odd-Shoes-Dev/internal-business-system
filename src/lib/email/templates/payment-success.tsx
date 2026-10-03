@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from '../../support';
 import {
   Body,
   Button,
@@ -94,7 +95,7 @@ export const PaymentSuccessEmail = ({
           <Hr style={hr} />
 
           <Text style={footer}>
-            Questions about your billing? Contact us at support@blueox.app
+            Questions about your billing? Contact us at {SUPPORT_EMAIL}
           </Text>
 
           <Text style={footer}>

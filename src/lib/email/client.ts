@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { SUPPORT_EMAIL } from '../support';
 
 if (!process.env.RESEND_API_KEY) {
   console.warn('RESEND_API_KEY is not set. Email functionality will be disabled.');
@@ -7,9 +8,9 @@ if (!process.env.RESEND_API_KEY) {
 export const resend = new Resend(process.env.RESEND_API_KEY || '');
 
 export const EMAIL_CONFIG = {
-  from: process.env.EMAIL_FROM || 'BlueOx <noreply@blueox.app>',
-  replyTo: process.env.EMAIL_REPLY_TO || 'support@blueox.app',
+  from: process.env.EMAIL_FROM || 'BlueOxGroup <noreply@blueoxgroup.eu>',
+  replyTo: process.env.EMAIL_REPLY_TO || SUPPORT_EMAIL,
   companyName: 'BlueOx Business Platform',
-  supportEmail: 'support@blueox.app',
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://blueox.app',
+  supportEmail: SUPPORT_EMAIL,
+  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://system.blueoxgroup.eu',
 };

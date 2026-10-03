@@ -1,5 +1,6 @@
 'use client';
 
+import { SUPPORT_EMAIL } from '@/lib/support';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -796,7 +797,7 @@ export default function Home() {
                         </li>
                       </ul>
                       
-                      <a href="mailto:admin@blueoxjobs.eu?subject=Enterprise Plan Inquiry - BlueOx Business Platform" className="w-full bg-white border-2 border-blueox-primary-dark text-blueox-primary-dark hover:bg-blueox-primary-dark hover:text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 inline-block text-center">
+                      <a href={`mailto:${SUPPORT_EMAIL}?subject=Enterprise Plan Inquiry - BlueOx Business Platform`} className="w-full bg-white border-2 border-blueox-primary-dark text-blueox-primary-dark hover:bg-blueox-primary-dark hover:text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 inline-block text-center">
                         Contact Sales
                       </a>
                       <p className="text-xs text-gray-500 mt-3">Custom pricing available</p>
@@ -1030,7 +1031,7 @@ export default function Home() {
         <div className="text-center mt-12">
           <p className="text-gray-600 mb-4">Still have questions?</p>
           <a 
-            href="mailto:admin@blueoxjobs.eu?subject=BlueOx Question" 
+            href={`mailto:${SUPPORT_EMAIL}?subject=BlueOx Question`} 
             className="inline-flex items-center gap-2 text-blueox-primary hover:text-blueox-primary-hover font-semibold"
           >
             <EnvelopeIcon className="w-5 h-5" />
@@ -1048,9 +1049,9 @@ export default function Home() {
               Built and powered by <span className="font-semibold text-blueox-primary">BlueOx</span>
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-600 mb-3">
-              <a href="mailto:admin@blueoxjobs.eu" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <EnvelopeIcon className="w-4 h-4" />
-                admin@blueoxjobs.eu
+                {SUPPORT_EMAIL}
               </a>
               <a href="https://wa.me/48666250547" target="_blank" rel="noopener noreferrer" className="hover:text-blueox-primary transition-colors flex items-center gap-1">
                 <ChatBubbleLeftRightIcon className="w-4 h-4" />

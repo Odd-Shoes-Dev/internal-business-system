@@ -1,5 +1,6 @@
 'use client';
 
+import { SUPPORT_EMAIL, supportMailto } from '@/lib/support';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
@@ -12,10 +13,10 @@ type PlanTier = 'starter' | 'professional' | 'enterprise';
 
 // Contact information for large purchases
 const CONTACT_INFO = {
-  email: 'support@blueox.com',
+  email: SUPPORT_EMAIL,
   whatsapp: '+256700123456', // Replace with actual WhatsApp number
   whatsappUrl: 'https://wa.me/256700123456?text=I%20am%20interested%20in%20upgrading%20my%20plan%20for%20enterprise%20pricing',
-  emailUrl: 'mailto:support@blueox.com?subject=Enterprise%20Plan%20Inquiry&body=I%20am%20interested%20in%20upgrading%20to%20an%20enterprise%20plan%20with%20annual%20billing.',
+  emailUrl: `mailto:${SUPPORT_EMAIL}?subject=Enterprise%20Plan%20Inquiry&body=I%20am%20interested%20in%20upgrading%20to%20an%20enterprise%20plan%20with%20annual%20billing.`,
 };
 
 export default function UpgradePage() {
@@ -349,6 +350,17 @@ export default function UpgradePage() {
             : 'Upgrade Now'}
         </button>
       </div>
+
+      <p className="mt-4 text-center text-sm text-gray-600">
+        Paying another way, or having trouble upgrading?{' '}
+        <a
+          href={supportMailto(`Upgrade help${company?.name ? ` - ${company.name}` : ''}`)}
+          className="text-blue-600 hover:underline font-medium"
+        >
+          Contact support
+        </a>{' '}
+        at {SUPPORT_EMAIL}.
+      </p>
 
       {/* Trial Notice — only shown when on trial or no subscription yet */}
       {(!currentSubscription || currentSubscription?.subscription?.status === 'trial') && (

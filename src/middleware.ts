@@ -4,9 +4,16 @@ import type { NextRequest } from 'next/server';
 const SESSION_COOKIE = 'blueox_session';
 
 export async function middleware(req: NextRequest) {
+  // Route handlers cannot see the HTTP method or path from their request headers, so pass
+  // them along (used by the read-only-after-trial guard). Always overwritten here, so a
+  // client cannot spoof them.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-request-method', req.method);
+  requestHeaders.set('x-request-path', req.nextUrl.pathname);
+
   const res = NextResponse.next({
     request: {
-      headers: req.headers,
+      headers: requestHeaders,
     },
   });
 
