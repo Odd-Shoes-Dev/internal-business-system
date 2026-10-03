@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -141,7 +142,7 @@ export default function AssetDetailPage() {
       router.push('/dashboard/assets');
     } catch (error: any) {
       console.error('Failed to delete asset:', error);
-      alert(error.message || 'Failed to delete asset');
+      toast.error(error.message || 'Failed to delete asset');
       setActionLoading(false);
     }
   };

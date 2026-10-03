@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -97,7 +98,7 @@ export default function ScheduledReportsPage() {
       });
 
       if (response.ok) {
-        alert('Report has been queued for immediate delivery!');
+        toast.success('Report has been queued for immediate delivery!');
       }
     } catch (error) {
       console.error('Failed to run report:', error);

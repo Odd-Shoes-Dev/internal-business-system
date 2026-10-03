@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
@@ -143,7 +144,7 @@ export default function AddModulesPage() {
       // Whop supports one plan per checkout; remaining paid modules must be added separately.
       if (result.checkout_url) {
         if (result.paid_pending?.length > 0) {
-          alert(`Payment is required for one module at a time. You'll be redirected to pay for the first paid module now. After payment, return here to add the remaining ${result.paid_pending.length} module(s).`);
+          toast(`Payment is required for one module at a time. You'll be redirected to pay for the first paid module now. After payment, return here to add the remaining ${result.paid_pending.length} module(s).`, { duration: 10000 });
         }
         window.location.href = result.checkout_url;
         return;
@@ -153,7 +154,7 @@ export default function AddModulesPage() {
       router.push('/dashboard/billing');
     } catch (error: any) {
       console.error('Add modules error:', error);
-      alert(error.message || 'Failed to add modules. Please try again.');
+      toast.error(error.message || 'Failed to add modules. Please try again.');
     } finally {
       setLoading(false);
     }

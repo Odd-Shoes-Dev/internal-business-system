@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -83,7 +84,7 @@ export default function DepreciationPage() {
     }
 
     if (!company?.id) {
-      alert('No company selected');
+      toast.error('No company selected');
       return;
     }
 
@@ -123,7 +124,7 @@ export default function DepreciationPage() {
       await loadAssets(); // Reload to show updated values
     } catch (error) {
       console.error('Failed to run depreciation:', error);
-      alert('Failed to run depreciation. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to run depreciation. Please try again.');
     } finally {
       setProcessing(false);
     }

@@ -1,5 +1,7 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
+import { getApiError } from '@/lib/api-error';
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -132,11 +134,11 @@ export default function NewScheduledReportPage() {
           window.location.href = '/dashboard/reports/scheduled';
         }, 2000);
       } else {
-        throw new Error('Failed to create scheduled report');
+        throw new Error(await getApiError(response, 'Failed to create scheduled report'));
       }
     } catch (error) {
       console.error('Failed to create scheduled report:', error);
-      alert('Failed to create scheduled report. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to create scheduled report. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -133,11 +134,11 @@ export default function VendorDetailPage({ params }: PageProps) {
         throw new Error(payload?.error || 'Failed to delete vendor');
       }
 
-      alert(payload?.message || 'Vendor deleted successfully');
+      toast.success(payload?.message || 'Vendor deleted successfully');
       router.push('/dashboard/vendors');
     } catch (error) {
       console.error('Failed to delete vendor:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete vendor');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete vendor');
     } finally {
       setDeleting(false);
     }

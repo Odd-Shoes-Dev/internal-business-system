@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -106,11 +107,11 @@ export default function NewExpensePage() {
     const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
     const maxSize = 10 * 1024 * 1024;
     if (!validTypes.includes(file.type)) {
-      alert('Invalid file type. Please upload a PDF, PNG, or JPEG.');
+      toast.error('Invalid file type. Please upload a PDF, PNG, or JPEG.');
       return;
     }
     if (file.size > maxSize) {
-      alert('File is too large. Maximum size is 10MB.');
+      toast.error('File is too large. Maximum size is 10MB.');
       return;
     }
     setAttachments([file]);

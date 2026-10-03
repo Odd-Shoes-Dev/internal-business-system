@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -410,10 +411,10 @@ export default function ExpenseDetailPage() {
       
       // Reload expense
       await loadExpenseDetails();
-      alert('Expense approved successfully');
+      toast.success('Expense approved successfully');
     } catch (error: any) {
       console.error('Failed to approve expense:', error);
-      alert(error.message || 'Failed to approve expense');
+      toast.error(error.message || 'Failed to approve expense');
     } finally {
       setActionLoading(false);
     }
@@ -438,10 +439,10 @@ export default function ExpenseDetailPage() {
       
       // Reload expense
       await loadExpenseDetails();
-      alert('Expense rejected');
+      toast.success('Expense rejected');
     } catch (error: any) {
       console.error('Failed to reject expense:', error);
-      alert(error.message || 'Failed to reject expense');
+      toast.error(error.message || 'Failed to reject expense');
     } finally {
       setActionLoading(false);
     }
@@ -465,7 +466,7 @@ export default function ExpenseDetailPage() {
       router.push('/dashboard/expenses');
     } catch (error: any) {
       console.error('Failed to delete expense:', error);
-      alert(error.message || 'Failed to delete expense');
+      toast.error(error.message || 'Failed to delete expense');
       setActionLoading(false);
     }
   };

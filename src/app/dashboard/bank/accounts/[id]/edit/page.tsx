@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -72,7 +73,7 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
         }
       } catch (error) {
         console.error('Error loading bank account:', error);
-        alert('Failed to load bank account');
+        toast.error('Failed to load bank account');
       } finally {
         setIsLoading(false);
       }
@@ -123,7 +124,7 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
       router.refresh();
     } catch (error) {
       console.error('Error updating bank account:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update bank account');
+      toast.error(error instanceof Error ? error.message : 'Failed to update bank account');
     } finally {
       setIsSubmitting(false);
     }

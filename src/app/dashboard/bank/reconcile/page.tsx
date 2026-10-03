@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
@@ -116,7 +117,7 @@ export default function ReconcilePage() {
 
   const handleReconcile = async () => {
     if (selectedTransactions.size === 0) {
-      alert('Please select at least one transaction to reconcile.');
+      toast.error('Please select at least one transaction to reconcile.');
       return;
     }
 
@@ -146,12 +147,12 @@ export default function ReconcilePage() {
         throw new Error(result.error || 'Failed to reconcile transactions');
       }
 
-      alert('Reconciliation completed successfully!');
+      toast.success('Reconciliation completed successfully!');
       setSelectedTransactions(new Set());
       await loadTransactions();
     } catch (error) {
       console.error('Failed to reconcile:', error);
-      alert('Failed to complete reconciliation. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to complete reconciliation. Please try again.');
     } finally {
       setLoading(false);
     }

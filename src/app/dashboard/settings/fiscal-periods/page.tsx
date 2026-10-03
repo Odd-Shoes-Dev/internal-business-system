@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import {
@@ -73,9 +74,9 @@ export default function FiscalPeriodsPage() {
       }
 
       await loadPeriods();
-      alert(`Period "${periodName}" has been closed successfully.`);
+      toast.success(`Period "${periodName}" has been closed successfully.`);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     } finally {
       setActionLoading(null);
     }
@@ -101,9 +102,9 @@ export default function FiscalPeriodsPage() {
       }
 
       await loadPeriods();
-      alert(`Period "${periodName}" has been reopened successfully.`);
+      toast.success(`Period "${periodName}" has been reopened successfully.`);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast.error(error.message);
     } finally {
       setActionLoading(null);
     }

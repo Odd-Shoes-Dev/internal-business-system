@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -216,7 +217,7 @@ export default function BillDetailPage() {
       await loadBillDetails();
     } catch (error: any) {
       console.error('Failed to approve bill:', error);
-      alert(error.message || 'Failed to approve bill');
+      toast.error(error.message || 'Failed to approve bill');
     } finally {
       setActionLoading(false);
     }
@@ -239,7 +240,7 @@ export default function BillDetailPage() {
       router.push('/dashboard/bills');
     } catch (error: any) {
       console.error('Failed to void bill:', error);
-      alert(error.message || 'Failed to void bill');
+      toast.error(error.message || 'Failed to void bill');
       setActionLoading(false);
     }
   };
@@ -261,7 +262,7 @@ export default function BillDetailPage() {
       router.push('/dashboard/bills');
     } catch (error: any) {
       console.error('Failed to delete bill:', error);
-      alert(error.message || 'Failed to delete bill');
+      toast.error(error.message || 'Failed to delete bill');
       setActionLoading(false);
     }
   };
@@ -286,7 +287,7 @@ export default function BillDetailPage() {
       await loadBillDetails();
     } catch (error: any) {
       console.error('Failed to change bill status:', error);
-      alert(error.message || 'Failed to change bill status');
+      toast.error(error.message || 'Failed to change bill status');
     } finally {
       setActionLoading(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -241,7 +242,7 @@ export default function InvoiceDetailPage() {
       await fetchInvoice();
     } catch (error: any) {
       console.error('Failed to apply credit:', error);
-      alert(error.message || 'Failed to apply credit');
+      toast.error(error.message || 'Failed to apply credit');
     } finally {
       setApplyingCredit(null);
     }
@@ -629,7 +630,7 @@ export default function InvoiceDetailPage() {
       fetchInvoice();
     } catch (error: any) {
       console.error('Error updating invoice:', error);
-      alert(error.message || 'Failed to update invoice');
+      toast.error(error.message || 'Failed to update invoice');
     } finally {
       setActionLoading(null);
     }
@@ -651,11 +652,11 @@ export default function InvoiceDetailPage() {
         throw new Error(data.error || 'Failed to update invoice');
       }
       
-      alert('Invoice marked as paid! Journal entry created.');
+      toast.success('Invoice marked as paid! Journal entry created.');
       fetchInvoice();
     } catch (error: any) {
       console.error('Error updating invoice:', error);
-      alert(error.message || 'Failed to mark as paid');
+      toast.error(error.message || 'Failed to mark as paid');
     } finally {
       setActionLoading(null);
     }
@@ -663,7 +664,7 @@ export default function InvoiceDetailPage() {
 
   const handleSendEmail = () => {
     if (!invoice?.customer?.email) {
-      alert('Customer does not have an email address');
+      toast.error('Customer does not have an email address');
       return;
     }
 
@@ -713,7 +714,7 @@ export default function InvoiceDetailPage() {
       router.push('/dashboard/invoices');
     } catch (error: any) {
       console.error('Error deleting invoice:', error);
-      alert(error?.message || 'Failed to delete invoice');
+      toast.error(error?.message || 'Failed to delete invoice');
       setActionLoading(null);
     }
   };
@@ -721,7 +722,7 @@ export default function InvoiceDetailPage() {
   const handleCopyPaymentLink = () => {
     const paymentUrl = `${window.location.origin}/pay?invoice=${params.id}`;
     navigator.clipboard.writeText(paymentUrl);
-    alert('Payment link copied to clipboard!');
+    toast.success('Payment link copied to clipboard!');
   };
 
   const handleConvertToInvoice = async () => {
@@ -748,12 +749,12 @@ export default function InvoiceDetailPage() {
         throw new Error(result.error || 'Failed to convert');
       }
 
-      alert(`${docType.charAt(0).toUpperCase() + docType.slice(1)} converted to invoice successfully!`);
+      toast.success(`${docType.charAt(0).toUpperCase() + docType.slice(1)} converted to invoice successfully!`);
       // Refresh the page to show updated data
       window.location.reload();
     } catch (error: any) {
       console.error('Convert error:', error);
-      alert(error.message || `Failed to convert ${docType}`);
+      toast.error(error.message || `Failed to convert ${docType}`);
     } finally {
       setActionLoading(null);
     }

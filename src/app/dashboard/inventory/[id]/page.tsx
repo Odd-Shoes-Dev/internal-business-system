@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -132,7 +133,7 @@ export default function InventoryDetailPage() {
       router.push('/dashboard/inventory');
     } catch (error) {
       console.error('Failed to delete item:', error);
-      alert('Failed to delete item');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete item');
     } finally {
       setActionLoading(false);
     }
@@ -173,7 +174,7 @@ export default function InventoryDetailPage() {
       setShowAdjustModal(false);
       loadItemDetails();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setSavingAdjust(false);
     }

@@ -1,5 +1,7 @@
 'use client';
 
+import toast from 'react-hot-toast';
+import { getApiError } from '@/lib/api-error';
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -79,14 +81,14 @@ export default function TransactionDetailPage({ params }: PageProps) {
         credentials: 'include',
       });
       if (!response.ok) {
-        throw new Error('Failed to delete transaction');
+        throw new Error(await getApiError(response, 'Failed to delete transaction.'));
       }
 
-      alert('Transaction deleted successfully');
+      toast.success('Transaction deleted successfully');
       router.push('/dashboard/bank/transactions');
     } catch (error) {
       console.error('Failed to delete transaction:', error);
-      alert('Failed to delete transaction. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete transaction. Please try again.');
     } finally {
       setDeleting(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
@@ -91,7 +92,7 @@ export default function GeneralLedgerPage() {
       await fetchEntries(); // Refresh the list
     } catch (error) {
       console.error('Error voiding entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to void entry');
+      toast.error(error instanceof Error ? error.message : 'Failed to void entry');
     }
   };
 
@@ -113,7 +114,7 @@ export default function GeneralLedgerPage() {
       await fetchEntries(); // Refresh the list
     } catch (error) {
       console.error('Error deleting entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete entry');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete entry');
     }
   };
 

@@ -1,5 +1,6 @@
 'use client';
 
+import toast from 'react-hot-toast';
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -119,11 +120,11 @@ export default function CustomerDetailPage({ params }: PageProps) {
         throw new Error(payload?.error || 'Failed to delete customer');
       }
 
-      alert(payload?.message || 'Customer deleted successfully');
+      toast.success(payload?.message || 'Customer deleted successfully');
       router.push('/dashboard/customers');
     } catch (error) {
       console.error('Failed to delete customer:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete customer');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete customer');
     } finally {
       setDeleting(false);
     }
