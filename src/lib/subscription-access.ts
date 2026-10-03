@@ -6,11 +6,12 @@
 //
 // Plain code with no server imports, so both the API guards and the UI banner use it.
 
-// MASTER SWITCH. Keep false until a real payment is confirmed to activate a company (the
-// Whop webhook sets companies.subscription_status = 'active'). While false nothing is
-// restricted. Turning this on with activation broken would lock paying customers out of
-// editing their own data.
-export const ENFORCE_READ_ONLY_AFTER_TRIAL = false;
+// MASTER SWITCH. When true, a company whose trial has ended and which is not active is
+// read-only. Set to false and redeploy to lift the lock for everyone.
+// Payments are currently handled manually: a paying company is unlocked by setting its
+// status to 'active' in the database. Online payment (the Whop webhook) is not yet
+// confirmed to activate a company, so do not rely on it to unlock anyone.
+export const ENFORCE_READ_ONLY_AFTER_TRIAL = true;
 
 export const TRIAL_EXPIRED_MESSAGE =
   'Your trial has ended. Your account is read-only until you upgrade to a paid plan.';
