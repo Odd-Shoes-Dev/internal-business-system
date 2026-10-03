@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from '../../support';
 import {
   Body,
   Button,
@@ -79,7 +80,7 @@ export const TrialReminderEmail = ({
           <Hr style={hr} />
 
           <Text style={footer}>
-            Questions? Reply to this email or contact us at support@blueox.app
+            Questions? Reply to this email or contact us at {SUPPORT_EMAIL}
           </Text>
 
           <Text style={footer}>

@@ -1,4 +1,5 @@
 import { render } from '@react-email/components';
+import { SUPPORT_EMAIL } from '../support';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { TrialReminderEmail } from './templates/trial-reminder';
 import { PaymentSuccessEmail } from './templates/payment-success';
@@ -15,11 +16,11 @@ async function getEmailClient() {
 }
 
 export const EMAIL_CONFIG = {
-  from: process.env.EMAIL_FROM || 'BlueOx <noreply@blueox.app>',
-  replyTo: process.env.EMAIL_REPLY_TO || 'support@blueox.app',
+  from: process.env.EMAIL_FROM || 'BlueOxGroup <noreply@blueoxgroup.eu>',
+  replyTo: process.env.EMAIL_REPLY_TO || SUPPORT_EMAIL,
   companyName: 'BlueOx Business Platform',
-  supportEmail: 'support@blueox.app',
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://blueox.app',
+  supportEmail: SUPPORT_EMAIL,
+  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://system.blueoxgroup.eu',
 };
 
 export interface SendEmailOptions {

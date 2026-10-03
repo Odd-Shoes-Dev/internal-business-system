@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from '../../support';
 import {
   Body,
   Button,
@@ -117,7 +118,7 @@ export const WelcomeEmail = ({
           <Text style={smallText}>
             • Check out our <a href={`${dashboardUrl}/help`} style={link}>Help Center</a><br />
             • Watch <a href={`${dashboardUrl}/videos`} style={link}>video tutorials</a><br />
-            • Email us at support@blueox.app<br />
+            • Email us at {SUPPORT_EMAIL}<br />
             • Book a free onboarding call
           </Text>
 

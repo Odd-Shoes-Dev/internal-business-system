@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { XMarkIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ENFORCE_READ_ONLY_AFTER_TRIAL } from '@/lib/subscription-access';
+import { supportMailto } from '@/lib/support';
 
 interface TrialWarningProps {
   trialEndDate?: string;
@@ -112,6 +113,12 @@ export default function TrialWarningBanner({ trialEndDate, subscriptionStatus }:
                 {config.action}
                 <span>→</span>
               </Link>
+              <span className={`ml-4 text-sm ${config.textColor}`}>
+                or{' '}
+                <a href={supportMailto('Billing help')} className="underline font-medium">
+                  contact support
+                </a>
+              </span>
             </div>
           </div>
         </div>
