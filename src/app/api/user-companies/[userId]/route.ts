@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
 
 const VALID_ROLES = ['admin', 'accountant', 'operations', 'sales', 'guide', 'viewer'];
 
@@ -23,6 +23,10 @@ export async function PATCH(
     if (!role || !VALID_ROLES.includes(role)) {
       return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
     }
+
+    // Members only, and not while the company is read-only
+    const accessError = await requireCompanyAccess(user.id, company_id);
+    if (accessError) return accessError;
 
     // Verify the requesting user is an admin in this company
     const requesterResult = await db.query(

@@ -3,11 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { TRIAL_EXPIRED_MESSAGE } from '@/lib/subscription-access';
+import { SUBSCRIPTION_EXPIRED_MESSAGE, TRIAL_EXPIRED_MESSAGE } from '@/lib/subscription-access';
 
 const TOAST_ID = 'trial-expired';
 
-// When the server blocks a change because the trial has ended (402 TRIAL_EXPIRED), show one
+// When the server blocks a change because the trial or paid period has ended (402 TRIAL_EXPIRED / SUBSCRIPTION_EXPIRED), show one
 // clear message with an Upgrade button, whichever screen made the request. The screen's own
 // "failed" toast for the same message is skipped so the user does not see two.
 export function TrialExpiredHandler() {
@@ -22,14 +22,14 @@ export function TrialExpiredHandler() {
       if (res.status === 402) {
         try {
           const data = await res.clone().json();
-          if (data?.code === 'TRIAL_EXPIRED') {
+          if (data?.code === 'TRIAL_EXPIRED' || data?.code === 'SUBSCRIPTION_EXPIRED') {
             toast.custom(
               (t) => (
                 <div
                   className={`${t.visible ? 'animate-enter' : 'animate-leave'} flex max-w-sm items-start gap-3 rounded-lg bg-red-600 px-4 py-3 text-sm text-white shadow-lg`}
                 >
                   <div className="flex-1">
-                    <p>{data.error || TRIAL_EXPIRED_MESSAGE}</p>
+                    <p>{data.error || (data.code === 'SUBSCRIPTION_EXPIRED' ? SUBSCRIPTION_EXPIRED_MESSAGE : TRIAL_EXPIRED_MESSAGE)}</p>
                     <button
                       type="button"
                       onClick={() => {
@@ -54,7 +54,7 @@ export function TrialExpiredHandler() {
     };
 
     toast.error = ((message: any, opts?: any) => {
-      if (message === TRIAL_EXPIRED_MESSAGE) return TOAST_ID;
+      if (message === TRIAL_EXPIRED_MESSAGE || message === SUBSCRIPTION_EXPIRED_MESSAGE) return TOAST_ID;
       return originalError(message, opts);
     }) as typeof toast.error;
 

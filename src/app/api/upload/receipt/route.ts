@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
 import { uploadToImageKit } from '@/lib/imagekit';
 
 export async function POST(request: NextRequest) {
@@ -18,6 +18,9 @@ export async function POST(request: NextRequest) {
     if (!companyId) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
+
+    const accessError = await requireCompanyAccess(user.id, companyId);
+    if (accessError) return accessError;
 
     const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {

@@ -4,8 +4,10 @@ import { getDbProvider } from '@/lib/provider';
 import {
   ENFORCE_READ_ONLY_AFTER_TRIAL,
   READ_ONLY_EXEMPT_PATH_PREFIXES,
+  SUBSCRIPTION_EXPIRED_MESSAGE,
   TRIAL_EXPIRED_MESSAGE,
   WRITE_METHODS,
+  isSubscriptionLapsed,
   isTrialExpired,
 } from '@/lib/subscription-access';
 
@@ -122,13 +124,26 @@ async function blockWriteIfTrialExpired(companyId: string) {
   if (READ_ONLY_EXEMPT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
 
   const db = getDbProvider();
-  const result = await db.query<{ subscription_status: string | null; trial_ends_at: string | null }>(
-    'SELECT subscription_status, trial_ends_at FROM companies WHERE id = $1 LIMIT 1',
+  const result = await db.query<{
+    subscription_status: string | null;
+    trial_ends_at: string | null;
+    period_end: string | null;
+  }>(
+    `SELECT c.subscription_status, c.trial_ends_at,
+            (SELECT s.current_period_end FROM subscriptions s
+              WHERE s.company_id = c.id ORDER BY s.created_at DESC LIMIT 1) AS period_end
+     FROM companies c WHERE c.id = $1 LIMIT 1`,
     [companyId]
   );
   const company = result.rows[0];
   if (company && isTrialExpired(company.subscription_status, company.trial_ends_at)) {
     return NextResponse.json({ error: TRIAL_EXPIRED_MESSAGE, code: 'TRIAL_EXPIRED' }, { status: 402 });
+  }
+  if (company && isSubscriptionLapsed(company.subscription_status, company.period_end)) {
+    return NextResponse.json(
+      { error: SUBSCRIPTION_EXPIRED_MESSAGE, code: 'SUBSCRIPTION_EXPIRED' },
+      { status: 402 }
+    );
   }
 
   return null;
