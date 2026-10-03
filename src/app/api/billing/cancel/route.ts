@@ -1,27 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
-import { requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
+import { requireCompanyAdmin, requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    // Get user's company and check they're an owner or admin
-    const profile = await db.query<{ role: string }>(
-      'SELECT role FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-    const profileRow = profile.rows[0];
-
+    // Get user's company and check they're an owner or admin of it
     const body = await request.json().catch(() => ({}));
     const companyId = await resolveUserCompanyId(user.id, body.company_id);
     if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    if (profileRow?.role !== 'owner' && profileRow?.role !== 'admin') {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    const adminError = await requireCompanyAdmin(user.id, user.role, companyId, 'Insufficient permissions');
+    if (adminError) {
+      return adminError;
     }
 
     // Get company subscription settings

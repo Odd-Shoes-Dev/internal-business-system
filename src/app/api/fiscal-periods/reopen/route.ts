@@ -1,4 +1,4 @@
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAccess, requireCompanyAdmin, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/fiscal-periods/reopen - Reopen a fiscal period
@@ -10,17 +10,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-
-    // Check if user is admin
-    const profileResult = await db.query('SELECT role FROM user_profiles WHERE id = $1 LIMIT 1', [user.id]);
-    const profile = profileResult.rows[0];
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Only administrators can reopen fiscal periods' },
-        { status: 403 }
-      );
-    }
 
     if (!body.period_id) {
       return NextResponse.json(
@@ -42,6 +31,16 @@ export async function POST(request: NextRequest) {
     const companyAccessError = await requireCompanyAccess(user.id, period.company_id);
     if (companyAccessError) {
       return companyAccessError;
+    }
+
+    const adminError = await requireCompanyAdmin(
+      user.id,
+      user.role,
+      period.company_id,
+      'Only administrators can reopen fiscal periods'
+    );
+    if (adminError) {
+      return adminError;
     }
 
     // Update period status to open

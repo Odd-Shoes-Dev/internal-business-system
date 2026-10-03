@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAdmin, requireSessionUser } from '@/lib/provider/route-guards';
 import { getWhop } from '@/lib/whop';
 import { getPlanId } from '@/lib/whop-config';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
@@ -37,10 +37,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Allow owner/admin of company, or global app admin
-    const canManage = ['owner', 'admin'].includes(userCompanyRow.role) || user.role === 'admin';
-    if (!canManage) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    // Only an owner/admin of this company may change its plan
+    const adminError = await requireCompanyAdmin(
+      user.id,
+      user.role,
+      userCompanyRow.company_id,
+      'Insufficient permissions'
+    );
+    if (adminError) {
+      return adminError;
     }
 
     // Enforce region from DB — never trust client

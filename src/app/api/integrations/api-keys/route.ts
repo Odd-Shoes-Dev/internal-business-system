@@ -1,4 +1,4 @@
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAccess, requireCompanyAdmin, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 
@@ -21,25 +21,11 @@ export async function POST(request: NextRequest) {
       return errorResponse!;
     }
 
-    // Check if user has admin permissions
-    const profileResult = await db.query<{ role: string | null }>(
-      'SELECT role FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-    const profile = profileResult.rows[0];
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ 
-        error: 'Only administrators can create API keys' 
-      }, { status: 403 });
-    }
-
-    const body: CreateAPIKeyRequest = await request.json();
     const companyId = request.nextUrl.searchParams.get('company_id');
-    
+
     if (!companyId) {
-      return NextResponse.json({ 
-        error: 'company_id parameter required' 
+      return NextResponse.json({
+        error: 'company_id parameter required'
       }, { status: 400 });
     }
 
@@ -47,6 +33,19 @@ export async function POST(request: NextRequest) {
     if (companyAccessError) {
       return companyAccessError;
     }
+
+    // Only an owner/admin of this company may create API keys for it
+    const adminError = await requireCompanyAdmin(
+      user.id,
+      user.role,
+      companyId,
+      'Only administrators can create API keys'
+    );
+    if (adminError) {
+      return adminError;
+    }
+
+    const body: CreateAPIKeyRequest = await request.json();
 
     // Validate required fields
     if (!body.integration_name || !body.external_system_id) {
