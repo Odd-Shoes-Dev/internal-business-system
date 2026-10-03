@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendTrialReminderEmail, formatCurrencyForEmail } from '@/lib/email/send';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,13 +10,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's company
-    const profileResult = await db.query<{ company_id: string | null }>(
-      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-    const profile = profileResult.rows[0];
+    const companyId = await resolveUserCompanyId(user.id);
 
-    if (!profile?.company_id) {
+    if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
@@ -29,7 +25,7 @@ export async function POST(request: NextRequest) {
          AND s.status = 'trial'
        ORDER BY s.created_at DESC
        LIMIT 1`,
-      [profile.company_id]
+      [companyId]
     );
     const subscription = subscriptionResult.rows[0] as any;
 

@@ -26,6 +26,73 @@ export function getCompanyIdFromRequest(request: NextRequest, body?: Record<stri
   return companyId || null;
 }
 
+// Resolves which company a request is about, the same way the rest of the app does:
+// through the user's company memberships (user_companies), not user_profiles.company_id,
+// which is empty for users who were invited into an existing company.
+// - requestedCompanyId given: used only if the user has access to it, otherwise null.
+// - otherwise: the user's primary membership, then the legacy profile company.
+export async function resolveUserCompanyId(
+  userId: string,
+  requestedCompanyId?: string | null
+): Promise<string | null> {
+  const db = getDbProvider();
+
+  if (requestedCompanyId) {
+    return (await db.hasCompanyAccess(userId, requestedCompanyId)) ? requestedCompanyId : null;
+  }
+
+  const membership = await db.query<{ company_id: string }>(
+    `SELECT company_id
+     FROM user_companies
+     WHERE user_id = $1
+     ORDER BY is_primary DESC, joined_at ASC
+     LIMIT 1`,
+    [userId]
+  );
+  if (membership.rows[0]?.company_id) {
+    return membership.rows[0].company_id;
+  }
+
+  const profile = await db.query<{ company_id: string | null }>(
+    'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
+    [userId]
+  );
+  return profile.rows[0]?.company_id ?? null;
+}
+
+// Whether the user is an owner/admin of THIS company. The role on their membership in
+// the company decides. The session (app_users) role is only a fallback for a membership
+// that has no role, so being admin of their own company does not make someone an admin
+// of every company they are invited into. Not a member = not an admin.
+export async function isCompanyAdmin(
+  userId: string,
+  sessionRole: string | null | undefined,
+  companyId: string
+): Promise<boolean> {
+  const db = getDbProvider();
+  const membership = await db.query<{ role: string | null }>(
+    'SELECT role FROM user_companies WHERE user_id = $1 AND company_id = $2 LIMIT 1',
+    [userId, companyId]
+  );
+  const row = membership.rows[0];
+  if (!row) return false;
+  if (row.role) return ['owner', 'admin'].includes(row.role);
+  return sessionRole === 'admin';
+}
+
+// Returns a 403 response unless the user is an owner/admin of the company, else null.
+export async function requireCompanyAdmin(
+  userId: string,
+  sessionRole: string | null | undefined,
+  companyId: string,
+  message = 'Only a company owner or admin can do this'
+) {
+  if (await isCompanyAdmin(userId, sessionRole, companyId)) {
+    return null;
+  }
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 export async function requireCompanyAccess(userId: string, companyId: string) {
   const db = getDbProvider();
   const hasAccess = await db.hasCompanyAccess(userId, companyId);

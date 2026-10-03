@@ -28,21 +28,25 @@ export default function UpgradePage() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [priceExceeded, setPriceExceeded] = useState<number | null>(null);
 
-  // Fetch current subscription
+  // Fetch the current subscription of the selected company. Wait for the company so we
+  // never show (or charge) a different company's plan, and reload if the user switches.
   useEffect(() => {
+    if (!company?.id) return;
     const fetchSubscription = async () => {
       try {
-        const response = await fetch('/api/billing/subscription');
+        const response = await fetch(`/api/billing/subscription?company_id=${encodeURIComponent(company.id)}`);
         if (response.ok) {
           const data = await response.json();
           setCurrentSubscription(data);
+        } else {
+          setCurrentSubscription(null);
         }
       } catch (error) {
         console.error('Failed to fetch subscription:', error);
       }
     };
     fetchSubscription();
-  }, []);
+  }, [company?.id]);
 
   // Get pricing for current region
   const region = (company?.region || 'DEFAULT') as Region;
@@ -82,6 +86,7 @@ export default function UpgradePage() {
         body: JSON.stringify({
           planTier: selectedPlan,
           billingPeriod: billingPeriod,
+          company_id: company?.id,
         }),
       });
 
@@ -107,6 +112,7 @@ export default function UpgradePage() {
         body: JSON.stringify({
           new_plan_tier: selectedPlan,
           billing_period: billingPeriod,
+          company_id: company?.id,
         }),
       });
 
@@ -132,7 +138,7 @@ export default function UpgradePage() {
   };
 
   const isCurrentPlan = (tier: PlanTier) => {
-    return currentSubscription?.plan_tier === tier;
+    return currentSubscription?.subscription?.plan_tier === tier;
   };
 
   const getPrice = (tier: PlanTier) => {

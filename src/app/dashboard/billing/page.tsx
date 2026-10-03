@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CreditCardIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { formatPrice } from '@/lib/regional-pricing';
 import type { Currency } from '@/lib/regional-pricing';
+import { useCompany } from '@/contexts/company-context';
 
 interface Subscription {
   id: string;
@@ -66,6 +67,8 @@ const PLAN_NAMES: Record<string, string> = {
 
 export default function BillingPage() {
   const router = useRouter();
+  const { company } = useCompany();
+  const [loadError, setLoadError] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [moduleQuota, setModuleQuota] = useState<ModuleQuota | null>(null);
@@ -74,31 +77,40 @@ export default function BillingPage() {
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [removingModuleId, setRemovingModuleId] = useState<string | null>(null);
 
+  // Wait for the company context so we load billing for the selected company, and
+  // reload if the user switches company.
   useEffect(() => {
+    if (!company?.id) return;
     fetchBillingData();
-  }, []);
+  }, [company?.id]);
 
   async function fetchBillingData() {
     try {
       setLoading(true);
-      
+      setLoadError(false);
+      const companyQuery = company?.id ? `?company_id=${encodeURIComponent(company.id)}` : '';
+
       // Fetch subscription details
-      const subResponse = await fetch('/api/billing/subscription');
+      const subResponse = await fetch(`/api/billing/subscription${companyQuery}`);
       if (subResponse.ok) {
         const subData = await subResponse.json();
         setSubscription(subData.subscription);
         setModules(subData.modules || []);
         setModuleQuota(subData.moduleQuota || null);
+      } else {
+        setSubscription(null);
+        setLoadError(true);
       }
 
       // Fetch billing history
-      const historyResponse = await fetch('/api/billing/history');
+      const historyResponse = await fetch(`/api/billing/history${companyQuery}`);
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
         setBillingHistory(historyData.history || []);
       }
     } catch (error) {
       console.error('Failed to fetch billing data:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -143,6 +155,8 @@ export default function BillingPage() {
     try {
       const response = await fetch('/api/billing/cancel', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: company?.id }),
       });
       
       if (response.ok) {
@@ -169,7 +183,7 @@ export default function BillingPage() {
       const response = await fetch('/api/billing/remove-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ module_id: moduleId }),
+        body: JSON.stringify({ module_id: moduleId, company_id: company?.id }),
       });
 
       if (response.ok) {
@@ -266,14 +280,29 @@ export default function BillingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <CreditCardIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Active Subscription</h2>
-            <p className="text-gray-600 mb-6">Start your free trial to access all features.</p>
-            <button
-              onClick={() => router.push('/signup/select-modules')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
-            >
-              Start Free Trial
-            </button>
+            {loadError ? (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Couldn&apos;t load billing information</h2>
+                <p className="text-gray-600 mb-6">Something went wrong while loading your subscription. Please try again.</p>
+                <button
+                  onClick={() => fetchBillingData()}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
+                >
+                  Try Again
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">No Active Subscription</h2>
+                <p className="text-gray-600 mb-6">Choose a plan to access all features.</p>
+                <button
+                  onClick={() => router.push('/dashboard/billing/upgrade')}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
+                >
+                  Choose a Plan
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

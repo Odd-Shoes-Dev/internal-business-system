@@ -45,14 +45,17 @@ export async function POST(request: NextRequest) {
     const currency = region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD';
 
     if (!existingCompanyId) {
-      // If no company exists, create one (fallback).
+      // If no company exists, create one (fallback). It starts as a trial: only a
+      // verified payment (the payment webhook) may mark a company active.
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 30);
       const newCompany = await db.query<{ id: string }>(
         `INSERT INTO companies (
-           name, subscription_plan, subscription_status, region, currency
+           name, subscription_plan, subscription_status, region, currency, trial_ends_at
          )
-         VALUES ($1, $2, 'active', $3, $4)
+         VALUES ($1, $2, 'trial', $3, $4, $5)
          RETURNING id`,
-        [name, `${tier}-${billingPeriod}`, region, currency]
+        [name, `${tier}-trial`, region, currency, trialEndsAt.toISOString()]
       );
 
       companyId = newCompany.rows[0].id;
@@ -67,19 +70,18 @@ export async function POST(request: NextRequest) {
         [user.id, companyId]
       );
     } else {
-      // Update existing company with subscription info.
+      // Update the company's details only. The subscription status and plan are set by
+      // the payment webhook after a verified payment - never from this client call.
       companyId = existingCompanyId;
 
       await db.query(
         `UPDATE companies
          SET name = $2,
-             subscription_plan = $3,
-             subscription_status = 'active',
-             region = $4,
-             currency = $5,
+             region = $3,
+             currency = $4,
              updated_at = NOW()
          WHERE id = $1`,
-        [companyId, name, `${tier}-${billingPeriod}`, region, currency]
+        [companyId, name, region, currency]
       );
     }
 

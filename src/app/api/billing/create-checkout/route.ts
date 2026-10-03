@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
+import { resolveUserCompanyId } from '@/lib/provider/route-guards';
 import { getWhop } from '@/lib/whop';
 import { getPlanId, getModulePlanId } from '@/lib/whop-config';
+import { getTestPlanOverride } from '@/lib/whop-test-mode';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 import type { Region } from '@/lib/regional-pricing';
 
@@ -26,12 +28,7 @@ export async function POST(request: NextRequest) {
     const user = await db.getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const profile = await db.query(
-      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-
-    const companyId = profile.rows[0]?.company_id;
+    const companyId = await resolveUserCompanyId(user.id, body.company_id);
     if (!companyId) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
 
     // Enforce region from DB — never trust the client-supplied value
@@ -55,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve Whop plan IDs
-    const basePlanId = getPlanId(plan_tier, billing_period, displayRegion);
+    const basePlanId = getTestPlanOverride(companyId) ?? getPlanId(plan_tier, billing_period, displayRegion);
     const modulePlanIds = (module_ids as string[]).map((m) => getModulePlanId(m, displayRegion)).filter(Boolean);
 
     const whop = await getWhop();

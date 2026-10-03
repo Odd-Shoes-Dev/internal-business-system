@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAdmin, requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 import { getWhop } from '@/lib/whop';
 import { getPlanId } from '@/lib/whop-config';
+import { getTestPlanOverride } from '@/lib/whop-test-mode';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 import type { Region } from '@/lib/regional-pricing';
 
@@ -23,30 +24,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's company and check permissions (multi-tenant schema)
-    const uc = await db.query<{ company_id: string; role: string }>(
-      `SELECT company_id, role FROM user_companies
-       WHERE user_id = $1
-       ORDER BY is_primary DESC, joined_at ASC
-       LIMIT 1`,
-      [user.id]
-    );
-    const userCompanyRow = uc.rows[0];
+    // The company the plan change is for: the one the user is working in (if they have
+    // access to it), otherwise their primary company.
+    const companyId = await resolveUserCompanyId(user.id, body.company_id);
 
-    if (!userCompanyRow?.company_id) {
+    if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    // Allow owner/admin of company, or global app admin
-    const canManage = ['owner', 'admin'].includes(userCompanyRow.role) || user.role === 'admin';
-    if (!canManage) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    // Only an owner/admin of this company may change its plan
+    const adminError = await requireCompanyAdmin(
+      user.id,
+      user.role,
+      companyId,
+      'Insufficient permissions'
+    );
+    if (adminError) {
+      return adminError;
     }
 
     // Enforce region from DB — never trust client
     const companyResult = await db.query(
       'SELECT region FROM companies WHERE id = $1 LIMIT 1',
-      [userCompanyRow.company_id]
+      [companyId]
     );
     const dbRegion = companyResult.rows[0]?.region as Region | null;
     let region: Region;
@@ -54,11 +54,11 @@ export async function POST(request: NextRequest) {
       region = dbRegion;
     } else {
       region = await detectRegionFromRequest(request);
-      await db.query('UPDATE companies SET region = $1, updated_at = NOW() WHERE id = $2', [region, userCompanyRow.company_id]);
+      await db.query('UPDATE companies SET region = $1, updated_at = NOW() WHERE id = $2', [region, companyId]);
     }
 
     // Resolve Whop plan ID for the new plan
-    const whopPlanId = getPlanId(new_plan_tier, billing_period, region);
+    const whopPlanId = getTestPlanOverride(companyId) ?? getPlanId(new_plan_tier, billing_period, region);
     if (!whopPlanId) {
       return NextResponse.json({ error: 'Plan not available for your region' }, { status: 400 });
     }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       plan_id: whopPlanId,
       ...(appUrl.startsWith('https://') ? { redirect_url: `${appUrl}/dashboard/billing` } : {}),
       metadata: {
-        company_id: userCompanyRow.company_id,
+        company_id: companyId,
         user_id: user.id,
         plan_tier: new_plan_tier,
         billing_period,

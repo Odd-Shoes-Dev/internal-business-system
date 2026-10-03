@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireCompanyAdmin, requireSessionUser } from '@/lib/provider/route-guards';
 import { getModulePlanId } from '@/lib/whop-config';
 import { getWhop } from '@/lib/whop';
 import { Region } from '@/lib/regional-pricing';
@@ -16,9 +16,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Module IDs required' }, { status: 400 });
     }
 
-    // Get company_id and role from user_companies (multi-tenant schema)
+    // Get company_id from user_companies (multi-tenant schema)
     let companyId: string;
-    let userRole: string;
 
     if (bodyCompanyId) {
       const ucResult = await db.query<{ role: string }>(
@@ -29,11 +28,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Company not found or access denied' }, { status: 404 });
       }
       companyId = bodyCompanyId;
-      userRole = ucResult.rows[0].role;
     } else {
       // Fall back to primary company
-      const ucResult = await db.query<{ company_id: string; role: string }>(
-        `SELECT company_id, role FROM user_companies
+      const ucResult = await db.query<{ company_id: string }>(
+        `SELECT company_id FROM user_companies
          WHERE user_id = $1
          ORDER BY is_primary DESC, joined_at ASC
          LIMIT 1`,
@@ -43,13 +41,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No company found for this user' }, { status: 404 });
       }
       companyId = ucResult.rows[0].company_id;
-      userRole = ucResult.rows[0].role;
     }
 
-    // Allow owner, admin (company role) OR if global app_users role is admin
-    const canManage = ['owner', 'admin'].includes(userRole) || user.role === 'admin';
-    if (!canManage) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    // Only an owner/admin of this company may add modules (this can start a paid checkout)
+    const adminError = await requireCompanyAdmin(user.id, user.role, companyId, 'Insufficient permissions');
+    if (adminError) {
+      return adminError;
     }
 
     const now = new Date();

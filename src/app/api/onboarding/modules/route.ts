@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
+import { resolveUserCompanyId } from '@/lib/provider/route-guards';
 
 const MAX_MODULES = 3;
 const MODULE_PRICES: Record<string, number> = {
@@ -22,12 +23,7 @@ export async function POST(request: NextRequest) {
     const requestedModules: unknown[] = Array.isArray(body.modules) ? body.modules : [];
     const normalized: string[] = [...new Set(requestedModules.map((m: unknown) => String(m)))].slice(0, MAX_MODULES);
 
-    const profileResult = await db.query(
-      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-
-    const companyId = profileResult.rows[0]?.company_id;
+    const companyId = await resolveUserCompanyId(user.id);
     if (!companyId) {
       return NextResponse.json({ error: 'Company not found for current user' }, { status: 404 });
     }

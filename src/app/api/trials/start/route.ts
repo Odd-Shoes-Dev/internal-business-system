@@ -91,7 +91,21 @@ export async function POST(request: NextRequest) {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
 
+      // Only a company still in its initial trial state may (re)start a trial.
+      const currentResult = await db.query(
+        'SELECT subscription_status FROM companies WHERE id = $1 LIMIT 1',
+        [companyId]
+      );
+      const currentStatus = currentResult.rows[0]?.subscription_status as string | null | undefined;
+      if (currentStatus && currentStatus !== 'trial') {
+        return NextResponse.json(
+          { error: 'A trial cannot be started for this company. Please choose a paid plan instead.' },
+          { status: 409 }
+        );
+      }
+
       const currency = region === 'AFRICA' ? 'UGX' : region === 'GB' ? 'GBP' : region === 'EU' ? 'EUR' : 'USD';
+      // Keep the earlier end date so calling this again can never extend the trial.
       await db.query(
         `UPDATE companies
          SET name = $2,
@@ -99,7 +113,7 @@ export async function POST(request: NextRequest) {
              subscription_status = 'trial',
              region = $4,
              currency = $5,
-             trial_ends_at = $6,
+             trial_ends_at = LEAST(COALESCE(trial_ends_at, $6::timestamptz), $6::timestamptz),
              updated_at = NOW()
          WHERE id = $1`,
         [companyId, name, `${tier}-trial`, region, currency, trialEndDate.toISOString()]

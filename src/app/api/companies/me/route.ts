@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCompanyIdFromRequest,
   requireCompanyAccess,
+  requireCompanyAdmin,
   requireSessionUser,
 } from '@/lib/provider/route-guards';
 
@@ -102,6 +103,18 @@ export async function PUT(request: NextRequest) {
     const companyAccessError = await requireCompanyAccess(user.id, companyId);
     if (companyAccessError) {
       return companyAccessError;
+    }
+
+    // Company details, tax IDs and tax rates are admin-level settings. Membership alone
+    // is not enough - the Settings page is admin-only, and the API must be too.
+    const adminError = await requireCompanyAdmin(
+      user.id,
+      user.role,
+      companyId,
+      'Only a company owner or admin can change company settings'
+    );
+    if (adminError) {
+      return adminError;
     }
 
     const {

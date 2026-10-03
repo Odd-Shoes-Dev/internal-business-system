@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
 
-    // Get user's company
-    const profile = await db.query<{ company_id: string }>(
-      'SELECT company_id FROM user_profiles WHERE id = $1 LIMIT 1',
-      [user.id]
+    // Get the company this request is about (the selected one, else the user's primary)
+    const companyId = await resolveUserCompanyId(
+      user.id,
+      new URL(request.url).searchParams.get('company_id')
     );
-    const companyId = profile.rows[0]?.company_id;
 
     if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
