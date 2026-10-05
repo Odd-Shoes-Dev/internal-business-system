@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { AdjustmentsHorizontalIcon, ArrowLeftIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 import { adjustmentReasonLabel } from '@/lib/inventory/adjustment-reasons';
+import { PageHeader } from '@/components/page-header';
 
 interface Adjustment {
   id: string;
@@ -93,18 +97,14 @@ export default function StockAdjustmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/inventory" className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeftIcon className="w-5 h-5 text-gray-600" /></Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <AdjustmentsHorizontalIcon className="w-6 h-6 text-blueox-primary" /> Stock adjustments
-            </h1>
-            <p className="text-gray-600">Count corrections, damage, expiry and losses. Stock and the ledger change only once approved.</p>
-          </div>
-        </div>
-        <Link href="/dashboard/inventory/adjust" className="btn-primary">New adjustment</Link>
-      </div>
+      <PageHeader
+        title="Stock adjustments"
+        actions={
+          <>
+            <Link href="/dashboard/inventory/adjust" className="btn-primary btn-sm inline-flex items-center gap-1.5">New adjustment</Link>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-xl bg-gray-100 p-1 text-sm">

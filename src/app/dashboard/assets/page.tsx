@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { FixedAsset } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 type AssetStatus = 'all' | 'active' | 'disposed' | 'fully_depreciated';
 
@@ -122,22 +123,21 @@ export default function AssetsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fixed Assets</h1>
-          <p className="text-gray-500 mt-1">Track and depreciate company assets</p>
-        </div>
-        <div className="flex gap-3">
-          <Link href="/dashboard/assets/depreciation" className="btn-secondary">
-            <ArrowPathIcon className="w-5 h-5 mr-2" />
-            Run Depreciation
-          </Link>
-          <Link href="/dashboard/assets/new" className="btn-primary">
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Add Asset
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Fixed Assets"
+        actions={
+          <>
+            <Link href="/dashboard/assets/depreciation" className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <ArrowPathIcon className="w-4 h-4 mr-2" />
+              Run Depreciation
+            </Link>
+            <Link href="/dashboard/assets/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add Asset
+            </Link>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -9,9 +9,9 @@ import {
   PencilIcon,
   TrashIcon,
   FolderIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/page-header';
 
 interface Category {
   id: string;
@@ -170,27 +170,20 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Product Categories</h1>
-            <p className="text-gray-500 mt-1">Manage product categories for your inventory</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Category
-        </button>
-      </div>
+      <PageHeader
+        title="Product Categories"
+        actions={
+          <>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Category
+            </button>
+          </>
+        }
+      />
 
       {/* Categories List */}
       {categories.length === 0 ? (

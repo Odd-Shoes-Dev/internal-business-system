@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { CurrencySelect } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 
 export default function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -186,15 +186,7 @@ export default function EmployeeEditPage({ params }: { params: Promise<{ id: str
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/employees/${employeeId}`} className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Employee</h1>
-          <p className="text-gray-500 mt-1">Update employee information</p>
-          </div>
-        </div>
+        <PageHeader title="Edit Employee" />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Personal Information */}

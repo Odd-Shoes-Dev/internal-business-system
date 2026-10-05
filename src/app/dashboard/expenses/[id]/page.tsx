@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   DocumentTextIcon,
   PrinterIcon,
   PencilIcon,
@@ -15,12 +14,12 @@ import {
   ReceiptPercentIcon,
   BuildingOfficeIcon,
   CreditCardIcon,
-  CalendarIcon,
   TagIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface Expense {
   id: string;
@@ -494,68 +493,56 @@ export default function ExpenseDetailPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-4 md:mb-6 print:hidden">
-        <div className="flex items-center gap-3 md:gap-4 mb-4">
-          <Link
-            href="/dashboard/expenses"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Expense #: {expense.expense_number}</h1>
-            <p className="text-sm md:text-base text-gray-600">Expense Details</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 md:gap-3">
-          <button onClick={handlePrint} className="btn-secondary flex-1 sm:flex-none">
-            <PrinterIcon className="w-5 h-5 md:mr-2" />
-            <span className="hidden md:inline">Print</span>
-          </button>
-          
-          {expense.status !== 'approved' && expense.status !== 'paid' && expense.status !== 'rejected' && (
-            <Link 
-              href={`/dashboard/expenses/${params.id}/edit`}
-              className="btn-secondary inline-flex items-center flex-1 sm:flex-none"
-            >
-              <PencilIcon className="w-5 h-5 md:mr-2" />
-              <span className="hidden md:inline">Edit</span>
-            </Link>
-          )}
-          
-          {expense.status === 'pending' && (
-            <>
-              <button 
-                onClick={handleApprove} 
-                disabled={actionLoading}
-                className="btn-primary flex-1 sm:flex-none"
-              >
-                <CheckCircleIcon className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Approve</span>
-              </button>
-              <button 
-                onClick={handleReject} 
-                disabled={actionLoading}
-                className="btn-secondary text-red-600 hover:bg-red-50 flex-1 sm:flex-none"
-              >
-                <XCircleIcon className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Reject</span>
-              </button>
-            </>
-          )}
-          
-          {(expense.status === 'pending' || expense.status === 'rejected') && (
-            <button 
-              onClick={handleDelete} 
-              disabled={actionLoading}
-              className="btn-secondary text-red-600 hover:bg-red-50 flex-1 sm:flex-none"
-            >
-              <TrashIcon className="w-5 h-5 md:mr-2" />
-              <span className="hidden md:inline">Delete</span>
+      <PageHeader
+        title={`Expense #: ${expense.expense_number}`}
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Print</span>
             </button>
-          )}
-        </div>
-      </div>
+            {expense.status !== 'approved' && expense.status !== 'paid' && expense.status !== 'rejected' && (
+              <Link 
+                href={`/dashboard/expenses/${params.id}/edit`}
+                className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PencilIcon className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Edit</span>
+              </Link>
+            )}
+            {expense.status === 'pending' && (
+              <>
+                <button 
+                  onClick={handleApprove} 
+                  disabled={actionLoading}
+                  className="btn-primary btn-sm inline-flex items-center gap-1.5"
+                >
+                  <CheckCircleIcon className="w-4 h-4 md:mr-2" />
+                  <span className="hidden md:inline">Approve</span>
+                </button>
+                <button 
+                  onClick={handleReject} 
+                  disabled={actionLoading}
+                  className="btn-danger btn-sm inline-flex items-center gap-1.5"
+                >
+                  <XCircleIcon className="w-4 h-4 md:mr-2" />
+                  <span className="hidden md:inline">Reject</span>
+                </button>
+              </>
+            )}
+            {(expense.status === 'pending' || expense.status === 'rejected') && (
+              <button 
+                onClick={handleDelete} 
+                disabled={actionLoading}
+                className="btn-danger btn-sm inline-flex items-center gap-1.5"
+              >
+                <TrashIcon className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Delete</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Expense Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

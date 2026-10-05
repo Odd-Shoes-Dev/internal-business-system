@@ -4,12 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
-import {
-  ArrowLeftIcon,
-  CreditCardIcon,
-} from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { Combobox } from '@/components/ui';
+import { PageHeader } from '@/components/page-header';
 
 interface Bill {
   id: string;
@@ -186,18 +183,7 @@ export default function RecordBillPaymentPage() {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={`/dashboard/bills/${params.id}`}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Record Payment</h1>
-          <p className="text-gray-600">{bill.bill_number}</p>
-        </div>
-      </div>
+      <PageHeader title="Record Payment" />
 
       {/* Bill Summary */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">

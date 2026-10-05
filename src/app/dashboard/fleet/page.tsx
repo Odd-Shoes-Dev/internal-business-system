@@ -11,18 +11,15 @@ import {
   MagnifyingGlassIcon,
   TruckIcon,
   WrenchScrewdriverIcon,
-  CalendarDaysIcon,
-  MapPinIcon,
-  UserIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  PencilIcon,
   TrashIcon,
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 type VehicleStatus = 'available' | 'in_use' | 'maintenance' | 'out_of_service';
 
@@ -200,19 +197,20 @@ export default function FleetPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fleet Management</h1>
-          <p className="text-gray-500 mt-1">Manage safari vehicles and car hire fleet</p>
-        </div>
-        <Link
-          href="/dashboard/fleet/new"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Vehicle
-        </Link>
-      </div>
+      <PageHeader
+        title="Fleet Management"
+        actions={
+          <>
+            <Link
+              href="/dashboard/fleet/new"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Vehicle
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

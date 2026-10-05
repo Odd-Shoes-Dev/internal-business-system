@@ -9,6 +9,7 @@ import type { Region } from '@/lib/regional-pricing';
 import { AVAILABLE_MODULES } from '@/lib/modules';
 import { Check, Loader2, Package, AlertCircle, Map, Truck, Building, Coffee, Shield, Box, Calculator, CreditCard, ShoppingCart } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 
 interface Module {
   id: string;
@@ -215,19 +216,9 @@ export default function AddModulesPage() {
       <div className="absolute bottom-40 right-40 w-72 h-72 bg-purple-400/5 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 py-8 max-w-6xl relative z-10">
-        {/* Hero Header */}
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-blueox-primary/20 text-blueox-primary px-4 py-2 rounded-full mb-4">
-            <Package className="w-5 h-5" />
-            <span className="font-semibold text-sm text-black">Add Modules</span>
-          </div>
-          <h1 className="text-4xl font-bold text-blueox-primary-dark mb-3">
-            Expand Your System
-          </h1>
-          <p className="text-gray-600 text-lg font-medium">
-            Choose industry-specific modules to enhance your business operations
-          </p>
-          <div className="mt-6 bg-gradient-to-r from-slate-50 via-blue-50 to-cyan-50 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl p-5 inline-block shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+        <PageHeader title="Add Modules" />
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-cyan-50 backdrop-blur-sm border border-blueox-primary/20 rounded-2xl p-5 inline-block shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 w-8 h-8 bg-blueox-primary/10 rounded-lg flex items-center justify-center">
                 <span className="text-blueox-primary text-lg font-bold">💡</span>

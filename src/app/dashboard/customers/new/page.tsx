@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { CurrencySelect } from '@/components/ui';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -91,18 +91,7 @@ export default function NewCustomerPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={returnTo}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Customer</h1>
-          <p className="text-gray-600">Add a new customer to your database</p>
-        </div>
-      </div>
+      <PageHeader title="New Customer" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

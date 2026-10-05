@@ -11,6 +11,7 @@ import {
   ShoppingCartIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface LowStockProduct {
   id: string;
@@ -117,10 +118,7 @@ export default function ReorderAlertsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Low stock &amp; expiring</h1>
-          <p className="text-gray-500 mt-1">Products at or below their reorder point, and batches near expiry</p>
-        </div>
+        <PageHeader title="Low stock & expiring" />
         <div className="flex gap-2">
           <button
             className="btn-secondary"

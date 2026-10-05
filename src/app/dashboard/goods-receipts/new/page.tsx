@@ -6,10 +6,9 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
-  PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface PurchaseOrder {
   id: string;
@@ -256,15 +255,7 @@ export default function NewGoodsReceiptPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/goods-receipts" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Goods Receipt</h1>
-          <p className="text-gray-500 mt-1">Receive goods from a purchase order</p>
-        </div>
-      </div>
+      <PageHeader title="New Goods Receipt" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* GR Details */}

@@ -6,8 +6,17 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
-import { ArrowLeftIcon, PrinterIcon, CheckCircleIcon, EnvelopeIcon, EyeIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import {
+  PrinterIcon,
+  EnvelopeIcon,
+  EyeIcon,
+  EllipsisVerticalIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/page-header';
 
 interface PayrollPeriod {
   id: string;
@@ -382,29 +391,17 @@ export default function PayrollPeriodDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/payroll"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{period.period_name}</h1>
-            <p className="text-gray-500">
-              {formatDate(period.start_date)} - {formatDate(period.end_date)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {getStatusBadge(period.status)}
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5" />
-            Print All
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={period.period_name}
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4" />
+              Print All
+            </button>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

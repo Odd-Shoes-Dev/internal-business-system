@@ -12,6 +12,7 @@ import {
   CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 
 interface ReportCard {
   title: string;
@@ -219,19 +220,7 @@ export default function ReportsPage() {
 
       <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
         {/* Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <ChartBarIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Financial Reports</span>
-          </div>
-          
-          <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-            Reports & Analytics
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl">
-            Generate and view comprehensive financial reports and business insights
-          </p>
-        </div>
+        <PageHeader title="Reports & Analytics" />
 
         {/* Category Filter */}
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
 import { CategoryCombobox } from '@/components/ui/category-combobox';
@@ -16,6 +15,7 @@ import { NumberInput } from '@/components/ui/number-input';
 import ProductExtraFields, { EMPTY_PRODUCT_EXTRAS, type ProductExtraValues } from '../../product-extra-fields';
 import toast from 'react-hot-toast';
 import { getUnitOptions, normalizeUnit } from '@/lib/units-of-measure';
+import { PageHeader } from '@/components/page-header';
 
 interface Category {
   id: string;
@@ -251,15 +251,7 @@ export default function EditInventoryItemPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href={`/dashboard/inventory/${params.id}`} className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Inventory Item</h1>
-          <p className="text-gray-500 mt-1">Update product information</p>
-        </div>
-      </div>
+      <PageHeader title="Edit Inventory Item" />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">

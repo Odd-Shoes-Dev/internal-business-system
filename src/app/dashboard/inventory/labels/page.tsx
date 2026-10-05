@@ -1,12 +1,15 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { ArrowLeftIcon, MagnifyingGlassIcon, PrinterIcon, QrCodeIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  PrinterIcon,
+} from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface LabelProduct {
   id: string;
@@ -71,18 +74,16 @@ function LabelsPage() {
         }
       `}</style>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/inventory" className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeftIcon className="w-5 h-5 text-gray-600" /></Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><QrCodeIcon className="w-6 h-6 text-blueox-primary" /> Print labels</h1>
-            <p className="text-gray-600">Shelf and product labels with a QR code that scans at the till</p>
-          </div>
-        </div>
-        <button onClick={() => window.print()} disabled={!labels.length} className="btn-primary inline-flex items-center gap-2">
-          <PrinterIcon className="w-4 h-4" /> Print {labels.length} label{labels.length === 1 ? '' : 's'}
-        </button>
-      </div>
+      <PageHeader
+        title="Print labels"
+        actions={
+          <>
+            <button onClick={() => window.print()} disabled={!labels.length} className="btn-primary inline-flex items-center gap-2">
+              <PrinterIcon className="w-4 h-4" /> Print {labels.length} label{labels.length === 1 ? '' : 's'}
+            </button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:block">
         <div className="card p-4 space-y-3 print:hidden">

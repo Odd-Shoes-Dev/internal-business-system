@@ -13,8 +13,6 @@ import {
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  SparklesIcon,
-  Squares2X2Icon,
   TagIcon,
   PencilIcon,
   TrashIcon,
@@ -31,6 +29,7 @@ import { ShimmerSkeleton, CardSkeleton, StatsCardSkeleton } from '@/components/u
 import { StatCard } from '@/components/ui/card';
 import type { Product } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 export default function InventoryPage() {
   const { company } = useCompany();
@@ -247,45 +246,23 @@ export default function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
-      {/* Hero Header */}
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-full px-6 py-3 mb-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <Squares2X2Icon className="w-6 h-6 text-blueox-primary" />
-          <span className="font-bold text-blueox-primary-dark text-lg">Inventory Management</span>
-          <SparklesIcon className="w-5 h-5 text-cyan-500" />
-        </div>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
-              Products &amp; Services
-            </h1>
-            <p className="text-gray-600 text-lg">Everything you sell, with stock levels for physical products</p>
-          </div>
-          <div className="flex gap-3">
- <Link
-              href="/dashboard/inventory/receive"
-              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
+      <PageHeader
+        title="Products & Services"
+        actions={
+          <>
+            <Link href="/dashboard/inventory/receive" className="btn-secondary btn-sm inline-flex items-center gap-1.5">
               Receive Stock
             </Link>
-            <Link 
-              href="/dashboard/inventory/movements" 
-              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
+            <Link href="/dashboard/inventory/movements" className="btn-secondary btn-sm inline-flex items-center gap-1.5">
               Stock Movements
             </Link>
-            <Link
-              href="/dashboard/inventory/new"
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
+            <Link href="/dashboard/inventory/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
               Add Item
-              <SparklesIcon className="w-4 h-4" />
             </Link>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap gap-2 mb-6 text-sm">
         {[

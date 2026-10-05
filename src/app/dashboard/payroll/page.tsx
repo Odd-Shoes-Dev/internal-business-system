@@ -9,22 +9,14 @@ import { buildRatesMap, convertCurrency } from '@/lib/exchange-rates';
 import type { PayrollPeriod, Payslip, Employee } from '@/types/breco';
 import {
   PlusIcon,
-  MagnifyingGlassIcon,
   BanknotesIcon,
   CalendarDaysIcon,
   DocumentTextIcon,
   CheckCircleIcon,
-  ClockIcon,
-  PaperAirplaneIcon,
-  CurrencyDollarIcon,
   CalculatorIcon,
   ArrowPathIcon,
   EyeIcon,
   PrinterIcon,
-  ExclamationTriangleIcon,
-  SparklesIcon,
-  UserGroupIcon,
-  MinusCircleIcon,
   EllipsisVerticalIcon,
   TrashIcon,
   XMarkIcon,
@@ -32,6 +24,7 @@ import {
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 type PayrollStatus = 'draft' | 'processing' | 'approved' | 'paid';
 
@@ -547,30 +540,20 @@ export default function PayrollPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
-      {/* Hero Header */}
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-full px-6 py-3 mb-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <BanknotesIcon className="w-6 h-6 text-blueox-primary" />
-          <span className="font-bold text-blueox-primary-dark text-lg">Payroll Management</span>
-          <SparklesIcon className="w-5 h-5 text-cyan-500" />
-        </div>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
-              Employee Payroll
-            </h1>
-            <p className="text-gray-600 text-lg">Process payroll with PAYE & NSSF compliance</p>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-          >
-            <PlusIcon className="w-5 h-5" />
-            New Pay Period
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Employee Payroll"
+        actions={
+          <>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Pay Period
+            </button>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">

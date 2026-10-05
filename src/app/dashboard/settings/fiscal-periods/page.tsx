@@ -7,9 +7,8 @@ import { useCompany } from '@/contexts/company-context';
 import {
   LockClosedIcon,
   LockOpenIcon,
-  CheckCircleIcon,
-  XCircleIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface FiscalPeriod {
   id: string;
@@ -162,12 +161,7 @@ export default function FiscalPeriodsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Fiscal Periods</h1>
-        <p className="text-gray-600 mt-1">
-          Manage period locking to prevent modifications to historical financial data
-        </p>
-      </div>
+      <PageHeader title="Fiscal Periods" />
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <h3 className="font-semibold text-blue-900 mb-2">About Period Locking</h3>

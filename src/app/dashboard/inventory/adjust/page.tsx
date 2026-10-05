@@ -7,10 +7,10 @@ import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import { ADJUSTMENT_REASON_OPTIONS } from '@/lib/inventory/adjustment-reasons';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -162,15 +162,7 @@ export default function InventoryAdjustmentPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/inventory/adjustments" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Adjustment</h1>
-          <p className="text-gray-500 mt-1">Adjust stock quantities for corrections or losses</p>
-        </div>
-      </div>
+      <PageHeader title="Inventory Adjustment" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Adjustment Info */}

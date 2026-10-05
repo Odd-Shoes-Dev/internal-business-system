@@ -1,13 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeftIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TagIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { confirmDialog } from '@/components/confirm-dialog';
 import { formatCurrency } from '@/lib/currency';
 import type { Promotion } from '@/lib/pos/promotions';
+import { PageHeader } from '@/components/page-header';
 
 interface ProductOption { id: string; name: string; sku: string | null; unit_price: string }
 
@@ -122,18 +128,16 @@ export default function PromotionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/inventory" className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeftIcon className="w-5 h-5 text-gray-600" /></Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><TagIcon className="w-6 h-6 text-blueox-primary" /> Promotions</h1>
-            <p className="text-gray-600">Discounts applied automatically at the till while they run. The best offer on an item wins.</p>
-          </div>
-        </div>
-        <button onClick={() => { setForm(emptyForm()); setProductSearch(''); }} className="btn-primary inline-flex items-center gap-1">
-          <PlusIcon className="w-4 h-4" /> New promotion
-        </button>
-      </div>
+      <PageHeader
+        title="Promotions"
+        actions={
+          <>
+            <button onClick={() => { setForm(emptyForm()); setProductSearch(''); }} className="btn-primary inline-flex items-center gap-1">
+              <PlusIcon className="w-4 h-4" /> New promotion
+            </button>
+          </>
+        }
+      />
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">

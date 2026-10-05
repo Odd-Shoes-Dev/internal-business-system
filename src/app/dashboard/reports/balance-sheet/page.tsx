@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import {
   ScaleIcon,
   ArrowDownTrayIcon,
-  ArrowLeftIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/currency';
 import { formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
 
 interface BalanceSheetData {
   asOfDate: string;
@@ -336,25 +335,21 @@ export default function BalanceSheetPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/reports" className="btn-ghost p-1.5 sm:p-2">
-            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Balance Sheet</h1>
-            <p className="text-sm sm:text-base text-gray-600">Financial position as of a specific date</p>
-          </div>
-        </div>
-        <button
-          onClick={exportToPDF}
-          className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">Export PDF</span>
-          <span className="sm:hidden">Export</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Balance Sheet"
+        actions={
+          <>
+            <button
+              onClick={exportToPDF}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">Export</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Date Filter */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">

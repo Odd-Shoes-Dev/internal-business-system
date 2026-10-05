@@ -8,9 +8,9 @@ import { FilterSearchBar } from '@/components/ui';
 import {
   PlusIcon,
   BanknotesIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import type { BankAccount } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 export default function BankAccountsPage() {
   const router = useRouter();
@@ -82,30 +82,20 @@ export default function BankAccountsPage() {
 
       <div className="relative max-w-6xl mx-auto py-8 px-6 space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.back()}
-              className="p-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 rounded-xl transition-all duration-300"
-              title="Go back"
-            >
-              <ArrowLeftIcon className="w-5 h-5 text-blueox-primary" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-blueox-primary-dark">Bank Accounts</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Manage your company&apos;s bank accounts
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/bank/accounts/new"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-5 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Add Account
-          </Link>
-        </div>
+        <PageHeader
+          title="Bank Accounts"
+          actions={
+            <>
+              <Link
+                href="/dashboard/bank/accounts/new"
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Account
+              </Link>
+            </>
+          }
+        />
 
         {/* Search + Filters */}
         <FilterSearchBar

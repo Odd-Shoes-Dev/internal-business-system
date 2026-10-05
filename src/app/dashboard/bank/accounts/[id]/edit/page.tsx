@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CurrencySelect } from '@/components/ui';
 import { useCompany } from '@/contexts/company-context';
+import { PageHeader } from '@/components/page-header';
 
 interface BankAccount {
   id: string;
@@ -147,10 +148,7 @@ export default function EditBankAccountPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="p-8 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Edit Bank Account</h1>
-        <p className="text-sm text-gray-500 mt-1">Update bank account information</p>
-      </div>
+      <PageHeader title="Edit Bank Account" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">

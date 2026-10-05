@@ -6,8 +6,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
-  DocumentTextIcon,
   PrinterIcon,
   CreditCardIcon,
   PencilIcon,
@@ -19,6 +17,7 @@ import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { printBill } from '@/lib/pdf/bill';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
+import { PageHeader } from '@/components/page-header';
 
 interface BillLine {
   id: string;
@@ -353,19 +352,7 @@ export default function BillDetailPage() {
       <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6 print:hidden">
-        <div className="flex items-center gap-4 mb-4">
-          <Link
-            href="/dashboard/bills"
-          >
-            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
-              <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
-            </button>
-          </Link>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{bill.bill_number}</h1>
-            <p className="text-sm md:text-base text-gray-600">Bill Details</p>
-          </div>
-        </div>
+        <PageHeader title={bill.bill_number} />
         
         {/* Action Buttons - Mobile Optimized */}
         <div className="flex flex-wrap gap-2">

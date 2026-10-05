@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { CompanyProvider, useCompany } from '@/contexts/company-context';
+import { PageHeaderProvider, usePageHeaderState } from '@/components/page-header';
+import { buildBreadcrumbs } from '@/lib/breadcrumbs';
 import TrialWarningBanner from '@/components/trial-warning-banner';
 import {
   HomeIcon,
@@ -22,6 +24,7 @@ import {
   ArrowRightOnRectangleIcon,
   BellIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   Bars3Icon,
   XMarkIcon,
   ReceiptPercentIcon,
@@ -200,6 +203,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const subscriptionStatus = company?.subscription_status || '';
   const trialEndDate = company?.trial_ends_at || undefined;
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
+  // App header: breadcrumbs from the URL and menu; title and buttons from the page's <PageHeader>
+  const { actionsSlot, setActionsSlot, title: pageTitle, setTitle: setPageTitle } = usePageHeaderState();
+  const breadcrumbs = buildBreadcrumbs(
+    pathname,
+    navigationGroups.flatMap((group) => group.items.map((item) => ({ group: group.name, name: item.name, href: item.href }))),
+    pageTitle
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navRole = companyRole ?? user?.role ?? '';
   const visibleNavGroups = navigationGroups
@@ -601,16 +611,38 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Top bar */}
-        <header className={`fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm transition-transform duration-300 ease-in-out ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
-          <div className="flex items-center gap-4">
+        <header className={`fixed top-0 left-0 lg:left-64 right-0 z-30 h-14 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between gap-3 px-4 shadow-sm transition-transform duration-300 ease-in-out ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
               onClick={() => setSidebarOpen(true)}
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
+            <nav aria-label="Breadcrumb" className="min-w-0 flex items-center gap-1.5 text-sm">
+              {breadcrumbs.map((crumb, i) => {
+                const last = i === breadcrumbs.length - 1;
+                return (
+                  <span key={i} className={`items-center gap-1.5 min-w-0 ${last ? 'flex' : 'hidden md:flex'}`}>
+                    {i > 0 && <ChevronRightIcon className="w-3.5 h-3.5 text-blueox-primary/40 flex-shrink-0" />}
+                    {last ? (
+                      <h1 className="font-semibold text-blueox-primary-dark truncate text-base" title={crumb.label}>{crumb.label}</h1>
+                    ) : crumb.href ? (
+                      <Link href={crumb.href} className="text-blueox-primary/70 hover:text-blueox-primary whitespace-nowrap">{crumb.label}</Link>
+                    ) : (
+                      <span className="text-blueox-primary/50 whitespace-nowrap">{crumb.label}</span>
+                    )}
+                  </span>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Page actions (from <PageHeader actions>) */}
+            <div ref={setActionsSlot} className="flex items-center gap-2" />
             {/* Company Switcher */}
-            <div className="relative hidden sm:block">
+            <div className="relative hidden lg:block">
               <button
                 onClick={() => setCompanySwitcherOpen(!companySwitcherOpen)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-blueox-primary/10 transition-colors"
@@ -618,7 +650,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
                   <FitNumber value={company?.name?.[0]?.toUpperCase() || 'C'} className="text-black font-bold" />
                 </div>
-                <span className="text-sm font-semibold text-blueox-primary-dark max-w-[160px] truncate">{company?.name || 'Company'}</span>
+                <span className="text-sm font-semibold text-blueox-primary-dark max-w-[140px] truncate">{company?.name || 'Company'}</span>
                 {companies.length > 1 && (
                   <ChevronDownIcon className={`w-4 h-4 text-blueox-primary/60 transition-transform ${companySwitcherOpen ? 'rotate-180' : ''}`} />
                 )}
@@ -656,9 +688,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
             {/* Notifications */}
             <div className="relative">
               <button 
@@ -831,7 +861,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="pt-16 px-4 py-4 lg:pt-20 lg:px-6 lg:py-6">
+        <main className="pt-[4.25rem] px-4 pb-4 lg:px-6 lg:pb-6">
           {/* Trial Warning Banner */}
           <TrialWarningBanner 
             subscriptionStatus={subscriptionStatus}
@@ -851,7 +881,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
           ) : (
-            children
+            <PageHeaderProvider actionsSlot={actionsSlot} setTitle={setPageTitle}>
+              {children}
+            </PageHeaderProvider>
           )}
         </main>
       </div>

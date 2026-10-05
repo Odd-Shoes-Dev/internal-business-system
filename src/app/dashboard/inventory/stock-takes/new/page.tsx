@@ -7,9 +7,9 @@ import toast from 'react-hot-toast';
 import {
   PlusIcon,
   TrashIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Location {
   id: string;
@@ -267,34 +267,24 @@ export default function NewStockTakePage() {
     <div className="max-w-7xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="btn-ghost p-2"
-            >
-              <ArrowLeftIcon className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">New Stock Take</h1>
-              <p className="text-gray-500 mt-1">Create a new inventory stock count</p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="btn-secondary"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Creating...' : 'Create Stock Take'}
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="New Stock Take"
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={saving}>
+                {saving ? 'Creating...' : 'Create Stock Take'}
+              </button>
+            </>
+          }
+        />
 
         {/* Summary Cards */}
         <div className="grid md:grid-cols-3 gap-4">

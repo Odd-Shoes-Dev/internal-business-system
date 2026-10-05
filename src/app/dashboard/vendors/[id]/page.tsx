@@ -9,7 +9,6 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   TrashIcon,
   BuildingOfficeIcon,
@@ -19,6 +18,7 @@ import {
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface PageProps {
   params: Promise<{
@@ -211,36 +211,28 @@ export default function VendorDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/vendors" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{vendor.name}</h1>
-            {vendor.company_name && (
-              <p className="text-gray-500 mt-1">{vendor.company_name}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            href={`/dashboard/vendors/${id}/edit`}
-            className="btn-secondary"
-          >
-            <PencilIcon className="w-5 h-5 mr-2" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn-ghost text-red-600 hover:bg-red-50"
-          >
-            <TrashIcon className="w-5 h-5 mr-2" />
-            Delete
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={vendor.name}
+        actions={
+          <>
+            <Link
+              href={`/dashboard/vendors/${id}/edit`}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PencilIcon className="w-4 h-4 mr-2" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4 mr-2" />
+              Delete
+            </button>
+          </>
+        }
+      />
 
       {/* Status Badges */}
       <div className="flex items-center gap-2">

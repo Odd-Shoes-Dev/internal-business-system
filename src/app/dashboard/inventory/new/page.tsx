@@ -7,7 +7,6 @@ import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
 import {
-  ArrowLeftIcon,
   CubeIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
@@ -16,6 +15,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { NumberInput } from '@/components/ui/number-input';
 import { getUnitOptions } from '@/lib/units-of-measure';
 import ProductExtraFields, { EMPTY_PRODUCT_EXTRAS, type ProductExtraValues } from '../product-extra-fields';
+import { PageHeader } from '@/components/page-header';
 
 interface Category {
   id: string;
@@ -173,18 +173,7 @@ export default function NewInventoryItemPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/dashboard/inventory"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Product or Service</h1>
-          <p className="text-gray-600">Add something you sell</p>
-        </div>
-      </div>
+      <PageHeader title="New Product or Service" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

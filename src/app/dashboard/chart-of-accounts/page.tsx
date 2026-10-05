@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/company-context';
 import { MagnifyingGlassIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 
 interface Account {
   id: string;
@@ -106,15 +107,7 @@ export default function ChartOfAccountsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div>
-        <div className="flex items-center gap-3 mb-2">
-          <BookOpenIcon className="w-8 h-8 text-[#1e3a5f]" />
-          <h1 className="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
-        </div>
-        <p className="text-gray-500">
-          Reference guide for all accounting categories and their account numbers
-        </p>
-        </div>
+        <PageHeader title="Chart of Accounts" />
 
         {/* Info Box */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

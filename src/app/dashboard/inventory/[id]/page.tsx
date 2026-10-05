@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
   CubeIcon,
   PencilIcon,
   TrashIcon,
@@ -23,6 +22,7 @@ import { FitNumber } from '@/components/ui/fit-number';
 import { useCompany } from '@/contexts/company-context';
 import { ADJUSTMENT_REASON_OPTIONS } from '@/lib/inventory/adjustment-reasons';
 import VariantsSection from './variants-section';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -233,57 +233,47 @@ export default function InventoryDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/inventory" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{item.name}</h1>
-            <p className="text-gray-500 mt-1">
-              SKU: {item.sku || 'N/A'}
-              {(item as any).barcode ? ` · Barcode: ${(item as any).barcode}` : ''}
-              {(item as any).shelf_location ? ` · Shelf: ${(item as any).shelf_location}` : ''}
-            </p>
+      <PageHeader
+        title={item.name}
+        actions={
+          <>
             {(item as any).parent_product_id && (
               <Link href={`/dashboard/inventory/${(item as any).parent_product_id}`} className="text-sm text-blueox-primary hover:underline">
                 Variant of another product — open the main product
               </Link>
             )}
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setAdjustForm({ quantity_change: 0, reason: 'count_correction', notes: '', adjustment_date: new Date().toISOString().split('T')[0] });
-              setShowAdjustModal(true);
-            }}
-            className="btn-secondary"
-          >
-            <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" />
-            Adjust Stock
-          </button>
-          <Link href={`/dashboard/inventory/labels?ids=${item.id}`} className="btn-secondary">
-            <QrCodeIcon className="w-5 h-5 mr-2" />
-            Print label
-          </Link>
-          <Link
-            href={`/dashboard/inventory/${item.id}/edit`}
-            className="btn-secondary"
-          >
-            <PencilIcon className="w-5 h-5 mr-2" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={actionLoading}
-            className="btn-ghost text-red-600 hover:bg-red-50"
-          >
-            <TrashIcon className="w-5 h-5 mr-2" />
-            Delete
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={() => {
+                setAdjustForm({ quantity_change: 0, reason: 'count_correction', notes: '', adjustment_date: new Date().toISOString().split('T')[0] });
+                setShowAdjustModal(true);
+              }}
+              className="btn-secondary"
+            >
+              <AdjustmentsHorizontalIcon className="w-4 h-4 mr-2" />
+              Adjust Stock
+            </button>
+            <Link href={`/dashboard/inventory/labels?ids=${item.id}`} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <QrCodeIcon className="w-4 h-4 mr-2" />
+              Print label
+            </Link>
+            <Link
+              href={`/dashboard/inventory/${item.id}/edit`}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PencilIcon className="w-4 h-4 mr-2" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={actionLoading}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4 mr-2" />
+              Delete
+            </button>
+          </>
+        }
+      />
 
       {/* Status Badge */}
       <div className="flex items-center gap-2">

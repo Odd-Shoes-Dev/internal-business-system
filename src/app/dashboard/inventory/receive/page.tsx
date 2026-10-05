@@ -4,9 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeftIcon, PlusIcon, TrashIcon, TruckIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface StockProduct {
   id: string;
@@ -115,13 +119,7 @@ export default function ReceiveStockPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/inventory" className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeftIcon className="w-5 h-5 text-gray-600" /></Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><TruckIcon className="w-6 h-6 text-[#52b53b]" /> Receive Stock</h1>
-          <p className="text-gray-600">Goods delivered by a supplier. Each line becomes a batch with its own cost and expiry.</p>
-        </div>
-      </div>
+      <PageHeader title="Receive Stock" />
 
       <div className="card p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>

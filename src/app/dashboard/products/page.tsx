@@ -19,6 +19,7 @@ import {
 import { Combobox } from '@/components/ui/combobox';
 import { NumberInput } from '@/components/ui/number-input';
 import { getUnitOptions, isUnitAllowed, normalizeUnit } from '@/lib/units-of-measure';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -249,25 +250,21 @@ export default function ProductsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <CubeIcon className="w-7 h-7 text-blueox-primary" />
-              Price List
-            </h1>
-            <p className="text-gray-500 mt-1">Products, services and non-inventory items you sell — added to invoices and receipts</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={openScanModal} className="btn-secondary flex items-center gap-2">
-              <QrCodeIcon className="w-5 h-5" />
-              Scan Barcode
-            </button>
-            <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <PlusIcon className="w-5 h-5" />
-              New Product
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Price List"
+          actions={
+            <>
+              <button onClick={openScanModal} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                <QrCodeIcon className="w-4 h-4" />
+                Scan Barcode
+              </button>
+              <button onClick={openCreate} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                <PlusIcon className="w-4 h-4" />
+                New Product
+              </button>
+            </>
+          }
+        />
 
         {/* Inventory module banner */}
         {hasInventory ? (

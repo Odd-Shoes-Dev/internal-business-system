@@ -9,13 +9,12 @@ import { useRouter } from 'next/navigation';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
-  PencilIcon,
   TrashIcon,
   BanknotesIcon,
   ArrowUpIcon,
   ArrowDownIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface PageProps {
   params: Promise<{
@@ -143,30 +142,20 @@ export default function TransactionDetailPage({ params }: PageProps) {
 
       <div className="relative max-w-4xl mx-auto py-8 px-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 rounded-xl transition-all duration-300"
-            title="Go back"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-blueox-primary" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-blueox-primary-dark">Transaction Details</h1>
-            <p className="text-gray-600 mt-1">{formatDate(transaction.transaction_date)}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="p-2 bg-white/80 backdrop-blur-xl border border-red-200 hover:border-red-400 rounded-xl transition-all duration-300 text-red-600 disabled:opacity-50"
-          >
-            <TrashIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Transaction Details"
+        actions={
+          <>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </>
+        }
+      />
 
       {/* Transaction Amount Card */}
       <div className={`bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border-2 p-8 text-center ${

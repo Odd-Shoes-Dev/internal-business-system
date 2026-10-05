@@ -15,6 +15,7 @@ import {
   ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface Terminal {
   id: string;
@@ -156,19 +157,17 @@ export default function POSManagerPage() {
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ShoppingCartIcon className="w-7 h-7 text-blueox-primary" />
-              Point of Sale
-            </h1>
-            <p className="text-gray-500 mt-1">Manage terminals, open shifts, and view sales history</p>
-          </div>
-          <button onClick={() => setShowNewTerminal(true)} className="btn-primary flex items-center gap-2">
-            <PlusIcon className="w-5 h-5" />
-            Add Terminal
-          </button>
-        </div>
+        <PageHeader
+          title="Point of Sale"
+          actions={
+            <>
+              <button onClick={() => setShowNewTerminal(true)} className="btn-primary flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                Add Terminal
+              </button>
+            </>
+          }
+        />
 
         {/* Today's summary */}
         <div className="grid grid-cols-2 gap-4">

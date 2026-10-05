@@ -9,13 +9,13 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PrinterIcon,
   TrashIcon,
   CheckCircleIcon,
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import type { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 export default function ReceiptDetailPage() {
   const params = useParams();
@@ -625,59 +625,46 @@ export default function ReceiptDetailPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/dashboard/receipts">
-            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
-              <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
-            </button>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-                Receipt {receipt.receipt_number}
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-green-100 text-green-800 w-fit">
-                <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                PAID
-              </span>
-            </div>
-            <p className="text-sm sm:text-base text-gray-500 mt-1 truncate">{customer.name}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {(() => {
-            const balanceDue = receipt.total - (receipt.amount_paid || 0);
-            const hasInvoiceReference = !!(receipt as any).reference_invoice_number;
-            // Only show Record Payment for standalone receipts (no invoice reference) with balance due
-            return balanceDue > 0 && !hasInvoiceReference && (
-              <button 
-                onClick={() => setShowPaymentModal(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
-              >
-                <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Record Payment</span>
-                <span className="sm:hidden">Pay</span>
+      <PageHeader
+        title={`Receipt ${receipt.receipt_number}`}
+        actions={
+          <>
+            <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-green-100 text-green-800 w-fit">
+              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              PAID
+            </span>
+            {(() => {
+              const balanceDue = receipt.total - (receipt.amount_paid || 0);
+              const hasInvoiceReference = !!(receipt as any).reference_invoice_number;
+              // Only show Record Payment for standalone receipts (no invoice reference) with balance due
+              return balanceDue > 0 && !hasInvoiceReference && (
+                <button 
+                  onClick={() => setShowPaymentModal(true)}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Record Payment</span>
+                  <span className="sm:hidden">Pay</span>
+                </button>
+              );
+            })()}
+            {customer?.email && (
+              <button onClick={handleSendEmail} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                <EnvelopeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Send Email</span>
+                <span className="sm:hidden">Send</span>
               </button>
-            );
-          })()}
-          {customer?.email && (
-            <button onClick={handleSendEmail} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/90 hover:bg-green-600/90 text-white backdrop-blur-xl border border-green-400/30 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
-              <EnvelopeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Send Email</span>
-              <span className="sm:hidden">Send</span>
+            )}
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Print / PDF</span>
             </button>
-          )}
-          <button onClick={handlePrint} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200 text-xs sm:text-sm font-medium">
-            <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">Print / PDF</span>
-          </button>
-          <button onClick={handleDelete} className="inline-flex items-center gap-2 px-3 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200">
-            <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-        </div>
-      </div>
+            <button onClick={handleDelete} className="btn-danger btn-sm inline-flex items-center gap-1.5">
+              <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </>
+        }
+      />
 
       {/* Payment Received Box */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6">

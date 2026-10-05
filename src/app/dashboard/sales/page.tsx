@@ -7,11 +7,11 @@ import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   PrinterIcon,
-  ShoppingBagIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface SaleRow {
   id: string;
@@ -137,17 +137,16 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShoppingBagIcon className="w-7 h-7 text-blueox-primary" /> Sales
-          </h1>
-          <p className="text-gray-600">Till sales and invoices, with what was collected and what is still owed</p>
-        </div>
-        <a href={`/api/sales?${query({ format: 'csv' })}`} className="btn-secondary inline-flex items-center gap-2">
-          <ArrowDownTrayIcon className="w-4 h-4" /> Export CSV
-        </a>
-      </div>
+      <PageHeader
+        title="Sales"
+        actions={
+          <>
+            <a href={`/api/sales?${query({ format: 'csv' })}`} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <ArrowDownTrayIcon className="w-4 h-4" /> Export CSV
+            </a>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="card p-4 grid grid-cols-2 md:grid-cols-6 gap-3">

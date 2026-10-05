@@ -6,11 +6,9 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import {
   UserIcon,
-  EnvelopeIcon,
   LockClosedIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
+import { PageHeader } from '@/components/page-header';
 
 interface ProfileFormData {
   full_name: string;
@@ -148,17 +146,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <Link
-          href="/dashboard/settings"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeftIcon className="w-4 h-4 mr-1" />
-          Back to Settings
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your personal account settings</p>
-      </div>
+      <PageHeader title="Profile Settings" />
 
       <div className="space-y-6">
         {/* Profile Information */}

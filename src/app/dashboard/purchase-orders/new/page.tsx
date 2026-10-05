@@ -7,11 +7,10 @@ import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
-  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Vendor {
   id: string;
@@ -237,15 +236,7 @@ export default function NewPurchaseOrderPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/purchase-orders" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Purchase Order</h1>
-          <p className="text-gray-500 mt-1">Create a new purchase order from a vendor</p>
-        </div>
-      </div>
+      <PageHeader title="New Purchase Order" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* PO Details */}

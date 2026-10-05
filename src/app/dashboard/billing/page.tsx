@@ -12,6 +12,7 @@ import { formatPrice } from '@/lib/regional-pricing';
 import type { Currency } from '@/lib/regional-pricing';
 import { useCompany } from '@/contexts/company-context';
 import { SUPPORT_EMAIL, supportMailto } from '@/lib/support';
+import { PageHeader } from '@/components/page-header';
 
 interface Subscription {
   id: string;
@@ -374,31 +375,18 @@ export default function BillingPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <CreditCardIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Billing & Subscription</span>
-          </div>
-          
-          <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-            Manage Your Subscription
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl">
-            Control your subscription, modules, and payment methods
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Paying by another method, or having an issue with billing?{' '}
-            <a
-              href={supportMailto(`Billing help${company?.name ? ` - ${company.name}` : ''}`)}
-              className="text-blue-600 hover:underline font-medium"
-            >
-              Contact support
-            </a>{' '}
-            at {SUPPORT_EMAIL}.
-          </p>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader title="Billing & Subscription" />
+        <p className="text-sm text-gray-500">
+          Paying by another method, or having an issue with billing?{' '}
+          <a
+            href={supportMailto(`Billing help${company?.name ? ` - ${company.name}` : ''}`)}
+            className="text-blue-600 hover:underline font-medium"
+          >
+            Contact support
+          </a>{' '}
+          at {SUPPORT_EMAIL}.
+        </p>
 
         {/* Trial Warning */}
         {isTrialOrExpired && (

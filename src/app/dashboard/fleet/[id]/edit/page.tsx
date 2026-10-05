@@ -5,13 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   TruckIcon,
   CurrencyDollarIcon,
   WrenchScrewdriverIcon,
   PhotoIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface VehicleFormData {
   vehicle_number: string;
@@ -400,18 +400,7 @@ export default function EditVehiclePage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={`/dashboard/fleet/${params.id}`}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Vehicle</h1>
-          <p className="text-gray-600">Update vehicle details and information</p>
-        </div>
-      </div>
+      <PageHeader title="Edit Vehicle" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
