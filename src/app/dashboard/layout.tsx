@@ -276,12 +276,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, user, router]);
 
-  // Notifications load in the background; the page does not wait for them
+  // Notifications load in the background; the page does not wait for them. Re-run when
+  // modules change too, since stock alerts depend on the Inventory module.
+  const modulesKey = enabledModules.join(',');
   useEffect(() => {
     if (company?.id) {
       fetchNotifications(company.id);
     }
-  }, [company?.id]);
+  }, [company?.id, modulesKey]);
 
   const switchCompany = async (newCompany: any) => {
     setCompanySwitcherOpen(false);
@@ -324,7 +326,49 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         : [];
       const readIdSet = new Set(readIds);
 
-      const notificationList: any[] = [];
+      // Stock alerts, when the company uses Inventory: low stock, batches expiring within a
+      // week, and adjustments waiting for someone allowed to approve them
+      const stockAlerts: any[] = [];
+      if (enabledModules.includes('inventory')) {
+        const id = encodeURIComponent(companyId);
+        const [lowRes, expRes, adjRes] = await Promise.all([
+          fetch(`/api/inventory?company_id=${id}&low_stock=true&limit=20`, { credentials: 'include' }),
+          fetch(`/api/inventory/expiring?company_id=${id}&days=7`, { credentials: 'include' }),
+          fetch(`/api/stock-adjustments?company_id=${id}&status=pending`, { credentials: 'include' }),
+        ]);
+        const low = lowRes.ok ? (await lowRes.json()).data || [] : [];
+        const expiring = expRes.ok ? (await expRes.json()).data || [] : [];
+        const adjustments = adjRes.ok ? await adjRes.json() : { data: [], can_approve: false };
+
+        low.forEach((p: any) => stockAlerts.push({
+          id: `low-stock-${p.id}-${Number(p.quantity_on_hand)}`,
+          type: 'low_stock',
+          title: Number(p.quantity_on_hand) <= 0 ? `${p.name} is out of stock` : `${p.name} is running low`,
+          message: `${Number(p.quantity_on_hand)} ${p.unit_of_measure || ''} left (reorder at ${Number(p.reorder_point || 0)})`,
+          time: new Date().toLocaleDateString(),
+          href: '/dashboard/inventory/alerts',
+        }));
+        expiring.forEach((l: any) => stockAlerts.push({
+          id: `expiring-${l.lot_id}`,
+          type: 'expiring',
+          title: l.days_left < 0 ? `${l.product_name} batch has expired` : `${l.product_name} expires in ${l.days_left} day(s)`,
+          message: `${l.quantity} ${l.unit_of_measure || ''}${l.lot_number ? ` · batch ${l.lot_number}` : ''}`,
+          time: l.expiry_date,
+          href: '/dashboard/inventory/alerts',
+        }));
+        if (adjustments.can_approve) {
+          (adjustments.data || []).forEach((a: any) => stockAlerts.push({
+            id: `adjustment-${a.id}`,
+            type: 'adjustment',
+            title: `${a.adjustment_number} needs approval`,
+            message: `${a.product_name}: ${a.quantity_change > 0 ? '+' : ''}${a.quantity_change} (${a.reason.replace('_', ' ')})`,
+            time: new Date(a.created_at).toLocaleDateString(),
+            href: '/dashboard/inventory/adjustments',
+          }));
+        }
+      }
+
+      const notificationList: any[] = [...stockAlerts];
 
       overdueInvoices?.forEach((invoice: any) => {
         notificationList.push({

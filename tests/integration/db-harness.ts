@@ -1,6 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import net from 'net';
 import pg from 'pg';
+
+// Same as src/lib/db/neon.ts: 3s per address instead of Node's 250ms
+net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
 
 // One connection, one transaction for the whole test file, rolled back at the end.
 // Route handlers get a provider whose transaction() is a savepoint inside it.

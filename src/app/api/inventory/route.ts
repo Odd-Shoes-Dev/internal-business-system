@@ -1,5 +1,6 @@
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
+import { receiveOpeningStockWithDb } from '@/lib/inventory/stock';
 
 // GET /api/inventory - List inventory items
 export async function GET(request: NextRequest) {
@@ -39,6 +40,12 @@ export async function GET(request: NextRequest) {
     if (category) {
       params.push(category);
       where.push(`category_id = $${params.length}`);
+    }
+
+    const parentId = searchParams.get('parent_id');
+    if (parentId) {
+      params.push(parentId);
+      where.push(`parent_product_id = $${params.length}`);
     }
 
     const whereSql = `WHERE ${where.join(' AND ')}`;
@@ -127,6 +134,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A variant is a product whose parent_product_id points at the product it varies
+    const parentId = body.parent_product_id || null;
+    if (parentId) {
+      const parent = await db.query('SELECT parent_product_id FROM products WHERE id = $1 AND company_id = $2', [parentId, companyId]);
+      if (!parent.rowCount) return NextResponse.json({ error: 'Parent product not found' }, { status: 404 });
+      if (parent.rows[0].parent_product_id) {
+        return NextResponse.json({ error: 'A variant cannot have its own variants' }, { status: 400 });
+      }
+    }
+
     // 'inventory' = physical product with tracked stock; 'service' = no stock
     const productType = body.product_type === 'service' ? 'service' : 'inventory';
     const isService = productType === 'service';
@@ -144,12 +161,14 @@ export async function POST(request: NextRequest) {
          company_id, sku, name, description, category_id, product_type, unit_of_measure,
          cost_price, unit_price, currency, quantity_on_hand, quantity_reserved,
          reorder_point, reorder_quantity, inventory_account_id, cogs_account_id,
-         revenue_account_id, is_active, track_inventory, is_taxable, tax_rate
+         revenue_account_id, is_active, track_inventory, is_taxable, tax_rate,
+         barcode, shelf_location, purchase_unit, units_per_purchase_unit, parent_product_id, variant_attributes
        ) VALUES (
          $1, $2, $3, $4, $5, $19, $6,
          $7, $8, $9, $10, 0,
          $11, $12, $13, $14,
-         $20, $15, $16, $17, $18
+         $20, $15, $16, $17, $18,
+         $21, $22, $23, $24, $25, $26
        )
        RETURNING *`,
       [
@@ -162,7 +181,7 @@ export async function POST(request: NextRequest) {
         Number(body.unit_cost || 0),
         Number(body.unit_price || 0),
         body.currency || 'USD',
-        isService ? 0 : Number(body.quantity_on_hand || 0),
+        0, // opening stock is received below, so it gets a batch and a ledger entry
         isService ? 0 : Number(body.reorder_point || 0),
         isService ? 0 : Number(body.reorder_quantity || 0),
         inventoryAccountId,
@@ -173,8 +192,23 @@ export async function POST(request: NextRequest) {
         body.tax_rate || null,
         productType,
         revenueAccountId,
+        String(body.barcode || '').trim() || null,
+        String(body.shelf_location || '').trim() || null,
+        isService ? null : String(body.purchase_unit || '').trim() || null,
+        isService ? 1 : Number(body.units_per_purchase_unit) > 0 ? Number(body.units_per_purchase_unit) : 1,
+        parentId,
+        body.variant_attributes && typeof body.variant_attributes === 'object' ? JSON.stringify(body.variant_attributes) : null,
       ]
     );
+
+    const openingQty = isService ? 0 : Number(body.quantity_on_hand || 0);
+    if (openingQty > 0 && body.track_inventory !== false) {
+      await receiveOpeningStockWithDb(db, {
+        companyId, productId: dataResult.rows[0].id, quantity: openingQty,
+        unitCost: Number(body.unit_cost || 0), userId: user.id,
+      });
+      dataResult.rows[0] = (await db.query('SELECT * FROM products WHERE id = $1', [dataResult.rows[0].id])).rows[0];
+    }
 
     return NextResponse.json({ data: dataResult.rows[0] }, { status: 201 });
   } catch (error: any) {

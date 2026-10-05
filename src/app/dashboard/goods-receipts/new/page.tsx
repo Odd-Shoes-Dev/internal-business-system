@@ -39,6 +39,8 @@ interface GRLine {
   description: string;
   quantity_to_receive: number;
   unit_cost: number;
+  lot_number: string;
+  expiry_date: string;
 }
 
 export default function NewGoodsReceiptPage() {
@@ -178,6 +180,8 @@ export default function NewGoodsReceiptPage() {
           description: line.description,
           quantity_to_receive: line.quantity_remaining,
           unit_cost: line.unit_cost,
+          lot_number: '',
+          expiry_date: '',
         }));
 
       setLines(grLines);
@@ -227,6 +231,8 @@ export default function NewGoodsReceiptPage() {
             product_id: line.product_id,
             quantity_received: line.quantity_to_receive,
             unit_cost: line.unit_cost,
+            lot_number: line.lot_number || null,
+            expiry_date: line.expiry_date || null,
           })),
         }),
       });
@@ -344,6 +350,8 @@ export default function NewGoodsReceiptPage() {
                         <th className="w-32">Received</th>
                         <th className="w-32">Remaining</th>
                         <th className="w-32">Receive Now</th>
+                        <th className="w-32">Lot / batch</th>
+                        <th className="w-40">Expiry</th>
                         <th className="w-16"></th>
                       </tr>
                     </thead>
@@ -366,6 +374,21 @@ export default function NewGoodsReceiptPage() {
                                 max={poLine?.quantity_remaining || 0}
                                 step="0.01"
                                 required
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={line.lot_number}
+                                onChange={(e) => handleLineChange(index, 'lot_number', e.target.value)}
+                                className="input text-sm"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                value={line.expiry_date}
+                                onChange={(e) => handleLineChange(index, 'expiry_date', e.target.value)}
+                                className="input text-sm"
                               />
                             </td>
                             <td>

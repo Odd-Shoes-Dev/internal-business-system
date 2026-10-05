@@ -15,6 +15,7 @@ import { CategoryCombobox } from '@/components/ui/category-combobox';
 import { Combobox } from '@/components/ui/combobox';
 import { NumberInput } from '@/components/ui/number-input';
 import { getUnitOptions } from '@/lib/units-of-measure';
+import ProductExtraFields, { EMPTY_PRODUCT_EXTRAS, type ProductExtraValues } from '../product-extra-fields';
 
 interface Category {
   id: string;
@@ -31,6 +32,7 @@ export default function NewInventoryItemPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [extras, setExtras] = useState<ProductExtraValues>(EMPTY_PRODUCT_EXTRAS);
 
   const [formData, setFormData] = useState({
     product_type: 'inventory' as 'inventory' | 'service',
@@ -131,6 +133,7 @@ export default function NewInventoryItemPage() {
         ...formData,
         unit_price: formData.selling_price, // Map selling_price to unit_price for API
         track_inventory: formData.product_type !== 'service',
+        ...extras,
       };
       
       const response = await fetch(`/api/inventory?company_id=${company.id}`, {
@@ -343,6 +346,13 @@ export default function NewInventoryItemPage() {
           </div>
         </div>
 
+        <ProductExtraFields
+          values={extras}
+          onChange={(patch) => setExtras((prev) => ({ ...prev, ...patch }))}
+          isService={isService}
+          stockUnit={formData.unit_of_measure}
+        />
+
         {/* Pricing */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Pricing</h2>
@@ -423,7 +433,7 @@ export default function NewInventoryItemPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="0"
               />
-              <p className="text-xs text-gray-500 mt-1">Current stock count</p>
+              <p className="text-xs text-gray-500 mt-1">Stock you have now; recorded as opening stock at the unit cost</p>
             </div>
 
             <div>

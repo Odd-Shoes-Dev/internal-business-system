@@ -33,6 +33,8 @@ const { DELETE: deleteHeld } = await import('@/app/api/pos/held-orders/[id]/rout
 const { PATCH: closeSession } = await import('@/app/api/pos/sessions/[id]/route');
 const { PUT: putWhatsapp, GET: getWhatsapp } = await import('@/app/api/companies/whatsapp/route');
 const { savePosSettingsWithDb } = await import('@/lib/pos/settings-db');
+const { GET: listSales } = await import('@/app/api/sales/route');
+const { GET: getSale } = await import('@/app/api/sales/[id]/route');
 
 const json = (url: string, method: string, body?: unknown) =>
   new NextRequest(`http://localhost${url}`, { method, body: body ? JSON.stringify(body) : undefined });
@@ -210,6 +212,28 @@ describe('POS sale with discounts, loyalty and credit', () => {
     const customer = (await client.query('SELECT current_balance::float AS b, loyalty_points::float AS p FROM customers WHERE id = $1', [customerId])).rows[0];
     expect(customer.b).toBeCloseTo(1084.67, 2);
     expect(customer.p).toBeLessThan(10); // points earned on the returned share taken back
+  });
+
+  it('lists the sale on the Sales page with totals, detail and CSV', async () => {
+    const res = await listSales(json(`/api/sales?company_id=${companyId}&source=pos&search=${invoice.invoice_number}`, 'GET'));
+    const body = await res.json();
+    expect(res.status, JSON.stringify(body)).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]).toMatchObject({ invoice_number: invoice.invoice_number, document_type: 'pos_sale', payment_methods: 'cash' });
+    expect(body.data[0].refunded).toBeCloseTo(2084.67, 2);
+    expect(body.summary).toMatchObject({ count: 1, total: 3127, discounts: 350, tax: 477 });
+
+    const unpaid = await (await listSales(json(`/api/sales?company_id=${companyId}&status=paid&search=${invoice.invoice_number}`, 'GET'))).json();
+    expect(unpaid.data).toHaveLength(0); // still owes a balance
+
+    const detail = await (await getSale(json(`/api/sales/${invoice.id}`, 'GET'), { params: Promise.resolve({ id: invoice.id }) })).json();
+    expect(detail.data.lines).toHaveLength(1);
+    expect(detail.data.returns).toHaveLength(2);
+    expect(detail.data.payments.map((p: any) => p.source)).toEqual(['pos', 'pos_return']);
+
+    const csv = await (await listSales(json(`/api/sales?company_id=${companyId}&format=csv&search=${invoice.invoice_number}`, 'GET'))).text();
+    expect(csv.split('\n')).toHaveLength(2);
+    expect(csv).toContain(invoice.invoice_number);
   });
 
   it('closes the shift with cash refunds taken out of expected cash', async () => {

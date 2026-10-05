@@ -33,9 +33,12 @@ import {
 import CustomerPicker, { type TillCustomer } from './customer-picker';
 import HeldOrdersPanel, { type HeldOrder } from './held-orders-panel';
 import ReturnModal from './return-modal';
+import { applyPromotions, type Promotion } from '@/lib/pos/promotions';
 
 interface Product {
   id: string;
+  parent_product_id?: string | null;
+  variant_attributes?: Record<string, string> | null;
   name: string;
   sku: string | null;
   barcode: string | null;
@@ -121,6 +124,8 @@ export default function TillPage() {
   const [showReturn, setShowReturn] = useState(false);
   const [holdLabel, setHoldLabel] = useState<string | null>(null);
   const [holding, setHolding] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [variantParent, setVariantParent] = useState<Product | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,13 +137,19 @@ export default function TillPage() {
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.data && setPosSettings(d.data))
         .catch(() => {});
+      // Running promotions, to show prices; the server works them out again when charging
+      fetch(`/api/promotions?company_id=${company.id}&live=true`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.data && setPromotions(d.data))
+        .catch(() => {});
     }
   }, [company, sessionId]);
 
   useEffect(() => {
     const q = search.toLowerCase();
     if (!q) {
-      setFilteredProducts(products.slice(0, 30));
+      // Variants are reached through their main product
+      setFilteredProducts(products.filter(p => !p.parent_product_id).slice(0, 30));
     } else {
       setFilteredProducts(
         products.filter(p =>
@@ -162,12 +173,12 @@ export default function TillPage() {
         target.closest('button') ||
         target.closest('[data-payment-panel]')
       ) return;
-      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null;
+      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null || variantParent !== null;
       if (!modalOpen && !lastReceipt) barcodeInputRef.current?.focus();
     };
     document.addEventListener('click', handle);
     return () => document.removeEventListener('click', handle);
-  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, lastReceipt]);
+  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, variantParent, lastReceipt]);
 
   const loadSession = async () => {
     try {
@@ -189,12 +200,12 @@ export default function TillPage() {
     if (!company) return;
     try {
       const res = await fetch(
-        `/api/products?company_id=${company.id}&active=true&limit=200`,
+        `/api/products?company_id=${company.id}&active=true&limit=1000`,
         { credentials: 'include' }
       );
       const data = await res.json();
       setProducts(data.data || []);
-      setFilteredProducts((data.data || []).slice(0, 30));
+      setFilteredProducts((data.data || []).filter((p: Product) => !p.parent_product_id).slice(0, 30));
     } catch {
       toast.error('Failed to load products');
     } finally {
@@ -256,11 +267,14 @@ export default function TillPage() {
     setCart(prev => prev.map(i => (i.product_id === productId ? { ...i, discount_amount: Math.max(0, Number(value) || 0) } : i)));
 
   const cartDiscountAmount = Math.max(0, Number(cartDiscount) || 0);
-  const beforeLoyalty = pricePosCart(cart, cartDiscountAmount);
+  const variantsOf = (productId: string) => products.filter(p => p.parent_product_id === productId);
+  const promotedCart = applyPromotions(cart, promotions);
+  const promoByProduct = new Map(promotedCart.map(l => [l.product_id, l.promotion]));
+  const beforeLoyalty = pricePosCart(promotedCart, cartDiscountAmount);
   const loyalty = posSettings.loyalty;
   const maxPoints = customer ? maxRedeemablePoints(customer.loyalty_points, beforeLoyalty.subtotal, loyalty) : 0;
   const pointsToRedeem = Math.min(Math.max(0, Math.floor(Number(redeemPoints) || 0)), maxPoints);
-  const priced = pricePosCart(cart, cartDiscountAmount + loyaltyRedemptionValue(pointsToRedeem, loyalty));
+  const priced = pricePosCart(promotedCart, cartDiscountAmount + loyaltyRedemptionValue(pointsToRedeem, loyalty));
   const { subtotal, tax: taxAmount, total } = priced;
   const pricedByProduct = new Map(priced.lines.map(l => [l.product_id, l]));
 
@@ -597,7 +611,7 @@ export default function TillPage() {
               {filteredProducts.map(p => (
                 <button
                   key={p.id}
-                  onClick={() => addToCart(p)}
+                  onClick={() => (variantsOf(p.id).length ? setVariantParent(p) : addToCart(p))}
                   className="rounded-xl p-3 text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
                     background: 'var(--pos-surface)',
@@ -610,7 +624,9 @@ export default function TillPage() {
                   <p className="text-xs font-bold mt-1" style={{ color: 'var(--blueox-accent-light)' }}>
                     {formatCurrency(Number(p.unit_price), currency)}
                   </p>
-                  {p.sku && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--pos-text-subtle)' }}>{p.sku}</p>}
+                  {variantsOf(p.id).length > 0
+                    ? <p className="text-xs mt-0.5" style={{ color: 'var(--pos-text-subtle)' }}>{variantsOf(p.id).length} options</p>
+                    : p.sku && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--pos-text-subtle)' }}>{p.sku}</p>}
                 </button>
               ))}
               {filteredProducts.length === 0 && (
@@ -689,6 +705,11 @@ export default function TillPage() {
                         )}
                       </div>
                     </div>
+                    {promoByProduct.get(item.product_id) && (
+                      <p className="text-[11px] font-semibold" style={{ color: '#34d399' }}>
+                        {promoByProduct.get(item.product_id)!.name}: -{formatCurrency(promoByProduct.get(item.product_id)!.amount, currency)}
+                      </p>
+                    )}
                     {editingDiscountFor === item.product_id ? (
                       <div className="flex items-center gap-2">
                         <input
@@ -879,6 +900,28 @@ export default function TillPage() {
           </div>
         </div>
       </div>
+
+      {variantParent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="text-lg font-bold">{variantParent.name}</h2>
+              <button onClick={() => setVariantParent(null)} className="p-1.5 rounded-lg hover:bg-gray-100"><XMarkIcon className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+              {variantsOf(variantParent.id).map(v => (
+                <button key={v.id} onClick={() => { addToCart(v); setVariantParent(null); }}
+                  className="rounded-xl border p-3 text-left hover:border-blueox-primary">
+                  <p className="text-sm font-semibold">
+                    {Object.values(v.variant_attributes || {}).join(' / ') || v.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{formatCurrency(Number(v.unit_price), currency)}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCustomerPicker && company && (
         <CustomerPicker

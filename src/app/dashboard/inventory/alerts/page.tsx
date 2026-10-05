@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
+import { downloadCsv } from '@/lib/csv';
+import ExpiringSection from './expiring-section';
 import toast from 'react-hot-toast';
 import {
   ExclamationTriangleIcon,
@@ -116,13 +118,26 @@ export default function ReorderAlertsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reorder Alerts</h1>
-          <p className="text-gray-500 mt-1">Products below reorder point</p>
+          <h1 className="text-2xl font-bold text-gray-900">Low stock &amp; expiring</h1>
+          <p className="text-gray-500 mt-1">Products at or below their reorder point, and batches near expiry</p>
         </div>
-        <Link href="/dashboard/inventory/products" className="btn-secondary">
-          View All Products
-        </Link>
+        <div className="flex gap-2">
+          <button
+            className="btn-secondary"
+            disabled={!products.length}
+            onClick={() => downloadCsv(`low-stock-${new Date().toISOString().slice(0, 10)}.csv`,
+              ['Product', 'SKU', 'On hand', 'Reorder point', 'Reorder quantity', 'Unit'],
+              products.map((p: any) => [p.name, p.sku, p.quantity_on_hand, p.reorder_point, p.reorder_quantity, p.unit_of_measure]))}
+          >
+            Export low stock (CSV)
+          </button>
+          <Link href="/dashboard/inventory" className="btn-secondary">
+            View All Products
+          </Link>
+        </div>
       </div>
+
+      {company && <ExpiringSection companyId={company.id} currency={company.currency || 'UGX'} />}
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">
@@ -240,7 +255,7 @@ export default function ReorderAlertsPage() {
                         </td>
                         <td>
                           <Link
-                            href={`/dashboard/inventory/products/${product.id}`}
+                            href={`/dashboard/inventory/${product.id}`}
                             className="font-medium text-blue-600 hover:text-blue-800"
                           >
                             {product.name}

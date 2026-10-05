@@ -225,8 +225,25 @@ export default function InventoryPage() {
     return true;
   });
 
-  const totalPages = Math.ceil(filteredItems.length / pageSize);
-  const items = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Variants sit directly under their main product
+  const orderedItems = (() => {
+    const shown = new Set(filteredItems.map((i) => i.id));
+    const children = new Map<string, Product[]>();
+    filteredItems.forEach((i) => {
+      const parent = (i as any).parent_product_id as string | null;
+      if (parent && shown.has(parent)) children.set(parent, [...(children.get(parent) || []), i]);
+    });
+    const out: Product[] = [];
+    filteredItems.forEach((i) => {
+      const parent = (i as any).parent_product_id as string | null;
+      if (parent && shown.has(parent)) return; // placed under its parent
+      out.push(i, ...(children.get(i.id) || []));
+    });
+    return out;
+  })();
+
+  const totalPages = Math.ceil(orderedItems.length / pageSize);
+  const items = orderedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
@@ -246,6 +263,12 @@ export default function InventoryPage() {
             <p className="text-gray-600 text-lg">Everything you sell, with stock levels for physical products</p>
           </div>
           <div className="flex gap-3">
+ <Link
+              href="/dashboard/inventory/receive"
+              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+              Receive Stock
+            </Link>
             <Link 
               href="/dashboard/inventory/movements" 
               className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
@@ -262,6 +285,21 @@ export default function InventoryPage() {
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6 text-sm">
+        {[
+          { href: '/dashboard/inventory/adjustments', label: 'Stock adjustments' },
+          { href: '/dashboard/inventory/promotions', label: 'Promotions' },
+          { href: '/dashboard/inventory/labels', label: 'Print labels' },
+          { href: '/dashboard/inventory/alerts', label: 'Low stock & expiring' },
+          { href: '/dashboard/inventory/stock-takes', label: 'Stock takes' },
+        ].map((link) => (
+          <Link key={link.href} href={link.href}
+            className="px-3 py-1.5 rounded-full bg-white/80 border border-blueox-primary/20 text-blueox-primary hover:border-blueox-primary/40">
+            {link.label}
+          </Link>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -521,10 +559,13 @@ export default function InventoryPage() {
                       <td className="py-4 px-6">
                         <Link
                           href={`/dashboard/inventory/${item.id}`}
-                          className="font-semibold text-blueox-primary hover:text-blueox-primary-dark transition-colors"
+                          className={`font-semibold text-blueox-primary hover:text-blueox-primary-dark transition-colors ${(item as any).parent_product_id ? 'pl-5' : ''}`}
                         >
-                          {item.name}
+                          {(item as any).parent_product_id ? '↳ ' : ''}{item.name}
                         </Link>
+                        {(item as any).shelf_location && (
+                          <p className="text-xs text-gray-400 mt-0.5">Shelf: {(item as any).shelf_location}</p>
+                        )}
                         {item.description && (
                           <p className="text-sm text-gray-500 truncate max-w-xs mt-1">{item.description}</p>
                         )}

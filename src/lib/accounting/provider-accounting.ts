@@ -9,6 +9,7 @@ import {
   type CostLot,
   type JournalLine,
 } from '@/lib/accounting/inventory-costing';
+import { putStockInWithDb, takeStockOutWithDb } from '@/lib/inventory/stock';
 
 type QueryResult<T = any> = { rows: T[]; rowCount: number };
 
@@ -488,10 +489,9 @@ export async function createExpenseJournalEntryWithDb(
   }
 }
 
-// Takes sold stock out: lots that expire first, then oldest received (FIFO), with any shortfall
-// costed at the product's average cost. Records the cost on the 'sale' movement so the invoice
-// journal entry can post cost of goods sold. With allowNegative (the POS till), a sale is not
-// refused when recorded stock is too low.
+// Takes sold stock out at FIFO cost (see takeStockOutWithDb) and records the cost on the
+// 'sale' movement so the invoice journal entry can post cost of goods sold. With allowNegative
+// (the POS till), a sale is not refused when recorded stock is too low.
 export async function reduceInventoryForInvoiceWithDb(
   q: QueryExecutor,
   invoiceId: string,
@@ -505,72 +505,18 @@ export async function reduceInventoryForInvoiceWithDb(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-      const quantity = Number(line.quantity || 0);
-      if (quantity <= 0) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-        quantity_reserved: number | null;
-        cost_price: number | null;
-        name: string;
-      }>(
-        `SELECT track_inventory, quantity_on_hand, quantity_reserved, cost_price, name
-         FROM products
-         WHERE id = $1
-         LIMIT 1
-         FOR UPDATE`,
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      const available = Number(product.quantity_on_hand || 0) - Number(product.quantity_reserved || 0);
-      if (!options.allowNegative && available < quantity) {
-        return {
-          success: false,
-          error: `Insufficient inventory for ${product.name}. Available: ${available}, Required: ${quantity}`,
-        };
-      }
-
-      const lotsResult = await q.query<CostLot>(
-        `SELECT id, quantity_remaining, unit_cost
-         FROM inventory_lots
-         WHERE product_id = $1 AND quantity_remaining > 0
-         ORDER BY expiry_date ASC NULLS LAST, received_date ASC, created_at ASC
-         FOR UPDATE`,
-        [line.product_id]
-      );
-      const fifo = allocateFifo(lotsResult.rows, quantity, Number(product.cost_price || 0));
-
-      for (const allocation of fifo.allocations) {
-        await q.query(
-          'UPDATE inventory_lots SET quantity_remaining = quantity_remaining - $2 WHERE id = $1',
-          [allocation.lot_id, allocation.quantity]
-        );
-      }
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, updated_at = NOW() WHERE id = $1',
-        [line.product_id, Number(product.quantity_on_hand || 0) - quantity]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, notes, created_by
-         ) VALUES ($1, 'sale', $2, $3, $4, 'invoice', $5, $6, $7)`,
-        [line.product_id, -quantity, fifo.totalCost / quantity, fifo.totalCost, invoiceId, line.description, userId]
-      );
+      if (!line.product_id || !(Number(line.quantity) > 0)) continue;
+      await takeStockOutWithDb(q, {
+        productId: line.product_id,
+        quantity: Number(line.quantity),
+        movementType: 'sale',
+        referenceType: 'invoice',
+        referenceId: invoiceId,
+        notes: line.description,
+        userId,
+        allowNegative: options.allowNegative,
+      });
     }
-
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to reduce inventory for invoice' };
@@ -681,129 +627,47 @@ export async function restoreInventoryForInvoiceWithDb(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-      const quantity = Number(line.quantity || 0);
-      if (quantity <= 0) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-        cost_price: number | null;
-      }>(
-        'SELECT track_inventory, quantity_on_hand, cost_price FROM products WHERE id = $1 LIMIT 1 FOR UPDATE',
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      const soldResult = await q.query<{ quantity: string; cost: string }>(
-        `SELECT COALESCE(SUM(-quantity), 0) AS quantity, COALESCE(SUM(total_cost), 0) AS cost
-         FROM inventory_movements
-         WHERE reference_type = 'invoice' AND reference_id = $1 AND product_id = $2 AND movement_type = 'sale'`,
-        [invoiceId, line.product_id]
-      );
-      const soldQuantity = Number(soldResult.rows[0]?.quantity || 0);
-      const unitCost = soldQuantity > 0
-        ? Number(soldResult.rows[0].cost) / soldQuantity
-        : Number(product.cost_price || 0);
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, updated_at = NOW() WHERE id = $1',
-        [line.product_id, Number(product.quantity_on_hand || 0) + quantity]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, created_by
-         ) VALUES ($1, 'return', $2, $3, $4, 'invoice_void', $5, $6)`,
-        [line.product_id, quantity, unitCost, unitCost * quantity, invoiceId, userId]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_lots (
-           product_id, lot_number, quantity_received, quantity_remaining, unit_cost, received_date
-         ) VALUES ($1, $2, $3, $3, $4, CURRENT_DATE)`,
-        [line.product_id, `RETURN-${invoiceId.slice(0, 8)}`, quantity, unitCost]
-      );
+      if (!line.product_id || !(Number(line.quantity) > 0)) continue;
+      const product = await q.query<{ cost_price: string | null }>('SELECT cost_price FROM products WHERE id = $1', [line.product_id]);
+      const unitCost = (await getInvoiceSaleUnitCostWithDb(q, invoiceId, line.product_id)) ?? Number(product.rows[0]?.cost_price || 0);
+      await putStockInWithDb(q, {
+        productId: line.product_id,
+        quantity: Number(line.quantity),
+        unitCost,
+        movementType: 'return',
+        referenceType: 'invoice_void',
+        referenceId: invoiceId,
+        lotNumber: `RETURN-${invoiceId.slice(0, 8)}`,
+        userId,
+      });
     }
-
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to restore inventory for invoice' };
   }
 }
 
-export async function increaseInventoryForBillWithDb(
+// Ledger account code for each bill line. Stock enters only through receiving (which credits
+// 2150 Goods Received Not Invoiced), so a bill line for a stock-tracked product debits 2150
+// instead of an expense and does not change stock. Other lines keep their chosen account.
+export async function billLineAccountCodesWithDb(
   q: QueryExecutor,
-  billId: string,
-  billDate: string,
-  lines: Array<{
-    product_id?: string | null;
-    quantity: number;
-    unit_cost: number;
-    line_total: number;
-    description: string;
-  }>,
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-        cost_price: number | null;
-      }>(
-        'SELECT track_inventory, quantity_on_hand, cost_price FROM products WHERE id = $1 LIMIT 1',
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      const newQty = Number(product.quantity_on_hand || 0) + Number(line.quantity || 0);
-      const previousCost = Number(product.cost_price || 0);
-      const newCost =
-        newQty > 0
-          ? (Number(product.quantity_on_hand || 0) * previousCost + Number(line.quantity || 0) * Number(line.unit_cost || 0)) / newQty
-          : Number(line.unit_cost || 0);
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, cost_price = $3, updated_at = NOW() WHERE id = $1',
-        [line.product_id, newQty, newCost]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, notes, created_by
-         ) VALUES ($1, 'purchase', $2, $3, $4, 'bill', $5, $6, $7)`,
-        [line.product_id, line.quantity, line.unit_cost, line.line_total, billId, line.description, userId]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_lots (
-           product_id, quantity_received, quantity_remaining, unit_cost, received_date
-         ) VALUES ($1, $2, $3, $4, $5::date)`,
-        [line.product_id, line.quantity, line.quantity, line.unit_cost, billDate]
-      );
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to increase inventory for bill' };
+  lines: Array<{ product_id?: string | null; expense_account_id?: string | null }>,
+  accountMap: Record<string, string>
+): Promise<string[]> {
+  const productIds = [...new Set(lines.map((l) => l.product_id).filter(Boolean))] as string[];
+  const tracked = new Set<string>();
+  if (productIds.length) {
+    const result = await q.query<{ id: string }>(
+      'SELECT id FROM products WHERE id = ANY($1::uuid[]) AND track_inventory = true',
+      [productIds]
+    );
+    result.rows.forEach((row) => tracked.add(row.id));
   }
+  return lines.map((line) => {
+    if (line.product_id && tracked.has(line.product_id)) return '2150';
+    return Object.keys(accountMap).find((key) => accountMap[key] === line.expense_account_id) || '5000';
+  });
 }
 
 // Unit cost at which a product left on an invoice (from its 'sale' movements), or null.
@@ -822,8 +686,8 @@ export async function getInvoiceSaleUnitCostWithDb(
   return quantity > 0 ? Number(sold.rows[0].cost) / quantity : null;
 }
 
-// Puts returned goods back on the shelf: on-hand quantity, a 'return' movement and a new lot
-// at the given cost, so FIFO sells them again at what they cost.
+// Puts returned goods back on the shelf at the given cost, so FIFO sells them again at what
+// they cost.
 export async function returnStockWithDb(
   q: QueryExecutor,
   input: {
@@ -837,20 +701,5 @@ export async function returnStockWithDb(
     userId: string;
   }
 ): Promise<void> {
-  await q.query(
-    'UPDATE products SET quantity_on_hand = quantity_on_hand + $2, updated_at = NOW() WHERE id = $1',
-    [input.productId, input.quantity]
-  );
-  await q.query(
-    `INSERT INTO inventory_movements (
-       product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, notes, created_by
-     ) VALUES ($1, 'return', $2, $3, $4, $5, $6, $7, $8)`,
-    [input.productId, input.quantity, input.unitCost, input.unitCost * input.quantity, input.referenceType,
-     input.referenceId, input.notes ?? null, input.userId]
-  );
-  await q.query(
-    `INSERT INTO inventory_lots (product_id, lot_number, quantity_received, quantity_remaining, unit_cost, received_date)
-     VALUES ($1, $2, $3, $3, $4, CURRENT_DATE)`,
-    [input.productId, input.lotNumber, input.quantity, input.unitCost]
-  );
+  await putStockInWithDb(q, { ...input, movementType: 'return' });
 }

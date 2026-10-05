@@ -1,4 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  adjustmentApprovalRequiredWithDb,
+  approveStockAdjustmentWithDb,
+  canApproveAdjustmentsWithDb,
+  createStockAdjustmentWithDb,
+} from '@/lib/inventory/adjustments';
+import { StockError } from '@/lib/inventory/stock';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -59,7 +66,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const { id } = await context.params;
     const body = await request.json();
 
-    const currentResult = await db.query('SELECT id, company_id FROM products WHERE id = $1 LIMIT 1', [id]);
+    const currentResult = await db.query(
+      'SELECT id, company_id, quantity_on_hand, track_inventory FROM products WHERE id = $1 LIMIT 1',
+      [id]
+    );
     const current = currentResult.rows[0];
     if (!current) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -84,14 +94,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       currency: 'currency',
       is_taxable: 'is_taxable',
       tax_rate: 'tax_rate',
-      quantity_in_stock: 'quantity_on_hand',
-      quantity_on_hand: 'quantity_on_hand',
       reorder_point: 'reorder_point',
+      reorder_quantity: 'reorder_quantity',
+      shelf_location: 'shelf_location',
+      purchase_unit: 'purchase_unit',
+      units_per_purchase_unit: 'units_per_purchase_unit',
+      variant_attributes: 'variant_attributes',
       manufacturer: 'manufacturer',
       brand: 'brand',
       model_number: 'model_number',
       weight: 'weight',
-      dimensions: 'dimensions',
       is_active: 'is_active',
       track_inventory: 'track_inventory',
     };
@@ -112,21 +124,54 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
     }
 
-    if (updates.length === 0) {
+    // Stock quantity is never written directly: a changed count becomes a stock adjustment
+    // (applied now for approvers or when approval is off, otherwise waiting for approval)
+    const requestedQty = body.quantity_on_hand ?? body.quantity_in_stock;
+    const qtyChange = requestedQty === undefined || requestedQty === null || !current.track_inventory
+      ? 0
+      : Number(requestedQty) - Number(current.quantity_on_hand || 0);
+
+    if (updates.length === 0 && !qtyChange) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    const updatedResult = await db.query(
-      `UPDATE products
-       SET ${updates.join(', ')}, updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      values
-    );
+    const result = await db.transaction(async (tx) => {
+      let product = current;
+      if (updates.length) {
+        const updatedResult = await tx.query(
+          `UPDATE products
+           SET ${updates.join(', ')}, updated_at = NOW()
+           WHERE id = $1
+           RETURNING *`,
+          values
+        );
+        product = updatedResult.rows[0];
+      }
 
-    return NextResponse.json({ data: updatedResult.rows[0] });
+      let adjustment: { adjustment_number: string; status: string } | null = null;
+      if (Math.abs(qtyChange) > 1e-9) {
+        const approved = !(await adjustmentApprovalRequiredWithDb(tx, current.company_id)) ||
+          (await canApproveAdjustmentsWithDb(tx, user.id, current.company_id));
+        const adj = await createStockAdjustmentWithDb(tx, {
+          companyId: current.company_id, productId: id, quantityChange: qtyChange,
+          reason: 'count_correction', notes: 'Quantity changed on the product page', userId: user.id,
+        });
+        if (approved) await approveStockAdjustmentWithDb(tx, adj.id, user.id);
+        adjustment = { adjustment_number: adj.adjustment_number, status: approved ? 'approved' : 'pending' };
+        product = (await tx.query('SELECT * FROM products WHERE id = $1', [id])).rows[0];
+      }
+      return { product, adjustment };
+    });
+
+    return NextResponse.json({ data: result.product, stock_adjustment: result.adjustment });
   } catch (error: any) {
-    if (error?.code === '23505' || /products_sku_key/.test(error?.message || '')) {
+    if (error instanceof StockError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (/barcode/.test(error?.message || '') && error?.code === '23505') {
+      return NextResponse.json({ error: 'That barcode is already used by another product.' }, { status: 409 });
+    }
+    if (error?.code === '23505' || /products_sku_key|uq_products_company_sku/.test(error?.message || '')) {
       return NextResponse.json(
         { error: 'That SKU is already used by another product. Choose a different SKU.' },
         { status: 409 }

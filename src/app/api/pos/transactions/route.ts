@@ -11,6 +11,8 @@ import { loyaltyPointsEarned, loyaltyRedemptionValue, maxRedeemablePoints } from
 import { getPosSettingsWithDb } from '@/lib/pos/settings-db';
 import { recalculateCustomerBalanceWithDb, recordLoyaltyWithDb } from '@/lib/pos/loyalty-db';
 import { sendOrderConfirmationWithDb } from '@/lib/whatsapp';
+import { applyPromotions } from '@/lib/pos/promotions';
+import { livePromotionsForProductsWithDb } from '@/lib/pos/promotions-db';
 import { getDbProvider } from '@/lib/provider';
 
 interface PaymentLine {
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
     const {
       company_id,
       session_id,
-      items,
+      items: requestedItems,
       payments = [],
       customer_id,
       cart_discount = 0,
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
     }: {
       company_id: string;
       session_id: string;
-      items: PosLineInput[];
+      items: PosLineInput[]; // discount_amount = the cashier's manual discount only
       payments?: PaymentLine[];
       customer_id?: string | null;
       cart_discount?: number;
@@ -104,8 +106,8 @@ export async function POST(request: NextRequest) {
 
     if (!company_id) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     if (!session_id) return NextResponse.json({ error: 'session_id is required' }, { status: 400 });
-    if (!items?.length) return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
-    if (items.some((i) => !(Number(i.quantity) > 0) || Number(i.unit_price) < 0)) {
+    if (!requestedItems?.length) return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+    if (requestedItems.some((i) => !(Number(i.quantity) > 0) || Number(i.unit_price) < 0)) {
       return NextResponse.json({ error: 'Each item needs a positive quantity and a price' }, { status: 400 });
     }
     if (payments.some((p) => !PAYMENT_METHODS.includes(p.method) || !(Number(p.amount) >= 0))) {
@@ -137,6 +139,12 @@ export async function POST(request: NextRequest) {
       customer = customerResult.rows[0] ?? null;
       if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
+
+    // Promotions are worked out here, not taken from the client
+    const promotions = await livePromotionsForProductsWithDb(
+      db, company_id, [...new Set(requestedItems.map((i) => i.product_id).filter(Boolean))]
+    );
+    const items = applyPromotions(requestedItems, promotions);
 
     // Loyalty redemption is a discount on the cart
     const posSettings = await getPosSettingsWithDb(db, company_id);
@@ -374,6 +382,7 @@ export async function POST(request: NextRequest) {
       {
         data: result.invoice,
         totals: priced,
+        promotions: items.filter((i) => i.promotion).map((i) => ({ product_id: i.product_id, ...i.promotion })),
         loyalty: customer
           ? { points_redeemed: redeemPoints, points_earned: result.pointsEarned, balance: result.loyaltyBalance }
           : null,
