@@ -241,6 +241,7 @@ export async function PATCH(request: NextRequest, context: any) {
             invoice_number: currentInvoice.invoice_number,
             invoice_date: currentInvoice.invoice_date,
             total: Number(currentInvoice.total),
+            tax_amount: Number(currentInvoice.tax_amount || 0),
             company_id: currentInvoice.company_id,
             currency: currentInvoice.currency || 'USD',
           },

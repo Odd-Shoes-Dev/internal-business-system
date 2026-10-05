@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
+import {
+  createInvoiceJournalEntryWithDb,
+  createReceiptJournalEntryWithDb,
+  reduceInventoryForInvoiceWithDb,
+  validatePeriodLockWithDb,
+} from '@/lib/accounting/provider-accounting';
 
 interface CartItem {
   product_id: string;
@@ -113,114 +119,154 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment amount is less than total' }, { status: 400 });
     }
 
-    // Generate invoice number
-    const countResult = await db.query(
-      `SELECT COUNT(*) AS cnt FROM invoices WHERE company_id = $1 AND document_type = 'pos_sale'`,
-      [company_id]
-    );
-    const nextNum = Number(countResult.rows[0].cnt) + 1;
-    const invoiceNumber = `POS-${new Date().getFullYear()}-${String(nextNum).padStart(5, '0')}`;
-
-    // Create invoice (pos_sale)
-    const invoiceResult = await db.query(
-      `INSERT INTO invoices (
-         company_id, customer_id, invoice_number, document_type,
-         invoice_date, due_date, status, currency,
-         subtotal, tax_amount, total, amount_paid,
-         pos_session_id, notes
-       ) VALUES (
-         $1, $2, $3, 'pos_sale',
-         CURRENT_DATE, CURRENT_DATE, 'paid', $4,
-         $5, $6, $7, $7,
-         $8, $9
-       ) RETURNING *`,
-      [
-        company_id, customer_id || null, invoiceNumber,
-        currency, subtotal, taxAmount, total,
-        session_id, notes || null,
-      ]
-    );
-    const invoice = invoiceResult.rows[0];
-
-    // Create invoice lines
-    for (let idx = 0; idx < items.length; idx++) {
-      const item = items[idx];
-      const lineTotal = item.unit_price * item.quantity;
-      const taxAmount = lineTotal * (item.tax_rate || 0);
-      await db.query(
-        `INSERT INTO invoice_lines (invoice_id, product_id, description, line_number, quantity, unit_price, tax_rate, tax_amount, line_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-          invoice.id,
-          item.product_id || null,
-          item.name,
-          idx + 1,
-          item.quantity,
-          item.unit_price,
-          item.tax_rate || 0,
-          taxAmount,
-          lineTotal,
-        ]
-      );
+    const today = new Date().toISOString().split('T')[0];
+    const periodError = await validatePeriodLockWithDb(db, today, company_id);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 400 });
     }
 
-    // Deduct inventory for inventory-type products
-    for (const item of items) {
-      if (!item.product_id) continue;
-      const productResult = await db.query(
-        `SELECT track_inventory FROM products WHERE id = $1 LIMIT 1`,
-        [item.product_id]
+    // One transaction: a failure part-way (e.g. a missing account) leaves no half-recorded sale
+    const invoice = await db.transaction(async (tx) => {
+      const invoiceResult = await tx.query(
+        `INSERT INTO invoices (
+           company_id, customer_id, invoice_number, document_type,
+           invoice_date, due_date, status, currency,
+           subtotal, tax_amount, total, amount_paid,
+           pos_session_id, notes
+         ) VALUES (
+           $1, $2, generate_pos_sale_number(), 'pos_sale',
+           CURRENT_DATE, CURRENT_DATE, 'paid', $3,
+           $4, $5, $6, $6,
+           $7, $8
+         ) RETURNING *`,
+        [
+          company_id, customer_id || null,
+          currency, subtotal, taxAmount, total,
+          session_id, notes || null,
+        ]
       );
-      if (productResult.rows[0]?.track_inventory) {
-        await db.query(
-          `UPDATE products SET quantity_on_hand = quantity_on_hand - $2, updated_at = NOW() WHERE id = $1`,
-          [item.product_id, item.quantity]
-        );
-        await db.query(
-          `INSERT INTO inventory_movements (product_id, company_id, movement_type, quantity, reference_type, reference_id, notes)
-           VALUES ($1, $2, 'out', $3, 'pos_sale', $4, 'POS sale')`,
-          [item.product_id, company_id, item.quantity, invoice.id]
+      const invoice = invoiceResult.rows[0];
+
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        const lineTotal = item.unit_price * item.quantity;
+        const lineTax = lineTotal * (item.tax_rate || 0);
+        await tx.query(
+          `INSERT INTO invoice_lines (invoice_id, product_id, description, line_number, quantity, unit_price, tax_rate, tax_amount, line_total)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            invoice.id,
+            item.product_id || null,
+            item.name,
+            idx + 1,
+            item.quantity,
+            item.unit_price,
+            item.tax_rate || 0,
+            lineTax,
+            lineTotal,
+          ]
         );
       }
-    }
 
-    // Create payment records (one per payment method)
-    for (const payment of payments) {
-      const paymentResult = await db.query(
-        `INSERT INTO payments_received (
-           company_id, customer_id, payment_number, amount, currency,
-           payment_date, payment_method, source, pos_session_id,
-           reference_number
-         ) VALUES ($1, $2, generate_payment_number(), $3, $4, CURRENT_DATE, $5, 'pos', $6, $7)
-         RETURNING id`,
-        [
+      // Stock out at FIFO cost. A till sale is not refused when recorded stock is too low:
+      // the goods are physically at the counter, so the count is what is wrong.
+      const inventoryResult = await reduceInventoryForInvoiceWithDb(
+        tx,
+        invoice.id,
+        items.map((item) => ({ product_id: item.product_id, quantity: item.quantity, description: `POS sale ${invoice.invoice_number}` })),
+        user.id,
+        { allowNegative: true }
+      );
+      if (!inventoryResult.success) {
+        throw new Error(inventoryResult.error || 'Failed to update inventory');
+      }
+
+      // Revenue, VAT and cost of goods sold
+      const saleJournal = await createInvoiceJournalEntryWithDb(
+        tx,
+        {
+          id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          invoice_date: invoice.invoice_date,
+          total: Number(invoice.total),
+          tax_amount: Number(invoice.tax_amount || 0),
           company_id,
-          customer_id || null,
-          payment.amount,
           currency,
-          payment.method,
-          session_id,
-          payment.reference || null,
-        ]
+        },
+        user.id
+      );
+      if (!saleJournal.success) {
+        throw new Error(saleJournal.error || 'Failed to post POS sale to the ledger');
+      }
+      await tx.query('UPDATE invoices SET journal_entry_id = $2 WHERE id = $1', [invoice.id, saleJournal.journalEntryId]);
+      invoice.journal_entry_id = saleJournal.journalEntryId;
+
+      // One payment record and ledger entry per payment method; together they clear the receivable.
+      // Record only what settles the sale (cash tendered above the total is change, not income).
+      let remainingToApply = total;
+      for (const payment of payments) {
+        const amount = Math.min(payment.amount, remainingToApply);
+        if (amount <= 0) continue;
+        remainingToApply -= amount;
+
+        const paymentResult = await tx.query(
+          `INSERT INTO payments_received (
+             company_id, customer_id, payment_number, amount, currency,
+             payment_date, payment_method, source, pos_session_id,
+             reference_number
+           ) VALUES ($1, $2, generate_payment_number(), $3, $4, CURRENT_DATE, $5, 'pos', $6, $7)
+           RETURNING id, payment_number, payment_date`,
+          [
+            company_id,
+            customer_id || null,
+            amount,
+            currency,
+            payment.method,
+            session_id,
+            payment.reference || null,
+          ]
+        );
+        const paymentRow = paymentResult.rows[0];
+
+        await tx.query(
+          `INSERT INTO payment_applications (payment_id, invoice_id, amount_applied)
+           VALUES ($1, $2, $3)`,
+          [paymentRow.id, invoice.id, amount]
+        );
+
+        const paymentJournal = await createReceiptJournalEntryWithDb(
+          tx,
+          {
+            id: paymentRow.id,
+            receipt_number: paymentRow.payment_number,
+            receipt_date: paymentRow.payment_date,
+            total: amount,
+            payment_method: payment.method,
+            company_id,
+            currency,
+          },
+          user.id
+        );
+        if (!paymentJournal.success) {
+          throw new Error(paymentJournal.error || 'Failed to post POS payment to the ledger');
+        }
+        await tx.query('UPDATE payments_received SET journal_entry_id = $2 WHERE id = $1', [
+          paymentRow.id,
+          paymentJournal.journalEntryId,
+        ]);
+      }
+
+      await tx.query(
+        `UPDATE pos_sessions SET
+           total_sales = total_sales + $2,
+           transaction_count = transaction_count + 1,
+           updated_at = NOW()
+         WHERE id = $1`,
+        [session_id, total]
       );
 
-      // Link payment to invoice via payment_applications
-      await db.query(
-        `INSERT INTO payment_applications (payment_id, invoice_id, amount_applied)
-         VALUES ($1, $2, $3)`,
-        [paymentResult.rows[0].id, invoice.id, payment.amount]
-      );
-    }
-
-    // Update session running totals
-    await db.query(
-      `UPDATE pos_sessions SET
-         total_sales = total_sales + $2,
-         transaction_count = transaction_count + 1,
-         updated_at = NOW()
-       WHERE id = $1`,
-      [session_id, total]
-    );
+      return invoice;
+    });
 
     return NextResponse.json({ data: invoice }, { status: 201 });
   } catch (error: any) {
