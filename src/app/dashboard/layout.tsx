@@ -35,6 +35,7 @@ import {
   ShieldCheckIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
@@ -43,127 +44,83 @@ const NOTIFICATION_PAGE_SIZE = 10;
 const isNavItemActive = (pathname: string, href: string) =>
   pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
 
-// Navigation grouped by category - with module and role requirements
-const navigationGroups = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof HomeIcon;
+  module?: string; // hidden unless this module is enabled for the company
+};
+
+type NavGroup = {
+  name: string;
+  pinned?: boolean; // always expanded, no dropdown
+  items: NavItem[];
+};
+
+// Sidebar navigation. Role visibility comes from ROUTE_ACCESS per item; groups with no visible items are hidden.
+const navigationGroups: NavGroup[] = [
   {
     name: 'Overview',
-    module: null,
-    roles: null, // all roles
-    pinned: true, // always expanded
+    pinned: true,
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     ]
   },
   {
-    name: 'Point of Sale',
-    module: 'pos',
-    roles: ['admin', 'operations'],
+    name: 'Operations',
     items: [
-      { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon },
+      { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon, module: 'pos' },
+      { name: 'Cafe', href: '/dashboard/cafe', icon: CakeIcon, module: 'cafe' },
+      { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon, module: 'tours' },
+      { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon, module: 'tours' },
+      { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon, module: 'fleet' },
+      { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon, module: 'hotels' },
     ]
   },
   {
-    name: 'Cafe Operations',
-    module: 'cafe',
-    roles: ['admin', 'operations'],
+    name: 'Sales',
     items: [
-      { name: 'Cafe Dashboard', href: '/dashboard/cafe', icon: CakeIcon },
-    ]
-  },
-  {
-    name: 'Tour Operations',
-    module: 'tours',
-    roles: ['admin', 'operations', 'sales', 'guide'],
-    items: [
-      { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon },
-      { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon },
-    ]
-  },
-  {
-    name: 'Fleet Management',
-    module: 'fleet',
-    roles: ['admin', 'operations'],
-    items: [
-      { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon },
-    ]
-  },
-  {
-    name: 'Hotels Management',
-    module: 'hotels',
-    roles: ['admin', 'operations'],
-    items: [
-      { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon },
-    ]
-  },
-  {
-    name: 'Sales & Revenue',
-    module: null,
-    roles: ['admin', 'accountant', 'sales', 'operations'],
-    items: [
+      { name: 'Sales', href: '/dashboard/sales', icon: ShoppingBagIcon },
+      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
-      { name: 'Price List', href: '/dashboard/products', icon: CubeIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
+      { name: 'Price List', href: '/dashboard/products', icon: CubeIcon },
     ]
   },
   {
-    name: 'Finance',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
+    name: 'Purchases',
     items: [
+      { name: 'Vendors', href: '/dashboard/vendors', icon: TruckIcon },
       { name: 'Bills', href: '/dashboard/bills', icon: BanknotesIcon },
       { name: 'Expenses', href: '/dashboard/expenses', icon: CurrencyDollarIcon },
-      { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
+    ]
+  },
+  {
+    name: 'Inventory',
+    items: [
+      { name: 'Products & Services', href: '/dashboard/inventory', icon: CubeIcon, module: 'inventory' },
+      { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon, module: 'inventory' },
+      { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon, module: 'inventory' },
     ]
   },
   {
     name: 'People',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Employees', href: '/dashboard/employees', icon: UsersIcon },
-    ]
-  },
-  {
-    name: 'Payroll',
-    module: 'payroll',
-    roles: ['admin', 'accountant', 'operations'],
-    items: [
-      { name: 'Payroll Processing', href: '/dashboard/payroll', icon: CalculatorIcon },
-    ]
-  },
-  {
-    name: 'Assets & Inventory',
-    module: 'inventory',
-    roles: ['admin', 'accountant', 'operations'],
-    items: [
-      { name: 'Products & Services', href: '/dashboard/inventory', icon: CubeIcon },
-      { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon },
-      { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
-    ]
-  },
-  {
-    name: 'Relationships',
-    module: null,
-    roles: ['admin', 'accountant', 'sales', 'operations'],
-    items: [
-      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
-      { name: 'Vendors', href: '/dashboard/vendors', icon: TruckIcon },
+      { name: 'Payroll', href: '/dashboard/payroll', icon: CalculatorIcon, module: 'payroll' },
     ]
   },
   {
     name: 'Accounting',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
     items: [
+      { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
       { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
     ]
   },
   {
     name: 'System',
-    module: null,
-    roles: ['admin'],
-    pinned: true, // always expanded
+    pinned: true,
     items: [
       { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
@@ -196,6 +153,7 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/bookings': ['admin', 'operations', 'sales', 'guide'],
   '/dashboard/customers': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/vendors': ['admin', 'accountant', 'operations'],
+  '/dashboard/sales': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/invoices': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/products': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/receipts': ['admin', 'accountant', 'sales', 'operations'],
@@ -243,9 +201,20 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const trialEndDate = company?.trial_ends_at || undefined;
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navRole = companyRole ?? user?.role ?? '';
+  const visibleNavGroups = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          (!item.module || enabledModules.includes(item.module)) &&
+          userHasAccess(item.href, navRole)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
   // Only one collapsible nav group is expanded at a time — defaults to the group holding the active route
   const activeNavGroup =
-    navigationGroups.find(
+    visibleNavGroups.find(
       (group) => !group.pinned && group.items.some((item) => isNavItemActive(pathname, item.href))
     )?.name ?? null;
   const [openNavGroup, setOpenNavGroup] = useState<string | null>(activeNavGroup);
@@ -533,10 +502,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
-          {navigationGroups
-            .filter(group => !group.module || enabledModules.includes(group.module))
-            .filter(group => !group.roles || group.roles.includes(companyRole ?? user?.role ?? ''))
-            .map((group) => {
+          {visibleNavGroups.map((group) => {
               const hasActiveItem = group.items.some((item) => isNavItemActive(pathname, item.href));
               // The section holding the current page can't be collapsed
               const expanded = group.pinned || hasActiveItem || openNavGroup === group.name;
