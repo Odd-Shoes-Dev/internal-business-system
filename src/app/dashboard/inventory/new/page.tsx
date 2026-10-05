@@ -9,6 +9,7 @@ import { CurrencySelect } from '@/components/ui/currency-select';
 import {
   ArrowLeftIcon,
   CubeIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { CategoryCombobox } from '@/components/ui/category-combobox';
 import { Combobox } from '@/components/ui/combobox';
@@ -32,6 +33,7 @@ export default function NewInventoryItemPage() {
   const [savingCategory, setSavingCategory] = useState(false);
 
   const [formData, setFormData] = useState({
+    product_type: 'inventory' as 'inventory' | 'service',
     sku: '',
     name: '',
     description: '',
@@ -113,6 +115,8 @@ export default function NewInventoryItemPage() {
     }
   };
 
+  const isService = formData.product_type === 'service';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -126,6 +130,7 @@ export default function NewInventoryItemPage() {
       const payload = {
         ...formData,
         unit_price: formData.selling_price, // Map selling_price to unit_price for API
+        track_inventory: formData.product_type !== 'service',
       };
       
       const response = await fetch(`/api/inventory?company_id=${company.id}`, {
@@ -137,7 +142,7 @@ export default function NewInventoryItemPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create inventory item');
+        throw new Error(data.error || `Failed to create ${isService ? 'service' : 'product'}`);
       }
 
       router.push('/dashboard/inventory');
@@ -148,7 +153,15 @@ export default function NewInventoryItemPage() {
     }
   };
 
-  const unitsOfMeasure = getUnitOptions(formData.unit_of_measure, 'inventory');
+  const unitsOfMeasure = getUnitOptions(formData.unit_of_measure, formData.product_type);
+
+  const chooseType = (type: 'inventory' | 'service') =>
+    setFormData((prev) => ({
+      ...prev,
+      product_type: type,
+      // Units differ by type (e.g. hour for services); fall back to one valid for both
+      unit_of_measure: getUnitOptions(null, type).some((u) => u.value === prev.unit_of_measure) ? prev.unit_of_measure : 'each',
+    }));
 
   const grossMargin = formData.selling_price > 0 
     ? ((formData.selling_price - formData.unit_cost) / formData.selling_price * 100).toFixed(1)
@@ -165,8 +178,8 @@ export default function NewInventoryItemPage() {
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Inventory Item</h1>
-          <p className="text-gray-600">Add a new product to your inventory</p>
+          <h1 className="text-2xl font-bold text-gray-900">New Product or Service</h1>
+          <p className="text-gray-600">Add something you sell</p>
         </div>
       </div>
 
@@ -177,11 +190,34 @@ export default function NewInventoryItemPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Type */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {([
+            { type: 'inventory', label: 'Product', hint: 'A physical item you stock and sell. Quantities are tracked.', Icon: CubeIcon },
+            { type: 'service', label: 'Service', hint: 'Work or time you sell, e.g. labour, delivery, consulting. No stock.', Icon: WrenchScrewdriverIcon },
+          ] as const).map(({ type, label, hint, Icon }) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => chooseType(type)}
+              className={`text-left rounded-xl border-2 p-4 transition-colors ${
+                formData.product_type === type ? 'border-[#52b53b] bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Icon className="w-5 h-5 text-[#52b53b]" />
+                <span className="font-semibold text-gray-900">{label}</span>
+              </div>
+              <p className="text-sm text-gray-600">{hint}</p>
+            </button>
+          ))}
+        </div>
+
         {/* Basic Information */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <CubeIcon className="w-5 h-5 text-[#52b53b]" />
-            <h2 className="font-semibold text-gray-900">Product Information</h2>
+            {isService ? <WrenchScrewdriverIcon className="w-5 h-5 text-[#52b53b]" /> : <CubeIcon className="w-5 h-5 text-[#52b53b]" />}
+            <h2 className="font-semibold text-gray-900">{isService ? 'Service' : 'Product'} Information</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,7 +232,7 @@ export default function NewInventoryItemPage() {
                 onChange={handleChange}
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="PROD-001"
+                placeholder={isService ? 'SRV-001' : 'PROD-001'}
               />
             </div>
 
@@ -240,7 +276,7 @@ export default function NewInventoryItemPage() {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Product Name <span className="text-red-500">*</span>
+                {isService ? 'Service' : 'Product'} Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -249,7 +285,7 @@ export default function NewInventoryItemPage() {
                 onChange={handleChange}
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="Enter product name"
+                placeholder={isService ? 'e.g. Installation labour' : 'Enter product name'}
               />
             </div>
 
@@ -314,19 +350,19 @@ export default function NewInventoryItemPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Unit Cost <span className="text-red-500">*</span>
+                {isService ? 'Cost' : 'Unit Cost'} {!isService && <span className="text-red-500">*</span>}
               </label>
               <NumberInput
                 name="unit_cost"
                 value={formData.unit_cost}
                 onChange={(v) => setFormData((prev) => ({ ...prev, unit_cost: v }))}
-                required
+                required={!isService}
                 min="0"
                 step="0.01"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="0.00"
               />
-              <p className="text-xs text-gray-500 mt-1">Your purchase cost</p>
+              <p className="text-xs text-gray-500 mt-1">{isService ? 'Optional: what it costs you to deliver' : 'Your purchase cost'}</p>
             </div>
 
             <div>
@@ -370,6 +406,7 @@ export default function NewInventoryItemPage() {
         </div>
 
         {/* Inventory */}
+        {!isService && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Stock Levels</h2>
 
@@ -420,6 +457,7 @@ export default function NewInventoryItemPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Notes */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -447,7 +485,7 @@ export default function NewInventoryItemPage() {
             disabled={isSubmitting}
             className="px-6 py-2 bg-[#52b53b] text-white rounded-lg text-sm font-medium hover:bg-[#449932] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Creating...' : 'Create Item'}
+            {isSubmitting ? 'Creating...' : `Create ${isService ? 'Service' : 'Product'}`}
           </button>
         </div>
       </form>

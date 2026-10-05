@@ -31,6 +31,7 @@ export default function EditCustomerPage({ params }: PageProps) {
     email_3: '',
     email_4: '',
     phone: '',
+    whatsapp_number: '',
     address_line1: '',
     address_line2: '',
     city: '',
@@ -73,6 +74,7 @@ export default function EditCustomerPage({ params }: PageProps) {
           email_3: data.email_3 || '',
           email_4: data.email_4 || '',
           phone: data.phone || '',
+          whatsapp_number: data.whatsapp_number || '',
           address_line1: data.address_line1 || '',
           address_line2: data.address_line2 || '',
           city: data.city || '',
@@ -302,6 +304,20 @@ export default function EditCustomerPage({ params }: PageProps) {
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="(555) 123-4567"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                WhatsApp Number
+              </label>
+              <input
+                type="tel"
+                name="whatsapp_number"
+                value={formData.whatsapp_number}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="e.g. 0772 123456 (for receipts on WhatsApp)"
               />
             </div>
 

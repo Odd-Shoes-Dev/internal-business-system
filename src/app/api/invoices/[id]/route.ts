@@ -227,10 +227,10 @@ export async function PATCH(request: NextRequest, context: any) {
         }
       }
 
+      // Post to the ledger when the invoice is posted (as creating it as 'posted' does) or first paid
       if (
-        (newStatus === 'paid' || newStatus === 'partial') &&
-        oldStatus !== 'paid' &&
-        oldStatus !== 'partial' &&
+        (newStatus === 'posted' || ((newStatus === 'paid' || newStatus === 'partial') &&
+          oldStatus !== 'paid' && oldStatus !== 'partial')) &&
         !currentInvoice.journal_entry_id &&
         documentType === 'invoice'
       ) {

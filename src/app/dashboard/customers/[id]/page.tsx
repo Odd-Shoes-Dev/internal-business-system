@@ -15,6 +15,7 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
+  SparklesIcon,
   MapPinIcon,
   CreditCardIcon,
   XMarkIcon,
@@ -301,6 +302,24 @@ export default function CustomerDetailPage({ params }: PageProps) {
                 <div>
                   <p className="text-xs sm:text-sm text-gray-500">Phone</p>
                   <p className="text-sm sm:text-base text-gray-900">{customer.phone}</p>
+                </div>
+              </div>
+            )}
+            {customer.whatsapp_number && (
+              <div className="flex items-start gap-2 sm:gap-3">
+                <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">WhatsApp</p>
+                  <p className="text-sm sm:text-base text-gray-900">{customer.whatsapp_number}</p>
+                </div>
+              </div>
+            )}
+            {Number(customer.loyalty_points || 0) > 0 && (
+              <div className="flex items-start gap-2 sm:gap-3">
+                <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">Loyalty Points</p>
+                  <p className="text-sm sm:text-base text-gray-900">{Number(customer.loyalty_points).toLocaleString()}</p>
                 </div>
               </div>
             )}

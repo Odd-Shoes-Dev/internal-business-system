@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const { closing_cash_count, notes } = body;
 
-    // Calculate expected cash = opening float + total cash sales
+    // Expected cash = opening float + cash taken - cash refunded
     const cashSalesResult = await db.query(
       `SELECT COALESCE(SUM(pr.amount), 0) AS cash_total
        FROM payments_received pr
@@ -79,7 +79,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       [id]
     );
     const cashSales = Number(cashSalesResult.rows[0]?.cash_total || 0);
-    const expectedCash = Number(session.opening_float) + cashSales;
+    const cashRefundsResult = await db.query(
+      `SELECT COALESCE(SUM(total), 0) AS refund_total
+       FROM pos_returns
+       WHERE session_id = $1 AND refund_method = 'cash'`,
+      [id]
+    );
+    const cashRefunds = Number(cashRefundsResult.rows[0]?.refund_total || 0);
+    const expectedCash = Number(session.opening_float) + cashSales - cashRefunds;
     const variance = closing_cash_count != null ? Number(closing_cash_count) - expectedCash : null;
 
     const result = await db.query(

@@ -194,7 +194,13 @@ export default function InventoryPage() {
     return currencyFormatter(amount, currency as any);
   };
 
+  // Services (and other untracked items) have no stock to report
+  const isTracked = (item: Product) => item.track_inventory !== false && item.product_type !== 'service';
+
   const getStockStatus = (item: Product) => {
+    if (!isTracked(item)) {
+      return { label: item.product_type === 'service' ? 'Service' : 'Not tracked', class: 'badge-info', icon: ArrowTrendingUpIcon };
+    }
     if ((item.quantity_on_hand || 0) === 0) {
       return { label: 'Out of Stock', class: 'badge-error', icon: ExclamationTriangleIcon };
     }
@@ -210,6 +216,7 @@ export default function InventoryPage() {
       if (!item.name.toLowerCase().includes(q) && !(item.sku || '').toLowerCase().includes(q)) return false;
     }
     if (categoryFilter && item.category_id !== categoryFilter) return false;
+    if ((stockFilter === 'low' || stockFilter === 'out') && !isTracked(item)) return false;
     if (stockFilter === 'low') {
       if (Number(item.quantity_on_hand || 0) === 0) return false;
       if (Number(item.quantity_on_hand || 0) > Number(item.reorder_point || 0)) return false;
@@ -234,9 +241,9 @@ export default function InventoryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
-              Stock Control
+              Products &amp; Services
             </h1>
-            <p className="text-gray-600 text-lg">Track and manage your inventory levels</p>
+            <p className="text-gray-600 text-lg">Everything you sell, with stock levels for physical products</p>
           </div>
           <div className="flex gap-3">
             <Link 
@@ -526,17 +533,17 @@ export default function InventoryPage() {
                         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{item.sku || '-'}</span>
                       </td>
                       <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
-                        {item.quantity_on_hand} {item.unit_of_measure}
+                        {isTracked(item) ? `${item.quantity_on_hand} ${item.unit_of_measure}` : '—'}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-500">
-                        {item.quantity_reserved}
+                        {isTracked(item) ? item.quantity_reserved : '—'}
                       </td>
                       <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
-                        {available} {item.unit_of_measure}
+                        {isTracked(item) ? `${available} ${item.unit_of_measure}` : '—'}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.cost_price, item.currency)}</td>
                       <td className="py-4 px-6 text-right font-bold text-blueox-primary-dark">
-                        {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency)}
+                        {isTracked(item) ? formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency) : '—'}
                       </td>
                       <td className="py-4 px-6">
                         <span className={`badge ${status.class}`}>
@@ -573,6 +580,7 @@ export default function InventoryPage() {
                         {status.label}
                       </span>
                     </div>
+                    {isTracked(item) && (
                     <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
                         <p className="text-xs font-medium text-gray-600 mb-1">On Hand</p>
@@ -587,6 +595,7 @@ export default function InventoryPage() {
                         <FitNumber value={available} className="font-bold text-green-600" />
                       </div>
                     </div>
+                    )}
                     <div className="mt-4 pt-4 border-t border-blueox-primary/10 flex justify-between items-center">
                       <div>
                         <span className="text-sm text-gray-500">Total Value:</span>

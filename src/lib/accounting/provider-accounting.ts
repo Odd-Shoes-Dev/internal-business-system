@@ -60,7 +60,7 @@ export async function getAccountIdByCode(q: QueryExecutor, code: string, company
   return result.rows[0]?.id ?? null;
 }
 
-async function getBaseCurrencyAndRate(
+export async function getBaseCurrencyAndRate(
   q: QueryExecutor,
   currency: string,
   companyId: string
@@ -81,7 +81,7 @@ async function getExchangeRateToBase(q: QueryExecutor, currency: string, company
 
 // Writes a posted journal entry and its lines. Refuses an entry whose base-currency
 // debits and credits differ.
-async function insertJournalEntryWithDb(
+export async function insertJournalEntryWithDb(
   q: QueryExecutor,
   header: {
     entry_date: string;
@@ -804,4 +804,53 @@ export async function increaseInventoryForBillWithDb(
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to increase inventory for bill' };
   }
+}
+
+// Unit cost at which a product left on an invoice (from its 'sale' movements), or null.
+export async function getInvoiceSaleUnitCostWithDb(
+  q: QueryExecutor,
+  invoiceId: string,
+  productId: string
+): Promise<number | null> {
+  const sold = await q.query<{ quantity: string; cost: string }>(
+    `SELECT COALESCE(SUM(-quantity), 0) AS quantity, COALESCE(SUM(total_cost), 0) AS cost
+     FROM inventory_movements
+     WHERE reference_type = 'invoice' AND reference_id = $1 AND product_id = $2 AND movement_type = 'sale'`,
+    [invoiceId, productId]
+  );
+  const quantity = Number(sold.rows[0]?.quantity || 0);
+  return quantity > 0 ? Number(sold.rows[0].cost) / quantity : null;
+}
+
+// Puts returned goods back on the shelf: on-hand quantity, a 'return' movement and a new lot
+// at the given cost, so FIFO sells them again at what they cost.
+export async function returnStockWithDb(
+  q: QueryExecutor,
+  input: {
+    productId: string;
+    quantity: number;
+    unitCost: number;
+    referenceType: string;
+    referenceId: string;
+    lotNumber: string;
+    notes?: string;
+    userId: string;
+  }
+): Promise<void> {
+  await q.query(
+    'UPDATE products SET quantity_on_hand = quantity_on_hand + $2, updated_at = NOW() WHERE id = $1',
+    [input.productId, input.quantity]
+  );
+  await q.query(
+    `INSERT INTO inventory_movements (
+       product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, notes, created_by
+     ) VALUES ($1, 'return', $2, $3, $4, $5, $6, $7, $8)`,
+    [input.productId, input.quantity, input.unitCost, input.unitCost * input.quantity, input.referenceType,
+     input.referenceId, input.notes ?? null, input.userId]
+  );
+  await q.query(
+    `INSERT INTO inventory_lots (product_id, lot_number, quantity_received, quantity_remaining, unit_cost, received_date)
+     VALUES ($1, $2, $3, $3, $4, CURRENT_DATE)`,
+    [input.productId, input.lotNumber, input.quantity, input.unitCost]
+  );
 }

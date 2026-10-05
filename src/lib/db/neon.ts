@@ -1,4 +1,10 @@
+import net from 'net';
 import { Pool } from 'pg';
+
+// Node tries each of a host's addresses (IPv6 and IPv4) for only 250ms before giving up on it.
+// Over a slow or distant link to Neon every attempt is cut off and connecting fails with
+// ETIMEDOUT, so give each address 3 seconds.
+net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
 
 const connectionString = process.env.NEON_DATABASE_URL;
 

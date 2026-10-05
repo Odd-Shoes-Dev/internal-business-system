@@ -16,8 +16,23 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   DevicePhoneMobileIcon,
+  UserIcon,
+  PauseCircleIcon,
+  ArrowUturnLeftIcon,
+  QueueListIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/currency';
+import { pricePosCart, type PricedCart } from '@/lib/pos/pricing';
+import {
+  DEFAULT_POS_SETTINGS,
+  loyaltyRedemptionValue,
+  maxRedeemablePoints,
+  type PosSettings,
+} from '@/lib/pos/settings';
+import CustomerPicker, { type TillCustomer } from './customer-picker';
+import HeldOrdersPanel, { type HeldOrder } from './held-orders-panel';
+import ReturnModal from './return-modal';
 
 interface Product {
   id: string;
@@ -37,8 +52,7 @@ interface CartItem {
   unit_price: number;
   quantity: number;
   tax_rate: number;
-  line_total: number;
-  tax_total: number;
+  discount_amount: number; // money off this line
 }
 
 interface Session {
@@ -84,15 +98,29 @@ export default function TillPage() {
 
   const [lastReceipt, setLastReceipt] = useState<{
     invoiceNumber: string;
-    items: CartItem[];
-    subtotal: number;
-    taxAmount: number;
-    total: number;
+    totals: PricedCart;
     tendered: number;
     change: number;
+    paid: number;
+    balanceDue: number;
     method: PaymentMethod;
     currency: string;
+    customerName: string | null;
+    loyalty: { points_redeemed: number; points_earned: number; balance: number | null } | null;
   } | null>(null);
+
+  const [posSettings, setPosSettings] = useState<PosSettings>(DEFAULT_POS_SETTINGS);
+  const [customer, setCustomer] = useState<TillCustomer | null>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [cartDiscount, setCartDiscount] = useState('');
+  const [redeemPoints, setRedeemPoints] = useState('');
+  const [payLater, setPayLater] = useState(false);
+  const [paidNow, setPaidNow] = useState('');
+  const [editingDiscountFor, setEditingDiscountFor] = useState<string | null>(null);
+  const [showHeld, setShowHeld] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
+  const [holdLabel, setHoldLabel] = useState<string | null>(null);
+  const [holding, setHolding] = useState(false);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,6 +128,10 @@ export default function TillPage() {
     if (company && sessionId) {
       loadSession();
       loadProducts();
+      fetch(`/api/companies/pos-settings?company_id=${company.id}`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.data && setPosSettings(d.data))
+        .catch(() => {});
     }
   }, [company, sessionId]);
 
@@ -130,11 +162,12 @@ export default function TillPage() {
         target.closest('button') ||
         target.closest('[data-payment-panel]')
       ) return;
-      if (!showCloseModal && !lastReceipt) barcodeInputRef.current?.focus();
+      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null;
+      if (!modalOpen && !lastReceipt) barcodeInputRef.current?.focus();
     };
     document.addEventListener('click', handle);
     return () => document.removeEventListener('click', handle);
-  }, [showCloseModal, lastReceipt]);
+  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, lastReceipt]);
 
   const loadSession = async () => {
     try {
@@ -174,9 +207,7 @@ export default function TillPage() {
       const existing = prev.find(i => i.product_id === product.id);
       if (existing) {
         return prev.map(i =>
-          i.product_id === product.id
-            ? { ...i, quantity: i.quantity + 1, line_total: i.unit_price * (i.quantity + 1), tax_total: i.unit_price * (i.quantity + 1) * i.tax_rate }
-            : i
+          i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
       const taxRate = product.is_taxable ? Number(product.tax_rate) : 0;
@@ -186,8 +217,7 @@ export default function TillPage() {
         unit_price: Number(product.unit_price),
         quantity: 1,
         tax_rate: taxRate,
-        line_total: Number(product.unit_price),
-        tax_total: Number(product.unit_price) * taxRate,
+        discount_amount: 0,
       }];
     });
     setSearch('');
@@ -215,30 +245,52 @@ export default function TillPage() {
         if (i.product_id !== productId) return i;
         const newQty = i.quantity + delta;
         if (newQty <= 0) return null;
-        return { ...i, quantity: newQty, line_total: i.unit_price * newQty, tax_total: i.unit_price * newQty * i.tax_rate };
+        return { ...i, quantity: newQty };
       }).filter(Boolean) as CartItem[]
     );
   };
 
   const removeFromCart = (productId: string) => setCart(prev => prev.filter(i => i.product_id !== productId));
 
-  const subtotal = cart.reduce((s, i) => s + i.line_total, 0);
-  const taxAmount = cart.reduce((s, i) => s + i.tax_total, 0);
-  const total = subtotal + taxAmount;
+  const setLineDiscount = (productId: string, value: string) =>
+    setCart(prev => prev.map(i => (i.product_id === productId ? { ...i, discount_amount: Math.max(0, Number(value) || 0) } : i)));
+
+  const cartDiscountAmount = Math.max(0, Number(cartDiscount) || 0);
+  const beforeLoyalty = pricePosCart(cart, cartDiscountAmount);
+  const loyalty = posSettings.loyalty;
+  const maxPoints = customer ? maxRedeemablePoints(customer.loyalty_points, beforeLoyalty.subtotal, loyalty) : 0;
+  const pointsToRedeem = Math.min(Math.max(0, Math.floor(Number(redeemPoints) || 0)), maxPoints);
+  const priced = pricePosCart(cart, cartDiscountAmount + loyaltyRedemptionValue(pointsToRedeem, loyalty));
+  const { subtotal, tax: taxAmount, total } = priced;
+  const pricedByProduct = new Map(priced.lines.map(l => [l.product_id, l]));
+
   const tenderedAmount = parseFloat(tendered) || 0;
-  const change = paymentMethod === 'cash' ? Math.max(0, tenderedAmount - total) : 0;
+  const paidNowAmount = payLater ? Math.min(Math.max(0, parseFloat(paidNow) || 0), total) : total;
+  const change = !payLater && paymentMethod === 'cash' ? Math.max(0, tenderedAmount - total) : 0;
+
+  const resetSale = () => {
+    setCart([]);
+    setTendered('');
+    setMobileRef('');
+    setCartDiscount('');
+    setRedeemPoints('');
+    setPayLater(false);
+    setPaidNow('');
+    setCustomer(null);
+    setEditingDiscountFor(null);
+  };
 
   const handleCharge = async () => {
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
     if (!session || !company) return;
-    if (paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
+    if (payLater && !customer) { toast.error('Choose a customer to sell on credit'); return; }
+    if (!payLater && paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
     setProcessing(true);
     try {
-      const payments = paymentMethod === 'cash'
-        ? [{ method: 'cash' as PaymentMethod, amount: total }]
-        : paymentMethod === 'mobile_money'
-        ? [{ method: 'mobile_money' as PaymentMethod, amount: total, reference: mobileRef || undefined }]
-        : [{ method: 'card' as PaymentMethod, amount: total }];
+      const paymentAmount = payLater ? paidNowAmount : total;
+      const payments = paymentAmount > 0
+        ? [{ method: paymentMethod, amount: paymentAmount, reference: paymentMethod === 'mobile_money' ? mobileRef || undefined : undefined }]
+        : [];
 
       const res = await fetch('/api/pos/transactions', {
         method: 'POST',
@@ -247,7 +299,11 @@ export default function TillPage() {
         body: JSON.stringify({
           company_id: company.id,
           session_id: session.id,
-          items: cart.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate })),
+          items: cart.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate, discount_amount: i.discount_amount })),
+          cart_discount: cartDiscountAmount,
+          loyalty_points_redeemed: pointsToRedeem,
+          customer_id: customer?.id || null,
+          pay_later: payLater,
           payments,
           currency: session.currency,
         }),
@@ -255,16 +311,71 @@ export default function TillPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setLastReceipt({ invoiceNumber: data.data.invoice_number, items: [...cart], subtotal, taxAmount, total, tendered: tenderedAmount, change, method: paymentMethod, currency: session.currency });
+      setLastReceipt({
+        invoiceNumber: data.data.invoice_number,
+        totals: data.totals,
+        tendered: tenderedAmount,
+        change,
+        paid: paymentAmount,
+        balanceDue: Number(data.balance_due || 0),
+        method: paymentMethod,
+        currency: session.currency,
+        customerName: customer?.name || null,
+        loyalty: data.loyalty,
+      });
       setSession(s => s ? { ...s, total_sales: s.total_sales + total, transaction_count: s.transaction_count + 1 } : s);
-      setCart([]);
-      setTendered('');
-      setMobileRef('');
+      resetSale();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleHold = async () => {
+    if (!company || !session || cart.length === 0) return;
+    setHolding(true);
+    try {
+      const res = await fetch('/api/pos/held-orders', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_id: company.id,
+          session_id: session.id,
+          label: holdLabel || customer?.name || null,
+          customer_id: customer?.id || null,
+          cart,
+          cart_discount: cartDiscountAmount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Order held');
+      setHoldLabel(null);
+      resetSale();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to hold order');
+    } finally {
+      setHolding(false);
+    }
+  };
+
+  const resumeHeld = (order: HeldOrder) => {
+    setCart(order.cart.map(i => ({ ...i, discount_amount: Number(i.discount_amount || 0) })));
+    setCartDiscount(Number(order.cart_discount) > 0 ? String(order.cart_discount) : '');
+    setRedeemPoints('');
+    setPayLater(false);
+    setCustomer(order.customer_id ? {
+      id: order.customer_id,
+      name: order.customer_name || 'Customer',
+      phone: order.customer_phone,
+      whatsapp_number: order.customer_whatsapp_number,
+      loyalty_points: Number(order.customer_loyalty_points || 0),
+      current_balance: 0,
+      credit_limit: 0,
+    } : null);
+    setShowHeld(false);
   };
 
   const handlePrintAndNext = () => {
@@ -313,34 +424,49 @@ export default function TillPage() {
         <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 receipt-print">
           <div className="text-center border-b pb-4">
             <h2 className="font-bold text-lg">{company?.name}</h2>
+            {posSettings.receipt_header && <p className="text-xs text-gray-600 whitespace-pre-line">{posSettings.receipt_header}</p>}
             {company?.address && <p className="text-xs text-gray-500">{company.address}</p>}
             {company?.phone && <p className="text-xs text-gray-500">Tel: {company.phone}</p>}
             <p className="text-xs text-gray-500 mt-2">{new Date().toLocaleString()}</p>
             <p className="text-xs text-gray-500">Till: {session.terminal_name}</p>
             <p className="text-xs text-gray-500">Cashier: {session.opened_by_name}</p>
+            {lastReceipt.customerName && <p className="text-xs text-gray-500">Customer: {lastReceipt.customerName}</p>}
             <p className="text-xs font-mono text-gray-400">{lastReceipt.invoiceNumber}</p>
           </div>
           <div className="space-y-1.5 text-sm">
-            {lastReceipt.items.map((item, i) => (
-              <div key={i} className="flex justify-between">
-                <span className="flex-1 truncate">{item.name} x{item.quantity}</span>
-                <span className="ml-4 font-medium">{formatCurrency(item.line_total, lastReceipt.currency)}</span>
+            {lastReceipt.totals.lines.map((item, i) => (
+              <div key={i}>
+                <div className="flex justify-between">
+                  <span className="flex-1 truncate">{item.name} x{item.quantity}</span>
+                  <span className="ml-4 font-medium">{formatCurrency(item.gross, lastReceipt.currency)}</span>
+                </div>
+                {item.line_discount > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 pl-3">
+                    <span>Discount</span><span>-{formatCurrency(item.line_discount, lastReceipt.currency)}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           <div className="border-t pt-3 space-y-1 text-sm">
-            <div className="flex justify-between text-gray-500">
-              <span>Subtotal</span><span>{formatCurrency(lastReceipt.subtotal, lastReceipt.currency)}</span>
-            </div>
-            {lastReceipt.taxAmount > 0 && (
+            {lastReceipt.totals.discount - lastReceipt.totals.lines.reduce((s, l) => s + l.line_discount, 0) > 0.005 && (
               <div className="flex justify-between text-gray-500">
-                <span>Tax</span><span>{formatCurrency(lastReceipt.taxAmount, lastReceipt.currency)}</span>
+                <span>{lastReceipt.loyalty?.points_redeemed ? `Discount (incl. ${lastReceipt.loyalty.points_redeemed} pts)` : 'Discount'}</span>
+                <span>-{formatCurrency(lastReceipt.totals.discount - lastReceipt.totals.lines.reduce((s, l) => s + l.line_discount, 0), lastReceipt.currency)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-500">
+              <span>Subtotal</span><span>{formatCurrency(lastReceipt.totals.subtotal, lastReceipt.currency)}</span>
+            </div>
+            {lastReceipt.totals.tax > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Tax</span><span>{formatCurrency(lastReceipt.totals.tax, lastReceipt.currency)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-base pt-1">
-              <span>TOTAL</span><span>{formatCurrency(lastReceipt.total, lastReceipt.currency)}</span>
+              <span>TOTAL</span><span>{formatCurrency(lastReceipt.totals.total, lastReceipt.currency)}</span>
             </div>
-            {lastReceipt.method === 'cash' && (
+            {lastReceipt.method === 'cash' && lastReceipt.balanceDue === 0 && (
               <>
                 <div className="flex justify-between text-gray-500">
                   <span>Cash Tendered</span><span>{formatCurrency(lastReceipt.tendered, lastReceipt.currency)}</span>
@@ -350,8 +476,24 @@ export default function TillPage() {
                 </div>
               </>
             )}
+            {lastReceipt.balanceDue > 0 && (
+              <>
+                <div className="flex justify-between text-gray-500">
+                  <span>Paid now</span><span>{formatCurrency(lastReceipt.paid, lastReceipt.currency)}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span>Balance on account</span><span>{formatCurrency(lastReceipt.balanceDue, lastReceipt.currency)}</span>
+                </div>
+              </>
+            )}
+            {lastReceipt.loyalty && (lastReceipt.loyalty.points_earned > 0 || lastReceipt.loyalty.points_redeemed > 0) && (
+              <div className="flex justify-between text-gray-500 text-xs pt-1">
+                <span>Points earned {lastReceipt.loyalty.points_earned}{lastReceipt.loyalty.points_redeemed ? ` · used ${lastReceipt.loyalty.points_redeemed}` : ''}</span>
+                <span>Balance {Number(lastReceipt.loyalty.balance || 0).toLocaleString()} pts</span>
+              </div>
+            )}
           </div>
-          <p className="text-center text-xs text-gray-400 border-t pt-3">Thank you for your purchase!</p>
+          <p className="text-center text-xs text-gray-400 border-t pt-3 whitespace-pre-line">{posSettings.receipt_footer || 'Thank you for your purchase!'}</p>
           <div className="flex gap-2 pt-2 no-print">
             <button onClick={handlePrintAndNext} className="btn-primary flex-1 flex items-center justify-center gap-2">
               <PrinterIcon className="w-4 h-4" /> Print & Next
@@ -406,6 +548,14 @@ export default function TillPage() {
                 {formatCurrency(session.total_sales, currency)} · {session.transaction_count} txns
               </p>
             </div>
+            <button onClick={() => setShowHeld(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <QueueListIcon className="w-4 h-4" />
+              Held
+            </button>
+            <button onClick={() => setShowReturn(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <ArrowUturnLeftIcon className="w-4 h-4" />
+              Return
+            </button>
             <button
               onClick={() => setShowCloseModal(true)}
               className="btn-danger btn-sm flex items-center gap-1.5"
@@ -486,11 +636,16 @@ export default function TillPage() {
                 )}
               </div>
               {cart.length > 0 && (
-                <button onClick={() => setCart([])} className="text-xs transition-colors" style={{ color: 'var(--pos-text-muted)' }}
+                <div className="flex items-center gap-3">
+                <button onClick={() => setHoldLabel(customer?.name || '')} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--pos-text-muted)' }}>
+                  <PauseCircleIcon className="w-4 h-4" /> Hold
+                </button>
+                <button onClick={resetSale} className="text-xs transition-colors" style={{ color: 'var(--pos-text-muted)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--pos-text-muted)')}>
                   Clear all
                 </button>
+                </div>
               )}
             </div>
 
@@ -523,10 +678,35 @@ export default function TillPage() {
                           <PlusIcon className="w-3 h-3" />
                         </button>
                       </div>
-                      <span className="text-sm font-bold" style={{ color: 'var(--blueox-accent-light)' }}>
-                        {formatCurrency(item.line_total, currency)}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-sm font-bold" style={{ color: 'var(--blueox-accent-light)' }}>
+                          {formatCurrency((pricedByProduct.get(item.product_id)?.gross ?? 0) - (pricedByProduct.get(item.product_id)?.line_discount ?? 0), currency)}
+                        </span>
+                        {item.discount_amount > 0 && (
+                          <p className="text-[11px] line-through" style={{ color: 'var(--pos-text-subtle)' }}>
+                            {formatCurrency(pricedByProduct.get(item.product_id)?.gross ?? 0, currency)}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {editingDiscountFor === item.product_id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number" min="0" step="any" autoFocus
+                          className="flex-1 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                          style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                          placeholder={`Discount (${currency})`}
+                          defaultValue={item.discount_amount || ''}
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => { if (e.key === 'Enter') { setLineDiscount(item.product_id, (e.target as HTMLInputElement).value); setEditingDiscountFor(null); } }}
+                          onBlur={e => { setLineDiscount(item.product_id, e.target.value); setEditingDiscountFor(null); }}
+                        />
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingDiscountFor(item.product_id)} className="text-[11px] flex items-center gap-1" style={{ color: 'var(--pos-text-muted)' }}>
+                        <TagIcon className="w-3 h-3" /> {item.discount_amount > 0 ? `Discount ${formatCurrency(item.discount_amount, currency)}` : 'Add discount'}
+                      </button>
+                    )}
                   </div>
                 ))
               )}
@@ -534,8 +714,56 @@ export default function TillPage() {
 
             {/* Totals + payment */}
             <div className="border-t p-4 space-y-4" data-payment-panel style={{ borderColor: 'var(--pos-border)' }}>
+              {/* Customer */}
+              <button
+                onClick={() => setShowCustomerPicker(true)}
+                className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-sm"
+                style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <UserIcon className="w-4 h-4" style={{ color: 'var(--pos-text-muted)' }} />
+                  {customer ? customer.name : 'Walk-in customer'}
+                </span>
+                {customer ? (
+                  <span className="text-xs" style={{ color: 'var(--pos-text-muted)' }}
+                    onClick={e => { e.stopPropagation(); setCustomer(null); setRedeemPoints(''); setPayLater(false); }}>
+                    {loyalty.enabled ? `${customer.loyalty_points.toLocaleString()} pts · ` : ''}Remove
+                  </span>
+                ) : (
+                  <span className="text-xs" style={{ color: 'var(--blueox-accent-light)' }}>Choose</span>
+                )}
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number" min="0" step="any"
+                  className="rounded-xl px-3 py-2 text-xs focus:outline-none"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                  placeholder={`Cart discount (${currency})`}
+                  value={cartDiscount}
+                  onChange={e => setCartDiscount(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                />
+                {customer && loyalty.enabled ? (
+                  <input
+                    type="number" min="0" step="1" max={maxPoints}
+                    className="rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                    placeholder={`Use points (max ${maxPoints})`}
+                    value={redeemPoints}
+                    onChange={e => setRedeemPoints(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : <div />}
+              </div>
+
               {/* Totals */}
               <div className="space-y-1.5 text-sm">
+                {priced.discount > 0 && (
+                  <div className="flex justify-between" style={{ color: 'var(--pos-text-muted)' }}>
+                    <span>Discounts{pointsToRedeem > 0 ? ` (incl. ${pointsToRedeem} pts)` : ''}</span><span>-{formatCurrency(priced.discount, currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between" style={{ color: 'var(--pos-text-muted)' }}>
                   <span>Subtotal</span><span>{formatCurrency(subtotal, currency)}</span>
                 </div>
@@ -567,8 +795,27 @@ export default function TillPage() {
                 ))}
               </div>
 
+              {customer && (
+                <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--pos-text-muted)' }}>
+                  <input type="checkbox" checked={payLater} onChange={e => setPayLater(e.target.checked)} />
+                  Pay later — put the unpaid amount on {customer.name}&apos;s account
+                </label>
+              )}
+
+              {payLater && (
+                <input
+                  type="number" step="0.01" min="0"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)', '--tw-ring-color': 'var(--blueox-primary)' } as React.CSSProperties}
+                  placeholder={`Paid now (${currency}), leave empty for none`}
+                  value={paidNow}
+                  onChange={e => setPaidNow(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                />
+              )}
+
               {/* Payment inputs */}
-              {paymentMethod === 'cash' && (
+              {!payLater && paymentMethod === 'cash' && (
                 <div className="space-y-1">
                   <input
                     type="number"
@@ -596,7 +843,7 @@ export default function TillPage() {
                 </div>
               )}
 
-              {paymentMethod === 'mobile_money' && (
+              {paymentMethod === 'mobile_money' && (!payLater || paidNowAmount > 0) && (
                 <input
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
                   style={{
@@ -622,12 +869,54 @@ export default function TillPage() {
                 onMouseEnter={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--blueox-primary-hover)'; }}
                 onMouseLeave={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--blueox-primary)'; }}
               >
-                {processing ? 'Processing...' : `Charge ${formatCurrency(total, currency)}`}
+                {processing
+                  ? 'Processing...'
+                  : payLater
+                    ? `Charge ${formatCurrency(paidNowAmount, currency)} · ${formatCurrency(total - paidNowAmount, currency)} on account`
+                    : `Charge ${formatCurrency(total, currency)}`}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {showCustomerPicker && company && (
+        <CustomerPicker
+          companyId={company.id}
+          onSelect={c => { setCustomer(c); setRedeemPoints(''); setShowCustomerPicker(false); }}
+          onClose={() => setShowCustomerPicker(false)}
+        />
+      )}
+
+      {showHeld && company && (
+        <HeldOrdersPanel companyId={company.id} currency={currency} onResume={resumeHeld} onClose={() => setShowHeld(false)} />
+      )}
+
+      {showReturn && company && (
+        <ReturnModal
+          companyId={company.id}
+          sessionId={session.id}
+          onDone={() => setShowReturn(false)}
+          onClose={() => setShowReturn(false)}
+        />
+      )}
+
+      {holdLabel !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold">Hold this order</h2>
+            <div>
+              <label className="label">Name it (optional)</label>
+              <input className="input" autoFocus placeholder="e.g. Table 4, John" value={holdLabel}
+                onChange={e => setHoldLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleHold()} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setHoldLabel(null)} className="btn-secondary">Cancel</button>
+              <button onClick={handleHold} disabled={holding} className="btn-primary">{holding ? 'Holding...' : 'Hold order'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Close shift modal — uses shared .card + .btn classes */}
       {showCloseModal && (

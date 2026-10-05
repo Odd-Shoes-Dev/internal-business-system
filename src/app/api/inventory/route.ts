@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
     const allData = allResult.rows;
 
     if (lowStock === 'true') {
+      // Only stock-tracked products can run low; services never do
       const filtered = allData.filter(
-        (item: any) => Number(item.quantity_on_hand || 0) <= Number(item.reorder_point || 0)
+        (item: any) => item.track_inventory && Number(item.quantity_on_hand || 0) <= Number(item.reorder_point || 0)
       );
       const paged = filtered.slice(offset, offset + limit);
 
@@ -126,14 +127,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const inventoryAccountResult = await db.query(
-      'SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1',
-      ['1300', companyId]
-    );
-    const cogsAccountResult = await db.query(
-      'SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1',
-      ['5100', companyId]
-    );
+    // 'inventory' = physical product with tracked stock; 'service' = no stock
+    const productType = body.product_type === 'service' ? 'service' : 'inventory';
+    const isService = productType === 'service';
+
+    // Products: 1200 Inventory / 5000 Cost of Goods Sold. Services: 4100 Service Revenue /
+    // 5100 Cost of Services, and no inventory account.
+    const accountId = async (code: string) =>
+      (await db.query('SELECT id FROM accounts WHERE code = $1 AND company_id = $2 LIMIT 1', [code, companyId])).rows[0]?.id || null;
+    const inventoryAccountId = isService ? null : await accountId('1200');
+    const cogsAccountId = await accountId(isService ? '5100' : '5000');
+    const revenueAccountId = isService ? await accountId('4100') : null;
 
     const dataResult = await db.query(
       `INSERT INTO products (
@@ -142,10 +146,10 @@ export async function POST(request: NextRequest) {
          reorder_point, reorder_quantity, inventory_account_id, cogs_account_id,
          revenue_account_id, is_active, track_inventory, is_taxable, tax_rate
        ) VALUES (
-         $1, $2, $3, $4, $5, 'inventory', $6,
+         $1, $2, $3, $4, $5, $19, $6,
          $7, $8, $9, $10, 0,
          $11, $12, $13, $14,
-         NULL, $15, $16, $17, $18
+         $20, $15, $16, $17, $18
        )
        RETURNING *`,
       [
@@ -158,15 +162,17 @@ export async function POST(request: NextRequest) {
         Number(body.unit_cost || 0),
         Number(body.unit_price || 0),
         body.currency || 'USD',
-        Number(body.quantity_on_hand || 0),
-        Number(body.reorder_point || 0),
-        Number(body.reorder_quantity || 0),
-        inventoryAccountResult.rows[0]?.id || null,
-        cogsAccountResult.rows[0]?.id || null,
+        isService ? 0 : Number(body.quantity_on_hand || 0),
+        isService ? 0 : Number(body.reorder_point || 0),
+        isService ? 0 : Number(body.reorder_quantity || 0),
+        inventoryAccountId,
+        cogsAccountId,
         body.is_active !== false,
-        body.track_inventory !== false,
+        isService ? false : body.track_inventory !== false,
         body.is_taxable !== false,
         body.tax_rate || null,
+        productType,
+        revenueAccountId,
       ]
     );
 

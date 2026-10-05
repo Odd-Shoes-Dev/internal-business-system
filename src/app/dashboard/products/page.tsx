@@ -41,7 +41,7 @@ interface Product {
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
   service: 'Service',
   non_inventory: 'Product (no stock tracking)',
-  inventory: 'Stock Item (tracked in Stock Control)',
+  inventory: 'Stock Item (tracked in Products & Services)',
 };
 
 const emptyForm = {
@@ -102,7 +102,7 @@ export default function ProductsPage() {
   const openCreate = () => {
     setEditProduct(null);
     // Goods are created far more often than services, so default to the goods type:
-    // a tracked stock item when Stock Control is active, otherwise a plain priced product.
+    // a tracked stock item when the Inventory module is active, otherwise a plain priced product.
     setForm({
       ...emptyForm,
       product_type: hasInventory ? 'inventory' : 'non_inventory',
@@ -273,7 +273,7 @@ export default function ProductsPage() {
         {hasInventory ? (
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
             <p className="text-sm text-green-800">
-              <span className="font-semibold">Stock Control is active.</span> Track quantities, adjustments, locations and more.
+              <span className="font-semibold">Inventory is active.</span> Track quantities, adjustments, locations and more.
             </p>
             <Link href="/dashboard/inventory" className="inline-flex items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-900 transition-colors">
               Go to Inventory <ArrowRightIcon className="w-4 h-4" />
@@ -479,7 +479,7 @@ export default function ProductsPage() {
                 </select>
                 {form.product_type === 'inventory' && !editProduct && (
                   <p className="text-xs text-gray-500 mt-1">
-                    New stock items start at 0. Add stock in Stock Control before selling.
+                    New stock items start at 0. Add stock in Products & Services before selling.
                   </p>
                 )}
               </div>

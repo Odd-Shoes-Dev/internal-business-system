@@ -39,6 +39,12 @@ export async function GET(request: NextRequest, context: any) {
 }
 
 // PATCH /api/customers/[id]
+const EDITABLE_FIELDS = new Set([
+  'name', 'company_name', 'email', 'email_2', 'email_3', 'email_4', 'phone', 'whatsapp_number',
+  'address_line1', 'address_line2', 'city', 'state', 'zip_code', 'country', 'currency',
+  'tax_id', 'tax_exempt', 'payment_terms', 'credit_limit', 'notes', 'is_active',
+]);
+
 export async function PATCH(request: NextRequest, context: any) {
   const params = await context.params;
   try {
@@ -70,7 +76,9 @@ export async function PATCH(request: NextRequest, context: any) {
       }
     }
 
-    const fields = Object.keys(body);
+    // Only these columns can be edited; anything else in the body is ignored. Field names
+    // go into the SQL, so they must never come straight from the request.
+    const fields = Object.keys(body).filter((field) => EDITABLE_FIELDS.has(field));
     if (!fields.length) {
       const current = await db.query('SELECT * FROM customers WHERE id = $1 LIMIT 1', [params.id]);
       return NextResponse.json({ data: current.rows[0] });

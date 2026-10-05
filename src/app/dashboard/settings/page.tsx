@@ -28,12 +28,14 @@ import {
   CheckIcon,
   PhoneIcon,
   EnvelopeIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
 import type { CompanySettings } from '@/types/database';
+import PosSettingsTab from './pos-settings-tab';
 
-type SettingsTab = 'company' | 'financial' | 'invoicing' | 'notifications' | 'users' | 'security' | 'branding';
+type SettingsTab = 'company' | 'financial' | 'invoicing' | 'pos' | 'notifications' | 'users' | 'security' | 'branding';
 
 interface TeamMember {
   id: string;
@@ -537,6 +539,7 @@ export default function SettingsPage() {
     { id: 'company' as const, label: 'Company', icon: BuildingOfficeIcon },
     { id: 'financial' as const, label: 'Financial', icon: CurrencyDollarIcon },
     { id: 'invoicing' as const, label: 'Invoicing', icon: DocumentTextIcon },
+    { id: 'pos' as const, label: 'Point of Sale', icon: ShoppingCartIcon },
     { id: 'branding' as const, label: 'Branding', icon: PaintBrushIcon },
     { id: 'notifications' as const, label: 'Notifications', icon: BellIcon },
     { id: 'users' as const, label: 'Users', icon: UserGroupIcon },
@@ -1073,6 +1076,10 @@ export default function SettingsPage() {
           )}
 
           {/* Financial Settings */}
+          {activeTab === 'pos' && company?.id && (
+            <PosSettingsTab companyId={company.id} currency={company.currency || 'UGX'} />
+          )}
+
           {activeTab === 'financial' && (
             <form onSubmit={financialForm.handleSubmit(onSaveFinancial)} className="card">
               <div className="card-header">

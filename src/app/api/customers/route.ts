@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR company_name ILIKE $${params.length})`);
+      where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR company_name ILIKE $${params.length} OR phone ILIKE $${params.length} OR whatsapp_number ILIKE $${params.length})`);
     }
 
     if (active === 'true' || active === 'false') {
@@ -116,12 +116,12 @@ export async function POST(request: NextRequest) {
       `INSERT INTO customers (
          company_id, customer_number, name, company_name, email, phone, tax_id,
          address_line1, address_line2, city, state, zip_code, country,
-         payment_terms, credit_limit, notes, is_active, currency
+         payment_terms, credit_limit, notes, is_active, currency, whatsapp_number
        )
        VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17, $18
+         $14, $15, $16, $17, $18, $19
        )
        RETURNING *`,
       [
@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         body.notes || null,
         body.is_active !== false,
         body.currency || null,
+        body.whatsapp_number || null,
       ]
     );
 
