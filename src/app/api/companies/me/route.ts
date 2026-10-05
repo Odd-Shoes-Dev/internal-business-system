@@ -61,8 +61,9 @@ export async function GET(request: NextRequest) {
       is_primary: row.is_primary,
     }));
 
+    // Only honour a requested company the user belongs to; otherwise fall back to the primary
     let selectedCompanyId = getCompanyIdFromRequest(request);
-    if (!selectedCompanyId) {
+    if (!selectedCompanyId || !companies.some((c) => c.id === selectedCompanyId)) {
       selectedCompanyId = companies.find((c) => c.is_primary)?.id || companies[0]?.id || null;
     }
 

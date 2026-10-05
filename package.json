@@ -4,7 +4,7 @@
   "description": "BlueOx Multi-tenant Business Management Platform - Tours, Finance, Operations",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "postbuild": "node scripts/migrate.mjs",
     "start": "next start",

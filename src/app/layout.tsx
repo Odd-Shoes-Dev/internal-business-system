@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { TrialExpiredHandler } from '@/components/trial-expired-handler';
 import { ConfirmDialogHost } from '@/components/confirm-dialog';
-import { CompanyProvider } from '@/contexts/company-context';
 import { DisableNumberWheel } from '@/components/disable-number-wheel';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -51,9 +50,7 @@ export default function RootLayout({
         <DisableNumberWheel />
         <TrialExpiredHandler />
         <ConfirmDialogHost />
-        <CompanyProvider>
-          {children}
-        </CompanyProvider>
+        {children}
         <Toaster
           position="top-right"
           toastOptions={{

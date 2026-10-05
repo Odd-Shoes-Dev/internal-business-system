@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { CompanyProvider } from '@/contexts/company-context';
+import { CompanyProvider, useCompany } from '@/contexts/company-context';
 import TrialWarningBanner from '@/components/trial-warning-banner';
 import {
   HomeIcon,
@@ -214,17 +214,29 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <CompanyProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </CompanyProvider>
+  );
+}
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; full_name: string | null; role: string | null } | null>(null);
-  const [company, setCompany] = useState<any>(null);
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [companyRole, setCompanyRole] = useState<string | null>(null);
+  // User, companies and modules come from one /api/companies/me call made by CompanyProvider
+  const {
+    user,
+    company,
+    companies,
+    companyModules: enabledModules,
+    loading: isLoading,
+    switchCompany: switchContextCompany,
+  } = useCompany();
+  const companyRole = company?.role || null;
+  const subscriptionStatus = company?.subscription_status || '';
+  const trialEndDate = company?.trial_ends_at || undefined;
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
-  const [enabledModules, setEnabledModules] = useState<string[]>([]);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('');
-  const [trialEndDate, setTrialEndDate] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -275,102 +287,21 @@ export default function DashboardLayout({
   }, [sidebarOpen]);
 
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const meResponse = await fetch('/api/auth/me', {
-          method: 'GET',
-          credentials: 'include',
-        });
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [isLoading, user, router]);
 
-        if (meResponse.status === 401) {
-          router.push('/login');
-          return;
-        }
-
-        if (!meResponse.ok) {
-          const payload = await meResponse.json().catch(() => ({}));
-          console.error('Session error:', payload?.error || 'Failed to load session');
-          setIsLoading(false);
-          router.push('/login');
-          return;
-        }
-
-        const mePayload = await meResponse.json();
-        const sessionUser = mePayload?.user;
-        if (!sessionUser) {
-          setIsLoading(false);
-          router.push('/login');
-          return;
-        }
-
-        setUser(sessionUser);
-
-        const companiesResponse = await fetch('/api/companies/me', {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (!companiesResponse.ok) {
-          const payload = await companiesResponse.json().catch(() => ({}));
-          console.error('Company load error:', payload?.error || 'Failed to load company');
-          setIsLoading(false);
-          return;
-        }
-
-        const companiesPayload = await companiesResponse.json();
-        const companies = companiesPayload?.companies || [];
-
-        if (!companies.length) {
-          setIsLoading(false);
-          router.push('/signup/select-plan');
-          return;
-        }
-
-        const selectedCompany =
-          companies.find((c: any) => c.id === companiesPayload?.currentCompanyId) ||
-          companies.find((c: any) => c.is_primary) ||
-          companies[0];
-
-        setCompany(selectedCompany);
-        setCompanies(companies);
-        setCompanyRole(selectedCompany?.role || null);
-        setEnabledModules(companiesPayload?.modules || []);
-        setSubscriptionStatus(selectedCompany?.subscription_status || '');
-        setTrialEndDate(selectedCompany?.trial_ends_at || undefined);
-
-        if (selectedCompany?.id) {
-          await fetchNotifications(selectedCompany.id);
-        }
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error in getUser:', error);
-        setIsLoading(false);
-        router.push('/login');
-      }
-    };
-
-    getUser();
-  }, [router]);
+  // Notifications load in the background; the page does not wait for them
+  useEffect(() => {
+    if (company?.id) {
+      fetchNotifications(company.id);
+    }
+  }, [company?.id]);
 
   const switchCompany = async (newCompany: any) => {
     setCompanySwitcherOpen(false);
-    setCompany(newCompany);
-    setCompanyRole(newCompany.role || null);
-    setSubscriptionStatus(newCompany.subscription_status || '');
-    setTrialEndDate(newCompany.trial_ends_at || undefined);
-    try {
-      const modulesRes = await fetch(`/api/companies/me?company_id=${newCompany.id}`, {
-        credentials: 'include',
-      });
-      if (modulesRes.ok) {
-        const data = await modulesRes.json();
-        setEnabledModules(data.modules || []);
-      }
-    } catch {
-      setEnabledModules([]);
-    }
-    await fetchNotifications(newCompany.id);
+    await switchContextCompany(newCompany.id);
   };
 
   const fetchNotifications = async (companyId: string) => {
@@ -536,7 +467,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <CompanyProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative">
         {/* Floating Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -877,7 +807,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
-    </CompanyProvider>
   );
 }
 

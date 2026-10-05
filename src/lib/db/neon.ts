@@ -14,6 +14,10 @@ export function getNeonPool(): Pool {
       connectionString,
       max: 10,
       ssl: { rejectUnauthorized: false },
+      // A new connection costs a TCP + TLS handshake (~2s on a slow link), so keep idle
+      // connections for 5 minutes instead of pg's default 10 seconds.
+      idleTimeoutMillis: 5 * 60 * 1000,
+      keepAlive: true,
     });
   }
 
