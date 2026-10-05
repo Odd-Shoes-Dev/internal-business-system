@@ -40,12 +40,16 @@ import { FitNumber } from '@/components/ui/fit-number';
 
 const NOTIFICATION_PAGE_SIZE = 10;
 
+const isNavItemActive = (pathname: string, href: string) =>
+  pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+
 // Navigation grouped by category - with module and role requirements
 const navigationGroups = [
   {
     name: 'Overview',
     module: null,
     roles: null, // all roles
+    pinned: true, // always expanded
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     ]
@@ -132,7 +136,7 @@ const navigationGroups = [
     module: 'inventory',
     roles: ['admin', 'accountant', 'operations'],
     items: [
-      { name: 'Stock Control', href: '/dashboard/inventory', icon: CubeIcon },
+      { name: 'Products & Services', href: '/dashboard/inventory', icon: CubeIcon },
       { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon },
       { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
     ]
@@ -159,6 +163,7 @@ const navigationGroups = [
     name: 'System',
     module: null,
     roles: ['admin'],
+    pinned: true, // always expanded
     items: [
       { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
@@ -238,6 +243,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const trialEndDate = company?.trial_ends_at || undefined;
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Only one collapsible nav group is expanded at a time — defaults to the group holding the active route
+  const activeNavGroup =
+    navigationGroups.find(
+      (group) => !group.pinned && group.items.some((item) => isNavItemActive(pathname, item.href))
+    )?.name ?? null;
+  const [openNavGroup, setOpenNavGroup] = useState<string | null>(activeNavGroup);
+
+  useEffect(() => {
+    if (activeNavGroup) setOpenNavGroup(activeNavGroup);
+  }, [activeNavGroup]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -521,15 +536,37 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           {navigationGroups
             .filter(group => !group.module || enabledModules.includes(group.module))
             .filter(group => !group.roles || group.roles.includes(companyRole ?? user?.role ?? ''))
-            .map((group) => (
+            .map((group) => {
+              const hasActiveItem = group.items.some((item) => isNavItemActive(pathname, item.href));
+              // The section holding the current page can't be collapsed
+              const expanded = group.pinned || hasActiveItem || openNavGroup === group.name;
+              return (
             <div key={group.name}>
-              <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
-                {group.name}
-              </p>
+              {group.pinned ? (
+                <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
+                  {group.name}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasActiveItem) setOpenNavGroup(expanded ? null : group.name);
+                  }}
+                  aria-expanded={expanded}
+                  className={`w-full flex items-center justify-between text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-blueox-primary/5 transition-colors ${
+                    hasActiveItem ? 'text-blueox-primary' : 'text-blueox-primary/60'
+                  } ${expanded ? 'mb-2' : ''}`}
+                >
+                  {group.name}
+                  <ChevronDownIcon
+                    className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              )}
+              {expanded && (
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const isActive = pathname === item.href || 
-                    (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                  const isActive = isNavItemActive(pathname, item.href);
                   
                   return (
                     <Link
@@ -544,8 +581,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   );
                 })}
               </div>
+              )}
             </div>
-          ))}
+              );
+            })}
         </nav>
       </aside>
 
