@@ -74,7 +74,7 @@ beforeAll(async () => {
   await client.query('SELECT seed_default_chart_of_accounts($1)', [companyId]);
 
   await savePosSettingsWithDb(testDb, companyId, {
-    receipt_header: '', receipt_footer: 'Thanks',
+    restaurant_mode: false, receipt_header: '', receipt_footer: 'Thanks',
     loyalty: { enabled: true, amount_per_point: 100, point_value: 1, min_redeem_points: 0 },
   });
 

@@ -26,9 +26,20 @@ net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'neon-migrations');
 
+// Locally, read .env.local (or .env) when the variable is not already set; on Vercel/CI it is
+if (!process.env.NEON_DATABASE_URL) {
+  for (const file of ['.env.local', '.env']) {
+    const envPath = path.join(__dirname, '..', file);
+    if (fs.existsSync(envPath)) {
+      process.loadEnvFile(envPath);
+      if (process.env.NEON_DATABASE_URL) break;
+    }
+  }
+}
+
 const connectionString = process.env.NEON_DATABASE_URL;
 if (!connectionString) {
-  console.error('❌ NEON_DATABASE_URL is not set');
+  console.error('❌ NEON_DATABASE_URL is not set (add it to .env.local or the environment)');
   process.exit(1);
 }
 

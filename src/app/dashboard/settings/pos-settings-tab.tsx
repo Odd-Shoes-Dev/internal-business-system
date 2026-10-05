@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { DEFAULT_POS_SETTINGS, type PosSettings } from '@/lib/pos/settings';
+import RestaurantTablesManager from './restaurant-tables-manager';
 
 interface WhatsAppForm {
   enabled: boolean;
@@ -129,6 +130,23 @@ export default function PosSettingsTab({ companyId, currency }: { companyId: str
         <p className="text-sm text-gray-500 mt-1">Receipt text, loyalty points and WhatsApp order confirmations for the till.</p>
       </div>
 
+      {/* Restaurant */}
+      <section className="px-8 py-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Restaurant mode</h3>
+            <p className="text-sm text-gray-600">Tables at the till: open orders per table, kitchen tickets, moving tables and splitting bills.</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={settings.restaurant_mode}
+              onChange={(e) => setSettings((s) => ({ ...s, restaurant_mode: e.target.checked }))} />
+            Enabled
+          </label>
+        </div>
+        {settings.restaurant_mode && <RestaurantTablesManager companyId={companyId} />}
+        <p className="text-xs text-gray-500">Save below to switch restaurant mode on or off; tables are saved as you edit them.</p>
+      </section>
+
       {/* Receipt */}
       <section className="px-8 py-6 space-y-4">
         <h3 className="text-lg font-bold text-gray-900">Receipt</h3>
@@ -192,7 +210,7 @@ export default function PosSettingsTab({ companyId, currency }: { companyId: str
         )}
         <div className="flex justify-end">
           <button onClick={savePos} disabled={savingPos} className="btn-primary">
-            {savingPos ? 'Saving...' : 'Save receipt & loyalty'}
+            {savingPos ? 'Saving...' : 'Save restaurant, receipt & loyalty'}
           </button>
         </div>
       </section>

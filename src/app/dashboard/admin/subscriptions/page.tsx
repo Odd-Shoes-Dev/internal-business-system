@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, CheckCircle, Clock, TrendingUp, Users, CreditCard, Mail } from 'lucide-react';
 import { FitNumber } from '@/components/ui/fit-number';
+import LegacyPlansSection from './legacy-plans-section';
 
 interface Stats {
   totalSubscriptions: number;
@@ -110,6 +111,8 @@ export default function SubscriptionMonitorPage() {
           <h1 className="text-3xl font-bold text-gray-900">Subscription Monitoring</h1>
           <p className="text-gray-600 mt-2">Real-time overview of subscriptions and system health</p>
         </div>
+
+        <LegacyPlansSection />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

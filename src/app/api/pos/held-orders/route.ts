@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
        FROM pos_held_orders h
        LEFT JOIN customers c ON c.id = h.customer_id
        LEFT JOIN app_users u ON u.id = h.created_by
-       WHERE h.company_id = $1
+       WHERE h.company_id = $1 AND h.table_id IS NULL -- table orders live on the tables screen
        ORDER BY h.created_at DESC
        LIMIT 100`,
       [companyId]

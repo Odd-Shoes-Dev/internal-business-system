@@ -440,7 +440,7 @@ export default function ProductsPage() {
                   <label className="label">SKU / Code</label>
                   <input
                     className="input"
-                    placeholder="Optional"
+                    placeholder="Leave empty to generate"
                     value={form.sku}
                     onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
                   />

@@ -275,3 +275,23 @@ describe('products', () => {
     await checkDeferredConstraints();
   });
 });
+
+describe('generated SKUs', () => {
+  it('numbers blank SKUs per company and type, and keeps a typed one', async () => {
+    const make = async (body: Record<string, unknown>) => {
+      const res = await createProduct(req(`/api/inventory?company_id=${companyId}`, 'POST', { currency, unit_price: 100, ...body }));
+      const json = await res.json();
+      expect(res.status, JSON.stringify(json)).toBe(201);
+      return json.data.sku as string;
+    };
+    const a = await make({ name: 'Int sku A' });
+    const b = await make({ name: 'Int sku B', sku: '' });
+    const service = await make({ name: 'Int sku service', product_type: 'service' });
+    const typed = await make({ name: 'Int sku typed', sku: 'MY-OWN-1' });
+
+    expect(a).toMatch(/^PRD-\d{6}$/);
+    expect(Number(b.slice(4))).toBe(Number(a.slice(4)) + 1);
+    expect(service).toMatch(/^SRV-\d{6}$/);
+    expect(typed).toBe('MY-OWN-1');
+  });
+});

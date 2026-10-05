@@ -21,6 +21,8 @@ import {
   ArrowUturnLeftIcon,
   QueueListIcon,
   TagIcon,
+  TableCellsIcon,
+  ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/currency';
 import { pricePosCart, type PricedCart } from '@/lib/pos/pricing';
@@ -34,6 +36,10 @@ import CustomerPicker, { type TillCustomer } from './customer-picker';
 import HeldOrdersPanel, { type HeldOrder } from './held-orders-panel';
 import ReturnModal from './return-modal';
 import { applyPromotions, type Promotion } from '@/lib/pos/promotions';
+import { markAllSent, splitTableCart, unsentLines } from '@/lib/pos/tables';
+import TablesPanel, { type FloorTable } from './tables-panel';
+import SplitBillModal from './split-bill-modal';
+import ShiftSalesPanel from './shift-sales-panel';
 
 interface Product {
   id: string;
@@ -56,6 +62,7 @@ interface CartItem {
   quantity: number;
   tax_rate: number;
   discount_amount: number; // money off this line
+  sent_quantity?: number; // restaurant mode: how much the kitchen already has a ticket for
 }
 
 interface Session {
@@ -126,6 +133,12 @@ export default function TillPage() {
   const [holding, setHolding] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [variantParent, setVariantParent] = useState<Product | null>(null);
+  // Restaurant mode: the table whose order is in the cart
+  const [activeTable, setActiveTable] = useState<{ id: string; name: string } | null>(null);
+  const [guests, setGuests] = useState<number | null>(null);
+  const [tablesPanel, setTablesPanel] = useState<null | 'open' | 'move'>(null);
+  const [showSplit, setShowSplit] = useState(false);
+  const [showShiftSales, setShowShiftSales] = useState(false);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -173,12 +186,12 @@ export default function TillPage() {
         target.closest('button') ||
         target.closest('[data-payment-panel]')
       ) return;
-      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null || variantParent !== null;
+      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null || variantParent !== null || tablesPanel !== null || showSplit || showShiftSales;
       if (!modalOpen && !lastReceipt) barcodeInputRef.current?.focus();
     };
     document.addEventListener('click', handle);
     return () => document.removeEventListener('click', handle);
-  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, variantParent, lastReceipt]);
+  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, variantParent, tablesPanel, showSplit, showShiftSales, lastReceipt]);
 
   const loadSession = async () => {
     try {
@@ -190,7 +203,13 @@ export default function TillPage() {
         router.push('/dashboard/pos');
         return;
       }
-      setSession(data.data);
+      // Postgres numerics arrive as strings; keep the shift totals as numbers so they add up
+      setSession({
+        ...data.data,
+        total_sales: Number(data.data.total_sales || 0),
+        transaction_count: Number(data.data.transaction_count || 0),
+        opening_float: Number(data.data.opening_float || 0),
+      });
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -292,16 +311,118 @@ export default function TillPage() {
     setPaidNow('');
     setCustomer(null);
     setEditingDiscountFor(null);
+    setActiveTable(null);
+    setGuests(null);
   };
 
-  const handleCharge = async () => {
+  // ---- Restaurant mode -------------------------------------------------------------------------
+
+  // The table's order is saved as it changes, so another till (or a refresh) sees it
+  const tableSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTableOrder = useCallback(async (tableId: string, body: Record<string, unknown>) => {
+    try {
+      const res = await fetch(`/api/pos/tables/${tableId}/order`, {
+        method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+    } catch (e: any) {
+      toast.error(`Table not saved: ${e.message || 'error'}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeTable) return;
+    if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+    const tableId = activeTable.id;
+    tableSaveTimer.current = setTimeout(() => {
+      saveTableOrder(tableId, {
+        cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id,
+      });
+    }, 600);
+    return () => { if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current); };
+  }, [activeTable, cart, cartDiscount, customer?.id, guests, session?.id, saveTableOrder]);
+
+  const openTable = (table: FloorTable) => {
+    setTablesPanel(null);
+    if (!table.order_id) {
+      // A free table: the current (walk-in) cart, if any, moves onto it
+      setActiveTable({ id: table.id, name: table.name });
+      setGuests(table.seats ? null : null);
+      return;
+    }
+    if (cart.length && !activeTable) {
+      toast.error('Finish, hold or clear the current sale before opening a busy table');
+      return;
+    }
+    setActiveTable({ id: table.id, name: table.name });
+    setCart((table.cart || []).map(i => ({ ...i, discount_amount: Number(i.discount_amount || 0) })));
+    setCartDiscount(Number(table.cart_discount) > 0 ? String(table.cart_discount) : '');
+    setGuests(table.guests);
+    setRedeemPoints('');
+    setPayLater(false);
+    setCustomer(table.customer_id ? {
+      id: table.customer_id,
+      name: table.customer_name || 'Customer',
+      phone: table.customer_phone,
+      whatsapp_number: table.customer_whatsapp_number,
+      loyalty_points: Number(table.customer_loyalty_points || 0),
+      current_balance: 0,
+      credit_limit: 0,
+    } : null);
+  };
+
+  const leaveTable = () => {
+    if (activeTable) {
+      if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+      saveTableOrder(activeTable.id, { cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id });
+    }
+    resetSale();
+  };
+
+  const moveTable = async (target: FloorTable) => {
+    if (!activeTable) return;
+    setTablesPanel(null);
+    if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+    await saveTableOrder(activeTable.id, { cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id });
+    const res = await fetch(`/api/pos/tables/${activeTable.id}/move`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to_table_id: target.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(data.data.merged ? `Merged into ${target.name}` : `Moved to ${target.name}`);
+    resetSale();
+  };
+
+  // Prints a kitchen ticket with what the kitchen has not seen yet, then marks it sent
+  const sendToKitchen = () => {
+    const lines = unsentLines(cart);
+    if (!lines.length) { toast('Nothing new for the kitchen'); return; }
+    const win = window.open('', 'kitchen-ticket', 'width=320,height=480');
+    if (win) {
+      const esc = (t: string) => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+      win.document.write(`<html><head><title>Kitchen</title><style>body{font-family:monospace;padding:8px}h2{margin:0 0 4px}li{font-size:16px;margin:4px 0}</style></head><body>
+        <h2>${esc(activeTable?.name || 'Order')}</h2><div>${new Date().toLocaleTimeString()}${guests ? ` · ${guests} guests` : ''}</div>
+        <ul>${lines.map(l => `<li><b>${l.quantity}</b> x ${esc(l.name)}</li>`).join('')}</ul></body></html>`);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+    setCart(markAllSent(cart));
+  };
+
+  // split: charge only these quantities of a table's order; the rest stays on the table
+  const handleCharge = async (split?: Record<string, number>) => {
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
     if (!session || !company) return;
+    const splitCart = split ? splitTableCart(cart, split) : null;
+    const chargeItems = splitCart ? splitCart.charge : cart;
+    // A split charges its items at their own prices; the whole-table discount stays with the table
+    const chargeTotal = splitCart ? pricePosCart(applyPromotions(chargeItems, promotions)).total : total;
     if (payLater && !customer) { toast.error('Choose a customer to sell on credit'); return; }
-    if (!payLater && paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
+    if (!split && !payLater && paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
     setProcessing(true);
     try {
-      const paymentAmount = payLater ? paidNowAmount : total;
+      const paymentAmount = split ? chargeTotal : payLater ? paidNowAmount : total;
       const payments = paymentAmount > 0
         ? [{ method: paymentMethod, amount: paymentAmount, reference: paymentMethod === 'mobile_money' ? mobileRef || undefined : undefined }]
         : [];
@@ -313,11 +434,11 @@ export default function TillPage() {
         body: JSON.stringify({
           company_id: company.id,
           session_id: session.id,
-          items: cart.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate, discount_amount: i.discount_amount })),
-          cart_discount: cartDiscountAmount,
-          loyalty_points_redeemed: pointsToRedeem,
+          items: chargeItems.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate, discount_amount: i.discount_amount })),
+          cart_discount: split ? 0 : cartDiscountAmount,
+          loyalty_points_redeemed: split ? 0 : pointsToRedeem,
           customer_id: customer?.id || null,
-          pay_later: payLater,
+          pay_later: split ? false : payLater,
           payments,
           currency: session.currency,
         }),
@@ -328,8 +449,8 @@ export default function TillPage() {
       setLastReceipt({
         invoiceNumber: data.data.invoice_number,
         totals: data.totals,
-        tendered: tenderedAmount,
-        change,
+        tendered: split ? paymentAmount : tenderedAmount,
+        change: split ? 0 : change,
         paid: paymentAmount,
         balanceDue: Number(data.balance_due || 0),
         method: paymentMethod,
@@ -337,7 +458,20 @@ export default function TillPage() {
         customerName: customer?.name || null,
         loyalty: data.loyalty,
       });
-      setSession(s => s ? { ...s, total_sales: s.total_sales + total, transaction_count: s.transaction_count + 1 } : s);
+      setSession(s => s ? { ...s, total_sales: Number(s.total_sales) + Number(data.data.total), transaction_count: Number(s.transaction_count) + 1 } : s);
+      if (activeTable) {
+        if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+        const remaining = splitCart?.remaining || [];
+        await saveTableOrder(activeTable.id, {
+          cart: remaining, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session.id,
+        });
+        if (remaining.length) {
+          setCart(remaining);
+          setTendered('');
+          setMobileRef('');
+          return; // guests still at the table
+        }
+      }
       resetSale();
     } catch (e: any) {
       toast.error(e.message);
@@ -562,6 +696,16 @@ export default function TillPage() {
                 {formatCurrency(session.total_sales, currency)} · {session.transaction_count} txns
               </p>
             </div>
+            {posSettings.restaurant_mode && (
+              <button onClick={() => setTablesPanel('open')} className="btn-secondary btn-sm flex items-center gap-1.5">
+                <TableCellsIcon className="w-4 h-4" />
+                Tables
+              </button>
+            )}
+            <button onClick={() => setShowShiftSales(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <ReceiptRefundIcon className="w-4 h-4" />
+              Sales
+            </button>
             <button onClick={() => setShowHeld(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
               <QueueListIcon className="w-4 h-4" />
               Held
@@ -653,9 +797,9 @@ export default function TillPage() {
               </div>
               {cart.length > 0 && (
                 <div className="flex items-center gap-3">
-                <button onClick={() => setHoldLabel(customer?.name || '')} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--pos-text-muted)' }}>
+                {!activeTable && <button onClick={() => setHoldLabel(customer?.name || '')} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--pos-text-muted)' }}>
                   <PauseCircleIcon className="w-4 h-4" /> Hold
-                </button>
+                </button>}
                 <button onClick={resetSale} className="text-xs transition-colors" style={{ color: 'var(--pos-text-muted)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--pos-text-muted)')}>
@@ -664,6 +808,22 @@ export default function TillPage() {
                 </div>
               )}
             </div>
+
+            {activeTable && (
+              <div className="px-4 py-2 border-b flex flex-wrap items-center gap-2 text-xs" style={{ borderColor: 'var(--pos-border)', background: 'var(--pos-surface-raised)' }}>
+                <span className="font-bold text-sm" style={{ color: 'var(--blueox-accent-light)' }}>{activeTable.name}</span>
+                <input type="number" min="1" placeholder="guests" value={guests ?? ''}
+                  onChange={e => setGuests(Number(e.target.value) > 0 ? Number(e.target.value) : null)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-16 rounded-lg px-2 py-1 focus:outline-none"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }} />
+                <span className="flex-1" />
+                <button onClick={sendToKitchen} className="px-2 py-1 rounded-lg font-semibold" style={{ background: 'var(--blueox-primary)', color: 'white' }}>Send to kitchen</button>
+                <button onClick={() => setTablesPanel('move')} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}>Move</button>
+                <button onClick={() => setShowSplit(true)} disabled={!cart.length} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}>Split</button>
+                <button onClick={leaveTable} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text-muted)' }}>Close</button>
+              </div>
+            )}
 
             {/* Cart items */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -883,7 +1043,7 @@ export default function TillPage() {
 
               {/* Charge button */}
               <button
-                onClick={handleCharge}
+                onClick={() => handleCharge()}
                 disabled={cart.length === 0 || processing}
                 className="w-full py-4 rounded-xl font-bold text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: cart.length === 0 ? 'var(--pos-surface-raised)' : 'var(--blueox-primary)' }}
@@ -900,6 +1060,36 @@ export default function TillPage() {
           </div>
         </div>
       </div>
+
+      {tablesPanel && company && (
+        <TablesPanel
+          companyId={company.id}
+          currency={currency}
+          mode={tablesPanel}
+          excludeTableId={tablesPanel === 'move' ? activeTable?.id : null}
+          onPick={t => (tablesPanel === 'move' ? moveTable(t) : openTable(t))}
+          onClose={() => setTablesPanel(null)}
+        />
+      )}
+
+      {showShiftSales && company && (
+        <ShiftSalesPanel
+          companyId={company.id}
+          sessionId={session.id}
+          companyName={company.name}
+          receiptFooter={posSettings.receipt_footer || 'Thank you for your purchase!'}
+          onClose={() => setShowShiftSales(false)}
+        />
+      )}
+
+      {showSplit && (
+        <SplitBillModal
+          cart={cart}
+          currency={currency}
+          onConfirm={pay => { setShowSplit(false); handleCharge(pay); }}
+          onClose={() => setShowSplit(false)}
+        />
+      )}
 
       {variantParent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

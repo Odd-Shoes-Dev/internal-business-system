@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "migrate": "node scripts/migrate.mjs",
+    "migrate:local": "node --env-file=.env.local scripts/migrate.mjs",
     "migrate:stamp": "node scripts/migrate.mjs --stamp",
     "dev:enable-modules": "node --env-file=.env.local scripts/dev-enable-all-modules.mjs",
     "db:push": "supabase db push",

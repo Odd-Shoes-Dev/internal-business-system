@@ -1,5 +1,7 @@
 'use client';
 
+import type { LegacyPlanDetails } from '@/lib/billing/legacy-plan';
+
 import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { getApiError } from '@/lib/api-error';
@@ -73,6 +75,7 @@ export default function BillingPage() {
   const router = useRouter();
   const { company } = useCompany();
   const [loadError, setLoadError] = useState(false);
+  const [legacy, setLegacy] = useState<{ plan: LegacyPlanDetails; modules: string[] } | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [moduleQuota, setModuleQuota] = useState<ModuleQuota | null>(null);
@@ -98,6 +101,13 @@ export default function BillingPage() {
       const subResponse = await fetch(`/api/billing/subscription${companyQuery}`);
       if (subResponse.ok) {
         const subData = await subResponse.json();
+        if (subData.legacy) {
+          setLegacy({ plan: subData.legacy, modules: subData.modules || [] });
+          setSubscription(null);
+          setModules([]);
+          return;
+        }
+        setLegacy(null);
         setSubscription(subData.subscription);
         setModules(subData.modules || []);
         setModuleQuota(subData.moduleQuota || null);
@@ -272,6 +282,36 @@ export default function BillingPage() {
             <div className="h-8 bg-blueox-primary/10 rounded-xl w-1/4 mb-4"></div>
             <div className="h-24 bg-blueox-primary/5 rounded-2xl"></div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (legacy) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <CreditCardIcon className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Legacy plan</h1>
+              <p className="text-gray-600">A fixed monthly fee, invoiced to you directly by our team.</p>
+            </div>
+          </div>
+          <div className="rounded-lg bg-gray-50 border p-4 flex items-baseline justify-between">
+            <span className="text-gray-600">Monthly fee</span>
+            <span className="text-2xl font-bold">{formatPrice(legacy.plan.monthly_fee, legacy.plan.currency as Currency)}</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Included modules</p>
+            <div className="flex flex-wrap gap-2">
+              {legacy.modules.map((m) => (
+                <span key={m} className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">{MODULE_NAMES[m] || m}</span>
+              ))}
+            </div>
+          </div>
+          {legacy.plan.note && <p className="text-sm text-gray-600">{legacy.plan.note}</p>}
+          <p className="text-sm text-gray-500">To add or remove modules or change billing, contact support.</p>
         </div>
       </div>
     );

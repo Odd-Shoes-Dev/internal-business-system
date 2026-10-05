@@ -16,8 +16,32 @@ export const client = new pg.Client({
 
 let savepoint = 0;
 
+// A failed statement aborts the whole surrounding transaction in Postgres. In the app each
+// request has its own connection, so a route's failed query (e.g. a duplicate name) does not
+// affect anything else; give each route query its own savepoint to behave the same way here.
+// Routes may run queries in parallel (Promise.all); savepoints nest, so run them one at a time.
+let queue: Promise<unknown> = Promise.resolve();
+function isolatedQuery(text: string, params?: any[]) {
+  const run = queue.then(() => runIsolated(text, params));
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function runIsolated(text: string, params?: any[]) {
+  const name = `q_${++savepoint}`;
+  await client.query(`SAVEPOINT ${name}`);
+  try {
+    const result = await client.query(text, params);
+    await client.query(`RELEASE SAVEPOINT ${name}`);
+    return result as any;
+  } catch (error) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+    throw error;
+  }
+}
+
 export const testDb = {
-  query: (text: string, params?: any[]) => client.query(text, params) as any,
+  query: isolatedQuery,
   hasCompanyAccess: async () => true,
   getSessionUser: async () => null,
   transaction: async <T>(fn: (tx: { query: (t: string, p?: any[]) => Promise<any> }) => Promise<T>): Promise<T> => {

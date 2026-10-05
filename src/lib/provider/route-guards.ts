@@ -10,6 +10,7 @@ import {
   isSubscriptionLapsed,
   isTrialExpired,
 } from '@/lib/subscription-access';
+import { isLegacyPlan } from '@/lib/billing/legacy-plan';
 
 export async function requireSessionUser() {
   const db = getDbProvider();
@@ -126,16 +127,19 @@ async function blockWriteIfTrialExpired(companyId: string) {
   const db = getDbProvider();
   const result = await db.query<{
     subscription_status: string | null;
+    subscription_plan: string | null;
     trial_ends_at: string | null;
     period_end: string | null;
   }>(
-    `SELECT c.subscription_status, c.trial_ends_at,
+    `SELECT c.subscription_status, c.subscription_plan, c.trial_ends_at,
             (SELECT s.current_period_end FROM subscriptions s
               WHERE s.company_id = c.id ORDER BY s.created_at DESC LIMIT 1) AS period_end
      FROM companies c WHERE c.id = $1 LIMIT 1`,
     [companyId]
   );
   const company = result.rows[0];
+  // Legacy-plan companies are billed by hand and never locked here (see lib/billing/legacy-plan)
+  if (company && isLegacyPlan(company.subscription_plan) && company.subscription_status === 'active') return null;
   if (company && isTrialExpired(company.subscription_status, company.trial_ends_at)) {
     return NextResponse.json({ error: TRIAL_EXPIRED_MESSAGE, code: 'TRIAL_EXPIRED' }, { status: 402 });
   }

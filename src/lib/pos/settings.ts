@@ -8,12 +8,14 @@ export interface LoyaltySettings {
 }
 
 export interface PosSettings {
+  restaurant_mode: boolean; // tables, open orders and kitchen tickets at the till
   receipt_header: string;
   receipt_footer: string;
   loyalty: LoyaltySettings;
 }
 
 export const DEFAULT_POS_SETTINGS: PosSettings = {
+  restaurant_mode: false,
   receipt_header: '',
   receipt_footer: 'Thank you for your purchase!',
   loyalty: { enabled: false, amount_per_point: 1000, point_value: 10, min_redeem_points: 0 },
@@ -29,6 +31,7 @@ export function parsePosSettings(raw: unknown): PosSettings {
   const loyalty = (value.loyalty && typeof value.loyalty === 'object' ? value.loyalty : {}) as Record<string, any>;
   const d = DEFAULT_POS_SETTINGS;
   return {
+    restaurant_mode: value.restaurant_mode === true,
     receipt_header: typeof value.receipt_header === 'string' ? value.receipt_header.slice(0, 500) : d.receipt_header,
     receipt_footer: typeof value.receipt_footer === 'string' ? value.receipt_footer.slice(0, 500) : d.receipt_footer,
     loyalty: {
