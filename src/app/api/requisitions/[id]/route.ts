@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/requisitions/[id] - Requisition detail with lines and delivery forms
 export async function GET(
@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -97,7 +97,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -171,7 +171,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

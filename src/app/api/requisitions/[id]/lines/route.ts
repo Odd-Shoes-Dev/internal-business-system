@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/requisitions/[id]/lines - Add a missing item to an open/partial requisition
 export async function POST(
@@ -29,7 +29,7 @@ export async function POST(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

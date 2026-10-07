@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { companyHasModule, getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/requisitions/activity - Recent requisition events for the notification bell:
 // created, delivery processed, completed, closed (voided or closed without completing).
@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
     const companyAccessError = await requireCompanyAccess(user.id, companyId);
     if (companyAccessError) {
       return companyAccessError;
+    }
+
+    // The notification bell asks for every company; those without the module simply have no activity
+    if (!(await companyHasModule(companyId, 'inventory'))) {
+      return NextResponse.json({ data: [] });
     }
 
     const limit = Number(new URL(request.url).searchParams.get('limit') || 5);

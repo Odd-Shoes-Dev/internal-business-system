@@ -162,3 +162,31 @@ export async function requireCompanyAccess(userId: string, companyId: string) {
 
   return blockWriteIfTrialExpired(companyId);
 }
+
+// True when the company has the module switched on (trial, included or paid).
+export async function companyHasModule(companyId: string, moduleId: string): Promise<boolean> {
+  const db = getDbProvider();
+  const result = await db.query(
+    'SELECT 1 FROM subscription_modules WHERE company_id = $1 AND module_id = $2 AND is_active = TRUE LIMIT 1',
+    [companyId, moduleId]
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+// Company access (membership and read-only mode) plus the module the feature belongs to.
+// Returns an error response when either fails, otherwise null.
+export async function requireModuleAccess(userId: string, companyId: string, moduleId: string) {
+  const accessError = await requireCompanyAccess(userId, companyId);
+  if (accessError) return accessError;
+
+  if (!(await companyHasModule(companyId, moduleId))) {
+    return NextResponse.json(
+      {
+        error: 'This feature is not part of your plan. Add the module from Billing, or contact support.',
+        code: 'MODULE_NOT_ENABLED',
+      },
+      { status: 403 }
+    );
+  }
+  return null;
+}
