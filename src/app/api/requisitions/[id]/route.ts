@@ -19,8 +19,8 @@ export async function GET(
               creator.full_name AS created_by_name,
               closer.full_name AS closed_by_name
        FROM stock_requisitions r
-       LEFT JOIN user_profiles creator ON creator.id = r.created_by
-       LEFT JOIN user_profiles closer ON closer.id = r.closed_by
+       LEFT JOIN app_users creator ON creator.id = r.created_by
+       LEFT JOIN app_users closer ON closer.id = r.closed_by
        WHERE r.id = $1 LIMIT 1`,
       [id]
     );
@@ -46,8 +46,8 @@ export async function GET(
     const deliveriesResult = await db.query(
       `SELECT d.*, creator.full_name AS created_by_name, voider.full_name AS voided_by_name
        FROM stock_delivery_forms d
-       LEFT JOIN user_profiles creator ON creator.id = d.created_by
-       LEFT JOIN user_profiles voider ON voider.id = d.voided_by
+       LEFT JOIN app_users creator ON creator.id = d.created_by
+       LEFT JOIN app_users voider ON voider.id = d.voided_by
        WHERE d.requisition_id = $1
        ORDER BY d.created_at ASC`,
       [id]

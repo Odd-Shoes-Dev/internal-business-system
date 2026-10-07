@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
          s.transaction_count
        FROM pos_terminals t
        LEFT JOIN pos_sessions s ON s.terminal_id = t.id AND s.status = 'open'
-       LEFT JOIN user_profiles p ON p.id = s.opened_by
+       LEFT JOIN app_users p ON p.id = s.opened_by
        WHERE t.company_id = $1
        ORDER BY t.name ASC`,
       [companyId]

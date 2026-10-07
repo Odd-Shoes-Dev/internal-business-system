@@ -17,8 +17,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
          pc.full_name AS closed_by_name
        FROM pos_sessions s
        LEFT JOIN pos_terminals t ON t.id = s.terminal_id
-       LEFT JOIN user_profiles p ON p.id = s.opened_by
-       LEFT JOIN user_profiles pc ON pc.id = s.closed_by
+       LEFT JOIN app_users p ON p.id = s.opened_by
+       LEFT JOIN app_users pc ON pc.id = s.closed_by
        WHERE s.id = $1 LIMIT 1`,
       [id]
     );

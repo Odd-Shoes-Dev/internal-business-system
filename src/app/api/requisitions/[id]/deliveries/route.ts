@@ -28,7 +28,7 @@ export async function GET(
     const result = await db.query(
       `SELECT d.*, creator.full_name AS created_by_name
        FROM stock_delivery_forms d
-       LEFT JOIN user_profiles creator ON creator.id = d.created_by
+       LEFT JOIN app_users creator ON creator.id = d.created_by
        WHERE d.requisition_id = $1
        ORDER BY d.created_at ASC`,
       [id]
