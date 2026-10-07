@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import {
   getAccountIdByCode,
   getBaseCurrencyAndRate,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     const number = (searchParams.get('number') || '').trim().toUpperCase();
     if (!companyId || !number) return NextResponse.json({ error: 'company_id and number are required' }, { status: 400 });
 
-    const accessError = await requireCompanyAccess(user.id, companyId);
+    const accessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (accessError) return accessError;
 
     const sale = await loadSale(db, companyId, 'i.invoice_number', number);
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     if (!company_id || !invoice_id) return NextResponse.json({ error: 'company_id and invoice_id are required' }, { status: 400 });
     if (!REFUND_METHODS.includes(refundMethod)) return NextResponse.json({ error: 'Choose how the refund is paid' }, { status: 400 });
 
-    const accessError = await requireCompanyAccess(user.id, company_id);
+    const accessError = await requireModuleAccess(user.id, company_id, 'pos');
     if (accessError) return accessError;
 
     const today = new Date().toISOString().split('T')[0];

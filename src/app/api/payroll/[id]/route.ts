@@ -1,4 +1,4 @@
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // PATCH /api/payroll/[id] - Update payroll period (including status changes and GL posting)
@@ -26,7 +26,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Payroll period not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, period.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, period.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export const TABLE_MANAGER_ROLES = ['owner', 'admin', 'operations'];
 
@@ -12,7 +12,7 @@ export async function loadTable(id: string): Promise<Loaded> {
   if (errorResponse || !user) return { error: errorResponse ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   const table = (await db.query<any>('SELECT * FROM restaurant_tables WHERE id = $1', [id])).rows[0];
   if (!table) return { error: NextResponse.json({ error: 'Table not found' }, { status: 404 }) };
-  const accessError = await requireCompanyAccess(user.id, table.company_id);
+  const accessError = await requireModuleAccess(user.id, table.company_id, 'pos');
   if (accessError) return { error: accessError };
   return { db, user, table };
 }

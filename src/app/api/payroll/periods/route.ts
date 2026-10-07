@@ -1,4 +1,4 @@
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/payroll/periods - List payroll periods
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }

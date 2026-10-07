@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireModuleAccess } from '@/lib/provider/route-guards';
 import {
   createInvoiceJournalEntryWithDb,
   createReceiptJournalEntryWithDb,
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (companyAccessError) return companyAccessError;
 
     const params: any[] = [companyId];
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payment' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    const companyAccessError = await requireModuleAccess(user.id, company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     // Verify session is open and belongs to company

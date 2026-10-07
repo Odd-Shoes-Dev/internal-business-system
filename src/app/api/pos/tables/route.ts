@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { canManageTables } from './shared';
 
 // GET /api/pos/tables?company_id=&all=true — active tables (all=true includes removed ones),
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (errorResponse || !user) return errorResponse!;
     const companyId = getCompanyIdFromRequest(request);
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
-    const accessError = await requireCompanyAccess(user.id, companyId);
+    const accessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (accessError) return accessError;
 
     const all = new URL(request.url).searchParams.get('all') === 'true';
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const companyId = getCompanyIdFromRequest(request, body);
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
-    const accessError = await requireCompanyAccess(user.id, companyId);
+    const accessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (accessError) return accessError;
     if (!(await canManageTables(db, user.id, companyId))) {
       return NextResponse.json({ error: 'Your role cannot manage tables' }, { status: 403 });

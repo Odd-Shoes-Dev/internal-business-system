@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireModuleAccess } from '@/lib/provider/route-guards';
 
 // GET /api/pos/sessions/[id] — single session detail with transactions
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const session = sessionResult.rows[0];
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, session.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, session.company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     // Load transactions for this session
@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const session = sessionResult.rows[0];
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, session.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, session.company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     if (session.status === 'closed') {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // DELETE /api/pos/held-orders/[id] — remove a parked cart (after resuming or discarding it)
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +12,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     const row = existing.rows[0];
     if (!row) return NextResponse.json({ error: 'Held order not found' }, { status: 404 });
 
-    const accessError = await requireCompanyAccess(user.id, row.company_id);
+    const accessError = await requireModuleAccess(user.id, row.company_id, 'pos');
     if (accessError) return accessError;
 
     await db.query('DELETE FROM pos_held_orders WHERE id = $1', [id]);

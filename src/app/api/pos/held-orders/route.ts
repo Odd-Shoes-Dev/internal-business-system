@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/pos/held-orders?company_id= — parked carts, newest first
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const companyId = new URL(request.url).searchParams.get('company_id');
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
 
-    const accessError = await requireCompanyAccess(user.id, companyId);
+    const accessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (accessError) return accessError;
 
     const result = await db.query(
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (!company_id) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     if (!Array.isArray(cart) || cart.length === 0) return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
 
-    const accessError = await requireCompanyAccess(user.id, company_id);
+    const accessError = await requireModuleAccess(user.id, company_id, 'pos');
     if (accessError) return accessError;
 
     if (customer_id) {

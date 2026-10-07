@@ -1,4 +1,4 @@
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/payroll/periods/[id] - Get period details with payslips
@@ -31,7 +31,7 @@ export async function GET(
       return NextResponse.json({ error: 'Payroll period not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, row.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, row.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -99,7 +99,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Payroll period not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, period.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, period.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
