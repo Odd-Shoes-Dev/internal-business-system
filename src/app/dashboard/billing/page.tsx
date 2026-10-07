@@ -364,7 +364,11 @@ export default function BillingPage() {
   const totalModuleCost = modules
     .filter(m => m.is_active && !m.is_trial_module && !m.is_included)
     .reduce((sum, m) => sum + (Number(m.monthly_price) || 0), 0);
-  const monthlyTotal = (Number(subscription.base_price_amount) || 0) + totalModuleCost;
+  // On annual billing the base price is already the price for the year; module prices are
+  // monthly, so they are multiplied by 12 to give a yearly total.
+  const isAnnual = subscription.billing_period === 'annual';
+  const monthlyTotal =
+    (Number(subscription.base_price_amount) || 0) + (isAnnual ? totalModuleCost * 12 : totalModuleCost);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative overflow-hidden">
@@ -482,10 +486,10 @@ export default function BillingPage() {
               </div>
 
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">{isTrialOrExpired ? 'Subscription Cost' : 'Total Monthly Cost'}</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">{isTrialOrExpired ? 'Subscription Cost' : isAnnual ? 'Total Annual Cost' : 'Total Monthly Cost'}</p>
                 <p className="text-3xl font-bold text-blueox-primary">
                   {isTrial ? 'Free During Trial' : isExpired ? 'Upgrade Required' : formatPrice(monthlyTotal, subscription.currency.toUpperCase() as Currency)}
-                  {!isTrialOrExpired && <span className="text-base font-normal text-gray-600 ml-1">/mo</span>}
+                  {!isTrialOrExpired && <span className="text-base font-normal text-gray-600 ml-1">/{isAnnual ? 'yr' : 'mo'}</span>}
                 </p>
                 {!isTrialOrExpired && totalModuleCost > 0 && (
                   <p className="text-sm text-gray-600 mt-2 font-medium">
