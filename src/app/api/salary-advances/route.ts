@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
               up.full_name AS approver_name
        FROM salary_advances sa
        INNER JOIN employees e ON e.id = sa.employee_id
-       LEFT JOIN user_profiles up ON up.id = sa.approved_by
+       LEFT JOIN app_users up ON up.id = sa.approved_by
        WHERE ${where.join(' AND ')}
        ORDER BY sa.advance_date DESC, sa.created_at DESC`,
       params

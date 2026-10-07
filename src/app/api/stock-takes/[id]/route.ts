@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
               up.full_name AS counted_by_full_name
        FROM stock_takes st
        LEFT JOIN inventory_locations il ON il.id = st.location_id
-       LEFT JOIN user_profiles up ON up.id = st.counted_by
+       LEFT JOIN app_users up ON up.id = st.counted_by
        WHERE st.id = $1
        LIMIT 1`,
       [id]

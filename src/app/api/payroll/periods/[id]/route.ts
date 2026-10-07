@@ -20,7 +20,7 @@ export async function GET(
               upp.full_name AS processed_by_user_full_name,
               upp.email AS processed_by_user_email
        FROM payroll_periods pp
-       LEFT JOIN user_profiles upp ON upp.id = pp.processed_by
+       LEFT JOIN app_users upp ON upp.id = pp.processed_by
        WHERE pp.id = $1
        LIMIT 1`,
       [id]

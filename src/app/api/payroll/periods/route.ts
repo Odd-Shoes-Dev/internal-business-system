@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
               up.full_name AS processed_by_user_full_name,
               up.email AS processed_by_user_email
        FROM payroll_periods pp
-       LEFT JOIN user_profiles up ON up.id = pp.processed_by
+       LEFT JOIN app_users up ON up.id = pp.processed_by
        WHERE ${where.join(' AND ')}
        ORDER BY pp.start_date DESC`,
       params
