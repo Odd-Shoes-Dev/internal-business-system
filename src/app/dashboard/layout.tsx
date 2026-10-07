@@ -57,6 +57,7 @@ type NavItem = {
 type NavGroup = {
   name: string;
   pinned?: boolean; // always expanded, no dropdown
+  footer?: boolean; // rendered in the fixed area at the bottom of the sidebar
   items: NavItem[];
 };
 
@@ -71,6 +72,7 @@ const navigationGroups: NavGroup[] = [
   },
   {
     name: 'Operations',
+    pinned: true,
     items: [
       { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon, module: 'pos' },
       { name: 'Cafe', href: '/dashboard/cafe', icon: CakeIcon, module: 'cafe' },
@@ -82,6 +84,7 @@ const navigationGroups: NavGroup[] = [
   },
   {
     name: 'Sales',
+    pinned: true,
     items: [
       { name: 'Sales', href: '/dashboard/sales', icon: ShoppingBagIcon },
       { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
@@ -124,6 +127,7 @@ const navigationGroups: NavGroup[] = [
   {
     name: 'System',
     pinned: true,
+    footer: true,
     items: [
       { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
@@ -554,9 +558,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
-          {visibleNavGroups.map((group) => {
+        {/* Navigation — main groups scroll; footer groups (billing, settings) stay pinned to the bottom */}
+        <div className="flex flex-col h-[calc(100%-4rem)]">
+        <nav className="flex-1 min-h-0 p-4 space-y-4 overflow-y-auto scrollbar-thin">
+          {visibleNavGroups.filter((group) => !group.footer).map((group) => {
               const hasActiveItem = group.items.some((item) => isNavItemActive(pathname, item.href));
               // The section holding the current page can't be collapsed
               const expanded = group.pinned || hasActiveItem || openNavGroup === group.name;
@@ -606,6 +611,25 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               );
             })}
         </nav>
+        {visibleNavGroups.some((group) => group.footer) && (
+          <div className="p-4 pt-3 border-t border-blueox-primary/20 space-y-1">
+            {visibleNavGroups
+              .filter((group) => group.footer)
+              .flatMap((group) => group.items)
+              .map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={isNavItemActive(pathname, item.href) ? 'sidebar-link-active' : 'sidebar-link-inactive'}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                </Link>
+              ))}
+          </div>
+        )}
+        </div>
       </aside>
 
       {/* Main content */}
