@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   PrinterIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface AssetMaintenance {
   id: string;
@@ -143,42 +143,36 @@ function MaintenanceDetailPageClient({ maintenanceId }: { maintenanceId: string 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Maintenance Record</h1>
-            <p className="text-gray-500 mt-1">{maintenance.assets.name}</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5" />
-            Print
-          </button>
-          {maintenance.status !== 'completed' && (
-            <>
-              <button
-                onClick={() => router.push(`/dashboard/assets/maintenance/${maintenanceId}/edit`)}
-                className="btn-secondary flex items-center gap-2"
-              >
-                <PencilIcon className="w-5 h-5" />
-                Edit
-              </button>
-              <button
-                onClick={handleMarkComplete}
-                className="btn-primary flex items-center gap-2"
-                disabled={updating}
-              >
-                <CheckIcon className="w-5 h-5" />
-                {updating ? 'Updating...' : 'Mark Complete'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Maintenance Record"
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+            {maintenance.status !== 'completed' && (
+              <>
+                <button
+                  onClick={() => router.push(`/dashboard/assets/maintenance/${maintenanceId}/edit`)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={handleMarkComplete}
+                  className="btn-primary btn-sm inline-flex items-center gap-1.5"
+                  disabled={updating}
+                >
+                  <CheckIcon className="w-4 h-4" />
+                  {updating ? 'Updating...' : 'Mark Complete'}
+                </button>
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* Status Badge */}
       <div className="flex items-center gap-4 print:hidden">

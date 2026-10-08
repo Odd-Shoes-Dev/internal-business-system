@@ -7,12 +7,12 @@ import toast from 'react-hot-toast';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   CheckCircleIcon,
   XCircleIcon,
   ArrowPathIcon,
   PrinterIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface GoodsReceipt {
   id: string;
@@ -154,27 +154,20 @@ function GoodsReceiptDetailPageClient({ grId }: { grId: string }) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/goods-receipts" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{goodsReceipt.gr_number || goodsReceipt.receipt_number}</h1>
-            <p className="text-gray-500 mt-1">PO: {goodsReceipt.purchase_order?.po_number || 'N/A'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor[goodsReceipt.status] || 'bg-gray-100 text-gray-800'}`}>
-            {goodsReceipt.status.charAt(0).toUpperCase() + goodsReceipt.status.slice(1)}
-          </span>
-          <button className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-4 h-4" />
-            Print
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={goodsReceipt.gr_number || goodsReceipt.receipt_number}
+        actions={
+          <>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor[goodsReceipt.status] || 'bg-gray-100 text-gray-800'}`}>
+              {goodsReceipt.status.charAt(0).toUpperCase() + goodsReceipt.status.slice(1)}
+            </span>
+            <button className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+          </>
+        }
+      />
 
       <div className="card">
         <div className="card-header">

@@ -10,7 +10,6 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
   ChevronUpDownIcon,
@@ -18,6 +17,7 @@ import {
   CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product, DocumentType } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 interface InvoiceLineInput {
   product_id: string;
@@ -270,15 +270,7 @@ export default function NewInvoicePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/invoices" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Invoice</h1>
-          <p className="text-gray-500 mt-1">Create a new customer invoice</p>
-        </div>
-      </div>
+      <PageHeader title="New Invoice" />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Booking Info Banner */}

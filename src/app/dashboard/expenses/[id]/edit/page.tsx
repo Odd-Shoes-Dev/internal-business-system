@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { getCurrencySymbol } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   CreditCardIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Vendor {
   id: string;
@@ -276,18 +276,7 @@ export default function EditExpensePage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={`/dashboard/expenses/${params.id}`}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
-          <p className="text-gray-600">{expense.expense_number}</p>
-        </div>
-      </div>
+      <PageHeader title="Edit Expense" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { approveStockAdjustmentWithDb, createStockAdjustmentWithDb } from '@/lib/inventory/adjustments';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -60,20 +61,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           continue;
         }
 
-        await tx.query(
-          `INSERT INTO inventory_movements (
-             product_id, movement_type, quantity, reference_type, reference_id, notes, created_by
-           ) VALUES ($1, 'adjustment', $2, 'stock_take', $3, $4, $5)`,
-          [line.product_id, variance, stockTakeId, `Stock take ${stockTake.reference_number}`, user.id]
-        );
-
-        await tx.query(
-          `UPDATE products
-           SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + $2,
-               updated_at = NOW()
-           WHERE id = $1`,
-          [line.product_id, variance]
-        );
+        // The count is the approval: file each difference as an approved adjustment, which moves
+        // stock at FIFO cost and posts the gain or loss to the ledger
+        const adj = await createStockAdjustmentWithDb(tx, {
+          companyId: stockTake.company_id,
+          productId: line.product_id,
+          quantityChange: variance,
+          reason: 'count_correction',
+          notes: `Stock take ${stockTake.reference_number}`,
+          userId: user.id,
+          source: 'stock_take',
+          sourceId: stockTakeId,
+        });
+        await approveStockAdjustmentWithDb(tx, adj.id, user.id);
       }
 
       return {

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
               pp.period_name
        FROM employee_reimbursements er
        INNER JOIN employees e ON e.id = er.employee_id
-       LEFT JOIN user_profiles up ON up.id = er.approved_by
+       LEFT JOIN app_users up ON up.id = er.approved_by
        LEFT JOIN payroll_periods pp ON pp.id = er.paid_in_payroll_id
        WHERE ${where.join(' AND ')}
        ORDER BY er.reimbursement_date DESC, er.created_at DESC`,

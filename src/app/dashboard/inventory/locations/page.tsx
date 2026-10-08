@@ -11,6 +11,7 @@ import {
   TruckIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Location {
   id: string;
@@ -94,16 +95,17 @@ export default function LocationsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Locations</h1>
-          <p className="text-gray-500 mt-1">Manage inventory locations</p>
-        </div>
-        <Link href="/dashboard/inventory/locations/new" className="btn-primary flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" />
-          New Location
-        </Link>
-      </div>
+      <PageHeader
+        title="Locations"
+        actions={
+          <>
+            <Link href="/dashboard/inventory/locations/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
+              New Location
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">

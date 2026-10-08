@@ -1,5 +1,15 @@
 import { getExchangeRate, getRatesMap } from '@/lib/exchange-rates';
 import type { DbProvider } from '@/lib/provider/types';
+import {
+  allocateFifo,
+  buildInvoiceJournalLines,
+  depositAccountCodeForMethod,
+  journalTotals,
+  type CogsGroup,
+  type CostLot,
+  type JournalLine,
+} from '@/lib/accounting/inventory-costing';
+import { putStockInWithDb, takeStockOutWithDb } from '@/lib/inventory/stock';
 
 type QueryResult<T = any> = { rows: T[]; rowCount: number };
 
@@ -51,15 +61,79 @@ export async function getAccountIdByCode(q: QueryExecutor, code: string, company
   return result.rows[0]?.id ?? null;
 }
 
-async function getExchangeRateToBase(q: QueryExecutor, currency: string, companyId: string): Promise<number> {
+export async function getBaseCurrencyAndRate(
+  q: QueryExecutor,
+  currency: string,
+  companyId: string
+): Promise<{ baseCurrency: string; exchangeRate: number }> {
   const companyRow = await q.query<{ currency: string }>(
     'SELECT currency FROM companies WHERE id = $1',
     [companyId]
   );
   const baseCurrency = companyRow.rows[0]?.currency || 'USD';
-  if (!currency || currency === baseCurrency) return 1;
+  if (!currency || currency === baseCurrency) return { baseCurrency, exchangeRate: 1 };
   const ratesMap = await getRatesMap(q, baseCurrency);
-  return getExchangeRate(currency, baseCurrency, ratesMap);
+  return { baseCurrency, exchangeRate: getExchangeRate(currency, baseCurrency, ratesMap) };
+}
+
+async function getExchangeRateToBase(q: QueryExecutor, currency: string, companyId: string): Promise<number> {
+  return (await getBaseCurrencyAndRate(q, currency, companyId)).exchangeRate;
+}
+
+// Writes a posted journal entry and its lines. Refuses an entry whose base-currency
+// debits and credits differ.
+export async function insertJournalEntryWithDb(
+  q: QueryExecutor,
+  header: {
+    entry_date: string;
+    description: string;
+    source_module: string;
+    source_document_id: string;
+    company_id: string;
+  },
+  lines: JournalLine[],
+  createdBy: string
+): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
+  const totals = journalTotals(lines);
+  if (!totals.balanced) {
+    return { success: false, error: `Journal entry not balanced. Debits: ${totals.debit}, Credits: ${totals.credit}` };
+  }
+
+  const entryNumberResult = await q.query<{ entry_number: string }>(
+    'SELECT generate_journal_entry_number() AS entry_number'
+  );
+  const entryNumber = entryNumberResult.rows[0]?.entry_number;
+  if (!entryNumber) {
+    return { success: false, error: 'Failed to generate journal entry number' };
+  }
+
+  const journalEntry = await q.query<{ id: string }>(
+    `INSERT INTO journal_entries (
+       entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
+     ) VALUES ($1, $2, $3, $4, $5, 'posted', $6, $7)
+     RETURNING id`,
+    [entryNumber, header.entry_date, header.description, header.source_module, header.source_document_id,
+     createdBy, header.company_id]
+  );
+  const journalEntryId = journalEntry.rows[0]?.id;
+  if (!journalEntryId) {
+    return { success: false, error: 'Failed to create journal entry header' };
+  }
+
+  let lineNumber = 1;
+  for (const line of lines) {
+    await q.query(
+      `INSERT INTO journal_lines (
+         journal_entry_id, line_number, account_id, debit, credit, description,
+         currency, exchange_rate, base_debit, base_credit
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [journalEntryId, lineNumber, line.account_id, line.debit, line.credit, line.description,
+       line.currency, line.exchange_rate, line.debit * line.exchange_rate, line.credit * line.exchange_rate]
+    );
+    lineNumber += 1;
+  }
+
+  return { success: true, journalEntryId };
 }
 
 export async function createBillJournalEntryWithDb(
@@ -157,6 +231,8 @@ export async function createBillJournalEntryWithDb(
   }
 }
 
+// Sales invoice entry: receivable, revenue net of tax, VAT payable, and the cost of goods
+// sold for any stock the invoice already took out (its 'sale' inventory movements).
 export async function createInvoiceJournalEntryWithDb(
   q: QueryExecutor,
   invoice: {
@@ -164,6 +240,7 @@ export async function createInvoiceJournalEntryWithDb(
     invoice_number: string;
     invoice_date: string;
     total: number;
+    tax_amount?: number | null;
     company_id: string;
     currency?: string;
   },
@@ -172,58 +249,82 @@ export async function createInvoiceJournalEntryWithDb(
   try {
     const arAccountId = await getAccountIdByCode(q, '1100', invoice.company_id);
     const revenueAccountId = await getAccountIdByCode(q, '4000', invoice.company_id);
+    const vatAccountId = await getAccountIdByCode(q, '2200', invoice.company_id);
 
     if (!arAccountId || !revenueAccountId) {
       return { success: false, error: 'Required accounts not found for invoice journal entry' };
     }
 
     const currency = invoice.currency || 'USD';
-    const exchangeRate = await getExchangeRateToBase(q, currency, invoice.company_id);
-    const baseTotal = invoice.total * exchangeRate;
-
-    const entryNumberResult = await q.query<{ entry_number: string }>(
-      'SELECT generate_journal_entry_number() AS entry_number'
-    );
-    const entryNumber = entryNumberResult.rows[0]?.entry_number;
-    if (!entryNumber) {
-      return { success: false, error: 'Failed to generate journal entry number' };
+    const { baseCurrency, exchangeRate } = await getBaseCurrencyAndRate(q, currency, invoice.company_id);
+    const cogs = await getCogsGroupsForInvoiceWithDb(q, invoice.id, invoice.company_id);
+    if (!cogs.success) {
+      return { success: false, error: cogs.error };
     }
 
-    const journalEntry = await q.query<{ id: string }>(
-      `INSERT INTO journal_entries (
-         entry_number, entry_date, description, source_module, source_document_id, status, created_by, company_id
-       ) VALUES ($1, $2, $3, 'invoice', $4, 'posted', $5, $6)
-       RETURNING id`,
-      [entryNumber, invoice.invoice_date, `Invoice ${invoice.invoice_number}`, invoice.id, createdBy, invoice.company_id]
+    const lines = buildInvoiceJournalLines({
+      invoiceNumber: invoice.invoice_number,
+      total: Number(invoice.total),
+      taxAmount: Number(invoice.tax_amount || 0),
+      currency,
+      exchangeRate,
+      baseCurrency,
+      accounts: { receivable: arAccountId, revenue: revenueAccountId, vat: vatAccountId },
+      cogs: cogs.groups,
+    });
+
+    return await insertJournalEntryWithDb(
+      q,
+      {
+        entry_date: invoice.invoice_date,
+        description: `Invoice ${invoice.invoice_number}`,
+        source_module: 'invoice',
+        source_document_id: invoice.id,
+        company_id: invoice.company_id,
+      },
+      lines,
+      createdBy
     );
-
-    const journalEntryId = journalEntry.rows[0]?.id;
-    if (!journalEntryId) {
-      return { success: false, error: 'Failed to create journal entry header' };
-    }
-
-    await q.query(
-      `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description,
-         currency, exchange_rate, base_debit, base_credit
-       ) VALUES ($1, 1, $2, $3, 0, $4, $5, $6, $7, 0)`,
-      [journalEntryId, arAccountId, invoice.total, `AR - Invoice ${invoice.invoice_number}`,
-       currency, exchangeRate, baseTotal]
-    );
-
-    await q.query(
-      `INSERT INTO journal_lines (
-         journal_entry_id, line_number, account_id, debit, credit, description,
-         currency, exchange_rate, base_debit, base_credit
-       ) VALUES ($1, 2, $2, 0, $3, $4, $5, $6, 0, $7)`,
-      [journalEntryId, revenueAccountId, invoice.total, `Revenue - Invoice ${invoice.invoice_number}`,
-       currency, exchangeRate, baseTotal]
-    );
-
-    return { success: true, journalEntryId };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to create invoice journal entry' };
   }
+}
+
+// Sums the cost of stock an invoice took out, grouped by the product's COGS and inventory
+// accounts (falling back to 5000 Cost of Goods Sold and 1200 Inventory).
+async function getCogsGroupsForInvoiceWithDb(
+  q: QueryExecutor,
+  invoiceId: string,
+  companyId: string
+): Promise<{ success: boolean; groups: CogsGroup[]; error?: string }> {
+  const rows = await q.query<{ cogs_account_id: string | null; inventory_account_id: string | null; cost: string }>(
+    `SELECT p.cogs_account_id, p.inventory_account_id, SUM(COALESCE(m.total_cost, 0)) AS cost
+     FROM inventory_movements m
+     JOIN products p ON p.id = m.product_id
+     WHERE m.reference_type = 'invoice' AND m.reference_id = $1 AND m.movement_type = 'sale'
+     GROUP BY p.cogs_account_id, p.inventory_account_id`,
+    [invoiceId]
+  );
+  if (!rows.rowCount) {
+    return { success: true, groups: [] };
+  }
+
+  const defaultCogs = await getAccountIdByCode(q, '5000', companyId);
+  const defaultInventory = await getAccountIdByCode(q, '1200', companyId);
+  const groups: CogsGroup[] = [];
+
+  for (const row of rows.rows) {
+    const cost = Math.abs(Number(row.cost || 0));
+    if (cost <= 0) continue;
+    const cogsAccountId = row.cogs_account_id || defaultCogs;
+    const inventoryAccountId = row.inventory_account_id || defaultInventory;
+    if (!cogsAccountId || !inventoryAccountId) {
+      return { success: false, groups: [], error: 'Cost of Goods Sold (5000) or Inventory (1200) account not found' };
+    }
+    groups.push({ cogs_account_id: cogsAccountId, inventory_account_id: inventoryAccountId, cost });
+  }
+
+  return { success: true, groups };
 }
 
 export async function createReceiptJournalEntryWithDb(
@@ -241,11 +342,10 @@ export async function createReceiptJournalEntryWithDb(
 ): Promise<{ success: boolean; journalEntryId?: string; error?: string }> {
   try {
     const arAccountId = await getAccountIdByCode(q, '1100', receipt.company_id);
-    let cashAccountCode = '1000';
-    if (receipt.payment_method === 'bank_transfer' || receipt.payment_method === 'check') {
-      cashAccountCode = '1020';
-    }
-    const cashAccountId = await getAccountIdByCode(q, cashAccountCode, receipt.company_id);
+    // Fall back to Cash on Hand if a company has no account for the method (e.g. 1040 Mobile Money)
+    const cashAccountId =
+      (await getAccountIdByCode(q, depositAccountCodeForMethod(receipt.payment_method), receipt.company_id)) ||
+      (await getAccountIdByCode(q, '1000', receipt.company_id));
 
     if (!arAccountId || !cashAccountId) {
       return { success: false, error: 'Required accounts not found for receipt journal entry' };
@@ -389,6 +489,9 @@ export async function createExpenseJournalEntryWithDb(
   }
 }
 
+// Takes sold stock out at FIFO cost (see takeStockOutWithDb) and records the cost on the
+// 'sale' movement so the invoice journal entry can post cost of goods sold. With allowNegative
+// (the POS till), a sale is not refused when recorded stock is too low.
 export async function reduceInventoryForInvoiceWithDb(
   q: QueryExecutor,
   invoiceId: string,
@@ -397,53 +500,23 @@ export async function reduceInventoryForInvoiceWithDb(
     quantity: number;
     description: string;
   }>,
-  userId: string
+  userId: string,
+  options: { allowNegative?: boolean } = {}
 ): Promise<{ success: boolean; error?: string }> {
   try {
     for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-        quantity_reserved: number | null;
-        name: string;
-      }>(
-        `SELECT track_inventory, quantity_on_hand, quantity_reserved, name
-         FROM products
-         WHERE id = $1
-         LIMIT 1`,
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      const available = Number(product.quantity_on_hand || 0) - Number(product.quantity_reserved || 0);
-      if (available < Number(line.quantity || 0)) {
-        return {
-          success: false,
-          error: `Insufficient inventory for ${product.name}. Available: ${available}, Required: ${line.quantity}`,
-        };
-      }
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, updated_at = NOW() WHERE id = $1',
-        [line.product_id, Number(product.quantity_on_hand || 0) - Number(line.quantity || 0)]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, reference_type, reference_id, notes, created_by
-         ) VALUES ($1, 'sale', $2, 'invoice', $3, $4, $5)`,
-        [line.product_id, -Number(line.quantity || 0), invoiceId, line.description, userId]
-      );
+      if (!line.product_id || !(Number(line.quantity) > 0)) continue;
+      await takeStockOutWithDb(q, {
+        productId: line.product_id,
+        quantity: Number(line.quantity),
+        movementType: 'sale',
+        referenceType: 'invoice',
+        referenceId: invoiceId,
+        notes: line.description,
+        userId,
+        allowNegative: options.allowNegative,
+      });
     }
-
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to reduce inventory for invoice' };
@@ -541,6 +614,8 @@ export async function releaseReservedInventoryWithDb(
   }
 }
 
+// Puts an invoice's stock back (void). The returned quantity becomes a new lot at the cost it
+// left at, so the reversal of the invoice's cost-of-goods lines matches the stock value restored.
 export async function restoreInventoryForInvoiceWithDb(
   q: QueryExecutor,
   invoiceId: string,
@@ -552,104 +627,79 @@ export async function restoreInventoryForInvoiceWithDb(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-      }>(
-        'SELECT track_inventory, quantity_on_hand FROM products WHERE id = $1 LIMIT 1',
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, updated_at = NOW() WHERE id = $1',
-        [line.product_id, Number(product.quantity_on_hand || 0) + Number(line.quantity || 0)]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, reference_type, reference_id, created_by
-         ) VALUES ($1, 'return', $2, 'invoice_void', $3, $4)`,
-        [line.product_id, Number(line.quantity || 0), invoiceId, userId]
-      );
+      if (!line.product_id || !(Number(line.quantity) > 0)) continue;
+      const product = await q.query<{ cost_price: string | null }>('SELECT cost_price FROM products WHERE id = $1', [line.product_id]);
+      const unitCost = (await getInvoiceSaleUnitCostWithDb(q, invoiceId, line.product_id)) ?? Number(product.rows[0]?.cost_price || 0);
+      await putStockInWithDb(q, {
+        productId: line.product_id,
+        quantity: Number(line.quantity),
+        unitCost,
+        movementType: 'return',
+        referenceType: 'invoice_void',
+        referenceId: invoiceId,
+        lotNumber: `RETURN-${invoiceId.slice(0, 8)}`,
+        userId,
+      });
     }
-
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to restore inventory for invoice' };
   }
 }
 
-export async function increaseInventoryForBillWithDb(
+// Ledger account code for each bill line. Stock enters only through receiving (which credits
+// 2150 Goods Received Not Invoiced), so a bill line for a stock-tracked product debits 2150
+// instead of an expense and does not change stock. Other lines keep their chosen account.
+export async function billLineAccountCodesWithDb(
   q: QueryExecutor,
-  billId: string,
-  billDate: string,
-  lines: Array<{
-    product_id?: string | null;
-    quantity: number;
-    unit_cost: number;
-    line_total: number;
-    description: string;
-  }>,
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    for (const line of lines) {
-      if (!line.product_id) {
-        continue;
-      }
-
-      const productResult = await q.query<{
-        track_inventory: boolean;
-        quantity_on_hand: number;
-        cost_price: number | null;
-      }>(
-        'SELECT track_inventory, quantity_on_hand, cost_price FROM products WHERE id = $1 LIMIT 1',
-        [line.product_id]
-      );
-
-      const product = productResult.rows[0];
-      if (!product?.track_inventory) {
-        continue;
-      }
-
-      const newQty = Number(product.quantity_on_hand || 0) + Number(line.quantity || 0);
-      const previousCost = Number(product.cost_price || 0);
-      const newCost =
-        newQty > 0
-          ? (Number(product.quantity_on_hand || 0) * previousCost + Number(line.quantity || 0) * Number(line.unit_cost || 0)) / newQty
-          : Number(line.unit_cost || 0);
-
-      await q.query(
-        'UPDATE products SET quantity_on_hand = $2, cost_price = $3, updated_at = NOW() WHERE id = $1',
-        [line.product_id, newQty, newCost]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, notes, created_by
-         ) VALUES ($1, 'purchase', $2, $3, $4, 'bill', $5, $6, $7)`,
-        [line.product_id, line.quantity, line.unit_cost, line.line_total, billId, line.description, userId]
-      );
-
-      await q.query(
-        `INSERT INTO inventory_lots (
-           product_id, quantity_received, quantity_remaining, unit_cost, received_date
-         ) VALUES ($1, $2, $3, $4, $5::date)`,
-        [line.product_id, line.quantity, line.quantity, line.unit_cost, billDate]
-      );
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to increase inventory for bill' };
+  lines: Array<{ product_id?: string | null; expense_account_id?: string | null }>,
+  accountMap: Record<string, string>
+): Promise<string[]> {
+  const productIds = [...new Set(lines.map((l) => l.product_id).filter(Boolean))] as string[];
+  const tracked = new Set<string>();
+  if (productIds.length) {
+    const result = await q.query<{ id: string }>(
+      'SELECT id FROM products WHERE id = ANY($1::uuid[]) AND track_inventory = true',
+      [productIds]
+    );
+    result.rows.forEach((row) => tracked.add(row.id));
   }
+  return lines.map((line) => {
+    if (line.product_id && tracked.has(line.product_id)) return '2150';
+    return Object.keys(accountMap).find((key) => accountMap[key] === line.expense_account_id) || '5000';
+  });
+}
+
+// Unit cost at which a product left on an invoice (from its 'sale' movements), or null.
+export async function getInvoiceSaleUnitCostWithDb(
+  q: QueryExecutor,
+  invoiceId: string,
+  productId: string
+): Promise<number | null> {
+  const sold = await q.query<{ quantity: string; cost: string }>(
+    `SELECT COALESCE(SUM(-quantity), 0) AS quantity, COALESCE(SUM(total_cost), 0) AS cost
+     FROM inventory_movements
+     WHERE reference_type = 'invoice' AND reference_id = $1 AND product_id = $2 AND movement_type = 'sale'`,
+    [invoiceId, productId]
+  );
+  const quantity = Number(sold.rows[0]?.quantity || 0);
+  return quantity > 0 ? Number(sold.rows[0].cost) / quantity : null;
+}
+
+// Puts returned goods back on the shelf at the given cost, so FIFO sells them again at what
+// they cost.
+export async function returnStockWithDb(
+  q: QueryExecutor,
+  input: {
+    productId: string;
+    quantity: number;
+    unitCost: number;
+    referenceType: string;
+    referenceId: string;
+    lotNumber: string;
+    notes?: string;
+    userId: string;
+  }
+): Promise<void> {
+  await putStockInWithDb(q, { ...input, movementType: 'return' });
 }

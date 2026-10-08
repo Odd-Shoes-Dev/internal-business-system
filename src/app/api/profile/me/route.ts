@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser } from '@/lib/provider/route-guards';
+import { invalidateCachedSessionsForUser } from '@/lib/auth/session';
 
 export async function GET() {
   try {
@@ -79,6 +80,7 @@ export async function PATCH(request: NextRequest) {
         [user.id, email, fullName]
       );
     });
+    invalidateCachedSessionsForUser(user.id);
 
     return NextResponse.json({
       data: {

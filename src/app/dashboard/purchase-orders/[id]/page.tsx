@@ -7,13 +7,13 @@ import Link from 'next/link';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PrinterIcon,
   CheckCircleIcon,
   XCircleIcon,
   TruckIcon,
   PencilIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface PurchaseOrder {
   id: string;
@@ -192,60 +192,52 @@ export default function PurchaseOrderDetailPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchase-orders" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Purchase Order {po.po_number}
-            </h1>
-            <p className="text-gray-500 mt-1">{po.vendor?.company_name || po.vendor?.name}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary">
-            <PrinterIcon className="w-5 h-5 mr-2" />
-            Print
-          </button>
-          {canEdit && (
-            <Link 
-              href={`/dashboard/purchase-orders/${params.id}/edit`}
-              className="btn-secondary"
-            >
-              <PencilIcon className="w-5 h-5 mr-2" />
-              Edit
-            </Link>
-          )}
-          {canReceive && (
-            <button onClick={handleReceiveGoods} className="btn-primary">
-              <TruckIcon className="w-5 h-5 mr-2" />
-              Receive Goods
+      <PageHeader
+        title={`Purchase Order ${po.po_number}`}
+        actions={
+          <>
+            <button className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4 mr-2" />
+              Print
             </button>
-          )}
-          {canApprove && (
-            <button 
-              onClick={handleApprove} 
-              disabled={actionLoading}
-              className="btn-primary"
-            >
-              <CheckCircleIcon className="w-5 h-5 mr-2" />
-              Approve
-            </button>
-          )}
-          {canCancel && (
-            <button 
-              onClick={handleCancel}
-              disabled={actionLoading}
-              className="btn-secondary text-red-600 hover:bg-red-50"
-            >
-              <XCircleIcon className="w-5 h-5 mr-2" />
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
+            {canEdit && (
+              <Link 
+                href={`/dashboard/purchase-orders/${params.id}/edit`}
+                className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PencilIcon className="w-4 h-4 mr-2" />
+                Edit
+              </Link>
+            )}
+            {canReceive && (
+              <button onClick={handleReceiveGoods} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                <TruckIcon className="w-4 h-4 mr-2" />
+                Receive Goods
+              </button>
+            )}
+            {canApprove && (
+              <button 
+                onClick={handleApprove} 
+                disabled={actionLoading}
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <CheckCircleIcon className="w-4 h-4 mr-2" />
+                Approve
+              </button>
+            )}
+            {canCancel && (
+              <button 
+                onClick={handleCancel}
+                disabled={actionLoading}
+                className="btn-danger btn-sm inline-flex items-center gap-1.5"
+              >
+                <XCircleIcon className="w-4 h-4 mr-2" />
+                Cancel
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Status */}
       <div className="card p-4">

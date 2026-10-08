@@ -18,10 +18,10 @@ import {
   XCircleIcon,
   StarIcon,
   CurrencyDollarIcon,
-  BuildingStorefrontIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import type { Hotel, Destination } from '@/types/breco';
+import { PageHeader } from '@/components/page-header';
 
 export default function HotelDetailPage() {
   const params = useParams();
@@ -149,68 +149,49 @@ export default function HotelDetailPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <Link
-            href="/dashboard/hotels"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors mt-1"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <BuildingStorefrontIcon className="w-6 h-6 text-blueox-primary" />
-              <h1 className="text-2xl font-bold text-gray-900">{hotel.name}</h1>
-              {hotel.is_active ? (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                  <CheckCircleIcon className="w-3 h-3" />
-                  Active
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
-                  <XCircleIcon className="w-3 h-3" />
-                  Inactive
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              {hotel.star_rating && (
-                <div className="flex items-center gap-1">
-                  {renderStars(hotel.star_rating)}
-                </div>
-              )}
-              {hotel.hotel_type && (
-                <>
-                  <span>•</span>
-                  <span className="capitalize">{hotel.hotel_type}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleActive}
-            className="btn-secondary btn-sm"
-            title={hotel.is_active ? 'Deactivate hotel' : 'Activate hotel'}
-          >
-            {hotel.is_active ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-          </button>
-          <Link href={`/dashboard/hotels/${hotel.id}/edit`} className="btn-secondary btn-sm">
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn-danger btn-sm disabled:opacity-50"
-          >
-            <TrashIcon className="w-4 h-4" />
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={hotel.name}
+        actions={
+          <>
+            {hotel.is_active ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                <CheckCircleIcon className="w-3 h-3" />
+                Active
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
+                <XCircleIcon className="w-3 h-3" />
+                Inactive
+              </span>
+            )}
+            {hotel.hotel_type && (
+              <>
+                <span>•</span>
+                <span className="capitalize">{hotel.hotel_type}</span>
+              </>
+            )}
+            <button
+              onClick={toggleActive}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              title={hotel.is_active ? 'Deactivate hotel' : 'Activate hotel'}
+            >
+              {hotel.is_active ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
+            </button>
+            <Link href={`/dashboard/hotels/${hotel.id}/edit`} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PencilIcon className="w-4 h-4" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </>
+        }
+      />
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

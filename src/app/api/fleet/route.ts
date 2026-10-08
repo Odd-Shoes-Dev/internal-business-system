@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO vehicles (
          company_id, registration_number, make, model, vehicle_type,
          status, seating_capacity, daily_rate_usd, purchase_price,
-         year, color, mileage, notes, created_by
+         year, color, current_mileage, notes, created_by
        ) VALUES (
          $1, $2, $3, $4, $5,
          $6, $7, $8, $9,

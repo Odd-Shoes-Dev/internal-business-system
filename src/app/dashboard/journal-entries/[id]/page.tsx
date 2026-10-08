@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
   DocumentTextIcon,
@@ -15,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
+import { PageHeader } from '@/components/page-header';
 
 interface LineItem {
   id: string;
@@ -277,19 +277,7 @@ export default function EditJournalEntryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/general-ledger" className="btn-ghost p-1.5 sm:p-2">
-            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-              Edit Journal Entry: {formData.entryNumber}
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600">Modify this draft journal entry</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader title={`Edit Journal Entry: ${formData.entryNumber}`} />
 
       {/* Form */}
       <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">

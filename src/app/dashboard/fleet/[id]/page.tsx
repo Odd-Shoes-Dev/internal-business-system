@@ -11,7 +11,6 @@ import {
   ArrowLeftIcon,
   PencilIcon,
   TrashIcon,
-  TruckIcon,
   WrenchScrewdriverIcon,
   CurrencyDollarIcon,
   CalendarIcon,
@@ -19,6 +18,7 @@ import {
   MapPinIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Vehicle {
   id: string;
@@ -227,61 +227,43 @@ export default function VehicleDetailPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <Link
-            href="/dashboard/fleet"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors mt-1"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <TruckIcon className="w-6 h-6 text-blueox-primary" />
-              <h1 className="text-2xl font-bold text-gray-900">
-                {vehicle.make} {vehicle.model}
-              </h1>
-              {getStatusBadge(vehicle.status)}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span className="font-medium">{vehicle.vehicle_number}</span>
-              {vehicle.registration_number && (
-                <>
-                  <span>•</span>
-                  <span>{vehicle.registration_number}</span>
-                </>
-              )}
-              {vehicle.year && (
-                <>
-                  <span>•</span>
-                  <span>{vehicle.year}</span>
-                </>
-              )}
-              {vehicle.color && (
-                <>
-                  <span>•</span>
-                  <span className="capitalize">{vehicle.color}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link href={`/dashboard/fleet/${vehicle.id}/edit`} className="btn-secondary btn-sm">
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn-danger btn-sm disabled:opacity-50"
-          >
-            <TrashIcon className="w-4 h-4" />
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={`${vehicle.make} ${vehicle.model}`}
+        actions={
+          <>
+            {vehicle.registration_number && (
+              <>
+                <span>•</span>
+                <span>{vehicle.registration_number}</span>
+              </>
+            )}
+            {vehicle.year && (
+              <>
+                <span>•</span>
+                <span>{vehicle.year}</span>
+              </>
+            )}
+            {vehicle.color && (
+              <>
+                <span>•</span>
+                <span className="capitalize">{vehicle.color}</span>
+              </>
+            )}
+            <Link href={`/dashboard/fleet/${vehicle.id}/edit`} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PencilIcon className="w-4 h-4" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </>
+        }
+      />
 
       {/* Maintenance Alerts */}
       {maintenanceAlerts.length > 0 && (

@@ -13,8 +13,6 @@ import {
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  SparklesIcon,
-  Squares2X2Icon,
   TagIcon,
   PencilIcon,
   TrashIcon,
@@ -31,6 +29,7 @@ import { ShimmerSkeleton, CardSkeleton, StatsCardSkeleton } from '@/components/u
 import { StatCard } from '@/components/ui/card';
 import type { Product } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 export default function InventoryPage() {
   const { company } = useCompany();
@@ -194,7 +193,13 @@ export default function InventoryPage() {
     return currencyFormatter(amount, currency as any);
   };
 
+  // Services (and other untracked items) have no stock to report
+  const isTracked = (item: Product) => item.track_inventory !== false && item.product_type !== 'service';
+
   const getStockStatus = (item: Product) => {
+    if (!isTracked(item)) {
+      return { label: item.product_type === 'service' ? 'Service' : 'Not tracked', class: 'badge-info', icon: ArrowTrendingUpIcon };
+    }
     if ((item.quantity_on_hand || 0) === 0) {
       return { label: 'Out of Stock', class: 'badge-error', icon: ExclamationTriangleIcon };
     }
@@ -210,6 +215,7 @@ export default function InventoryPage() {
       if (!item.name.toLowerCase().includes(q) && !(item.sku || '').toLowerCase().includes(q)) return false;
     }
     if (categoryFilter && item.category_id !== categoryFilter) return false;
+    if ((stockFilter === 'low' || stockFilter === 'out') && !isTracked(item)) return false;
     if (stockFilter === 'low') {
       if (Number(item.quantity_on_hand || 0) === 0) return false;
       if (Number(item.quantity_on_hand || 0) > Number(item.reorder_point || 0)) return false;
@@ -218,43 +224,59 @@ export default function InventoryPage() {
     return true;
   });
 
-  const totalPages = Math.ceil(filteredItems.length / pageSize);
-  const items = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Variants sit directly under their main product
+  const orderedItems = (() => {
+    const shown = new Set(filteredItems.map((i) => i.id));
+    const children = new Map<string, Product[]>();
+    filteredItems.forEach((i) => {
+      const parent = (i as any).parent_product_id as string | null;
+      if (parent && shown.has(parent)) children.set(parent, [...(children.get(parent) || []), i]);
+    });
+    const out: Product[] = [];
+    filteredItems.forEach((i) => {
+      const parent = (i as any).parent_product_id as string | null;
+      if (parent && shown.has(parent)) return; // placed under its parent
+      out.push(i, ...(children.get(i.id) || []));
+    });
+    return out;
+  })();
+
+  const totalPages = Math.ceil(orderedItems.length / pageSize);
+  const items = orderedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">
-      {/* Hero Header */}
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-full px-6 py-3 mb-6 shadow-lg hover:shadow-xl transition-all duration-300">
-          <Squares2X2Icon className="w-6 h-6 text-blueox-primary" />
-          <span className="font-bold text-blueox-primary-dark text-lg">Inventory Management</span>
-          <SparklesIcon className="w-5 h-5 text-cyan-500" />
-        </div>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blueox-primary via-blue-600 to-cyan-500 mb-2">
-              Stock Control
-            </h1>
-            <p className="text-gray-600 text-lg">Track and manage your inventory levels</p>
-          </div>
-          <div className="flex gap-3">
-            <Link 
-              href="/dashboard/inventory/movements" 
-              className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 text-blueox-primary px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
+      <PageHeader
+        title="Products & Services"
+        actions={
+          <>
+            <Link href="/dashboard/inventory/receive" className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              Receive Stock
+            </Link>
+            <Link href="/dashboard/inventory/movements" className="btn-secondary btn-sm inline-flex items-center gap-1.5">
               Stock Movements
             </Link>
-            <Link
-              href="/dashboard/inventory/new"
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
+            <Link href="/dashboard/inventory/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
               Add Item
-              <SparklesIcon className="w-4 h-4" />
             </Link>
-          </div>
-        </div>
+          </>
+        }
+      />
+
+      <div className="flex flex-wrap gap-2 mb-6 text-sm">
+        {[
+          { href: '/dashboard/inventory/adjustments', label: 'Stock adjustments' },
+          { href: '/dashboard/inventory/promotions', label: 'Promotions' },
+          { href: '/dashboard/inventory/labels', label: 'Print labels' },
+          { href: '/dashboard/inventory/alerts', label: 'Low stock & expiring' },
+          { href: '/dashboard/inventory/stock-takes', label: 'Stock takes' },
+        ].map((link) => (
+          <Link key={link.href} href={link.href}
+            className="px-3 py-1.5 rounded-full bg-white/80 border border-blueox-primary/20 text-blueox-primary hover:border-blueox-primary/40">
+            {link.label}
+          </Link>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -514,10 +536,13 @@ export default function InventoryPage() {
                       <td className="py-4 px-6">
                         <Link
                           href={`/dashboard/inventory/${item.id}`}
-                          className="font-semibold text-blueox-primary hover:text-blueox-primary-dark transition-colors"
+                          className={`font-semibold text-blueox-primary hover:text-blueox-primary-dark transition-colors ${(item as any).parent_product_id ? 'pl-5' : ''}`}
                         >
-                          {item.name}
+                          {(item as any).parent_product_id ? '↳ ' : ''}{item.name}
                         </Link>
+                        {(item as any).shelf_location && (
+                          <p className="text-xs text-gray-400 mt-0.5">Shelf: {(item as any).shelf_location}</p>
+                        )}
                         {item.description && (
                           <p className="text-sm text-gray-500 truncate max-w-xs mt-1">{item.description}</p>
                         )}
@@ -526,17 +551,17 @@ export default function InventoryPage() {
                         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{item.sku || '-'}</span>
                       </td>
                       <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
-                        {item.quantity_on_hand} {item.unit_of_measure}
+                        {isTracked(item) ? `${item.quantity_on_hand} ${item.unit_of_measure}` : '—'}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-500">
-                        {item.quantity_reserved}
+                        {isTracked(item) ? item.quantity_reserved : '—'}
                       </td>
                       <td className="py-4 px-6 text-right font-semibold text-blueox-primary-dark">
-                        {available} {item.unit_of_measure}
+                        {isTracked(item) ? `${available} ${item.unit_of_measure}` : '—'}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-700">{formatCurrency(item.cost_price, item.currency)}</td>
                       <td className="py-4 px-6 text-right font-bold text-blueox-primary-dark">
-                        {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency)}
+                        {isTracked(item) ? formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency) : '—'}
                       </td>
                       <td className="py-4 px-6">
                         <span className={`badge ${status.class}`}>
@@ -573,6 +598,7 @@ export default function InventoryPage() {
                         {status.label}
                       </span>
                     </div>
+                    {isTracked(item) && (
                     <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
                         <p className="text-xs font-medium text-gray-600 mb-1">On Hand</p>
@@ -587,6 +613,7 @@ export default function InventoryPage() {
                         <FitNumber value={available} className="font-bold text-green-600" />
                       </div>
                     </div>
+                    )}
                     <div className="mt-4 pt-4 border-t border-blueox-primary/10 flex justify-between items-center">
                       <div>
                         <span className="text-sm text-gray-500">Total Value:</span>

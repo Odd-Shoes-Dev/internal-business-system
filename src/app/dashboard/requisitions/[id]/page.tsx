@@ -3,7 +3,6 @@
 import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import { printDeliveryForm } from '@/lib/pdf/delivery-form-pdf';
@@ -20,6 +19,7 @@ import {
   ArrowPathIcon,
   PencilIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Line {
   id: string;
@@ -573,12 +573,16 @@ export default function RequisitionDetailPage() {
         <div className="bg-white/90 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">{requisition.requisition_number}</h1>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_STYLES[requisition.status]}`}>
-                  {requisition.status}
-                </span>
-              </div>
+              <PageHeader
+                title={requisition.requisition_number}
+                actions={
+                  <>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_STYLES[requisition.status]}`}>
+                      {requisition.status}
+                    </span>
+                  </>
+                }
+              />
               <p className="text-gray-600 mt-1">
                 <span className="font-medium">{requisition.client_name}</span>
                 {requisition.delivery_location ? ` · ${requisition.delivery_location}` : ''}

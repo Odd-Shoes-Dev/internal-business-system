@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
               up.full_name AS counted_by_full_name
        FROM stock_takes st
        LEFT JOIN inventory_locations il ON il.id = st.location_id
-       LEFT JOIN user_profiles up ON up.id = st.counted_by
+       LEFT JOIN app_users up ON up.id = st.counted_by
        WHERE ${where.join(' AND ')}
        ORDER BY st.stock_take_date DESC`,
       params

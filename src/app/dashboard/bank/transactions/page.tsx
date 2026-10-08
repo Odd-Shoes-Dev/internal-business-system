@@ -9,10 +9,10 @@ import {
   PlusIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  ArrowLeftIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
 import type { BankTransaction, BankAccount } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 type TransactionWithAccount = BankTransaction & {
   bank_accounts?: BankAccount;
@@ -145,46 +145,34 @@ export default function BankTransactionsPage() {
 
       <div className="relative max-w-6xl mx-auto py-8 px-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 rounded-xl transition-all duration-300"
-            title="Go back"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-blueox-primary" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-blueox-primary-dark">Bank Transactions</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              View and manage all bank transactions
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <Link
-            href="/dashboard/bank/transactions/new?type=deposit"
-            className="inline-flex items-center justify-center gap-2 flex-1 sm:flex-none bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 px-4 py-2.5 rounded-2xl font-semibold text-blueox-primary transition-all duration-300 hover:shadow-lg"
-          >
-            <ArrowUpIcon className="w-5 h-5" />
-            Deposit
-          </Link>
-          <Link
-            href="/dashboard/bank/transactions/new?type=withdrawal"
-            className="inline-flex items-center justify-center gap-2 flex-1 sm:flex-none bg-white/80 backdrop-blur-xl border border-blueox-primary/20 hover:border-blueox-primary/40 px-4 py-2.5 rounded-2xl font-semibold text-blueox-primary transition-all duration-300 hover:shadow-lg"
-          >
-            <ArrowDownIcon className="w-5 h-5" />
-            Withdrawal
-          </Link>
-          <Link
-            href="/dashboard/bank/transactions/new"
-            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-5 py-2.5 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Add Transaction
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Bank Transactions"
+        actions={
+          <>
+            <Link
+              href="/dashboard/bank/transactions/new?type=deposit"
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowUpIcon className="w-4 h-4" />
+              Deposit
+            </Link>
+            <Link
+              href="/dashboard/bank/transactions/new?type=withdrawal"
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownIcon className="w-4 h-4" />
+              Withdrawal
+            </Link>
+            <Link
+              href="/dashboard/bank/transactions/new"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Transaction
+            </Link>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6">

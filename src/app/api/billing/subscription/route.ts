@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
+import { getLegacyPlanWithDb } from '@/lib/billing/legacy-plan-db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,16 @@ export async function GET(request: NextRequest) {
 
     if (!companyId) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+
+    // Legacy plan: a fixed fee billed by hand, nothing to manage here
+    const legacy = await getLegacyPlanWithDb(db, companyId);
+    if (legacy) {
+      const modules = await db.query<{ module_id: string }>(
+        'SELECT module_id FROM subscription_modules WHERE company_id = $1 AND is_active = TRUE ORDER BY module_id',
+        [companyId]
+      );
+      return NextResponse.json({ legacy, modules: modules.rows.map((m) => m.module_id), subscription: null });
     }
 
     // Get subscription details

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
 import { CategoryCombobox } from '@/components/ui/category-combobox';
@@ -13,7 +12,10 @@ import { type SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui/currency-select';
 import { Combobox } from '@/components/ui/combobox';
 import { NumberInput } from '@/components/ui/number-input';
+import ProductExtraFields, { EMPTY_PRODUCT_EXTRAS, type ProductExtraValues } from '../../product-extra-fields';
+import toast from 'react-hot-toast';
 import { getUnitOptions, normalizeUnit } from '@/lib/units-of-measure';
+import { PageHeader } from '@/components/page-header';
 
 interface Category {
   id: string;
@@ -51,6 +53,7 @@ export default function EditInventoryItemPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [extras, setExtras] = useState<ProductExtraValues>(EMPTY_PRODUCT_EXTRAS);
 
   const [formData, setFormData] = useState({
     sku: '',
@@ -126,6 +129,12 @@ export default function EditInventoryItemPage() {
         is_taxable: data.is_taxable,
         is_active: data.is_active,
       });
+      setExtras({
+        barcode: data.barcode || '',
+        shelf_location: data.shelf_location || '',
+        purchase_unit: data.purchase_unit || '',
+        units_per_purchase_unit: Number(data.units_per_purchase_unit) || 1,
+      });
     } catch (error) {
       console.error('Failed to load item:', error);
       setError('Failed to load item');
@@ -189,6 +198,7 @@ export default function EditInventoryItemPage() {
         reorder_quantity: formData.reorder_quantity,
         is_taxable: formData.is_taxable,
         is_active: formData.is_active,
+        ...extras,
       };
 
       const response = await fetch(`/api/products/${params.id}`, {
@@ -200,6 +210,9 @@ export default function EditInventoryItemPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(result.error || 'Failed to update item');
+      }
+      if (result.stock_adjustment?.status === 'pending') {
+        toast.success(`Saved. The quantity change is ${result.stock_adjustment.adjustment_number}, waiting for approval.`);
       }
 
       router.push(`/dashboard/inventory/${params.id}`);
@@ -238,15 +251,7 @@ export default function EditInventoryItemPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href={`/dashboard/inventory/${params.id}`} className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Inventory Item</h1>
-          <p className="text-gray-500 mt-1">Update product information</p>
-        </div>
-      </div>
+      <PageHeader title="Edit Inventory Item" />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -380,6 +385,13 @@ export default function EditInventoryItemPage() {
         </div>
 
         {/* Pricing */}
+        <ProductExtraFields
+          values={extras}
+          onChange={(patch) => setExtras((prev) => ({ ...prev, ...patch }))}
+          isService={item?.product_type === 'service'}
+          stockUnit={formData.unit_of_measure}
+        />
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Pricing</h2>
 
@@ -458,7 +470,7 @@ export default function EditInventoryItemPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="0"
               />
-              <p className="text-xs text-gray-500 mt-1">Current stock count</p>
+              <p className="text-xs text-gray-500 mt-1">A change is recorded as a stock adjustment (count correction)</p>
             </div>
 
             <div>

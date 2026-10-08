@@ -13,21 +13,17 @@ import {
   MagnifyingGlassIcon,
   UserGroupIcon,
   UserIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  IdentificationIcon,
-  CurrencyDollarIcon,
   CalendarIcon,
   PencilIcon,
   TrashIcon,
   EyeIcon,
   CheckBadgeIcon,
   XCircleIcon,
-  SparklesIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 type EmploymentStatus = 'active' | 'on_leave' | 'terminated' | 'probation';
 
@@ -271,34 +267,21 @@ export default function EmployeesPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <UserGroupIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Employee Management</span>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-                Employee Directory
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl">
-                Manage staff information and payroll details
-              </p>
-            </div>
-            
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Add Employee
-              <SparklesIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader
+          title="Employee Directory"
+          actions={
+            <>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Employee
+              </button>
+            </>
+          }
+        />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">

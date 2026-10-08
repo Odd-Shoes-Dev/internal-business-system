@@ -9,6 +9,7 @@ import { useCompany } from '@/contexts/company-context';
 import { PRICING, MODULE_PRICING } from '@/lib/regional-pricing';
 import type { Region } from '@/lib/regional-pricing';
 import { Check, X, Loader2, Mail, MessageCircle, X as CloseIcon } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 
 type BillingPeriod = 'monthly' | 'annual';
 type PlanTier = 'starter' | 'professional' | 'enterprise';
@@ -217,12 +218,7 @@ export default function UpgradePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Choose Your Plan</h1>
-        <p className="text-gray-600 mt-2">
-          Select the plan that best fits your business needs
-        </p>
-      </div>
+      <PageHeader title="Choose Your Plan" />
 
       {/* Billing Period Toggle */}
       <div className="flex justify-center mb-8">

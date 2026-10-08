@@ -4,7 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
-import { PlusIcon, XMarkIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  XMarkIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -134,13 +139,7 @@ export default function NewRequisitionPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
 
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ClipboardDocumentListIcon className="w-7 h-7 text-blueox-primary" />
-            New Requisition
-          </h1>
-          <p className="text-gray-500 mt-1">Fill in what the client requested — you&apos;ll process deliveries against it afterward</p>
-        </div>
+        <PageHeader title="New Requisition" />
 
         <div className="bg-white/90 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl shadow-lg p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

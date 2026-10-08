@@ -16,6 +16,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { Customer, Product, Invoice, InvoiceLine, InvoiceStatus } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 interface InvoiceLineInput {
   id?: string;
@@ -391,17 +392,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       <div className="max-w-5xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/invoices/${resolvedParams.id}`} className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Edit Invoice</h1>
-            <p className="text-gray-500 mt-1">
-              Invoice #{invoice.invoice_number}
-            </p>
-          </div>
-        </div>
+        <PageHeader title="Edit Invoice" />
 
         {/* Status Dropdown */}
         <div className="flex items-center gap-3">

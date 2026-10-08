@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { CompanyProvider } from '@/contexts/company-context';
+import { CompanyProvider, useCompany } from '@/contexts/company-context';
+import { PageHeaderProvider, usePageHeaderState } from '@/components/page-header';
+import { buildBreadcrumbs } from '@/lib/breadcrumbs';
 import TrialWarningBanner from '@/components/trial-warning-banner';
 import {
   HomeIcon,
@@ -22,6 +24,7 @@ import {
   ArrowRightOnRectangleIcon,
   BellIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   Bars3Icon,
   XMarkIcon,
   ReceiptPercentIcon,
@@ -35,130 +38,96 @@ import {
   ShieldCheckIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 
 const NOTIFICATION_PAGE_SIZE = 10;
 
-// Navigation grouped by category - with module and role requirements
-const navigationGroups = [
+const isNavItemActive = (pathname: string, href: string) =>
+  pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof HomeIcon;
+  module?: string; // hidden unless this module is enabled for the company
+};
+
+type NavGroup = {
+  name: string;
+  pinned?: boolean; // always expanded, no dropdown
+  footer?: boolean; // rendered in the fixed area at the bottom of the sidebar
+  items: NavItem[];
+};
+
+// Sidebar navigation. Role visibility comes from ROUTE_ACCESS per item; groups with no visible items are hidden.
+const navigationGroups: NavGroup[] = [
   {
     name: 'Overview',
-    module: null,
-    roles: null, // all roles
+    pinned: true,
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     ]
   },
   {
-    name: 'Point of Sale',
-    module: 'pos',
-    roles: ['admin', 'operations'],
+    name: 'Operations',
+    pinned: true,
     items: [
-      { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon },
+      { name: 'POS Manager', href: '/dashboard/pos', icon: ShoppingCartIcon, module: 'pos' },
+      { name: 'Cafe', href: '/dashboard/cafe', icon: CakeIcon, module: 'cafe' },
+      { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon, module: 'tours' },
+      { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon, module: 'tours' },
+      { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon, module: 'fleet' },
+      { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon, module: 'hotels' },
     ]
   },
   {
-    name: 'Cafe Operations',
-    module: 'cafe',
-    roles: ['admin', 'operations'],
+    name: 'Sales',
+    pinned: true,
     items: [
-      { name: 'Cafe Dashboard', href: '/dashboard/cafe', icon: CakeIcon },
-    ]
-  },
-  {
-    name: 'Tour Operations',
-    module: 'tours',
-    roles: ['admin', 'operations', 'sales', 'guide'],
-    items: [
-      { name: 'Tour Packages', href: '/dashboard/tours', icon: GlobeAltIcon },
-      { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarDaysIcon },
-    ]
-  },
-  {
-    name: 'Fleet Management',
-    module: 'fleet',
-    roles: ['admin', 'operations'],
-    items: [
-      { name: 'Vehicles', href: '/dashboard/fleet', icon: TruckIcon },
-    ]
-  },
-  {
-    name: 'Hotels Management',
-    module: 'hotels',
-    roles: ['admin', 'operations'],
-    items: [
-      { name: 'Hotels', href: '/dashboard/hotels', icon: BuildingStorefrontIcon },
-    ]
-  },
-  {
-    name: 'Sales & Revenue',
-    module: null,
-    roles: ['admin', 'accountant', 'sales', 'operations'],
-    items: [
+      { name: 'Sales', href: '/dashboard/sales', icon: ShoppingBagIcon },
+      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
       { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
-      { name: 'Price List', href: '/dashboard/products', icon: CubeIcon },
       { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
+      { name: 'Price List', href: '/dashboard/products', icon: CubeIcon },
     ]
   },
   {
-    name: 'Finance',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
+    name: 'Purchases',
     items: [
+      { name: 'Vendors', href: '/dashboard/vendors', icon: TruckIcon },
       { name: 'Bills', href: '/dashboard/bills', icon: BanknotesIcon },
       { name: 'Expenses', href: '/dashboard/expenses', icon: CurrencyDollarIcon },
-      { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
+    ]
+  },
+  {
+    name: 'Inventory',
+    items: [
+      { name: 'Products & Services', href: '/dashboard/inventory', icon: CubeIcon, module: 'inventory' },
+      { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon, module: 'inventory' },
+      { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon, module: 'inventory' },
     ]
   },
   {
     name: 'People',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
     items: [
       { name: 'Employees', href: '/dashboard/employees', icon: UsersIcon },
-    ]
-  },
-  {
-    name: 'Payroll',
-    module: 'payroll',
-    roles: ['admin', 'accountant', 'operations'],
-    items: [
-      { name: 'Payroll Processing', href: '/dashboard/payroll', icon: CalculatorIcon },
-    ]
-  },
-  {
-    name: 'Assets & Inventory',
-    module: 'inventory',
-    roles: ['admin', 'accountant', 'operations'],
-    items: [
-      { name: 'Stock Control', href: '/dashboard/inventory', icon: CubeIcon },
-      { name: 'Stock Requisitions', href: '/dashboard/requisitions', icon: ClipboardDocumentListIcon },
-      { name: 'Fixed Assets', href: '/dashboard/assets', icon: BuildingOfficeIcon },
-    ]
-  },
-  {
-    name: 'Relationships',
-    module: null,
-    roles: ['admin', 'accountant', 'sales', 'operations'],
-    items: [
-      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
-      { name: 'Vendors', href: '/dashboard/vendors', icon: TruckIcon },
+      { name: 'Payroll', href: '/dashboard/payroll', icon: CalculatorIcon, module: 'payroll' },
     ]
   },
   {
     name: 'Accounting',
-    module: null,
-    roles: ['admin', 'accountant', 'operations'],
     items: [
+      { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
       { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
     ]
   },
   {
     name: 'System',
-    module: null,
-    roles: ['admin'],
+    pinned: true,
+    footer: true,
     items: [
       { name: 'Billing & Subscription', href: '/dashboard/billing', icon: CreditCardIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
@@ -191,6 +160,7 @@ const ROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/bookings': ['admin', 'operations', 'sales', 'guide'],
   '/dashboard/customers': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/vendors': ['admin', 'accountant', 'operations'],
+  '/dashboard/sales': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/invoices': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/products': ['admin', 'accountant', 'sales', 'operations'],
   '/dashboard/receipts': ['admin', 'accountant', 'sales', 'operations'],
@@ -214,18 +184,58 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <CompanyProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </CompanyProvider>
+  );
+}
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; email: string; full_name: string | null; role: string | null } | null>(null);
-  const [company, setCompany] = useState<any>(null);
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [companyRole, setCompanyRole] = useState<string | null>(null);
+  // User, companies and modules come from one /api/companies/me call made by CompanyProvider
+  const {
+    user,
+    company,
+    companies,
+    companyModules: enabledModules,
+    loading: isLoading,
+    switchCompany: switchContextCompany,
+  } = useCompany();
+  const companyRole = company?.role || null;
+  const subscriptionStatus = company?.subscription_status || '';
+  const trialEndDate = company?.trial_ends_at || undefined;
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
-  const [enabledModules, setEnabledModules] = useState<string[]>([]);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('');
-  const [trialEndDate, setTrialEndDate] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(true);
+  // App header: breadcrumbs from the URL and menu; title and buttons from the page's <PageHeader>
+  const { actionsSlot, setActionsSlot, title: pageTitle, setTitle: setPageTitle } = usePageHeaderState();
+  const breadcrumbs = buildBreadcrumbs(
+    pathname,
+    navigationGroups.flatMap((group) => group.items.map((item) => ({ group: group.name, name: item.name, href: item.href }))),
+    pageTitle
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navRole = companyRole ?? user?.role ?? '';
+  const visibleNavGroups = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          (!item.module || enabledModules.includes(item.module)) &&
+          userHasAccess(item.href, navRole)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+  // Only one collapsible nav group is expanded at a time — defaults to the group holding the active route
+  const activeNavGroup =
+    visibleNavGroups.find(
+      (group) => !group.pinned && group.items.some((item) => isNavItemActive(pathname, item.href))
+    )?.name ?? null;
+  const [openNavGroup, setOpenNavGroup] = useState<string | null>(activeNavGroup);
+
+  useEffect(() => {
+    if (activeNavGroup) setOpenNavGroup(activeNavGroup);
+  }, [activeNavGroup]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -275,102 +285,23 @@ export default function DashboardLayout({
   }, [sidebarOpen]);
 
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const meResponse = await fetch('/api/auth/me', {
-          method: 'GET',
-          credentials: 'include',
-        });
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [isLoading, user, router]);
 
-        if (meResponse.status === 401) {
-          router.push('/login');
-          return;
-        }
-
-        if (!meResponse.ok) {
-          const payload = await meResponse.json().catch(() => ({}));
-          console.error('Session error:', payload?.error || 'Failed to load session');
-          setIsLoading(false);
-          router.push('/login');
-          return;
-        }
-
-        const mePayload = await meResponse.json();
-        const sessionUser = mePayload?.user;
-        if (!sessionUser) {
-          setIsLoading(false);
-          router.push('/login');
-          return;
-        }
-
-        setUser(sessionUser);
-
-        const companiesResponse = await fetch('/api/companies/me', {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (!companiesResponse.ok) {
-          const payload = await companiesResponse.json().catch(() => ({}));
-          console.error('Company load error:', payload?.error || 'Failed to load company');
-          setIsLoading(false);
-          return;
-        }
-
-        const companiesPayload = await companiesResponse.json();
-        const companies = companiesPayload?.companies || [];
-
-        if (!companies.length) {
-          setIsLoading(false);
-          router.push('/signup/select-plan');
-          return;
-        }
-
-        const selectedCompany =
-          companies.find((c: any) => c.id === companiesPayload?.currentCompanyId) ||
-          companies.find((c: any) => c.is_primary) ||
-          companies[0];
-
-        setCompany(selectedCompany);
-        setCompanies(companies);
-        setCompanyRole(selectedCompany?.role || null);
-        setEnabledModules(companiesPayload?.modules || []);
-        setSubscriptionStatus(selectedCompany?.subscription_status || '');
-        setTrialEndDate(selectedCompany?.trial_ends_at || undefined);
-
-        if (selectedCompany?.id) {
-          await fetchNotifications(selectedCompany.id);
-        }
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error in getUser:', error);
-        setIsLoading(false);
-        router.push('/login');
-      }
-    };
-
-    getUser();
-  }, [router]);
+  // Notifications load in the background; the page does not wait for them. Re-run when
+  // modules change too, since stock alerts depend on the Inventory module.
+  const modulesKey = enabledModules.join(',');
+  useEffect(() => {
+    if (company?.id) {
+      fetchNotifications(company.id);
+    }
+  }, [company?.id, modulesKey]);
 
   const switchCompany = async (newCompany: any) => {
     setCompanySwitcherOpen(false);
-    setCompany(newCompany);
-    setCompanyRole(newCompany.role || null);
-    setSubscriptionStatus(newCompany.subscription_status || '');
-    setTrialEndDate(newCompany.trial_ends_at || undefined);
-    try {
-      const modulesRes = await fetch(`/api/companies/me?company_id=${newCompany.id}`, {
-        credentials: 'include',
-      });
-      if (modulesRes.ok) {
-        const data = await modulesRes.json();
-        setEnabledModules(data.modules || []);
-      }
-    } catch {
-      setEnabledModules([]);
-    }
-    await fetchNotifications(newCompany.id);
+    await switchContextCompany(newCompany.id);
   };
 
   const fetchNotifications = async (companyId: string) => {
@@ -409,7 +340,49 @@ export default function DashboardLayout({
         : [];
       const readIdSet = new Set(readIds);
 
-      const notificationList: any[] = [];
+      // Stock alerts, when the company uses Inventory: low stock, batches expiring within a
+      // week, and adjustments waiting for someone allowed to approve them
+      const stockAlerts: any[] = [];
+      if (enabledModules.includes('inventory')) {
+        const id = encodeURIComponent(companyId);
+        const [lowRes, expRes, adjRes] = await Promise.all([
+          fetch(`/api/inventory?company_id=${id}&low_stock=true&limit=20`, { credentials: 'include' }),
+          fetch(`/api/inventory/expiring?company_id=${id}&days=7`, { credentials: 'include' }),
+          fetch(`/api/stock-adjustments?company_id=${id}&status=pending`, { credentials: 'include' }),
+        ]);
+        const low = lowRes.ok ? (await lowRes.json()).data || [] : [];
+        const expiring = expRes.ok ? (await expRes.json()).data || [] : [];
+        const adjustments = adjRes.ok ? await adjRes.json() : { data: [], can_approve: false };
+
+        low.forEach((p: any) => stockAlerts.push({
+          id: `low-stock-${p.id}-${Number(p.quantity_on_hand)}`,
+          type: 'low_stock',
+          title: Number(p.quantity_on_hand) <= 0 ? `${p.name} is out of stock` : `${p.name} is running low`,
+          message: `${Number(p.quantity_on_hand)} ${p.unit_of_measure || ''} left (reorder at ${Number(p.reorder_point || 0)})`,
+          time: new Date().toLocaleDateString(),
+          href: '/dashboard/inventory/alerts',
+        }));
+        expiring.forEach((l: any) => stockAlerts.push({
+          id: `expiring-${l.lot_id}`,
+          type: 'expiring',
+          title: l.days_left < 0 ? `${l.product_name} batch has expired` : `${l.product_name} expires in ${l.days_left} day(s)`,
+          message: `${l.quantity} ${l.unit_of_measure || ''}${l.lot_number ? ` · batch ${l.lot_number}` : ''}`,
+          time: l.expiry_date,
+          href: '/dashboard/inventory/alerts',
+        }));
+        if (adjustments.can_approve) {
+          (adjustments.data || []).forEach((a: any) => stockAlerts.push({
+            id: `adjustment-${a.id}`,
+            type: 'adjustment',
+            title: `${a.adjustment_number} needs approval`,
+            message: `${a.product_name}: ${a.quantity_change > 0 ? '+' : ''}${a.quantity_change} (${a.reason.replace('_', ' ')})`,
+            time: new Date(a.created_at).toLocaleDateString(),
+            href: '/dashboard/inventory/adjustments',
+          }));
+        }
+      }
+
+      const notificationList: any[] = [...stockAlerts];
 
       overdueInvoices?.forEach((invoice: any) => {
         notificationList.push({
@@ -536,7 +509,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <CompanyProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 relative">
         {/* Floating Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -586,20 +558,40 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-4 overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
-          {navigationGroups
-            .filter(group => !group.module || enabledModules.includes(group.module))
-            .filter(group => !group.roles || group.roles.includes(companyRole ?? user?.role ?? ''))
-            .map((group) => (
+        {/* Navigation — main groups scroll; footer groups (billing, settings) stay pinned to the bottom */}
+        <div className="flex flex-col h-[calc(100%-4rem)]">
+        <nav className="flex-1 min-h-0 p-4 space-y-4 overflow-y-auto scrollbar-thin">
+          {visibleNavGroups.filter((group) => !group.footer).map((group) => {
+              const hasActiveItem = group.items.some((item) => isNavItemActive(pathname, item.href));
+              // The section holding the current page can't be collapsed
+              const expanded = group.pinned || hasActiveItem || openNavGroup === group.name;
+              return (
             <div key={group.name}>
-              <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
-                {group.name}
-              </p>
+              {group.pinned ? (
+                <p className="text-xs font-semibold text-blueox-primary/60 uppercase tracking-wider mb-2 px-2">
+                  {group.name}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasActiveItem) setOpenNavGroup(expanded ? null : group.name);
+                  }}
+                  aria-expanded={expanded}
+                  className={`w-full flex items-center justify-between text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-blueox-primary/5 transition-colors ${
+                    hasActiveItem ? 'text-blueox-primary' : 'text-blueox-primary/60'
+                  } ${expanded ? 'mb-2' : ''}`}
+                >
+                  {group.name}
+                  <ChevronDownIcon
+                    className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              )}
+              {expanded && (
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const isActive = pathname === item.href || 
-                    (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                  const isActive = isNavItemActive(pathname, item.href);
                   
                   return (
                     <Link
@@ -614,24 +606,67 @@ export default function DashboardLayout({
                   );
                 })}
               </div>
+              )}
             </div>
-          ))}
+              );
+            })}
         </nav>
+        {visibleNavGroups.some((group) => group.footer) && (
+          <div className="p-4 pt-3 border-t border-blueox-primary/20 space-y-1">
+            {visibleNavGroups
+              .filter((group) => group.footer)
+              .flatMap((group) => group.items)
+              .map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={isNavItemActive(pathname, item.href) ? 'sidebar-link-active' : 'sidebar-link-inactive'}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                </Link>
+              ))}
+          </div>
+        )}
+        </div>
       </aside>
 
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Top bar */}
-        <header className={`fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between px-4 shadow-sm transition-transform duration-300 ease-in-out ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
-          <div className="flex items-center gap-4">
+        <header className={`fixed top-0 left-0 lg:left-64 right-0 z-30 h-14 bg-white/80 backdrop-blur-xl border-b border-blueox-primary/20 flex items-center justify-between gap-3 px-4 shadow-sm transition-transform duration-300 ease-in-out ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-blueox-primary/10 transition-colors"
               onClick={() => setSidebarOpen(true)}
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
+            <nav aria-label="Breadcrumb" className="min-w-0 flex items-center gap-1.5 text-sm">
+              {breadcrumbs.map((crumb, i) => {
+                const last = i === breadcrumbs.length - 1;
+                return (
+                  <span key={i} className={`items-center gap-1.5 min-w-0 ${last ? 'flex' : 'hidden md:flex'}`}>
+                    {i > 0 && <ChevronRightIcon className="w-3.5 h-3.5 text-blueox-primary/40 flex-shrink-0" />}
+                    {last ? (
+                      <h1 className="font-semibold text-blueox-primary-dark truncate text-base" title={crumb.label}>{crumb.label}</h1>
+                    ) : crumb.href ? (
+                      <Link href={crumb.href} className="text-blueox-primary/70 hover:text-blueox-primary whitespace-nowrap">{crumb.label}</Link>
+                    ) : (
+                      <span className="text-blueox-primary/50 whitespace-nowrap">{crumb.label}</span>
+                    )}
+                  </span>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Page actions (from <PageHeader actions>) */}
+            <div ref={setActionsSlot} className="flex items-center gap-2" />
             {/* Company Switcher */}
-            <div className="relative hidden sm:block">
+            <div className="relative hidden lg:block">
               <button
                 onClick={() => setCompanySwitcherOpen(!companySwitcherOpen)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-blueox-primary/10 transition-colors"
@@ -639,7 +674,7 @@ export default function DashboardLayout({
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blueox-primary to-blueox-accent flex items-center justify-center flex-shrink-0">
                   <FitNumber value={company?.name?.[0]?.toUpperCase() || 'C'} className="text-black font-bold" />
                 </div>
-                <span className="text-sm font-semibold text-blueox-primary-dark max-w-[160px] truncate">{company?.name || 'Company'}</span>
+                <span className="text-sm font-semibold text-blueox-primary-dark max-w-[140px] truncate">{company?.name || 'Company'}</span>
                 {companies.length > 1 && (
                   <ChevronDownIcon className={`w-4 h-4 text-blueox-primary/60 transition-transform ${companySwitcherOpen ? 'rotate-180' : ''}`} />
                 )}
@@ -677,9 +712,7 @@ export default function DashboardLayout({
                 </>
               )}
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
             {/* Notifications */}
             <div className="relative">
               <button 
@@ -852,7 +885,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="pt-16 px-4 py-4 lg:pt-20 lg:px-6 lg:py-6">
+        <main className="pt-[4.25rem] px-4 pb-4 lg:px-6 lg:pb-6">
           {/* Trial Warning Banner */}
           <TrialWarningBanner 
             subscriptionStatus={subscriptionStatus}
@@ -872,12 +905,13 @@ export default function DashboardLayout({
               </Link>
             </div>
           ) : (
-            children
+            <PageHeaderProvider actionsSlot={actionsSlot} setTitle={setPageTitle}>
+              {children}
+            </PageHeaderProvider>
           )}
         </main>
       </div>
     </div>
-    </CompanyProvider>
   );
 }
 

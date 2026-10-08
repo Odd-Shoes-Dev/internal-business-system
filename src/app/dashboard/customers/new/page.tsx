@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { CurrencySelect } from '@/components/ui';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -25,6 +25,7 @@ export default function NewCustomerPage() {
     email_3: '',
     email_4: '',
     phone: '',
+    whatsapp_number: '',
     address_line1: '',
     address_line2: '',
     city: '',
@@ -90,18 +91,7 @@ export default function NewCustomerPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={returnTo}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Customer</h1>
-          <p className="text-gray-600">Add a new customer to your database</p>
-        </div>
-      </div>
+      <PageHeader title="New Customer" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -201,6 +191,20 @@ export default function NewCustomerPage() {
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="(555) 123-4567"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                WhatsApp Number
+              </label>
+              <input
+                type="tel"
+                name="whatsapp_number"
+                value={formData.whatsapp_number}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="e.g. 0772 123456 (for receipts on WhatsApp)"
               />
             </div>
 

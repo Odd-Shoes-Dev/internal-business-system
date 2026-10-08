@@ -1,5 +1,7 @@
 'use client';
 
+import type { LegacyPlanDetails } from '@/lib/billing/legacy-plan';
+
 import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { getApiError } from '@/lib/api-error';
@@ -10,6 +12,7 @@ import { formatPrice } from '@/lib/regional-pricing';
 import type { Currency } from '@/lib/regional-pricing';
 import { useCompany } from '@/contexts/company-context';
 import { SUPPORT_EMAIL, supportMailto } from '@/lib/support';
+import { PageHeader } from '@/components/page-header';
 
 interface Subscription {
   id: string;
@@ -73,6 +76,7 @@ export default function BillingPage() {
   const router = useRouter();
   const { company } = useCompany();
   const [loadError, setLoadError] = useState(false);
+  const [legacy, setLegacy] = useState<{ plan: LegacyPlanDetails; modules: string[] } | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [moduleQuota, setModuleQuota] = useState<ModuleQuota | null>(null);
@@ -98,6 +102,13 @@ export default function BillingPage() {
       const subResponse = await fetch(`/api/billing/subscription${companyQuery}`);
       if (subResponse.ok) {
         const subData = await subResponse.json();
+        if (subData.legacy) {
+          setLegacy({ plan: subData.legacy, modules: subData.modules || [] });
+          setSubscription(null);
+          setModules([]);
+          return;
+        }
+        setLegacy(null);
         setSubscription(subData.subscription);
         setModules(subData.modules || []);
         setModuleQuota(subData.moduleQuota || null);
@@ -277,6 +288,36 @@ export default function BillingPage() {
     );
   }
 
+  if (legacy) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <CreditCardIcon className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Legacy plan</h1>
+              <p className="text-gray-600">A fixed monthly fee, invoiced to you directly by our team.</p>
+            </div>
+          </div>
+          <div className="rounded-lg bg-gray-50 border p-4 flex items-baseline justify-between">
+            <span className="text-gray-600">Monthly fee</span>
+            <span className="text-2xl font-bold">{formatPrice(legacy.plan.monthly_fee, legacy.plan.currency as Currency)}</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Included modules</p>
+            <div className="flex flex-wrap gap-2">
+              {legacy.modules.map((m) => (
+                <span key={m} className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm">{MODULE_NAMES[m] || m}</span>
+              ))}
+            </div>
+          </div>
+          {legacy.plan.note && <p className="text-sm text-gray-600">{legacy.plan.note}</p>}
+          <p className="text-sm text-gray-500">To add or remove modules or change billing, contact support.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!subscription) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -338,31 +379,18 @@ export default function BillingPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <CreditCardIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Billing & Subscription</span>
-          </div>
-          
-          <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-            Manage Your Subscription
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl">
-            Control your subscription, modules, and payment methods
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Paying by another method, or having an issue with billing?{' '}
-            <a
-              href={supportMailto(`Billing help${company?.name ? ` - ${company.name}` : ''}`)}
-              className="text-blue-600 hover:underline font-medium"
-            >
-              Contact support
-            </a>{' '}
-            at {SUPPORT_EMAIL}.
-          </p>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader title="Billing & Subscription" />
+        <p className="text-sm text-gray-500">
+          Paying by another method, or having an issue with billing?{' '}
+          <a
+            href={supportMailto(`Billing help${company?.name ? ` - ${company.name}` : ''}`)}
+            className="text-blue-600 hover:underline font-medium"
+          >
+            Contact support
+          </a>{' '}
+          at {SUPPORT_EMAIL}.
+        </p>
 
         {/* Trial Warning */}
         {isTrialOrExpired && (

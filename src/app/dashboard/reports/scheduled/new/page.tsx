@@ -5,14 +5,10 @@ import { getApiError } from '@/lib/api-error';
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
-  CalendarIcon,
-  EnvelopeIcon,
-  ClockIcon,
-  DocumentTextIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
 
 interface ScheduleFormData {
   reportType: string;
@@ -160,15 +156,7 @@ export default function NewScheduledReportPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/reports/scheduled" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Schedule New Report</h1>
-          <p className="text-gray-600">Set up automatic report delivery to your email</p>
-        </div>
-      </div>
+      <PageHeader title="Schedule New Report" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Report Selection */}

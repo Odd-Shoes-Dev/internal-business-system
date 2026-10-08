@@ -6,10 +6,9 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
-  PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface PurchaseOrder {
   id: string;
@@ -39,6 +38,8 @@ interface GRLine {
   description: string;
   quantity_to_receive: number;
   unit_cost: number;
+  lot_number: string;
+  expiry_date: string;
 }
 
 export default function NewGoodsReceiptPage() {
@@ -178,6 +179,8 @@ export default function NewGoodsReceiptPage() {
           description: line.description,
           quantity_to_receive: line.quantity_remaining,
           unit_cost: line.unit_cost,
+          lot_number: '',
+          expiry_date: '',
         }));
 
       setLines(grLines);
@@ -227,6 +230,8 @@ export default function NewGoodsReceiptPage() {
             product_id: line.product_id,
             quantity_received: line.quantity_to_receive,
             unit_cost: line.unit_cost,
+            lot_number: line.lot_number || null,
+            expiry_date: line.expiry_date || null,
           })),
         }),
       });
@@ -250,15 +255,7 @@ export default function NewGoodsReceiptPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/goods-receipts" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Goods Receipt</h1>
-          <p className="text-gray-500 mt-1">Receive goods from a purchase order</p>
-        </div>
-      </div>
+      <PageHeader title="New Goods Receipt" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* GR Details */}
@@ -344,6 +341,8 @@ export default function NewGoodsReceiptPage() {
                         <th className="w-32">Received</th>
                         <th className="w-32">Remaining</th>
                         <th className="w-32">Receive Now</th>
+                        <th className="w-32">Lot / batch</th>
+                        <th className="w-40">Expiry</th>
                         <th className="w-16"></th>
                       </tr>
                     </thead>
@@ -366,6 +365,21 @@ export default function NewGoodsReceiptPage() {
                                 max={poLine?.quantity_remaining || 0}
                                 step="0.01"
                                 required
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={line.lot_number}
+                                onChange={(e) => handleLineChange(index, 'lot_number', e.target.value)}
+                                className="input text-sm"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                value={line.expiry_date}
+                                onChange={(e) => handleLineChange(index, 'expiry_date', e.target.value)}
+                                className="input text-sm"
                               />
                             </td>
                             <td>

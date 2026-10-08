@@ -16,11 +16,35 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   DevicePhoneMobileIcon,
+  UserIcon,
+  PauseCircleIcon,
+  ArrowUturnLeftIcon,
+  QueueListIcon,
+  TagIcon,
+  TableCellsIcon,
+  ReceiptRefundIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/currency';
+import { pricePosCart, type PricedCart } from '@/lib/pos/pricing';
+import {
+  DEFAULT_POS_SETTINGS,
+  loyaltyRedemptionValue,
+  maxRedeemablePoints,
+  type PosSettings,
+} from '@/lib/pos/settings';
+import CustomerPicker, { type TillCustomer } from './customer-picker';
+import HeldOrdersPanel, { type HeldOrder } from './held-orders-panel';
+import ReturnModal from './return-modal';
+import { applyPromotions, type Promotion } from '@/lib/pos/promotions';
+import { markAllSent, splitTableCart, unsentLines } from '@/lib/pos/tables';
+import TablesPanel, { type FloorTable } from './tables-panel';
+import SplitBillModal from './split-bill-modal';
+import ShiftSalesPanel from './shift-sales-panel';
 
 interface Product {
   id: string;
+  parent_product_id?: string | null;
+  variant_attributes?: Record<string, string> | null;
   name: string;
   sku: string | null;
   barcode: string | null;
@@ -37,8 +61,8 @@ interface CartItem {
   unit_price: number;
   quantity: number;
   tax_rate: number;
-  line_total: number;
-  tax_total: number;
+  discount_amount: number; // money off this line
+  sent_quantity?: number; // restaurant mode: how much the kitchen already has a ticket for
 }
 
 interface Session {
@@ -84,15 +108,37 @@ export default function TillPage() {
 
   const [lastReceipt, setLastReceipt] = useState<{
     invoiceNumber: string;
-    items: CartItem[];
-    subtotal: number;
-    taxAmount: number;
-    total: number;
+    totals: PricedCart;
     tendered: number;
     change: number;
+    paid: number;
+    balanceDue: number;
     method: PaymentMethod;
     currency: string;
+    customerName: string | null;
+    loyalty: { points_redeemed: number; points_earned: number; balance: number | null } | null;
   } | null>(null);
+
+  const [posSettings, setPosSettings] = useState<PosSettings>(DEFAULT_POS_SETTINGS);
+  const [customer, setCustomer] = useState<TillCustomer | null>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [cartDiscount, setCartDiscount] = useState('');
+  const [redeemPoints, setRedeemPoints] = useState('');
+  const [payLater, setPayLater] = useState(false);
+  const [paidNow, setPaidNow] = useState('');
+  const [editingDiscountFor, setEditingDiscountFor] = useState<string | null>(null);
+  const [showHeld, setShowHeld] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
+  const [holdLabel, setHoldLabel] = useState<string | null>(null);
+  const [holding, setHolding] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [variantParent, setVariantParent] = useState<Product | null>(null);
+  // Restaurant mode: the table whose order is in the cart
+  const [activeTable, setActiveTable] = useState<{ id: string; name: string } | null>(null);
+  const [guests, setGuests] = useState<number | null>(null);
+  const [tablesPanel, setTablesPanel] = useState<null | 'open' | 'move'>(null);
+  const [showSplit, setShowSplit] = useState(false);
+  const [showShiftSales, setShowShiftSales] = useState(false);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,13 +146,23 @@ export default function TillPage() {
     if (company && sessionId) {
       loadSession();
       loadProducts();
+      fetch(`/api/companies/pos-settings?company_id=${company.id}`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.data && setPosSettings(d.data))
+        .catch(() => {});
+      // Running promotions, to show prices; the server works them out again when charging
+      fetch(`/api/promotions?company_id=${company.id}&live=true`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.data && setPromotions(d.data))
+        .catch(() => {});
     }
   }, [company, sessionId]);
 
   useEffect(() => {
     const q = search.toLowerCase();
     if (!q) {
-      setFilteredProducts(products.slice(0, 30));
+      // Variants are reached through their main product
+      setFilteredProducts(products.filter(p => !p.parent_product_id).slice(0, 30));
     } else {
       setFilteredProducts(
         products.filter(p =>
@@ -130,11 +186,12 @@ export default function TillPage() {
         target.closest('button') ||
         target.closest('[data-payment-panel]')
       ) return;
-      if (!showCloseModal && !lastReceipt) barcodeInputRef.current?.focus();
+      const modalOpen = showCloseModal || showCustomerPicker || showHeld || showReturn || holdLabel !== null || variantParent !== null || tablesPanel !== null || showSplit || showShiftSales;
+      if (!modalOpen && !lastReceipt) barcodeInputRef.current?.focus();
     };
     document.addEventListener('click', handle);
     return () => document.removeEventListener('click', handle);
-  }, [showCloseModal, lastReceipt]);
+  }, [showCloseModal, showCustomerPicker, showHeld, showReturn, holdLabel, variantParent, tablesPanel, showSplit, showShiftSales, lastReceipt]);
 
   const loadSession = async () => {
     try {
@@ -146,7 +203,13 @@ export default function TillPage() {
         router.push('/dashboard/pos');
         return;
       }
-      setSession(data.data);
+      // Postgres numerics arrive as strings; keep the shift totals as numbers so they add up
+      setSession({
+        ...data.data,
+        total_sales: Number(data.data.total_sales || 0),
+        transaction_count: Number(data.data.transaction_count || 0),
+        opening_float: Number(data.data.opening_float || 0),
+      });
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -156,12 +219,12 @@ export default function TillPage() {
     if (!company) return;
     try {
       const res = await fetch(
-        `/api/products?company_id=${company.id}&active=true&limit=200`,
+        `/api/products?company_id=${company.id}&active=true&limit=1000`,
         { credentials: 'include' }
       );
       const data = await res.json();
       setProducts(data.data || []);
-      setFilteredProducts((data.data || []).slice(0, 30));
+      setFilteredProducts((data.data || []).filter((p: Product) => !p.parent_product_id).slice(0, 30));
     } catch {
       toast.error('Failed to load products');
     } finally {
@@ -174,9 +237,7 @@ export default function TillPage() {
       const existing = prev.find(i => i.product_id === product.id);
       if (existing) {
         return prev.map(i =>
-          i.product_id === product.id
-            ? { ...i, quantity: i.quantity + 1, line_total: i.unit_price * (i.quantity + 1), tax_total: i.unit_price * (i.quantity + 1) * i.tax_rate }
-            : i
+          i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
       const taxRate = product.is_taxable ? Number(product.tax_rate) : 0;
@@ -186,8 +247,7 @@ export default function TillPage() {
         unit_price: Number(product.unit_price),
         quantity: 1,
         tax_rate: taxRate,
-        line_total: Number(product.unit_price),
-        tax_total: Number(product.unit_price) * taxRate,
+        discount_amount: 0,
       }];
     });
     setSearch('');
@@ -215,30 +275,157 @@ export default function TillPage() {
         if (i.product_id !== productId) return i;
         const newQty = i.quantity + delta;
         if (newQty <= 0) return null;
-        return { ...i, quantity: newQty, line_total: i.unit_price * newQty, tax_total: i.unit_price * newQty * i.tax_rate };
+        return { ...i, quantity: newQty };
       }).filter(Boolean) as CartItem[]
     );
   };
 
   const removeFromCart = (productId: string) => setCart(prev => prev.filter(i => i.product_id !== productId));
 
-  const subtotal = cart.reduce((s, i) => s + i.line_total, 0);
-  const taxAmount = cart.reduce((s, i) => s + i.tax_total, 0);
-  const total = subtotal + taxAmount;
-  const tenderedAmount = parseFloat(tendered) || 0;
-  const change = paymentMethod === 'cash' ? Math.max(0, tenderedAmount - total) : 0;
+  const setLineDiscount = (productId: string, value: string) =>
+    setCart(prev => prev.map(i => (i.product_id === productId ? { ...i, discount_amount: Math.max(0, Number(value) || 0) } : i)));
 
-  const handleCharge = async () => {
+  const cartDiscountAmount = Math.max(0, Number(cartDiscount) || 0);
+  const variantsOf = (productId: string) => products.filter(p => p.parent_product_id === productId);
+  const promotedCart = applyPromotions(cart, promotions);
+  const promoByProduct = new Map(promotedCart.map(l => [l.product_id, l.promotion]));
+  const beforeLoyalty = pricePosCart(promotedCart, cartDiscountAmount);
+  const loyalty = posSettings.loyalty;
+  const maxPoints = customer ? maxRedeemablePoints(customer.loyalty_points, beforeLoyalty.subtotal, loyalty) : 0;
+  const pointsToRedeem = Math.min(Math.max(0, Math.floor(Number(redeemPoints) || 0)), maxPoints);
+  const priced = pricePosCart(promotedCart, cartDiscountAmount + loyaltyRedemptionValue(pointsToRedeem, loyalty));
+  const { subtotal, tax: taxAmount, total } = priced;
+  const pricedByProduct = new Map(priced.lines.map(l => [l.product_id, l]));
+
+  const tenderedAmount = parseFloat(tendered) || 0;
+  const paidNowAmount = payLater ? Math.min(Math.max(0, parseFloat(paidNow) || 0), total) : total;
+  const change = !payLater && paymentMethod === 'cash' ? Math.max(0, tenderedAmount - total) : 0;
+
+  const resetSale = () => {
+    setCart([]);
+    setTendered('');
+    setMobileRef('');
+    setCartDiscount('');
+    setRedeemPoints('');
+    setPayLater(false);
+    setPaidNow('');
+    setCustomer(null);
+    setEditingDiscountFor(null);
+    setActiveTable(null);
+    setGuests(null);
+  };
+
+  // ---- Restaurant mode -------------------------------------------------------------------------
+
+  // The table's order is saved as it changes, so another till (or a refresh) sees it
+  const tableSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTableOrder = useCallback(async (tableId: string, body: Record<string, unknown>) => {
+    try {
+      const res = await fetch(`/api/pos/tables/${tableId}/order`, {
+        method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+    } catch (e: any) {
+      toast.error(`Table not saved: ${e.message || 'error'}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeTable) return;
+    if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+    const tableId = activeTable.id;
+    tableSaveTimer.current = setTimeout(() => {
+      saveTableOrder(tableId, {
+        cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id,
+      });
+    }, 600);
+    return () => { if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current); };
+  }, [activeTable, cart, cartDiscount, customer?.id, guests, session?.id, saveTableOrder]);
+
+  const openTable = (table: FloorTable) => {
+    setTablesPanel(null);
+    if (!table.order_id) {
+      // A free table: the current (walk-in) cart, if any, moves onto it
+      setActiveTable({ id: table.id, name: table.name });
+      setGuests(table.seats ? null : null);
+      return;
+    }
+    if (cart.length && !activeTable) {
+      toast.error('Finish, hold or clear the current sale before opening a busy table');
+      return;
+    }
+    setActiveTable({ id: table.id, name: table.name });
+    setCart((table.cart || []).map(i => ({ ...i, discount_amount: Number(i.discount_amount || 0) })));
+    setCartDiscount(Number(table.cart_discount) > 0 ? String(table.cart_discount) : '');
+    setGuests(table.guests);
+    setRedeemPoints('');
+    setPayLater(false);
+    setCustomer(table.customer_id ? {
+      id: table.customer_id,
+      name: table.customer_name || 'Customer',
+      phone: table.customer_phone,
+      whatsapp_number: table.customer_whatsapp_number,
+      loyalty_points: Number(table.customer_loyalty_points || 0),
+      current_balance: 0,
+      credit_limit: 0,
+    } : null);
+  };
+
+  const leaveTable = () => {
+    if (activeTable) {
+      if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+      saveTableOrder(activeTable.id, { cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id });
+    }
+    resetSale();
+  };
+
+  const moveTable = async (target: FloorTable) => {
+    if (!activeTable) return;
+    setTablesPanel(null);
+    if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+    await saveTableOrder(activeTable.id, { cart, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session?.id });
+    const res = await fetch(`/api/pos/tables/${activeTable.id}/move`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to_table_id: target.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(data.data.merged ? `Merged into ${target.name}` : `Moved to ${target.name}`);
+    resetSale();
+  };
+
+  // Prints a kitchen ticket with what the kitchen has not seen yet, then marks it sent
+  const sendToKitchen = () => {
+    const lines = unsentLines(cart);
+    if (!lines.length) { toast('Nothing new for the kitchen'); return; }
+    const win = window.open('', 'kitchen-ticket', 'width=320,height=480');
+    if (win) {
+      const esc = (t: string) => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+      win.document.write(`<html><head><title>Kitchen</title><style>body{font-family:monospace;padding:8px}h2{margin:0 0 4px}li{font-size:16px;margin:4px 0}</style></head><body>
+        <h2>${esc(activeTable?.name || 'Order')}</h2><div>${new Date().toLocaleTimeString()}${guests ? ` · ${guests} guests` : ''}</div>
+        <ul>${lines.map(l => `<li><b>${l.quantity}</b> x ${esc(l.name)}</li>`).join('')}</ul></body></html>`);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+    setCart(markAllSent(cart));
+  };
+
+  // split: charge only these quantities of a table's order; the rest stays on the table
+  const handleCharge = async (split?: Record<string, number>) => {
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
     if (!session || !company) return;
-    if (paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
+    const splitCart = split ? splitTableCart(cart, split) : null;
+    const chargeItems = splitCart ? splitCart.charge : cart;
+    // A split charges its items at their own prices; the whole-table discount stays with the table
+    const chargeTotal = splitCart ? pricePosCart(applyPromotions(chargeItems, promotions)).total : total;
+    if (payLater && !customer) { toast.error('Choose a customer to sell on credit'); return; }
+    if (!split && !payLater && paymentMethod === 'cash' && tenderedAmount < total - 0.01) { toast.error('Tendered amount is less than total'); return; }
     setProcessing(true);
     try {
-      const payments = paymentMethod === 'cash'
-        ? [{ method: 'cash' as PaymentMethod, amount: total }]
-        : paymentMethod === 'mobile_money'
-        ? [{ method: 'mobile_money' as PaymentMethod, amount: total, reference: mobileRef || undefined }]
-        : [{ method: 'card' as PaymentMethod, amount: total }];
+      const paymentAmount = split ? chargeTotal : payLater ? paidNowAmount : total;
+      const payments = paymentAmount > 0
+        ? [{ method: paymentMethod, amount: paymentAmount, reference: paymentMethod === 'mobile_money' ? mobileRef || undefined : undefined }]
+        : [];
 
       const res = await fetch('/api/pos/transactions', {
         method: 'POST',
@@ -247,7 +434,11 @@ export default function TillPage() {
         body: JSON.stringify({
           company_id: company.id,
           session_id: session.id,
-          items: cart.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate })),
+          items: chargeItems.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_price: i.unit_price, tax_rate: i.tax_rate, discount_amount: i.discount_amount })),
+          cart_discount: split ? 0 : cartDiscountAmount,
+          loyalty_points_redeemed: split ? 0 : pointsToRedeem,
+          customer_id: customer?.id || null,
+          pay_later: split ? false : payLater,
           payments,
           currency: session.currency,
         }),
@@ -255,16 +446,84 @@ export default function TillPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setLastReceipt({ invoiceNumber: data.data.invoice_number, items: [...cart], subtotal, taxAmount, total, tendered: tenderedAmount, change, method: paymentMethod, currency: session.currency });
-      setSession(s => s ? { ...s, total_sales: s.total_sales + total, transaction_count: s.transaction_count + 1 } : s);
-      setCart([]);
-      setTendered('');
-      setMobileRef('');
+      setLastReceipt({
+        invoiceNumber: data.data.invoice_number,
+        totals: data.totals,
+        tendered: split ? paymentAmount : tenderedAmount,
+        change: split ? 0 : change,
+        paid: paymentAmount,
+        balanceDue: Number(data.balance_due || 0),
+        method: paymentMethod,
+        currency: session.currency,
+        customerName: customer?.name || null,
+        loyalty: data.loyalty,
+      });
+      setSession(s => s ? { ...s, total_sales: Number(s.total_sales) + Number(data.data.total), transaction_count: Number(s.transaction_count) + 1 } : s);
+      if (activeTable) {
+        if (tableSaveTimer.current) clearTimeout(tableSaveTimer.current);
+        const remaining = splitCart?.remaining || [];
+        await saveTableOrder(activeTable.id, {
+          cart: remaining, cart_discount: Number(cartDiscount) || 0, customer_id: customer?.id || null, guests, session_id: session.id,
+        });
+        if (remaining.length) {
+          setCart(remaining);
+          setTendered('');
+          setMobileRef('');
+          return; // guests still at the table
+        }
+      }
+      resetSale();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleHold = async () => {
+    if (!company || !session || cart.length === 0) return;
+    setHolding(true);
+    try {
+      const res = await fetch('/api/pos/held-orders', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_id: company.id,
+          session_id: session.id,
+          label: holdLabel || customer?.name || null,
+          customer_id: customer?.id || null,
+          cart,
+          cart_discount: cartDiscountAmount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Order held');
+      setHoldLabel(null);
+      resetSale();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to hold order');
+    } finally {
+      setHolding(false);
+    }
+  };
+
+  const resumeHeld = (order: HeldOrder) => {
+    setCart(order.cart.map(i => ({ ...i, discount_amount: Number(i.discount_amount || 0) })));
+    setCartDiscount(Number(order.cart_discount) > 0 ? String(order.cart_discount) : '');
+    setRedeemPoints('');
+    setPayLater(false);
+    setCustomer(order.customer_id ? {
+      id: order.customer_id,
+      name: order.customer_name || 'Customer',
+      phone: order.customer_phone,
+      whatsapp_number: order.customer_whatsapp_number,
+      loyalty_points: Number(order.customer_loyalty_points || 0),
+      current_balance: 0,
+      credit_limit: 0,
+    } : null);
+    setShowHeld(false);
   };
 
   const handlePrintAndNext = () => {
@@ -313,34 +572,49 @@ export default function TillPage() {
         <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 receipt-print">
           <div className="text-center border-b pb-4">
             <h2 className="font-bold text-lg">{company?.name}</h2>
+            {posSettings.receipt_header && <p className="text-xs text-gray-600 whitespace-pre-line">{posSettings.receipt_header}</p>}
             {company?.address && <p className="text-xs text-gray-500">{company.address}</p>}
             {company?.phone && <p className="text-xs text-gray-500">Tel: {company.phone}</p>}
             <p className="text-xs text-gray-500 mt-2">{new Date().toLocaleString()}</p>
             <p className="text-xs text-gray-500">Till: {session.terminal_name}</p>
             <p className="text-xs text-gray-500">Cashier: {session.opened_by_name}</p>
+            {lastReceipt.customerName && <p className="text-xs text-gray-500">Customer: {lastReceipt.customerName}</p>}
             <p className="text-xs font-mono text-gray-400">{lastReceipt.invoiceNumber}</p>
           </div>
           <div className="space-y-1.5 text-sm">
-            {lastReceipt.items.map((item, i) => (
-              <div key={i} className="flex justify-between">
-                <span className="flex-1 truncate">{item.name} x{item.quantity}</span>
-                <span className="ml-4 font-medium">{formatCurrency(item.line_total, lastReceipt.currency)}</span>
+            {lastReceipt.totals.lines.map((item, i) => (
+              <div key={i}>
+                <div className="flex justify-between">
+                  <span className="flex-1 truncate">{item.name} x{item.quantity}</span>
+                  <span className="ml-4 font-medium">{formatCurrency(item.gross, lastReceipt.currency)}</span>
+                </div>
+                {item.line_discount > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 pl-3">
+                    <span>Discount</span><span>-{formatCurrency(item.line_discount, lastReceipt.currency)}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           <div className="border-t pt-3 space-y-1 text-sm">
-            <div className="flex justify-between text-gray-500">
-              <span>Subtotal</span><span>{formatCurrency(lastReceipt.subtotal, lastReceipt.currency)}</span>
-            </div>
-            {lastReceipt.taxAmount > 0 && (
+            {lastReceipt.totals.discount - lastReceipt.totals.lines.reduce((s, l) => s + l.line_discount, 0) > 0.005 && (
               <div className="flex justify-between text-gray-500">
-                <span>Tax</span><span>{formatCurrency(lastReceipt.taxAmount, lastReceipt.currency)}</span>
+                <span>{lastReceipt.loyalty?.points_redeemed ? `Discount (incl. ${lastReceipt.loyalty.points_redeemed} pts)` : 'Discount'}</span>
+                <span>-{formatCurrency(lastReceipt.totals.discount - lastReceipt.totals.lines.reduce((s, l) => s + l.line_discount, 0), lastReceipt.currency)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-500">
+              <span>Subtotal</span><span>{formatCurrency(lastReceipt.totals.subtotal, lastReceipt.currency)}</span>
+            </div>
+            {lastReceipt.totals.tax > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Tax</span><span>{formatCurrency(lastReceipt.totals.tax, lastReceipt.currency)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-base pt-1">
-              <span>TOTAL</span><span>{formatCurrency(lastReceipt.total, lastReceipt.currency)}</span>
+              <span>TOTAL</span><span>{formatCurrency(lastReceipt.totals.total, lastReceipt.currency)}</span>
             </div>
-            {lastReceipt.method === 'cash' && (
+            {lastReceipt.method === 'cash' && lastReceipt.balanceDue === 0 && (
               <>
                 <div className="flex justify-between text-gray-500">
                   <span>Cash Tendered</span><span>{formatCurrency(lastReceipt.tendered, lastReceipt.currency)}</span>
@@ -350,8 +624,24 @@ export default function TillPage() {
                 </div>
               </>
             )}
+            {lastReceipt.balanceDue > 0 && (
+              <>
+                <div className="flex justify-between text-gray-500">
+                  <span>Paid now</span><span>{formatCurrency(lastReceipt.paid, lastReceipt.currency)}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span>Balance on account</span><span>{formatCurrency(lastReceipt.balanceDue, lastReceipt.currency)}</span>
+                </div>
+              </>
+            )}
+            {lastReceipt.loyalty && (lastReceipt.loyalty.points_earned > 0 || lastReceipt.loyalty.points_redeemed > 0) && (
+              <div className="flex justify-between text-gray-500 text-xs pt-1">
+                <span>Points earned {lastReceipt.loyalty.points_earned}{lastReceipt.loyalty.points_redeemed ? ` · used ${lastReceipt.loyalty.points_redeemed}` : ''}</span>
+                <span>Balance {Number(lastReceipt.loyalty.balance || 0).toLocaleString()} pts</span>
+              </div>
+            )}
           </div>
-          <p className="text-center text-xs text-gray-400 border-t pt-3">Thank you for your purchase!</p>
+          <p className="text-center text-xs text-gray-400 border-t pt-3 whitespace-pre-line">{posSettings.receipt_footer || 'Thank you for your purchase!'}</p>
           <div className="flex gap-2 pt-2 no-print">
             <button onClick={handlePrintAndNext} className="btn-primary flex-1 flex items-center justify-center gap-2">
               <PrinterIcon className="w-4 h-4" /> Print & Next
@@ -406,6 +696,24 @@ export default function TillPage() {
                 {formatCurrency(session.total_sales, currency)} · {session.transaction_count} txns
               </p>
             </div>
+            {posSettings.restaurant_mode && (
+              <button onClick={() => setTablesPanel('open')} className="btn-secondary btn-sm flex items-center gap-1.5">
+                <TableCellsIcon className="w-4 h-4" />
+                Tables
+              </button>
+            )}
+            <button onClick={() => setShowShiftSales(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <ReceiptRefundIcon className="w-4 h-4" />
+              Sales
+            </button>
+            <button onClick={() => setShowHeld(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <QueueListIcon className="w-4 h-4" />
+              Held
+            </button>
+            <button onClick={() => setShowReturn(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+              <ArrowUturnLeftIcon className="w-4 h-4" />
+              Return
+            </button>
             <button
               onClick={() => setShowCloseModal(true)}
               className="btn-danger btn-sm flex items-center gap-1.5"
@@ -447,7 +755,7 @@ export default function TillPage() {
               {filteredProducts.map(p => (
                 <button
                   key={p.id}
-                  onClick={() => addToCart(p)}
+                  onClick={() => (variantsOf(p.id).length ? setVariantParent(p) : addToCart(p))}
                   className="rounded-xl p-3 text-left transition-all hover:scale-[1.02] active:scale-95"
                   style={{
                     background: 'var(--pos-surface)',
@@ -460,7 +768,9 @@ export default function TillPage() {
                   <p className="text-xs font-bold mt-1" style={{ color: 'var(--blueox-accent-light)' }}>
                     {formatCurrency(Number(p.unit_price), currency)}
                   </p>
-                  {p.sku && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--pos-text-subtle)' }}>{p.sku}</p>}
+                  {variantsOf(p.id).length > 0
+                    ? <p className="text-xs mt-0.5" style={{ color: 'var(--pos-text-subtle)' }}>{variantsOf(p.id).length} options</p>
+                    : p.sku && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--pos-text-subtle)' }}>{p.sku}</p>}
                 </button>
               ))}
               {filteredProducts.length === 0 && (
@@ -486,13 +796,34 @@ export default function TillPage() {
                 )}
               </div>
               {cart.length > 0 && (
-                <button onClick={() => setCart([])} className="text-xs transition-colors" style={{ color: 'var(--pos-text-muted)' }}
+                <div className="flex items-center gap-3">
+                {!activeTable && <button onClick={() => setHoldLabel(customer?.name || '')} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--pos-text-muted)' }}>
+                  <PauseCircleIcon className="w-4 h-4" /> Hold
+                </button>}
+                <button onClick={resetSale} className="text-xs transition-colors" style={{ color: 'var(--pos-text-muted)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--pos-text-muted)')}>
                   Clear all
                 </button>
+                </div>
               )}
             </div>
+
+            {activeTable && (
+              <div className="px-4 py-2 border-b flex flex-wrap items-center gap-2 text-xs" style={{ borderColor: 'var(--pos-border)', background: 'var(--pos-surface-raised)' }}>
+                <span className="font-bold text-sm" style={{ color: 'var(--blueox-accent-light)' }}>{activeTable.name}</span>
+                <input type="number" min="1" placeholder="guests" value={guests ?? ''}
+                  onChange={e => setGuests(Number(e.target.value) > 0 ? Number(e.target.value) : null)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-16 rounded-lg px-2 py-1 focus:outline-none"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }} />
+                <span className="flex-1" />
+                <button onClick={sendToKitchen} className="px-2 py-1 rounded-lg font-semibold" style={{ background: 'var(--blueox-primary)', color: 'white' }}>Send to kitchen</button>
+                <button onClick={() => setTablesPanel('move')} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}>Move</button>
+                <button onClick={() => setShowSplit(true)} disabled={!cart.length} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}>Split</button>
+                <button onClick={leaveTable} className="px-2 py-1 rounded-lg" style={{ border: '1px solid var(--pos-border)', color: 'var(--pos-text-muted)' }}>Close</button>
+              </div>
+            )}
 
             {/* Cart items */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -523,10 +854,40 @@ export default function TillPage() {
                           <PlusIcon className="w-3 h-3" />
                         </button>
                       </div>
-                      <span className="text-sm font-bold" style={{ color: 'var(--blueox-accent-light)' }}>
-                        {formatCurrency(item.line_total, currency)}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-sm font-bold" style={{ color: 'var(--blueox-accent-light)' }}>
+                          {formatCurrency((pricedByProduct.get(item.product_id)?.gross ?? 0) - (pricedByProduct.get(item.product_id)?.line_discount ?? 0), currency)}
+                        </span>
+                        {item.discount_amount > 0 && (
+                          <p className="text-[11px] line-through" style={{ color: 'var(--pos-text-subtle)' }}>
+                            {formatCurrency(pricedByProduct.get(item.product_id)?.gross ?? 0, currency)}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {promoByProduct.get(item.product_id) && (
+                      <p className="text-[11px] font-semibold" style={{ color: '#34d399' }}>
+                        {promoByProduct.get(item.product_id)!.name}: -{formatCurrency(promoByProduct.get(item.product_id)!.amount, currency)}
+                      </p>
+                    )}
+                    {editingDiscountFor === item.product_id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number" min="0" step="any" autoFocus
+                          className="flex-1 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                          style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                          placeholder={`Discount (${currency})`}
+                          defaultValue={item.discount_amount || ''}
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => { if (e.key === 'Enter') { setLineDiscount(item.product_id, (e.target as HTMLInputElement).value); setEditingDiscountFor(null); } }}
+                          onBlur={e => { setLineDiscount(item.product_id, e.target.value); setEditingDiscountFor(null); }}
+                        />
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingDiscountFor(item.product_id)} className="text-[11px] flex items-center gap-1" style={{ color: 'var(--pos-text-muted)' }}>
+                        <TagIcon className="w-3 h-3" /> {item.discount_amount > 0 ? `Discount ${formatCurrency(item.discount_amount, currency)}` : 'Add discount'}
+                      </button>
+                    )}
                   </div>
                 ))
               )}
@@ -534,8 +895,56 @@ export default function TillPage() {
 
             {/* Totals + payment */}
             <div className="border-t p-4 space-y-4" data-payment-panel style={{ borderColor: 'var(--pos-border)' }}>
+              {/* Customer */}
+              <button
+                onClick={() => setShowCustomerPicker(true)}
+                className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-sm"
+                style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <UserIcon className="w-4 h-4" style={{ color: 'var(--pos-text-muted)' }} />
+                  {customer ? customer.name : 'Walk-in customer'}
+                </span>
+                {customer ? (
+                  <span className="text-xs" style={{ color: 'var(--pos-text-muted)' }}
+                    onClick={e => { e.stopPropagation(); setCustomer(null); setRedeemPoints(''); setPayLater(false); }}>
+                    {loyalty.enabled ? `${customer.loyalty_points.toLocaleString()} pts · ` : ''}Remove
+                  </span>
+                ) : (
+                  <span className="text-xs" style={{ color: 'var(--blueox-accent-light)' }}>Choose</span>
+                )}
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number" min="0" step="any"
+                  className="rounded-xl px-3 py-2 text-xs focus:outline-none"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                  placeholder={`Cart discount (${currency})`}
+                  value={cartDiscount}
+                  onChange={e => setCartDiscount(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                />
+                {customer && loyalty.enabled ? (
+                  <input
+                    type="number" min="0" step="1" max={maxPoints}
+                    className="rounded-xl px-3 py-2 text-xs focus:outline-none"
+                    style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)' }}
+                    placeholder={`Use points (max ${maxPoints})`}
+                    value={redeemPoints}
+                    onChange={e => setRedeemPoints(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : <div />}
+              </div>
+
               {/* Totals */}
               <div className="space-y-1.5 text-sm">
+                {priced.discount > 0 && (
+                  <div className="flex justify-between" style={{ color: 'var(--pos-text-muted)' }}>
+                    <span>Discounts{pointsToRedeem > 0 ? ` (incl. ${pointsToRedeem} pts)` : ''}</span><span>-{formatCurrency(priced.discount, currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between" style={{ color: 'var(--pos-text-muted)' }}>
                   <span>Subtotal</span><span>{formatCurrency(subtotal, currency)}</span>
                 </div>
@@ -567,8 +976,27 @@ export default function TillPage() {
                 ))}
               </div>
 
+              {customer && (
+                <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--pos-text-muted)' }}>
+                  <input type="checkbox" checked={payLater} onChange={e => setPayLater(e.target.checked)} />
+                  Pay later — put the unpaid amount on {customer.name}&apos;s account
+                </label>
+              )}
+
+              {payLater && (
+                <input
+                  type="number" step="0.01" min="0"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+                  style={{ background: 'var(--pos-bg)', border: '1px solid var(--pos-border)', color: 'var(--pos-text)', '--tw-ring-color': 'var(--blueox-primary)' } as React.CSSProperties}
+                  placeholder={`Paid now (${currency}), leave empty for none`}
+                  value={paidNow}
+                  onChange={e => setPaidNow(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                />
+              )}
+
               {/* Payment inputs */}
-              {paymentMethod === 'cash' && (
+              {!payLater && paymentMethod === 'cash' && (
                 <div className="space-y-1">
                   <input
                     type="number"
@@ -596,7 +1024,7 @@ export default function TillPage() {
                 </div>
               )}
 
-              {paymentMethod === 'mobile_money' && (
+              {paymentMethod === 'mobile_money' && (!payLater || paidNowAmount > 0) && (
                 <input
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
                   style={{
@@ -615,19 +1043,113 @@ export default function TillPage() {
 
               {/* Charge button */}
               <button
-                onClick={handleCharge}
+                onClick={() => handleCharge()}
                 disabled={cart.length === 0 || processing}
                 className="w-full py-4 rounded-xl font-bold text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: cart.length === 0 ? 'var(--pos-surface-raised)' : 'var(--blueox-primary)' }}
                 onMouseEnter={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--blueox-primary-hover)'; }}
                 onMouseLeave={e => { if (cart.length > 0) e.currentTarget.style.background = 'var(--blueox-primary)'; }}
               >
-                {processing ? 'Processing...' : `Charge ${formatCurrency(total, currency)}`}
+                {processing
+                  ? 'Processing...'
+                  : payLater
+                    ? `Charge ${formatCurrency(paidNowAmount, currency)} · ${formatCurrency(total - paidNowAmount, currency)} on account`
+                    : `Charge ${formatCurrency(total, currency)}`}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {tablesPanel && company && (
+        <TablesPanel
+          companyId={company.id}
+          currency={currency}
+          mode={tablesPanel}
+          excludeTableId={tablesPanel === 'move' ? activeTable?.id : null}
+          onPick={t => (tablesPanel === 'move' ? moveTable(t) : openTable(t))}
+          onClose={() => setTablesPanel(null)}
+        />
+      )}
+
+      {showShiftSales && company && (
+        <ShiftSalesPanel
+          companyId={company.id}
+          sessionId={session.id}
+          companyName={company.name}
+          receiptFooter={posSettings.receipt_footer || 'Thank you for your purchase!'}
+          onClose={() => setShowShiftSales(false)}
+        />
+      )}
+
+      {showSplit && (
+        <SplitBillModal
+          cart={cart}
+          currency={currency}
+          onConfirm={pay => { setShowSplit(false); handleCharge(pay); }}
+          onClose={() => setShowSplit(false)}
+        />
+      )}
+
+      {variantParent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="text-lg font-bold">{variantParent.name}</h2>
+              <button onClick={() => setVariantParent(null)} className="p-1.5 rounded-lg hover:bg-gray-100"><XMarkIcon className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+              {variantsOf(variantParent.id).map(v => (
+                <button key={v.id} onClick={() => { addToCart(v); setVariantParent(null); }}
+                  className="rounded-xl border p-3 text-left hover:border-blueox-primary">
+                  <p className="text-sm font-semibold">
+                    {Object.values(v.variant_attributes || {}).join(' / ') || v.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{formatCurrency(Number(v.unit_price), currency)}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCustomerPicker && company && (
+        <CustomerPicker
+          companyId={company.id}
+          onSelect={c => { setCustomer(c); setRedeemPoints(''); setShowCustomerPicker(false); }}
+          onClose={() => setShowCustomerPicker(false)}
+        />
+      )}
+
+      {showHeld && company && (
+        <HeldOrdersPanel companyId={company.id} currency={currency} onResume={resumeHeld} onClose={() => setShowHeld(false)} />
+      )}
+
+      {showReturn && company && (
+        <ReturnModal
+          companyId={company.id}
+          sessionId={session.id}
+          onDone={() => setShowReturn(false)}
+          onClose={() => setShowReturn(false)}
+        />
+      )}
+
+      {holdLabel !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold">Hold this order</h2>
+            <div>
+              <label className="label">Name it (optional)</label>
+              <input className="input" autoFocus placeholder="e.g. Table 4, John" value={holdLabel}
+                onChange={e => setHoldLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleHold()} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setHoldLabel(null)} className="btn-secondary">Cancel</button>
+              <button onClick={handleHold} disabled={holding} className="btn-primary">{holding ? 'Holding...' : 'Hold order'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Close shift modal — uses shared .card + .btn classes */}
       {showCloseModal && (

@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   ArrowDownTrayIcon,
   PrinterIcon,
   CalendarIcon,
@@ -14,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 
 interface ExpenseLine {
   id: string;
@@ -359,43 +358,37 @@ export default function ExpensesReportPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/reports" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Expenses Report</h1>
-            <p className="text-gray-500 text-sm">Paid expenses grouped by category</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCSV}
-            disabled={!data || loading}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            CSV
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={!data || loading}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            Export
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={!data || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1e3a5f] text-white rounded-lg text-sm font-medium hover:bg-[#16304f] disabled:opacity-50"
-          >
-            <PrinterIcon className="w-4 h-4" />
-            Print
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Expenses Report"
+        actions={
+          <>
+            <button
+              onClick={handleExportCSV}
+              disabled={!data || loading}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              CSV
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={!data || loading}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              Export
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={!data || loading}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">

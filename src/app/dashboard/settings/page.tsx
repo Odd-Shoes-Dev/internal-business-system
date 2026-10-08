@@ -18,22 +18,23 @@ import {
   ArrowTopRightOnSquareIcon,
   LockClosedIcon,
   SparklesIcon,
-  CogIcon,
   PlusIcon,
   TrashIcon,
   XMarkIcon,
   ClockIcon,
-  CheckCircleIcon,
   PencilIcon,
   CheckIcon,
   PhoneIcon,
   EnvelopeIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ShimmerSkeleton, FormFieldSkeleton } from '@/components/ui/skeleton';
 import type { CompanySettings } from '@/types/database';
+import PosSettingsTab from './pos-settings-tab';
+import { PageHeader } from '@/components/page-header';
 
-type SettingsTab = 'company' | 'financial' | 'invoicing' | 'notifications' | 'users' | 'security' | 'branding';
+type SettingsTab = 'company' | 'financial' | 'invoicing' | 'pos' | 'notifications' | 'users' | 'security' | 'branding';
 
 interface TeamMember {
   id: string;
@@ -537,6 +538,7 @@ export default function SettingsPage() {
     { id: 'company' as const, label: 'Company', icon: BuildingOfficeIcon },
     { id: 'financial' as const, label: 'Financial', icon: CurrencyDollarIcon },
     { id: 'invoicing' as const, label: 'Invoicing', icon: DocumentTextIcon },
+    { id: 'pos' as const, label: 'Point of Sale', icon: ShoppingCartIcon },
     { id: 'branding' as const, label: 'Branding', icon: PaintBrushIcon },
     { id: 'notifications' as const, label: 'Notifications', icon: BellIcon },
     { id: 'users' as const, label: 'Users', icon: UserGroupIcon },
@@ -603,22 +605,8 @@ export default function SettingsPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blue-500/5 to-blue-400/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blue-200 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <CogIcon className="w-6 h-6 text-black" />
-            <span className="text-black font-semibold">System Configuration</span>
-          </div>
-          
-          <h1 className="text-3xl lg:text-4xl font-bold text-black mb-4 leading-tight">
-            Company Settings
-          </h1>
-          
-          <p className="text-lg text-black mb-8 max-w-2xl">
-            Configure your business information, financial settings, and platform preferences
-          </p>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader title="Company Settings" />
 
         <div className="flex flex-col xl:flex-row gap-8">
           {/* Sidebar Navigation */}
@@ -1073,6 +1061,10 @@ export default function SettingsPage() {
           )}
 
           {/* Financial Settings */}
+          {activeTab === 'pos' && company?.id && (
+            <PosSettingsTab companyId={company.id} currency={company.currency || 'UGX'} />
+          )}
+
           {activeTab === 'financial' && (
             <form onSubmit={financialForm.handleSubmit(onSaveFinancial)} className="card">
               <div className="card-header">

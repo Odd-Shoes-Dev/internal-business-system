@@ -12,16 +12,13 @@ import {
   BuildingStorefrontIcon,
   StarIcon,
   MapPinIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  GlobeAltIcon,
-  PencilIcon,
   TrashIcon,
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface HotelImage {
   id: string;
@@ -199,19 +196,20 @@ export default function HotelsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Partner Hotels</h1>
-          <p className="text-gray-500 mt-1">Manage accommodation partners for tour bookings</p>
-        </div>
-        <Link
-          href="/dashboard/hotels/new"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Hotel
-        </Link>
-      </div>
+      <PageHeader
+        title="Partner Hotels"
+        actions={
+          <>
+            <Link
+              href="/dashboard/hotels/new"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Hotel
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

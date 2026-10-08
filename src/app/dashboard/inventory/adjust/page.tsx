@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
+import { ADJUSTMENT_REASON_OPTIONS } from '@/lib/inventory/adjustment-reasons';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -123,31 +124,31 @@ export default function InventoryAdjustmentPage() {
         throw new Error('No company selected');
       }
 
-      for (const line of lines) {
-        if (line.adjustment_quantity === 0) continue;
-
-        const movementResponse = await fetch(`/api/inventory-adjustments?company_id=${company.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+      const toSend = lines.filter((line) => line.adjustment_quantity !== 0);
+      const response = await fetch('/api/stock-adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: company.id,
+          approve: true, // applied now if you may approve; otherwise they wait for approval
+          lines: toSend.map((line) => ({
             product_id: line.product_id,
-            adjustment_date: adjustmentDate,
             quantity_change: line.adjustment_quantity,
-            reason: 'adjustment',
-            reference_type: 'adjustment',
-            reference_id: Math.random().toString(),
-            notes: `${line.reason}: ${notes}`,
-          }),
-        });
-        const movementResult = await movementResponse.json().catch(() => ({}));
-        if (!movementResponse.ok) {
-          throw new Error(movementResult.error || 'Failed to process adjustment');
-        }
+            reason: line.reason,
+            notes: notes || null,
+          })),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to process adjustment');
       }
+      const pending = (result.data || []).filter((a: any) => a.status === 'pending').length;
+      if (pending) toast.success(`${pending} adjustment(s) sent for approval`);
 
       toast.success('Inventory adjusted successfully');
-      router.push('/dashboard/inventory/products');
+      router.push('/dashboard/inventory/adjustments');
     } catch (error: any) {
       console.error('Error adjusting inventory:', error);
       toast.error(error.message || 'Failed to adjust inventory');
@@ -156,27 +157,12 @@ export default function InventoryAdjustmentPage() {
     }
   };
 
-  const reasonOptions = [
-    { value: 'count_correction', label: 'Count Correction' },
-    { value: 'damage', label: 'Damage' },
-    { value: 'theft', label: 'Theft' },
-    { value: 'spoilage', label: 'Spoilage' },
-    { value: 'found', label: 'Found Items' },
-    { value: 'other', label: 'Other' },
-  ];
+  const reasonOptions = ADJUSTMENT_REASON_OPTIONS;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/inventory/products" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Adjustment</h1>
-          <p className="text-gray-500 mt-1">Adjust stock quantities for corrections or losses</p>
-        </div>
-      </div>
+      <PageHeader title="Inventory Adjustment" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Adjustment Info */}
@@ -313,7 +299,7 @@ export default function InventoryAdjustmentPage() {
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
-          <Link href="/dashboard/inventory/products" className="btn-secondary">
+          <Link href="/dashboard/inventory/adjustments" className="btn-secondary">
             Cancel
           </Link>
           <button type="submit" disabled={loading || lines.length === 0} className="btn-primary">

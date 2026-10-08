@@ -151,23 +151,15 @@ export async function POST(request: NextRequest) {
     const total = subtotal + taxAmount;
 
     const poId = await db.transaction(async (tx) => {
-      const latestPOResult = await tx.query(
-        `SELECT po_number
-         FROM purchase_orders
-         WHERE company_id = $1
-         ORDER BY created_at DESC
-         LIMIT 1`,
+      // Highest number so far + 1, with a per-company lock so simultaneous orders don't collide
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext('purchase_order_number:' || $1))", [vendor.company_id]);
+      const latestPOResult = await tx.query<{ last: number }>(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(po_number FROM '^PO-(\\d+)$') AS INT)), 0) AS last
+         FROM purchase_orders WHERE company_id = $1`,
         [vendor.company_id]
       );
+      const nextNumber = Number(latestPOResult.rows[0]?.last || 0) + 1;
 
-      let nextNumber = 1;
-      const latestNumber = latestPOResult.rows[0]?.po_number;
-      if (latestNumber) {
-        const match = String(latestNumber).match(/PO-(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
-        }
-      }
       const poNumber = `PO-${String(nextNumber).padStart(6, '0')}`;
 
       const poResult = await tx.query(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 async function loadLine(db: any, id: string, lineId: string) {
   const reqResult = await db.query('SELECT * FROM stock_requisitions WHERE id = $1 LIMIT 1', [id]);
@@ -35,7 +35,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -124,7 +124,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

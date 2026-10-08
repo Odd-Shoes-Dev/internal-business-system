@@ -2,7 +2,6 @@
 
 import { confirmDialog } from '@/components/confirm-dialog';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
@@ -10,6 +9,7 @@ import {
   UserIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Assignment {
   id: string;
@@ -115,19 +115,20 @@ export default function AssetAssignmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Asset Assignments</h1>
-          <p className="text-gray-500 mt-1">Track asset custody and assignments</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Assignment
-        </button>
-      </div>
+      <PageHeader
+        title="Asset Assignments"
+        actions={
+          <>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Assignment
+            </button>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">

@@ -1,4 +1,4 @@
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/payroll/payslips/[id] - Get payslip details
@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, payslip.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, payslip.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -109,7 +109,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, payslip.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, payslip.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -213,7 +213,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Payslip not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, payslip.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, payslip.company_id, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }

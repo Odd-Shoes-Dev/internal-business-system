@@ -13,16 +13,14 @@ import {
   TrashIcon,
   UserIcon,
   EnvelopeIcon,
-  PhoneIcon,
-  IdentificationIcon,
   BanknotesIcon,
-  CalendarIcon,
   BuildingOfficeIcon,
   CurrencyDollarIcon,
   PrinterIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Employee {
   id: string;
@@ -554,39 +552,31 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard/employees" className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200">
-              <ArrowLeftIcon className="w-5 h-5" />
-            </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {employee.first_name} {employee.last_name}
-            </h1>
-            <p className="text-gray-500 mt-1">{employee.employee_number} • {employee.job_title}</p>
-          </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handlePrint} className="px-4 py-2 bg-white/80 hover:bg-white/90 text-gray-700 backdrop-blur-xl border border-blue-200/20 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2">
-              <PrinterIcon className="w-4 h-4" />
-              Print
-            </button>
-            <Link
-              href={`/dashboard/employees/${employeeId}/edit`}
-              className="px-4 py-2 bg-blue-500/90 hover:bg-blue-600/90 text-white backdrop-blur-xl border border-blue-400/30 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <PencilIcon className="w-4 h-4" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-50/80 hover:bg-red-100/80 text-red-600 backdrop-blur-xl border border-red-200/50 rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <TrashIcon className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
-      </div>
+        <PageHeader
+          title={`${employee.first_name} ${employee.last_name}`}
+          actions={
+            <>
+              <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                <PrinterIcon className="w-4 h-4" />
+                Print
+              </button>
+              <Link
+                href={`/dashboard/employees/${employeeId}/edit`}
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PencilIcon className="w-4 h-4" />
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                className="btn-danger btn-sm inline-flex items-center gap-1.5"
+              >
+                <TrashIcon className="w-4 h-4" />
+                Delete
+              </button>
+            </>
+          }
+        />
 
         {/* Status Badge */}
         <div>{getStatusBadge(employee.employment_status)}</div>

@@ -1,6 +1,12 @@
 import { getSessionUser as getNeonSessionUser } from '@/lib/auth/session';
 import { getNeonPool } from '@/lib/db/neon';
 import type { DbProvider, SessionUser } from '@/lib/provider/types';
+import { TtlCache } from '@/lib/ttl-cache';
+
+// Only confirmed memberships are cached, so a user who just joined a company is never
+// refused. Nothing in the app removes memberships today; if that is added, clear the
+// entry here or accept up to 60s of continued access on other server instances.
+const companyAccessCache = new TtlCache<true>(60 * 1000);
 
 export class NeonDbProvider implements DbProvider {
   async getSessionUser(): Promise<SessionUser | null> {
@@ -27,6 +33,11 @@ export class NeonDbProvider implements DbProvider {
   }
 
   async hasCompanyAccess(userId: string, companyId: string): Promise<boolean> {
+    const cacheKey = `${userId}:${companyId}`;
+    if (companyAccessCache.get(cacheKey)) {
+      return true;
+    }
+
     const result = await this.query(
       `SELECT 1
        FROM user_companies
@@ -35,7 +46,11 @@ export class NeonDbProvider implements DbProvider {
       [userId, companyId]
     );
 
-    return result.rowCount > 0;
+    if (result.rowCount > 0) {
+      companyAccessCache.set(cacheKey, true);
+      return true;
+    }
+    return false;
   }
 
   async transaction<T>(
