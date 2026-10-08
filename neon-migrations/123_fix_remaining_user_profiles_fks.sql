@@ -1,7 +1,7 @@
 -- Migration 123: fix every remaining live instance of the user_profiles vs app_users bug
 -- (see migration 120 for the full explanation)
 --
--- An audit of every column still referencing user_profiles(id) found 29 more, across 24
+-- An audit of every column still referencing user_profiles(id) found 28 more, across 24
 -- tables, where the application writes the signed-in user's app_users.id - the same failure
 -- mode pos_sessions, stock_requisitions, stock_delivery_forms and fiscal_periods had before
 -- migrations 120-122. Any user with no matching user_profiles row (anyone who didn't go
@@ -101,9 +101,7 @@ ALTER TABLE petty_cash_disbursements ADD CONSTRAINT petty_cash_disbursements_cre
 ALTER TABLE petty_cash_disbursements ADD CONSTRAINT petty_cash_disbursements_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES app_users(id) NOT VALID;
 
 ALTER TABLE petty_cash_replenishments DROP CONSTRAINT IF EXISTS petty_cash_replenishments_created_by_fkey;
-ALTER TABLE petty_cash_replenishments DROP CONSTRAINT IF EXISTS petty_cash_replenishments_posted_by_fkey;
 ALTER TABLE petty_cash_replenishments ADD CONSTRAINT petty_cash_replenishments_created_by_fkey FOREIGN KEY (created_by) REFERENCES app_users(id) NOT VALID;
-ALTER TABLE petty_cash_replenishments ADD CONSTRAINT petty_cash_replenishments_posted_by_fkey FOREIGN KEY (posted_by) REFERENCES app_users(id) NOT VALID;
 
 ALTER TABLE payroll_periods DROP CONSTRAINT IF EXISTS payroll_periods_processed_by_fkey;
 ALTER TABLE payroll_periods ADD CONSTRAINT payroll_periods_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES app_users(id) NOT VALID;
