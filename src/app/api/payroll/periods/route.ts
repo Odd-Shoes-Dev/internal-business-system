@@ -118,24 +118,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for overlapping periods
-    const existingResult = await db.query(
-      `SELECT id
-       FROM payroll_periods
-       WHERE company_id = $1
-         AND start_date <= $2::date
-         AND end_date >= $3::date
-       LIMIT 1`,
-      [companyId, end_date, start_date]
-    );
-    const existing = existingResult.rows;
-
-    if (existing && existing.length > 0) {
-      return NextResponse.json(
-        { error: 'A payroll period already exists that overlaps with this date range' },
-        { status: 400 }
-      );
-    }
+    // Overlapping dates are allowed on purpose: a company can run more than one payroll period
+    // for the same stretch of time (e.g. a separate period per station/branch), told apart by
+    // period_name. Nothing here stops the same employee being generated into more than one of
+    // them - that is on whoever runs "generate payslips" to manage via excluded_employee_ids.
 
     // Create the payroll period
     const periodResult = await db.query(

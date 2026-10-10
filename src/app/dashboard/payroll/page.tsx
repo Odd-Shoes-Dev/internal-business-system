@@ -226,7 +226,7 @@ export default function PayrollPage() {
       fetchPayrollPeriods();
     } catch (error) {
       console.error('Error processing payroll:', error);
-      toast.error('Failed to process payroll');
+      toast.error(error instanceof Error ? error.message : 'Failed to process payroll');
     } finally {
       setProcessing(false);
     }
