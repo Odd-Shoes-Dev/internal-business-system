@@ -90,7 +90,12 @@ export async function POST(
 
     if (!employees || employees.length === 0) {
       return NextResponse.json(
-        { error: 'No active employees found' },
+        {
+          error:
+            excluded_employee_ids.length > 0
+              ? 'Every active employee was excluded from this run. Include at least one employee to process payroll.'
+              : 'This company has no active employees yet. Add an employee before processing payroll.',
+        },
         { status: 400 }
       );
     }
