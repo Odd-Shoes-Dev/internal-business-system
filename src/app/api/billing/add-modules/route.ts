@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCompanyAdmin, requireSessionUser } from '@/lib/provider/route-guards';
+import { refuseIfLegacyWithDb } from '@/lib/billing/legacy-plan-db';
 import { getModulePlanId } from '@/lib/whop-config';
 import { getWhop } from '@/lib/whop';
 import { Region } from '@/lib/regional-pricing';
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
     if (adminError) {
       return adminError;
     }
+
+    const legacyRefusal = await refuseIfLegacyWithDb(db, companyId);
+    if (legacyRefusal) return legacyRefusal;
 
     const now = new Date();
 

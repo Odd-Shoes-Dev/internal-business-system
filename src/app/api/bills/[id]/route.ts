@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   createBillJournalEntryWithDb,
-  increaseInventoryForBillWithDb,
+  billLineAccountCodesWithDb,
 } from '@/lib/accounting/provider-accounting';
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
@@ -235,27 +235,6 @@ export async function PATCH(request: NextRequest, context: any) {
         billLinesForPosting = newLines;
       }
 
-      if ((newStatus === 'approved' || newStatus === 'posted') && oldStatus === 'draft' && user) {
-        const inventoryResult = await increaseInventoryForBillWithDb(
-          tx,
-          bill.id,
-          bill.bill_date,
-          billLinesForPosting.map((line: any) => ({
-            product_id: line.product_id,
-            quantity: line.quantity,
-            unit_cost: line.unit_cost || line.unit_price || 0,
-            line_total:
-              line.line_total || Number(line.quantity || 0) * Number(line.unit_cost || line.unit_price || 0),
-            description: line.description,
-          })),
-          user.id
-        );
-
-        if (!inventoryResult.success) {
-          console.error('Failed to update inventory for bill:', inventoryResult.error);
-        }
-      }
-
       if (
         (newStatus === 'approved' || newStatus === 'posted') &&
         oldStatus !== 'approved' &&
@@ -268,9 +247,9 @@ export async function PATCH(request: NextRequest, context: any) {
           0
         );
 
-        const journalBillLines = billLinesForPosting.map((line: any) => ({
-          account_code:
-            Object.keys(accountMap).find((key) => accountMap[key] === line.expense_account_id) || '5000',
+        const lineAccountCodes = await billLineAccountCodesWithDb(tx, billLinesForPosting, accountMap);
+        const journalBillLines = billLinesForPosting.map((line: any, index: number) => ({
+          account_code: lineAccountCodes[index],
           amount: Number(line.line_total || 0) + Number(line.tax_amount || 0),
           description: line.description,
         }));

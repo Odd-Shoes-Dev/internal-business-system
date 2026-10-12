@@ -1,12 +1,9 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   ChartBarIcon,
   ArrowDownTrayIcon,
-  ArrowLeftIcon,
-  CalendarIcon,
   BuildingOfficeIcon,
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
@@ -18,6 +15,7 @@ import { formatDate, cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface VendorPurchase {
   vendorId: string;
@@ -387,26 +385,22 @@ export default function PurchasesByVendorPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/reports" className="btn-ghost p-1.5 sm:p-2">
-            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Purchases by Vendor</h1>
-            <p className="text-sm sm:text-base text-gray-600">Vendor spending analysis and performance tracking</p>
-          </div>
-        </div>
-        <button
-          onClick={exportToPDF}
-          disabled={!data}
-          className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">Export PDF</span>
-          <span className="sm:hidden">Export</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Purchases by Vendor"
+        actions={
+          <>
+            <button
+              onClick={exportToPDF}
+              disabled={!data}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">Export</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">

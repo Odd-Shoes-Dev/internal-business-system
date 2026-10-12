@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { requireCompanyAdmin, requireSessionUser, resolveUserCompanyId } from '@/lib/provider/route-guards';
+import { refuseIfLegacyWithDb } from '@/lib/billing/legacy-plan-db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,9 @@ export async function POST(request: NextRequest) {
     if (adminError) {
       return adminError;
     }
+
+    const legacyRefusal = await refuseIfLegacyWithDb(db, companyId);
+    if (legacyRefusal) return legacyRefusal;
 
     // Get company subscription settings
     const settings = await db.query<{

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser, requireCompanyAccess, getCompanyIdFromRequest } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireModuleAccess, getCompanyIdFromRequest } from '@/lib/provider/route-guards';
 
 // GET /api/pos/terminals — list terminals for company
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const companyId = getCompanyIdFromRequest(request);
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (companyAccessError) return companyAccessError;
 
     const result = await db.query(
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
          s.transaction_count
        FROM pos_terminals t
        LEFT JOIN pos_sessions s ON s.terminal_id = t.id AND s.status = 'open'
-       LEFT JOIN user_profiles p ON p.id = s.opened_by
+       LEFT JOIN app_users p ON p.id = s.opened_by
        WHERE t.company_id = $1
        ORDER BY t.name ASC`,
       [companyId]
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (!company_id) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     if (!name?.trim()) return NextResponse.json({ error: 'name is required' }, { status: 400 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    const companyAccessError = await requireModuleAccess(user.id, company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     const result = await db.query(

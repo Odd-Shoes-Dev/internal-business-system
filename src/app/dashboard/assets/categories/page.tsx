@@ -10,6 +10,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Category {
   id: string;
@@ -168,16 +169,17 @@ export default function AssetCategoriesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Asset Categories</h1>
-          <p className="text-gray-500 mt-1">Manage fixed asset categories and default depreciation settings</p>
-        </div>
-        <button onClick={openNewModal} className="btn-primary flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" />
-          New Category
-        </button>
-      </div>
+      <PageHeader
+        title="Asset Categories"
+        actions={
+          <>
+            <button onClick={openNewModal} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
+              New Category
+            </button>
+          </>
+        }
+      />
 
       {/* Categories List */}
       <div className="card">

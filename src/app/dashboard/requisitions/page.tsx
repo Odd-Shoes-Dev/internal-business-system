@@ -9,6 +9,7 @@ import {
   MagnifyingGlassIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Requisition {
   id: string;
@@ -67,19 +68,17 @@ export default function RequisitionsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ClipboardDocumentListIcon className="w-7 h-7 text-blueox-primary" />
-              Stock Requisitions
-            </h1>
-            <p className="text-gray-500 mt-1">Client requests fulfilled through one or more delivery forms</p>
-          </div>
-          <Link href="/dashboard/requisitions/new" className="btn-primary flex items-center gap-2">
-            <PlusIcon className="w-5 h-5" />
-            New Requisition
-          </Link>
-        </div>
+        <PageHeader
+          title="Stock Requisitions"
+          actions={
+            <>
+              <Link href="/dashboard/requisitions/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                <PlusIcon className="w-4 h-4" />
+                New Requisition
+              </Link>
+            </>
+          }
+        />
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative max-w-sm flex-1 min-w-[220px]">

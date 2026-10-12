@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // PATCH /api/requisitions/[id]/deliveries/[deliveryId] - Edit non-stock fields on an
 // active delivery form (delivered_by, received_by, delivery_date, notes). Quantities
@@ -23,7 +23,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

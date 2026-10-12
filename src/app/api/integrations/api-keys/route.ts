@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
               ai.last_used_at,
               json_build_object('full_name', up.full_name) AS created_by_user
        FROM api_integrations ai
-       LEFT JOIN user_profiles up ON up.id = ai.created_by
+       LEFT JOIN app_users up ON up.id = ai.created_by
        WHERE ai.company_id = $1
        ORDER BY ai.created_at DESC`,
       [companyId]

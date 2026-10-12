@@ -2,7 +2,7 @@
 import {
   asQueryExecutor,
   createBillJournalEntryWithDb,
-  increaseInventoryForBillWithDb,
+  billLineAccountCodesWithDb,
   validatePeriodLockWithDb,
 } from '@/lib/accounting/provider-accounting';
 import {
@@ -273,27 +273,10 @@ export async function POST(request: NextRequest) {
       }
 
       if ((bill.status === 'posted' || bill.status === 'approved') && billLines.length > 0) {
-        const inventoryResult = await increaseInventoryForBillWithDb(
-          tx,
-          bill.id,
-          bill.bill_date,
-          billLines.map((line: any) => ({
-            product_id: line.product_id,
-            quantity: line.quantity,
-            unit_cost: line.unit_cost,
-            line_total: line.line_total,
-            description: line.description,
-          })),
-          user.id
-        );
 
-        if (!inventoryResult.success) {
-          console.error('Failed to update inventory for bill:', inventoryResult.error);
-        }
-
-        const journalBillLines = billLines.map((line: any) => ({
-          account_code:
-            Object.keys(accountMap).find((key) => accountMap[key] === line.expense_account_id) || '5000',
+        const lineAccountCodes = await billLineAccountCodesWithDb(tx, billLines, accountMap);
+        const journalBillLines = billLines.map((line: any, index: number) => ({
+          account_code: lineAccountCodes[index],
           amount: line.line_total + line.tax_amount,
           description: line.description,
         }));

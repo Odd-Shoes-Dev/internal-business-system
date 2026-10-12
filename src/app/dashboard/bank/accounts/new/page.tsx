@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import {
+  BanknotesIcon,
+} from '@heroicons/react/24/outline';
 import { CurrencySelect } from '@/components/ui';
 import { useCompany } from '@/contexts/company-context';
+import { PageHeader } from '@/components/page-header';
 
 interface GlAccount {
   id: string;
@@ -82,18 +85,7 @@ export default function NewBankAccountPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/dashboard/bank"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Bank Account</h1>
-          <p className="text-gray-600">Add a new bank account to track transactions</p>
-        </div>
-      </div>
+      <PageHeader title="New Bank Account" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

@@ -10,7 +10,6 @@ import { Button, Badge, LoadingSpinner } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   PrinterIcon,
   PencilIcon,
   EnvelopeIcon,
@@ -21,6 +20,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { buildRatesMap, convertCurrency as convertFx } from '@/lib/exchange-rates';
+import { PageHeader } from '@/components/page-header';
 
 interface Invoice {
   id: string;
@@ -858,24 +858,7 @@ export default function InvoiceDetailPage() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:gap-4">
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/invoices">
-            <button className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blueox-primary/20 rounded-xl shadow-lg transition-all duration-200">
-              <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-            </button>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
-                Invoice {invoice.invoice_number}
-              </h1>
-              {getStatusBadge(invoice.status)}
-            </div>
-            <p className="text-sm sm:text-base text-gray-500 mt-0.5 sm:mt-1 truncate">
-              {invoice.customer?.name}
-            </p>
-          </div>
-        </div>
+        <PageHeader title={`Invoice ${invoice.invoice_number}`} />
 
         <div className="flex flex-wrap gap-2">
           {invoice.customer?.email && (

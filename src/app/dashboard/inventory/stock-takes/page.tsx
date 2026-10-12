@@ -9,6 +9,7 @@ import {
   MagnifyingGlassIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface StockTake {
   id: string;
@@ -82,16 +83,17 @@ export default function StockTakesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Stock Takes</h1>
-          <p className="text-gray-500 mt-1">Physical inventory counts and reconciliation</p>
-        </div>
-        <Link href="/dashboard/inventory/stock-takes/new" className="btn-primary flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" />
-          New Stock Take
-        </Link>
-      </div>
+      <PageHeader
+        title="Stock Takes"
+        actions={
+          <>
+            <Link href="/dashboard/inventory/stock-takes/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
+              New Stock Take
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">

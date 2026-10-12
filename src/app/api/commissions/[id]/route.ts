@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
        LEFT JOIN invoices i ON i.id = c.invoice_id
        LEFT JOIN employees e ON e.id = c.employee_id
        LEFT JOIN vendors v ON v.id = c.vendor_id
-       LEFT JOIN user_profiles u ON u.id = c.approved_by
+       LEFT JOIN app_users u ON u.id = c.approved_by
        WHERE c.id = $1
        LIMIT 1`,
       [id]

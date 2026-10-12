@@ -1,4 +1,4 @@
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRatesMap } from '@/lib/exchange-rates';
 import { calculatePayslip } from '@/lib/payroll/calculate-payslip';
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -90,7 +90,12 @@ export async function POST(
 
     if (!employees || employees.length === 0) {
       return NextResponse.json(
-        { error: 'No active employees found' },
+        {
+          error:
+            excluded_employee_ids.length > 0
+              ? 'Every active employee was excluded from this run. Include at least one employee to process payroll.'
+              : 'This company has no active employees yet. Add an employee before processing payroll.',
+        },
         { status: 400 }
       );
     }

@@ -10,10 +10,10 @@ import {
   FunnelIcon,
   DocumentTextIcon,
   EyeIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Bill } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 type BillStatus = 'all' | 'draft' | 'pending' | 'partial' | 'paid' | 'overdue';
 
@@ -145,34 +145,21 @@ export default function BillsPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <DocumentTextIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Bill Management</span>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-                Vendor Bills & Payables
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl">
-                Track vendor bills, manage payment schedules, and monitor outstanding payables
-              </p>
-            </div>
-            
-            <Link 
-              href="/dashboard/bills/new" 
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create New Bill
-              <SparklesIcon className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader
+          title="Vendor Bills & Payables"
+          actions={
+            <>
+              <Link 
+                href="/dashboard/bills/new" 
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Create New Bill
+              </Link>
+            </>
+          }
+        />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">

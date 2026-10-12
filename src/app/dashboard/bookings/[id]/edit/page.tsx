@@ -9,9 +9,7 @@ import { CurrencySelect } from '@/components/ui';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   CalendarDaysIcon,
-  UserGroupIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
   InformationCircleIcon,
@@ -21,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Customer } from '@/types/database';
 import type { TourPackage, Hotel, Vehicle, BookingStatus } from '@/types/breco';
+import { PageHeader } from '@/components/page-header';
 
 interface BookingFormData {
   customer_id: string;
@@ -493,18 +492,7 @@ export default function EditBookingPage({ params }: EditBookingPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-        <Link
-          href={`/dashboard/bookings/${bookingId}`}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Booking</h1>
-          <p className="text-sm text-gray-500 mt-1">Update booking information</p>
-        </div>
-      </div>
+        <PageHeader title="Edit Booking" />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">

@@ -5,8 +5,13 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
-import { PlusIcon, MagnifyingGlassIcon, ReceiptPercentIcon, SparklesIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+} from '@heroicons/react/24/outline';
 import type { Invoice, Customer } from '@/types/database';
+import { PageHeader } from '@/components/page-header';
 
 export default function ReceiptsPage() {
   const { company } = useCompany();
@@ -114,34 +119,21 @@ export default function ReceiptsPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <ReceiptPercentIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Receipt Management</span>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-                Payment Receipts
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl">
-                Track payment receipts and confirmations for customer transactions
-              </p>
-            </div>
-            
-            <Link 
-              href="/dashboard/receipts/new" 
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
-              New Receipt
-              <SparklesIcon className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader
+          title="Payment Receipts"
+          actions={
+            <>
+              <Link 
+                href="/dashboard/receipts/new" 
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Receipt
+              </Link>
+            </>
+          }
+        />
 
       {/* Summary Stats */}
       {!loading && filteredReceipts.length > 0 && (

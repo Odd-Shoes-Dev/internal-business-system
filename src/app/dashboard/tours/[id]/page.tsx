@@ -10,18 +10,16 @@ import {
   ArrowLeftIcon,
   PencilIcon,
   TrashIcon,
-  GlobeAltIcon,
   ClockIcon,
-  UserGroupIcon,
   CurrencyDollarIcon,
   StarIcon,
   MapPinIcon,
   CheckCircleIcon,
   XCircleIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import type { TourPackage, Destination } from '@/types/breco';
+import { PageHeader } from '@/components/page-header';
 
 export default function TourPackageDetailPage() {
   const params = useParams();
@@ -156,83 +154,64 @@ export default function TourPackageDetailPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <Link
-            href="/dashboard/tours"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors mt-1"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">{pkg.name}</h1>
-              {pkg.is_featured && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blueox-warning text-white text-xs font-semibold rounded-full">
-                  <StarSolidIcon className="w-3 h-3" />
-                  Featured
-                </span>
-              )}
-              {pkg.is_active ? (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                  <CheckCircleIcon className="w-3 h-3" />
-                  Active
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
-                  <XCircleIcon className="w-3 h-3" />
-                  Inactive
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span className="font-mono">{pkg.package_code}</span>
-              {pkg.tour_type && (
-                <>
-                  <span>•</span>
-                  <span>{pkg.tour_type}</span>
-                </>
-              )}
-              <span>•</span>
-              <span>
-                {pkg.duration_days} {pkg.duration_days === 1 ? 'Day' : 'Days'} / {pkg.duration_nights}{' '}
-                {pkg.duration_nights === 1 ? 'Night' : 'Nights'}
+      <PageHeader
+        title={pkg.name}
+        actions={
+          <>
+            {pkg.is_featured && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blueox-warning text-white text-xs font-semibold rounded-full">
+                <StarSolidIcon className="w-3 h-3" />
+                Featured
               </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleFeatured}
-            className={`btn-sm ${
-              pkg.is_featured ? 'bg-blueox-warning text-white' : 'btn-secondary'
-            }`}
-            title={pkg.is_featured ? 'Remove from featured' : 'Mark as featured'}
-          >
-            <StarIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleActive}
-            className="btn-secondary btn-sm"
-            title={pkg.is_active ? 'Deactivate package' : 'Activate package'}
-          >
-            {pkg.is_active ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-          </button>
-          <Link href={`/dashboard/tours/${pkg.id}/edit`} className="btn-secondary btn-sm">
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn-danger btn-sm disabled:opacity-50"
-          >
-            <TrashIcon className="w-4 h-4" />
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      </div>
+            )}
+            {pkg.is_active ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                <CheckCircleIcon className="w-3 h-3" />
+                Active
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
+                <XCircleIcon className="w-3 h-3" />
+                Inactive
+              </span>
+            )}
+            {pkg.tour_type && (
+              <>
+                <span>•</span>
+                <span>{pkg.tour_type}</span>
+              </>
+            )}
+            <button
+              onClick={toggleFeatured}
+              className={`btn-sm ${
+                pkg.is_featured ? 'bg-blueox-warning text-white' : 'btn-secondary'
+              }`}
+              title={pkg.is_featured ? 'Remove from featured' : 'Mark as featured'}
+            >
+              <StarIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={toggleActive}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              title={pkg.is_active ? 'Deactivate package' : 'Activate package'}
+            >
+              {pkg.is_active ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
+            </button>
+            <Link href={`/dashboard/tours/${pkg.id}/edit`} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PencilIcon className="w-4 h-4" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </>
+        }
+      />
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

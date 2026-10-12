@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatDate, cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
+import { PageHeader } from '@/components/page-header';
 
 interface JournalEntry {
   id: string;
@@ -149,19 +150,20 @@ export default function GeneralLedgerPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">General Ledger</h1>
-          <p className="text-sm sm:text-base text-gray-600">Journal entries and transactions</p>
-        </div>
-        <Link
-          href="/dashboard/journal-entries/new"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Journal Entry
-        </Link>
-      </div>
+      <PageHeader
+        title="General Ledger"
+        actions={
+          <>
+            <Link
+              href="/dashboard/journal-entries/new"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              New Journal Entry
+            </Link>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl shadow-xl p-6">

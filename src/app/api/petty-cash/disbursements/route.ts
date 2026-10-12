@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
               END AS approved_by_user
        FROM petty_cash_disbursements pcd
        LEFT JOIN bank_accounts ba ON ba.id = pcd.cash_account_id
-       LEFT JOIN user_profiles up ON up.id = pcd.approved_by
+       LEFT JOIN app_users up ON up.id = pcd.approved_by
        WHERE ${where.join(' AND ')}
        ORDER BY pcd.disbursement_date DESC
        LIMIT $${limitParam} OFFSET $${offsetParam}`,

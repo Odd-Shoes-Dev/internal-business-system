@@ -31,9 +31,18 @@ interface Company {
   city: string | null;
   country: string | null;
   website: string | null;
+  trial_ends_at?: string | null;
+}
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string | null;
 }
 
 interface CompanyContextType {
+  user: SessionUser | null;
   company: Company | null;
   companies: Company[];
   switchCompany: (companyId: string) => Promise<void>;
@@ -46,6 +55,7 @@ const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyModules, setCompanyModules] = useState<string[]>([]);
@@ -58,12 +68,20 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   async function loadUserCompanies() {
     try {
       setLoading(true);
-      const response = await fetch('/api/companies/me', {
+
+      // Ask for the last-used company up front so the modules returned belong to it.
+      // The API ignores an id the user is not a member of.
+      const storedCompanyId = localStorage.getItem('currentCompanyId');
+      const url = storedCompanyId
+        ? `/api/companies/me?company_id=${encodeURIComponent(storedCompanyId)}`
+        : '/api/companies/me';
+      const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
       });
 
       if (response.status === 401) {
+        setUser(null);
         setLoading(false);
         return;
       }
@@ -76,6 +94,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
 
       const payload = await response.json();
+      setUser(payload?.user || null);
       const userCompanies = payload?.companies || [];
 
       if (!userCompanies || userCompanies.length === 0) {
@@ -89,28 +108,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const companiesList = userCompanies as Company[];
       setCompanies(companiesList);
 
-      // Get stored company ID from localStorage or use primary
-      const storedCompanyId = localStorage.getItem('currentCompanyId');
-      let currentCompany: Company | null = null;
-
-      if (storedCompanyId) {
-        currentCompany = companiesList.find(c => c.id === storedCompanyId) || null;
-      }
-
-      // Fallback to currently selected/primary company
-      if (!currentCompany) {
-        currentCompany =
-          companiesList.find((c: any) => c.id === payload?.currentCompanyId) ||
-          companiesList.find((c: any) => (c as any).is_primary) ||
-          companiesList[0];
-      }
+      // currentCompanyId is the stored company when the user still belongs to it, else the primary
+      const currentCompany =
+        companiesList.find((c) => c.id === payload?.currentCompanyId) ||
+        companiesList.find((c) => c.is_primary) ||
+        companiesList[0];
 
       setCompany(currentCompany);
-      
-      // Load modules for current company
-      if (currentCompany) {
-        setCompanyModules(payload?.modules || []);
-      }
+      setCompanyModules(payload?.modules || []);
 
       setLoading(false);
     } catch (error) {
@@ -169,6 +174,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   return (
     <CompanyContext.Provider
       value={{ 
+        user,
         company, 
         companies, 
         switchCompany, 

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
               up.email AS completed_by_user_email
        FROM bank_reconciliations br
        LEFT JOIN bank_accounts ba ON ba.id = br.bank_account_id
-       LEFT JOIN user_profiles up ON up.id = br.completed_by
+       LEFT JOIN app_users up ON up.id = br.completed_by
        WHERE br.id = $1
        LIMIT 1`,
       [id]

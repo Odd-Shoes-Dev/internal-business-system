@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   CreditCardIcon,
   PaperClipIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
+import { PageHeader } from '@/components/page-header';
 
 interface Vendor {
   id: string;
@@ -218,18 +218,7 @@ export default function NewExpensePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/dashboard/expenses"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Record Expense</h1>
-          <p className="text-gray-600">Log a new business expense</p>
-        </div>
-      </div>
+      <PageHeader title="Record Expense" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

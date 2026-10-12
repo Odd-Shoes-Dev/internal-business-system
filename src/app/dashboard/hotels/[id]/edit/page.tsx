@@ -6,17 +6,14 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   BuildingStorefrontIcon,
-  MapPinIcon,
   PhoneIcon,
-  EnvelopeIcon,
   GlobeAltIcon,
-  StarIcon,
   CurrencyDollarIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { Destination } from '@/types/breco';
+import { PageHeader } from '@/components/page-header';
 
 interface HotelFormData {
   name: string;
@@ -365,18 +362,7 @@ export default function EditHotelPage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href={`/dashboard/hotels/${params.id}`}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Hotel</h1>
-          <p className="text-gray-600">Update hotel details and information</p>
-        </div>
-      </div>
+      <PageHeader title="Edit Hotel" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

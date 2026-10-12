@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser, requireCompanyAccess, getCompanyIdFromRequest } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireModuleAccess, getCompanyIdFromRequest } from '@/lib/provider/route-guards';
 
 // GET /api/pos/sessions — list sessions for company
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const companyId = getCompanyIdFromRequest(request);
     if (!companyId) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'pos');
     if (companyAccessError) return companyAccessError;
 
     const { searchParams } = new URL(request.url);
@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
          pc.full_name AS closed_by_name
        FROM pos_sessions s
        LEFT JOIN pos_terminals t ON t.id = s.terminal_id
-       LEFT JOIN user_profiles p ON p.id = s.opened_by
-       LEFT JOIN user_profiles pc ON pc.id = s.closed_by
+       LEFT JOIN app_users p ON p.id = s.opened_by
+       LEFT JOIN app_users pc ON pc.id = s.closed_by
        WHERE ${where.join(' AND ')}
        ORDER BY s.opened_at DESC
        LIMIT $${params.length + 1}`,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     if (!company_id) return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     if (!terminal_id) return NextResponse.json({ error: 'terminal_id is required' }, { status: 400 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, company_id);
+    const companyAccessError = await requireModuleAccess(user.id, company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     // Check terminal belongs to company

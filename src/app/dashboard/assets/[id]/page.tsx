@@ -8,16 +8,15 @@ import Link from 'next/link';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   BuildingLibraryIcon,
   PrinterIcon,
   PencilIcon,
   TrashIcon,
   CalendarIcon,
-  CurrencyDollarIcon,
   ChartBarIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface FixedAsset {
   id: string;
@@ -181,43 +180,32 @@ export default function AssetDetailPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 print:hidden">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/assets"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Asset #: {asset.asset_number}</h1>
-            <p className="text-gray-600">Asset Details</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handlePrint} className="btn-secondary">
-            <PrinterIcon className="w-5 h-5 mr-2" />
-            Print
-          </button>
-          
-          <Link 
-            href={`/dashboard/assets/${params.id}/edit`}
-            className="btn-secondary inline-flex items-center"
-          >
-            <PencilIcon className="w-5 h-5 mr-2" />
-            Edit
-          </Link>
-          
-          <button 
-            onClick={handleDelete} 
-            disabled={actionLoading}
-            className="btn-secondary text-red-600 hover:bg-red-50"
-          >
-            <TrashIcon className="w-5 h-5 mr-2" />
-            Delete
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={`Asset #: ${asset.asset_number}`}
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4 mr-2" />
+              Print
+            </button>
+            <Link 
+              href={`/dashboard/assets/${params.id}/edit`}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PencilIcon className="w-4 h-4 mr-2" />
+              Edit
+            </Link>
+            <button 
+              onClick={handleDelete} 
+              disabled={actionLoading}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4 mr-2" />
+              Delete
+            </button>
+          </>
+        }
+      />
 
       {/* Asset Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

@@ -12,6 +12,7 @@
  *   next build && node scripts/migrate.mjs
  */
 
+import net from 'net';
 import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
@@ -19,12 +20,26 @@ import { fileURLToPath } from 'url';
 
 const { Pool } = pg;
 
+// See src/lib/db/neon.ts: give each address 3s instead of Node's 250ms default
+net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'neon-migrations');
 
+// Locally, read .env.local (or .env) when the variable is not already set; on Vercel/CI it is
+if (!process.env.NEON_DATABASE_URL) {
+  for (const file of ['.env.local', '.env']) {
+    const envPath = path.join(__dirname, '..', file);
+    if (fs.existsSync(envPath)) {
+      process.loadEnvFile(envPath);
+      if (process.env.NEON_DATABASE_URL) break;
+    }
+  }
+}
+
 const connectionString = process.env.NEON_DATABASE_URL;
 if (!connectionString) {
-  console.error('❌ NEON_DATABASE_URL is not set');
+  console.error('❌ NEON_DATABASE_URL is not set (add it to .env.local or the environment)');
   process.exit(1);
 }
 

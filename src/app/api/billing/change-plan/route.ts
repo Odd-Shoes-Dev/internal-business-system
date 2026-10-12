@@ -5,6 +5,7 @@ import { getPlanId } from '@/lib/whop-config';
 import { getTestPlanOverride } from '@/lib/whop-test-mode';
 import { detectRegionFromRequest } from '@/lib/detect-ip-region';
 import type { Region } from '@/lib/regional-pricing';
+import { refuseIfLegacyWithDb } from '@/lib/billing/legacy-plan-db';
 
 const VALID_REGIONS: Region[] = ['AFRICA', 'ASIA', 'EU', 'GB', 'US', 'DEFAULT'];
 
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
     if (adminError) {
       return adminError;
     }
+
+    const legacyRefusal = await refuseIfLegacyWithDb(db, companyId);
+    if (legacyRefusal) return legacyRefusal;
 
     // Enforce region from DB — never trust client
     const companyResult = await db.query(

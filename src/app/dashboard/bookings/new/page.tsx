@@ -8,7 +8,6 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   CalendarDaysIcon,
   UserGroupIcon,
   CurrencyDollarIcon,
@@ -20,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Customer } from '@/types/database';
 import type { TourPackage, Hotel, Vehicle } from '@/types/breco';
+import { PageHeader } from '@/components/page-header';
 
 interface BookingFormData {
   customer_id: string;
@@ -395,18 +395,7 @@ export default function NewBookingPage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/dashboard/bookings"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Booking</h1>
-          <p className="text-gray-600">Create a new booking</p>
-        </div>
-      </div>
+      <PageHeader title="New Booking" />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

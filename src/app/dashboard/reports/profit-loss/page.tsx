@@ -1,16 +1,14 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   ArrowDownTrayIcon,
   PrinterIcon,
-  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 
 interface ReportLine {
   code: string;
@@ -372,27 +370,21 @@ export default function ProfitLossReportPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/reports" className="btn-ghost p-1.5 sm:p-2">
-            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Profit & Loss Statement</h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">Income statement for the period</p>
-          </div>
-        </div>
-        <div className="flex gap-2 sm:gap-3">
-          <button onClick={handlePrint} className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-            <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Print</span>
-          </button>
-          <button onClick={handleExport} className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-            <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Profit & Loss Statement"
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+            <button onClick={handleExport} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Date Range */}
       <div className="card">

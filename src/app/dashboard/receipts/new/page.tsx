@@ -11,7 +11,6 @@ import { CurrencySelect } from '@/components/ui';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
   ChevronUpDownIcon,
@@ -19,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { Customer, Product } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface ReceiptLineInput {
   product_id: string;
@@ -517,15 +517,7 @@ export default function NewReceiptPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/receipts" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Receipt</h1>
-          <p className="text-gray-500 mt-1">Create a payment receipt for customer</p>
-        </div>
-      </div>
+      <PageHeader title="New Receipt" />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Receipt Details */}

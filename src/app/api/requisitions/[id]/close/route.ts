@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // POST /api/requisitions/[id]/close - Close a requisition without fully delivering it.
 // Nothing already delivered is reversed; this just stops further delivery forms
@@ -23,7 +23,7 @@ export async function POST(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

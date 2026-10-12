@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/page-header';
 
 interface Employee {
   id: string;
@@ -100,18 +100,7 @@ export default function NewSalaryAdvancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/dashboard/employees/advances"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Salary Advance</h1>
-          <p className="text-gray-500 mt-1">Create a salary advance request</p>
-        </div>
-      </div>
+      <PageHeader title="New Salary Advance" />
 
       {/* Form */}
       <div className="card p-6">

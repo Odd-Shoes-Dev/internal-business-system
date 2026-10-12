@@ -1,4 +1,4 @@
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRatesMap } from '@/lib/exchange-rates';
 import { calculatePayslip } from '@/lib/payroll/calculate-payslip';
@@ -21,7 +21,7 @@ export async function POST(
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }

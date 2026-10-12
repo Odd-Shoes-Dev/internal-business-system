@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
 import { Button, Card, CardHeader, CardTitle, CardBody, Input, Combobox, Textarea, LoadingSpinner } from '@/components/ui';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
+import { PageHeader } from '@/components/page-header';
 
 interface Invoice {
   id: string;
@@ -174,18 +174,7 @@ export default function RecordPaymentPage() {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link href={`/dashboard/invoices/${params.id}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeftIcon className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Record Payment</h1>
-          <p className="text-gray-500">Invoice {invoice.invoice_number}</p>
-        </div>
-      </div>
+      <PageHeader title="Record Payment" />
 
       {/* Invoice Summary */}
       <Card className="mb-6">

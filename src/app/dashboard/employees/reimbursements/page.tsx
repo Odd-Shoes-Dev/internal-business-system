@@ -7,6 +7,7 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { PlusIcon, CheckCircleIcon, XCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Employee {
   first_name: string;
@@ -172,16 +173,17 @@ export default function ReimbursementsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Employee Reimbursements</h1>
-          <p className="text-gray-500 mt-1">Manage employee expense reimbursement requests</p>
-        </div>
-        <Link href="/dashboard/employees/reimbursements/new" className="btn-primary flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" />
-          New Reimbursement
-        </Link>
-      </div>
+      <PageHeader
+        title="Employee Reimbursements"
+        actions={
+          <>
+            <Link href="/dashboard/employees/reimbursements/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
+              New Reimbursement
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

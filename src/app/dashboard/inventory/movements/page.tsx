@@ -2,11 +2,9 @@
 
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   ArrowUpIcon,
   AdjustmentsHorizontalIcon,
   ShoppingCartIcon,
@@ -14,6 +12,7 @@ import {
   PlusIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -222,24 +221,20 @@ export default function StockMovementsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/inventory" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Stock Movements</h1>
-            <p className="text-gray-500 mt-1">Track all inventory transactions</p>
-          </div>
-        </div>
-        <button
-          onClick={openModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blueox-primary text-black rounded-2xl font-semibold text-sm hover:shadow-lg transition-all"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Record Adjustment
-        </button>
-      </div>
+      <PageHeader
+        title="Stock Movements"
+        actions={
+          <>
+            <button
+              onClick={openModal}
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Record Adjustment
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">

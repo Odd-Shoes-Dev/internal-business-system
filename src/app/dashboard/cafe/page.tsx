@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ModuleGuard } from '@/components/module-guard';
 import {
-  BuildingStorefrontIcon,
   CurrencyDollarIcon,
   BanknotesIcon,
   ChartBarIcon,
@@ -18,6 +17,7 @@ import {
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface CafeStats {
   revenue: number;
@@ -112,31 +112,27 @@ export default function CafeDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BuildingStorefrontIcon className="w-8 h-8 text-blueox-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Cafe Performance</h1>
-            <p className="text-gray-500">Track cafe revenue, expenses, and profitability</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/dashboard/cafe/record-sales"
-            className="btn-primary flex items-center gap-2"
-          >
-            <ReceiptPercentIcon className="w-5 h-5" />
-            Record Sales
-          </Link>
-          <Link
-            href="/dashboard/expenses/new?department=Cafe"
-            className="btn-secondary flex items-center gap-2"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Add Expense
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Cafe Performance"
+        actions={
+          <>
+            <Link
+              href="/dashboard/cafe/record-sales"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ReceiptPercentIcon className="w-4 h-4" />
+              Record Sales
+            </Link>
+            <Link
+              href="/dashboard/expenses/new?department=Cafe"
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Expense
+            </Link>
+          </>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

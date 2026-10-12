@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   TruckIcon,
   CurrencyDollarIcon,
   WrenchScrewdriverIcon,
   PhotoIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface VehicleFormData {
   vehicle_number: string;
@@ -324,22 +324,7 @@ export default function NewVehiclePage() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/fleet"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">New Vehicle</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Add a new vehicle to the fleet
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader title="New Vehicle" />
 
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">

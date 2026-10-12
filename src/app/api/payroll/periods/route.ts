@@ -1,4 +1,4 @@
-import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { getCompanyIdFromRequest, requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/payroll/periods - List payroll periods
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
               up.full_name AS processed_by_user_full_name,
               up.email AS processed_by_user_email
        FROM payroll_periods pp
-       LEFT JOIN user_profiles up ON up.id = pp.processed_by
+       LEFT JOIN app_users up ON up.id = pp.processed_by
        WHERE ${where.join(' AND ')}
        ORDER BY pp.start_date DESC`,
       params
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'company_id is required' }, { status: 400 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, companyId);
+    const companyAccessError = await requireModuleAccess(user.id, companyId, 'payroll');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -118,24 +118,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for overlapping periods
-    const existingResult = await db.query(
-      `SELECT id
-       FROM payroll_periods
-       WHERE company_id = $1
-         AND start_date <= $2::date
-         AND end_date >= $3::date
-       LIMIT 1`,
-      [companyId, end_date, start_date]
-    );
-    const existing = existingResult.rows;
-
-    if (existing && existing.length > 0) {
-      return NextResponse.json(
-        { error: 'A payroll period already exists that overlaps with this date range' },
-        { status: 400 }
-      );
-    }
+    // Overlapping dates are allowed on purpose: a company can run more than one payroll period
+    // for the same stretch of time (e.g. a separate period per station/branch), told apart by
+    // period_name. Nothing here stops the same employee being generated into more than one of
+    // them - that is on whoever runs "generate payslips" to manage via excluded_employee_ids.
 
     // Create the payroll period
     const periodResult = await db.query(

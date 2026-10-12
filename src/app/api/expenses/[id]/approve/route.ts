@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, context: any) {
 
     const approverResult = await db.query(
       `SELECT up.id, up.full_name, up.email
-       FROM user_profiles up
+       FROM app_users up
        WHERE up.id = $1
        LIMIT 1`,
       [updated.approved_by]

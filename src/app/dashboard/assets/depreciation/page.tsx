@@ -3,16 +3,15 @@
 import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   ArrowPathIcon,
   CalendarIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Asset {
   id: string;
@@ -138,17 +137,7 @@ export default function DepreciationPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/assets" className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Run Depreciation</h1>
-            <p className="text-gray-500 mt-1">Calculate and record monthly depreciation</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader title="Run Depreciation" />
 
       {success && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">

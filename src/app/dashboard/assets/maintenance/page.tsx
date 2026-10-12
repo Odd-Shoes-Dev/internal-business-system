@@ -11,6 +11,7 @@ import {
   WrenchIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Maintenance {
   id: string;
@@ -126,16 +127,17 @@ export default function AssetMaintenancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Asset Maintenance</h1>
-          <p className="text-gray-500 mt-1">Schedule and track asset maintenance</p>
-        </div>
-        <Link href="/dashboard/assets/maintenance/new" className="btn-primary flex items-center gap-2">
-          <PlusIcon className="w-5 h-5" />
-          Schedule Maintenance
-        </Link>
-      </div>
+      <PageHeader
+        title="Asset Maintenance"
+        actions={
+          <>
+            <Link href="/dashboard/assets/maintenance/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4" />
+              Schedule Maintenance
+            </Link>
+          </>
+        }
+      />
 
       {/* Overdue Alert */}
       {overdueMaintenance.length > 0 && (

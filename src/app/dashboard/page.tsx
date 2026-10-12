@@ -13,7 +13,6 @@ import {
   BanknotesIcon,
   CubeIcon,
   ArrowTrendingUpIcon,
-  SparklesIcon,
   RocketLaunchIcon,
   EyeIcon,
   FireIcon,
@@ -23,6 +22,8 @@ import {
   ShimmerSkeleton,
 } from '@/components/ui/skeleton';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
+import DashboardCharts from './dashboard-charts';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -231,53 +232,29 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Hero Header Section - More Compact */}
-        <div className="relative">
-          {/* Floating Background Elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-10 right-10 w-24 h-24 bg-blueox-primary/5 rounded-full blur-xl"></div>
-            <div className="absolute bottom-10 left-1/4 w-32 h-32 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-2xl"></div>
-          </div>
-          
-          <div className="relative bg-white/70 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="space-y-3">
-                <div className="inline-block">
-                  <span className="text-sm font-medium text-blueox-primary bg-white/80 px-3 py-1.5 rounded-full border border-blueox-primary/20 shadow-sm backdrop-blur-sm flex items-center gap-2 w-fit">
-                    <SparklesIcon className="w-4 h-4 text-blueox-primary" />
-                    Welcome Back
-                  </span>
-                </div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary leading-tight">
-                  {company?.name || 'Your Business'}
-                </h1>
-                <p className="text-lg text-gray-600 font-medium max-w-2xl">
-                  Comprehensive overview of your business performance and financial health
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link 
-                  href="/dashboard/invoices/new" 
-                  className="group bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl text-base font-semibold transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] flex items-center justify-center gap-2"
-                >
-                  <RocketLaunchIcon className="w-4 h-4" />
-                  New Invoice
-                  <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                </Link>
-                <Link 
-                  href="/dashboard/expenses/new" 
-                  className="bg-white/80 backdrop-blur-sm hover:bg-white text-blueox-primary border-2 border-blueox-primary/20 hover:border-blueox-primary/40 px-6 py-3 rounded-2xl text-base font-semibold transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
-                >
-                  <CurrencyDollarIcon className="w-4 h-4" />
-                  New Expense
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 pb-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <PageHeader
+          title="Dashboard"
+          actions={
+            <>
+              <Link 
+                href="/dashboard/invoices/new" 
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <RocketLaunchIcon className="w-4 h-4" />
+                New Invoice
+              </Link>
+              <Link 
+                href="/dashboard/expenses/new" 
+                className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              >
+                <CurrencyDollarIcon className="w-4 h-4" />
+                New Expense
+              </Link>
+            </>
+          }
+        />
 
         {/* Financial Stats - Compact Grid Layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -395,6 +372,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {company && <DashboardCharts companyId={company.id} />}
 
         {/* Alert Section - Compact */}
         {((stats?.overdueInvoices || 0) > 0 || (stats?.overdueBills || 0) > 0) && (

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser } from '@/lib/provider/route-guards';
+import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 
 export async function GET(request: NextRequest) {
   try {
     const { db, user, errorResponse } = await requireSessionUser();
     if (errorResponse || !user) return errorResponse!;
-    if (user.role !== 'admin') {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
+    // Platform-wide data: platform administrators only, not every company admin
+    const adminError = requirePlatformAdmin(user);
+    if (adminError) return adminError;
 
     // Get subscription stats
     const subscriptions = await db.query<{ status: string; base_price_amount: number; currency: string }>(

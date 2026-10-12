@@ -1,5 +1,13 @@
 import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  adjustmentApprovalRequiredWithDb,
+  approveStockAdjustmentWithDb,
+  canApproveAdjustmentsWithDb,
+  createStockAdjustmentWithDb,
+  type AdjustmentReason,
+} from '@/lib/inventory/adjustments';
+import { StockError } from '@/lib/inventory/stock';
 
 // POST /api/inventory/[id]/adjust - Adjust inventory quantity
 export async function POST(
@@ -34,82 +42,48 @@ export async function POST(
       return companyAccessError;
     }
 
-    // Calculate new quantity
-    let newQuantity = Number(item.quantity_on_hand || 0);
-    let movementQuantity = Number(body.quantity || 0);
-
-    switch (body.adjustment_type) {
-      case 'add':
-      case 'receive':
-      case 'return':
-        newQuantity += Number(body.quantity || 0);
-        break;
-      case 'remove':
-      case 'sell':
-      case 'damage':
-      case 'shrinkage':
-        if (Number(body.quantity || 0) > Number(item.quantity_on_hand || 0)) {
-          return NextResponse.json(
-            { error: 'Insufficient quantity on hand' },
-            { status: 400 }
-          );
-        }
-        newQuantity -= Number(body.quantity || 0);
-        movementQuantity = -Number(body.quantity || 0);
-        break;
-      case 'adjustment':
-        newQuantity = Number(body.quantity || 0);
-        movementQuantity = Number(body.quantity || 0) - Number(item.quantity_on_hand || 0);
-        break;
-      default:
-        return NextResponse.json(
-          { error: 'Invalid adjustment type' },
-          { status: 400 }
-        );
+    // Older API: map the adjustment type onto a stock adjustment (see /api/stock-adjustments)
+    const qty = Number(body.quantity || 0);
+    const onHand = Number(item.quantity_on_hand || 0);
+    const mapping: Record<string, { change: number; reason: AdjustmentReason }> = {
+      add: { change: qty, reason: 'found' },
+      receive: { change: qty, reason: 'found' },
+      return: { change: qty, reason: 'found' },
+      remove: { change: -qty, reason: 'other' },
+      sell: { change: -qty, reason: 'other' },
+      damage: { change: -qty, reason: 'damage' },
+      shrinkage: { change: -qty, reason: 'theft' },
+      adjustment: { change: qty - onHand, reason: 'count_correction' },
+    };
+    const mapped = mapping[body.adjustment_type];
+    if (!mapped) {
+      return NextResponse.json({ error: 'Invalid adjustment type' }, { status: 400 });
+    }
+    if (!mapped.change) {
+      return NextResponse.json({ error: 'Quantity does not change' }, { status: 400 });
     }
 
-    const movementAndItem = await db.transaction(async (tx) => {
-      const movementResult = await tx.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, notes, created_by
-         ) VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [
-          id,
-          body.adjustment_type,
-          movementQuantity,
-          Number(body.unit_cost ?? item.cost_price ?? 0),
-          body.notes || null,
-          user.id,
-        ]
-      );
-
-      const updatedItemResult = await tx.query(
-        `UPDATE products
-         SET quantity_on_hand = $2,
-             cost_price = $3,
-             updated_at = NOW()
-         WHERE id = $1
-         RETURNING *`,
-        [
-          id,
-          newQuantity,
-          body.update_cost ? Number(body.unit_cost ?? item.cost_price ?? 0) : Number(item.cost_price ?? 0),
-        ]
-      );
-
-      return {
-        movement: movementResult.rows[0],
-        item: updatedItemResult.rows[0],
-      };
-    });
-
-    return NextResponse.json({
-      data: {
-        item: movementAndItem.item,
-        movement: movementAndItem.movement,
-      },
-    });
+    const approvalRequired = await adjustmentApprovalRequiredWithDb(db, item.company_id);
+    const approved = !approvalRequired || (await canApproveAdjustmentsWithDb(db, user.id, item.company_id));
+    try {
+      const adjustment = await db.transaction(async (tx) => {
+        const adj = await createStockAdjustmentWithDb(tx, {
+          companyId: item.company_id,
+          productId: id,
+          quantityChange: mapped.change,
+          reason: mapped.reason,
+          notes: body.notes || null,
+          userId: user.id,
+        });
+        if (approved) await approveStockAdjustmentWithDb(tx, adj.id, user.id);
+        return { ...adj, status: approved ? 'approved' : 'pending' };
+      });
+      const updated = await db.query('SELECT * FROM products WHERE id = $1', [id]);
+      return NextResponse.json({ data: { item: updated.rows[0], adjustment } });
+    } catch (error: any) {
+      if (error instanceof StockError) return NextResponse.json({ error: error.message }, { status: 400 });
+      throw error;
+    }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

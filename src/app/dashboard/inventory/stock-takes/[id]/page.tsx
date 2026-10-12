@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
-  ArrowLeftIcon,
   CheckIcon,
   XMarkIcon,
   PencilIcon,
   PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface StockTake {
   id: string;
@@ -163,50 +163,44 @@ function StockTakeDetailPageClient({ stockTakeId }: { stockTakeId: string }) {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="btn-ghost p-2">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{stockTake.reference_number}</h1>
-            <p className="text-gray-500 mt-1">Stock Take Details</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5" />
-            Print
-          </button>
-          {stockTake.status === 'draft' && (
-            <>
-              <button
-                onClick={() => router.push(`/dashboard/inventory/stock-takes/${stockTakeId}/edit`)}
-                className="btn-secondary flex items-center gap-2"
-              >
-                <PencilIcon className="w-5 h-5" />
-                Edit
-              </button>
-              <button
-                onClick={handleReject}
-                className="btn-secondary text-red-600 flex items-center gap-2"
-                disabled={updating}
-              >
-                <XMarkIcon className="w-5 h-5" />
-                Reject
-              </button>
-              <button
-                onClick={handleApprove}
-                className="btn-primary flex items-center gap-2"
-                disabled={updating}
-              >
-                <CheckIcon className="w-5 h-5" />
-                {updating ? 'Approving...' : 'Approve'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={stockTake.reference_number}
+        actions={
+          <>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+            {stockTake.status === 'draft' && (
+              <>
+                <button
+                  onClick={() => router.push(`/dashboard/inventory/stock-takes/${stockTakeId}/edit`)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+                  disabled={updating}
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                  Reject
+                </button>
+                <button
+                  onClick={handleApprove}
+                  className="btn-primary btn-sm inline-flex items-center gap-1.5"
+                  disabled={updating}
+                >
+                  <CheckIcon className="w-4 h-4" />
+                  {updating ? 'Approving...' : 'Approve'}
+                </button>
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* Status Badge */}
       <div className="flex items-center gap-4 print:hidden">

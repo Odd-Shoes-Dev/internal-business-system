@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { nextSkuWithDb } from '@/lib/inventory/sku';
+import { receiveOpeningStockWithDb } from '@/lib/inventory/stock';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/products - List products
@@ -126,25 +128,46 @@ export async function POST(request: NextRequest) {
     const companyAccessError = await requireCompanyAccess(user.id, company_id);
     if (companyAccessError) return companyAccessError;
 
-    const result = await db.query(
-      `INSERT INTO products (
-         company_id, name, sku, barcode, description, product_type,
-         unit_price, cost_price, currency, unit_of_measure,
-         is_taxable, tax_rate, track_inventory, quantity_on_hand,
-         reorder_point, revenue_account_id, category_id, is_active
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6,
-         $7, $8, $9, $10,
-         $11, $12, $13, $14,
-         $15, $16, $17, true
-       ) RETURNING *`,
-      [
-        company_id, name, sku || null, barcode || null, description || null, product_type,
-        unit_price, cost_price, currency, unit_of_measure,
-        is_taxable, tax_rate, track_inventory, quantity_on_hand,
-        reorder_point || null, revenue_account_id || null, category_id || null,
-      ]
-    );
+    // A blank SKU is generated (PRD-000001 / SRV-000001); retry if another product took it
+    const requestedSku = String(sku || '').trim();
+    let result: { rows: any[] } | null = null;
+    for (let attempt = 0; attempt < 5 && !result; attempt++) {
+      const finalSku = requestedSku || (await nextSkuWithDb(db, company_id, product_type));
+      try {
+        result = await db.query(
+          `INSERT INTO products (
+             company_id, name, sku, barcode, description, product_type,
+             unit_price, cost_price, currency, unit_of_measure,
+             is_taxable, tax_rate, track_inventory, quantity_on_hand,
+             reorder_point, revenue_account_id, category_id, is_active
+           ) VALUES (
+             $1, $2, $3, $4, $5, $6,
+             $7, $8, $9, $10,
+             $11, $12, $13, 0,
+             $14, $15, $16, true
+           ) RETURNING *`,
+          [
+            company_id, name, finalSku, barcode || null, description || null, product_type,
+            unit_price, cost_price, currency, unit_of_measure,
+            is_taxable, tax_rate, track_inventory,
+            reorder_point || null, revenue_account_id || null, category_id || null,
+          ]
+        );
+      } catch (error: any) {
+        if (!requestedSku && error?.code === '23505' && /sku/.test(error?.message || '')) continue;
+        throw error;
+      }
+    }
+    if (!result) return NextResponse.json({ error: 'Could not generate a unique SKU, please try again' }, { status: 409 });
+
+    // Starting stock gets a batch and a ledger entry, like any other stock coming in
+    if (track_inventory && Number(quantity_on_hand) > 0) {
+      await receiveOpeningStockWithDb(db, {
+        companyId: company_id, productId: result.rows[0].id, quantity: Number(quantity_on_hand),
+        unitCost: Number(cost_price || 0), userId: user.id,
+      });
+      result.rows[0] = (await db.query('SELECT * FROM products WHERE id = $1', [result.rows[0].id])).rows[0];
+    }
 
     return NextResponse.json({ data: result.rows[0] }, { status: 201 });
   } catch (error: any) {

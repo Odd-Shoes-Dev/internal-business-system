@@ -26,8 +26,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
               upcr.email AS created_by_user_email
        FROM bank_reconciliations br
        LEFT JOIN bank_accounts ba ON ba.id = br.bank_account_id
-       LEFT JOIN user_profiles upc ON upc.id = br.completed_by
-       LEFT JOIN user_profiles upcr ON upcr.id = br.created_by
+       LEFT JOIN app_users upc ON upc.id = br.completed_by
+       LEFT JOIN app_users upcr ON upcr.id = br.created_by
        WHERE br.id = $1
        LIMIT 1`,
       [id]

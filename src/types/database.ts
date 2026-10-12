@@ -166,6 +166,8 @@ export interface Customer {
   email_3: string | null;
   email_4: string | null;
   phone: string | null;
+  whatsapp_number?: string | null;
+  loyalty_points?: number | string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;

@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
-import { ArrowLeftIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
+import {
+  CloudArrowUpIcon,
+} from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/page-header';
 
 interface Employee {
   id: string;
@@ -124,18 +127,7 @@ export default function NewReimbursementPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/dashboard/employees/reimbursements"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Reimbursement Request</h1>
-          <p className="text-gray-500 mt-1">Create an employee expense reimbursement request</p>
-        </div>
-      </div>
+      <PageHeader title="New Reimbursement Request" />
 
       {/* Form */}
       <div className="card p-6">

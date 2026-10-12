@@ -5,9 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
-import { ArrowLeftIcon, PrinterIcon, EnvelopeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import {
+  PrinterIcon,
+  EnvelopeIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface Employee {
   first_name: string;
@@ -664,45 +669,34 @@ export default function PayslipDetailPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/dashboard/payroll/${periodId}`}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {payslip.employee.first_name} {payslip.employee.last_name}
-            </h1>
-            <p className="text-gray-500">{payslip.payroll_period.period_name}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={pdfGenerating}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            {pdfGenerating ? 'Generating...' : 'Download PDF'}
-          </button>
-          <button
-            onClick={handleEmailPayslip}
-            disabled={emailSending || !payslip.employee.email}
-            className="btn-secondary flex items-center gap-2"
-            title={!payslip.employee.email ? 'No email address on file' : ''}
-          >
-            <EnvelopeIcon className="w-5 h-5" />
-            {emailSending ? 'Sending...' : 'Email'}
-          </button>
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5" />
-            Print
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={`${payslip.employee.first_name} ${payslip.employee.last_name}`}
+        actions={
+          <>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={pdfGenerating}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              {pdfGenerating ? 'Generating...' : 'Download PDF'}
+            </button>
+            <button
+              onClick={handleEmailPayslip}
+              disabled={emailSending || !payslip.employee.email}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+              title={!payslip.employee.email ? 'No email address on file' : ''}
+            >
+              <EnvelopeIcon className="w-4 h-4" />
+              {emailSending ? 'Sending...' : 'Email'}
+            </button>
+            <button onClick={handlePrint} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+              <PrinterIcon className="w-4 h-4" />
+              Print
+            </button>
+          </>
+        }
+      />
 
       {/* Payslip Container */}
       <div className="card overflow-hidden">

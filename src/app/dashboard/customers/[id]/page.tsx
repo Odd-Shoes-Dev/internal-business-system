@@ -9,17 +9,17 @@ import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import type { Customer as CustomerType } from '@/types/database';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   TrashIcon,
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
+  SparklesIcon,
   MapPinIcon,
   CreditCardIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface PageProps {
   params: Promise<{
@@ -212,32 +212,26 @@ export default function CustomerDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <Link href="/dashboard/customers" className="btn-ghost p-2 flex-shrink-0">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{customer.name}</h1>
-            <p className="text-sm sm:text-base text-gray-500 mt-1 truncate">{customer.company_name || 'Individual Customer'}</p>
-          </div>
-        </div>
-        <div className="flex gap-2 justify-end sm:justify-start">
-          <Link
-            href={`/dashboard/customers/${id}/edit`}
-            className="btn-ghost p-2"
-          >
-            <PencilIcon className="w-5 h-5" />
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn-ghost p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
-          >
-            <TrashIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={customer.name}
+        actions={
+          <>
+            <Link
+              href={`/dashboard/customers/${id}/edit`}
+              className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn-danger btn-sm inline-flex items-center gap-1.5"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </>
+        }
+      />
 
       {/* Status Badge */}
       <div>
@@ -301,6 +295,24 @@ export default function CustomerDetailPage({ params }: PageProps) {
                 <div>
                   <p className="text-xs sm:text-sm text-gray-500">Phone</p>
                   <p className="text-sm sm:text-base text-gray-900">{customer.phone}</p>
+                </div>
+              </div>
+            )}
+            {customer.whatsapp_number && (
+              <div className="flex items-start gap-2 sm:gap-3">
+                <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">WhatsApp</p>
+                  <p className="text-sm sm:text-base text-gray-900">{customer.whatsapp_number}</p>
+                </div>
+              </div>
+            )}
+            {Number(customer.loyalty_points || 0) > 0 && (
+              <div className="flex items-start gap-2 sm:gap-3">
+                <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">Loyalty Points</p>
+                  <p className="text-sm sm:text-base text-gray-900">{Number(customer.loyalty_points).toLocaleString()}</p>
                 </div>
               </div>
             )}

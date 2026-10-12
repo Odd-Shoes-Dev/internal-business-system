@@ -19,6 +19,7 @@ import {
 import { Combobox } from '@/components/ui/combobox';
 import { NumberInput } from '@/components/ui/number-input';
 import { getUnitOptions, isUnitAllowed, normalizeUnit } from '@/lib/units-of-measure';
+import { PageHeader } from '@/components/page-header';
 
 interface Product {
   id: string;
@@ -41,7 +42,7 @@ interface Product {
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
   service: 'Service',
   non_inventory: 'Product (no stock tracking)',
-  inventory: 'Stock Item (tracked in Stock Control)',
+  inventory: 'Stock Item (tracked in Products & Services)',
 };
 
 const emptyForm = {
@@ -102,7 +103,7 @@ export default function ProductsPage() {
   const openCreate = () => {
     setEditProduct(null);
     // Goods are created far more often than services, so default to the goods type:
-    // a tracked stock item when Stock Control is active, otherwise a plain priced product.
+    // a tracked stock item when the Inventory module is active, otherwise a plain priced product.
     setForm({
       ...emptyForm,
       product_type: hasInventory ? 'inventory' : 'non_inventory',
@@ -249,31 +250,27 @@ export default function ProductsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <CubeIcon className="w-7 h-7 text-blueox-primary" />
-              Price List
-            </h1>
-            <p className="text-gray-500 mt-1">Products, services and non-inventory items you sell — added to invoices and receipts</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={openScanModal} className="btn-secondary flex items-center gap-2">
-              <QrCodeIcon className="w-5 h-5" />
-              Scan Barcode
-            </button>
-            <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <PlusIcon className="w-5 h-5" />
-              New Product
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Price List"
+          actions={
+            <>
+              <button onClick={openScanModal} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                <QrCodeIcon className="w-4 h-4" />
+                Scan Barcode
+              </button>
+              <button onClick={openCreate} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                <PlusIcon className="w-4 h-4" />
+                New Product
+              </button>
+            </>
+          }
+        />
 
         {/* Inventory module banner */}
         {hasInventory ? (
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
             <p className="text-sm text-green-800">
-              <span className="font-semibold">Stock Control is active.</span> Track quantities, adjustments, locations and more.
+              <span className="font-semibold">Inventory is active.</span> Track quantities, adjustments, locations and more.
             </p>
             <Link href="/dashboard/inventory" className="inline-flex items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-900 transition-colors">
               Go to Inventory <ArrowRightIcon className="w-4 h-4" />
@@ -440,7 +437,7 @@ export default function ProductsPage() {
                   <label className="label">SKU / Code</label>
                   <input
                     className="input"
-                    placeholder="Optional"
+                    placeholder="Leave empty to generate"
                     value={form.sku}
                     onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
                   />
@@ -479,7 +476,7 @@ export default function ProductsPage() {
                 </select>
                 {form.product_type === 'inventory' && !editProduct && (
                   <p className="text-xs text-gray-500 mt-1">
-                    New stock items start at 0. Add stock in Stock Control before selling.
+                    New stock items start at 0. Add stock in Products & Services before selling.
                   </p>
                 )}
               </div>

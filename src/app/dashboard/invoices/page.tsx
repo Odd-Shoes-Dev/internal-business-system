@@ -4,16 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
-import { 
-  PlusIcon, 
-  MagnifyingGlassIcon, 
-  FunnelIcon, 
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
   DocumentTextIcon,
-  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { ShimmerSkeleton, CardSkeleton } from '@/components/ui/skeleton';
 import type { Invoice, Customer } from '@/types/database';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 export default function InvoicesPage() {
   const { company } = useCompany();
@@ -127,34 +127,21 @@ export default function InvoicesPage() {
         <div className="absolute bottom-40 left-1/3 w-20 h-20 bg-gradient-to-r from-blueox-primary/5 to-blueox-accent/5 rounded-full blur-xl"></div>
       </div>
       
-      <div className="relative max-w-7xl mx-auto py-8 px-6 space-y-8">
-        {/* Hero Header */}
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 bg-white/70 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl px-6 py-3 shadow-lg mb-6">
-            <DocumentTextIcon className="w-6 h-6 text-blueox-primary" />
-            <span className="text-blueox-primary font-semibold">Invoice Management</span>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-blueox-primary-dark mb-4 leading-tight">
-                Invoices & Quotations
-              </h1>
-              <p className="text-lg text-gray-600 max-w-2xl">
-                Manage customer invoices, track payments, and generate professional documents
-              </p>
-            </div>
-            
-            <Link 
-              href="/dashboard/invoices/new" 
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create New Invoice
-              <SparklesIcon className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
+      <div className="relative max-w-7xl mx-auto pb-8 space-y-6">
+        <PageHeader
+          title="Invoices & Quotations"
+          actions={
+            <>
+              <Link 
+                href="/dashboard/invoices/new" 
+                className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Create New Invoice
+              </Link>
+            </>
+          }
+        />
 
         {/* Filters */}
         <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-3xl p-6 shadow-xl">

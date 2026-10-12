@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSessionUser, requireCompanyAccess } from '@/lib/provider/route-guards';
+import { requireSessionUser, requireModuleAccess } from '@/lib/provider/route-guards';
 
 // GET /api/pos/sessions/[id] — single session detail with transactions
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -17,15 +17,15 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
          pc.full_name AS closed_by_name
        FROM pos_sessions s
        LEFT JOIN pos_terminals t ON t.id = s.terminal_id
-       LEFT JOIN user_profiles p ON p.id = s.opened_by
-       LEFT JOIN user_profiles pc ON pc.id = s.closed_by
+       LEFT JOIN app_users p ON p.id = s.opened_by
+       LEFT JOIN app_users pc ON pc.id = s.closed_by
        WHERE s.id = $1 LIMIT 1`,
       [id]
     );
     const session = sessionResult.rows[0];
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, session.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, session.company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     // Load transactions for this session
@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const session = sessionResult.rows[0];
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    const companyAccessError = await requireCompanyAccess(user.id, session.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, session.company_id, 'pos');
     if (companyAccessError) return companyAccessError;
 
     if (session.status === 'closed') {
@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const { closing_cash_count, notes } = body;
 
-    // Calculate expected cash = opening float + total cash sales
+    // Expected cash = opening float + cash taken - cash refunded
     const cashSalesResult = await db.query(
       `SELECT COALESCE(SUM(pr.amount), 0) AS cash_total
        FROM payments_received pr
@@ -79,7 +79,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       [id]
     );
     const cashSales = Number(cashSalesResult.rows[0]?.cash_total || 0);
-    const expectedCash = Number(session.opening_float) + cashSales;
+    const cashRefundsResult = await db.query(
+      `SELECT COALESCE(SUM(total), 0) AS refund_total
+       FROM pos_returns
+       WHERE session_id = $1 AND refund_method = 'cash'`,
+      [id]
+    );
+    const cashRefunds = Number(cashRefundsResult.rows[0]?.refund_total || 0);
+    const expectedCash = Number(session.opening_float) + cashSales - cashRefunds;
     const variance = closing_cash_count != null ? Number(closing_cash_count) - expectedCash : null;
 
     const result = await db.query(

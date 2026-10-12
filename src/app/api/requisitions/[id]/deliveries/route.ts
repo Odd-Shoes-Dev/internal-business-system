@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
+import { requireModuleAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 // GET /api/requisitions/[id]/deliveries - List delivery forms for a requisition
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }
@@ -28,7 +28,7 @@ export async function GET(
     const result = await db.query(
       `SELECT d.*, creator.full_name AS created_by_name
        FROM stock_delivery_forms d
-       LEFT JOIN user_profiles creator ON creator.id = d.created_by
+       LEFT JOIN app_users creator ON creator.id = d.created_by
        WHERE d.requisition_id = $1
        ORDER BY d.created_at ASC`,
       [id]
@@ -77,7 +77,7 @@ export async function POST(
       return NextResponse.json({ error: 'Requisition not found' }, { status: 404 });
     }
 
-    const companyAccessError = await requireCompanyAccess(user.id, requisition.company_id);
+    const companyAccessError = await requireModuleAccess(user.id, requisition.company_id, 'inventory');
     if (companyAccessError) {
       return companyAccessError;
     }

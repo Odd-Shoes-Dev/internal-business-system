@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbProvider } from '@/lib/provider';
 import { resolveUserCompanyId } from '@/lib/provider/route-guards';
+import { refuseIfLegacyWithDb } from '@/lib/billing/legacy-plan-db';
 import { getWhop } from '@/lib/whop';
 import { getPlanId, getModulePlanId } from '@/lib/whop-config';
 import { getTestPlanOverride } from '@/lib/whop-test-mode';
@@ -30,6 +31,9 @@ export async function POST(request: NextRequest) {
 
     const companyId = await resolveUserCompanyId(user.id, body.company_id);
     if (!companyId) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+
+    const legacyRefusal = await refuseIfLegacyWithDb(db, companyId);
+    if (legacyRefusal) return legacyRefusal;
 
     // Enforce region from DB — never trust the client-supplied value
     const companyResult = await db.query(

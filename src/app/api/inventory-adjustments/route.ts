@@ -1,4 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  ADJUSTMENT_REASONS,
+  adjustmentApprovalRequiredWithDb,
+  approveStockAdjustmentWithDb,
+  canApproveAdjustmentsWithDb,
+  createStockAdjustmentWithDb,
+  type AdjustmentReason,
+} from '@/lib/inventory/adjustments';
+import { StockError } from '@/lib/inventory/stock';
 import { getCompanyIdFromRequest, requireCompanyAccess, requireSessionUser } from '@/lib/provider/route-guards';
 
 export async function GET(request: NextRequest) {
@@ -122,49 +131,39 @@ export async function POST(request: NextRequest) {
       return companyAccessError;
     }
 
+    // Older screens call this endpoint; it now files a stock adjustment (see /api/stock-adjustments),
+    // applied straight away when approval is off or the requester may approve.
+    const validReasons: string[] = [...ADJUSTMENT_REASONS];
+    const mappedReason = (validReasons.includes(reason) ? reason : reason === 'write_off' ? 'damage' : 'count_correction') as AdjustmentReason;
+    const approvalRequired = await adjustmentApprovalRequiredWithDb(db, product.company_id);
+    const canApprove = await canApproveAdjustmentsWithDb(db, user.id, product.company_id);
+
     const adjustment = await db.transaction(async (tx) => {
-      const movementResult = await tx.query(
-        `INSERT INTO inventory_movements (
-           product_id, movement_type, quantity, unit_cost, total_cost,
-           reference_type, reference_id, notes, created_by, created_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::timestamptz)
-         RETURNING *`,
-        [
-          product_id,
-          reason,
-          Number(quantity_change),
-          Number(body.unit_cost ?? product.cost_price ?? 0),
-          Number(quantity_change) * Number(body.unit_cost ?? product.cost_price ?? 0),
-          reference_type || null,
-          reference_id || null,
-          notes || null,
-          user.id,
-          adjustment_date,
-        ]
-      );
-
-      const updatedStock = Number(product.quantity_on_hand || 0) + Number(quantity_change || 0);
-
-      await tx.query(
-        `UPDATE products
-         SET quantity_on_hand = $2,
-             updated_at = NOW()
-         WHERE id = $1`,
-        [product_id, updatedStock]
-      );
-
-      return movementResult.rows[0];
+      const adj = await createStockAdjustmentWithDb(tx, {
+        companyId: product.company_id,
+        productId: product_id,
+        quantityChange: Number(quantity_change),
+        reason: mappedReason,
+        notes: notes || null,
+        userId: user.id,
+      });
+      const approved = !approvalRequired || canApprove;
+      if (approved) await approveStockAdjustmentWithDb(tx, adj.id, user.id);
+      return { ...adj, status: approved ? 'approved' : 'pending' };
     });
 
     const data = {
       ...adjustment,
-      adjustment_date: adjustment.created_at,
-      quantity_change: adjustment.quantity,
-      reason: adjustment.movement_type,
+      adjustment_date,
+      quantity_change: Number(quantity_change),
+      reason: mappedReason,
+      reference_type: reference_type || null,
+      reference_id: reference_id || null,
     };
 
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
+    if (error instanceof StockError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('Error creating inventory adjustment:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

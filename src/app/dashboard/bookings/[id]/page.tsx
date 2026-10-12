@@ -10,7 +10,6 @@ import { ShimmerSkeleton } from '@/components/ui/skeleton';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 import {
-  ArrowLeftIcon,
   CalendarDaysIcon,
   UserGroupIcon,
   CurrencyDollarIcon,
@@ -22,6 +21,7 @@ import {
   PrinterIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 const STATUS_COLORS: Record<BookingStatus, string> = {
   inquiry: 'bg-purple-100 text-purple-800',
@@ -480,34 +480,20 @@ export default function BookingDetailPage({ params }: BookingDetailPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/bookings"
-            className="p-2 hover:bg-white/50 backdrop-blur-xl border border-blue-500/20 rounded-xl shadow-lg transition-all duration-200"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Booking #{booking.booking_number}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Created on {new Date(booking.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              STATUS_COLORS[booking.status]
-            }`}
-          >
-            {STATUS_LABELS[booking.status]}
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        title={`Booking #${booking.booking_number}`}
+        actions={
+          <>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                STATUS_COLORS[booking.status]
+              }`}
+            >
+              {STATUS_LABELS[booking.status]}
+            </span>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main Content */}

@@ -13,11 +13,10 @@ import {
   PlayIcon,
   PauseIcon,
   TrashIcon,
-  PencilIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { formatDate } from '@/lib/utils';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface ScheduledReport {
   id: string;
@@ -154,24 +153,20 @@ export default function ScheduledReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/reports" className="btn-ghost p-1.5 sm:p-2">
-            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scheduled Reports</h1>
-            <p className="text-gray-600">Manage automatic report delivery schedules</p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/reports/scheduled/new"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Schedule Report
-        </Link>
-      </div>
+      <PageHeader
+        title="Scheduled Reports"
+        actions={
+          <>
+            <Link
+              href="/dashboard/reports/scheduled/new"
+              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Schedule Report
+            </Link>
+          </>
+        }
+      />
 
       {/* Schedules List */}
       <div className="card overflow-hidden">

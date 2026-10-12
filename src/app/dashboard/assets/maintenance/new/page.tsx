@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/contexts/company-context';
 import toast from 'react-hot-toast';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface Asset {
   id: string;
@@ -157,34 +157,24 @@ export default function NewAssetMaintenancePage() {
     <div className="max-w-4xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="btn-ghost p-2"
-            >
-              <ArrowLeftIcon className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Schedule Maintenance</h1>
-              <p className="text-gray-500 mt-1">Schedule asset maintenance or log completed work</p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="btn-secondary"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={saving || loading}>
-              {saving ? 'Saving...' : 'Schedule Maintenance'}
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Schedule Maintenance"
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={saving || loading}>
+                {saving ? 'Saving...' : 'Schedule Maintenance'}
+              </button>
+            </>
+          }
+        />
 
         {/* Maintenance Details */}
         <div className="card">

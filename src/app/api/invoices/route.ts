@@ -360,6 +360,7 @@ export async function POST(request: NextRequest) {
             invoice_number: invoice.invoice_number,
             invoice_date: invoice.invoice_date,
             total: Number(invoice.total),
+            tax_amount: Number(invoice.tax_amount || 0),
             company_id: invoice.company_id,
             currency: invoice.currency || 'USD',
           },

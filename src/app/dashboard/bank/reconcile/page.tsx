@@ -3,16 +3,14 @@
 import { confirmDialog } from '@/components/confirm-dialog';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useCompany } from '@/contexts/company-context';
 import {
-  ArrowLeftIcon,
   CheckCircleIcon,
-  XCircleIcon,
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import { FitNumber } from '@/components/ui/fit-number';
+import { PageHeader } from '@/components/page-header';
 
 interface BankAccount {
   id: string;
@@ -169,15 +167,7 @@ export default function ReconcilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/bank" className="btn-ghost p-2">
-          <ArrowLeftIcon className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bank Reconciliation</h1>
-          <p className="text-gray-500 mt-1">Match your bank statement with your records</p>
-        </div>
-      </div>
+      <PageHeader title="Bank Reconciliation" />
 
       {/* Reconciliation Form */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

@@ -10,6 +10,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '@/components/page-header';
 
 interface GoodsReceipt {
   id: string;
@@ -111,16 +112,17 @@ export default function GoodsReceiptsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Goods Receipts</h1>
-          <p className="text-gray-500 mt-1">Receive goods from purchase orders</p>
-        </div>
-        <Link href="/dashboard/goods-receipts/new" className="btn-primary">
-          <PlusIcon className="w-5 h-5 mr-2" />
-          New Goods Receipt
-        </Link>
-      </div>
+      <PageHeader
+        title="Goods Receipts"
+        actions={
+          <>
+            <Link href="/dashboard/goods-receipts/new" className="btn-primary btn-sm inline-flex items-center gap-1.5">
+              <PlusIcon className="w-4 h-4 mr-2" />
+              New Goods Receipt
+            </Link>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="card p-4">
