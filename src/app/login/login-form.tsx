@@ -1,0 +1,245 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { SparklesIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
+
+export interface TenantBranding {
+  name: string;
+  logo_url: string | null;
+}
+
+// Branding is resolved server-side (see page.tsx) and passed in already known, so there's
+// nothing to fetch here and no default-then-swap flash on a client's own domain.
+export default function LoginForm({ branding }: { branding: TenantBranding | null }) {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Load remembered email on component mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Handle remember me - save or clear email
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to sign in');
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let redirectTo = urlParams.get('redirectTo') || '/dashboard';
+
+      if (payload?.needsOnboarding) {
+        redirectTo = '/signup/select-plan';
+      }
+
+      toast.success('Welcome back!');
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      window.location.href = redirectTo;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sign in');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col justify-center p-4 py-12">
+      <div className="w-full max-w-lg mx-auto space-y-8">
+
+        {/* Logo Section */}
+        <div className="text-center space-y-6">
+          <Link href="/" className="inline-block">
+            <Image
+              src={branding?.logo_url || '/assets/logo.png'}
+              alt={branding?.name || 'BlueOx'}
+              width={140}
+              height={56}
+              className="mx-auto object-contain"
+            />
+          </Link>
+
+          {/* System Title with Visual Hierarchy */}
+          <div className="space-y-2">
+            <h1 className="text-4xl lg:text-5xl font-bold text-blueox-primary">
+              Welcome Back
+            </h1>
+            <p className="text-xl text-gray-600 font-medium">
+              {branding?.name || 'Business Management System'}
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-500">
+              <LockClosedIcon className="w-4 h-4 text-blueox-primary" />
+              Secure Access Portal
+            </div>
+          </div>
+        </div>
+
+        {/* Login Form Card with Generous Spacing */}
+        <div className="bg-white/80 backdrop-blur-xl border border-blueox-primary/20 rounded-2xl p-8 shadow-lg">
+          <div className="space-y-6">
+
+            {/* Form Header */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-semibold text-blueox-primary-dark">Sign In</h2>
+              <p className="text-base text-gray-600">
+                Access your operations dashboard
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+
+              {/* Email Field */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-medium text-blueox-primary">
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-4 border border-gray-300 rounded-2xl text-lg placeholder-gray-500 focus:border-black focus:ring-2 focus:ring-black/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-medium text-blueox-primary">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-4 pr-12 border border-blueox-primary/20 rounded-2xl text-lg placeholder-gray-500 focus:border-blueox-primary focus:ring-2 focus:ring-blueox-primary/20 transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm bg-white/80 hover:bg-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-blueox-primary/30 text-blueox-primary focus:ring-blueox-primary cursor-pointer"
+                  />
+                  Remember my email
+                </label>
+              </div>
+
+              {/* Sign In Button with Large Size for Visual Hierarchy */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="group w-full px-8 py-4 bg-gradient-to-r from-blueox-primary to-blueox-primary-dark hover:from-blueox-primary-hover hover:to-blueox-primary text-black text-lg font-semibold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Signing in...
+                  </span>
+                ) : (
+                  'Sign In'
+                )}
+              </button>
+
+            </form>
+          </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="text-center">
+          <p className="text-base text-gray-600">
+            Need an account?{' '}
+            {process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true' ? (
+              <Link
+                href="/signup"
+                className="text-blueox-primary hover:text-blueox-primary-hover font-semibold underline underline-offset-2 transition-colors duration-200"
+              >
+                Sign up
+              </Link>
+            ) : (
+              <span className="text-gray-500">Contact administrator</span>
+            )}
+          </p>
+        </div>
+
+        {/* Footer with Proper Visual Hierarchy */}
+        <div className="text-center space-y-2 pt-4">
+          <div className="flex items-center justify-center gap-2">
+            <SparklesIcon className="w-4 h-4 text-blueox-primary" />
+            <p className="text-sm font-medium text-blueox-primary">
+              Powered by BlueOx
+            </p>
+          </div>
+          <p className="text-xs text-gray-500">
+            &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
