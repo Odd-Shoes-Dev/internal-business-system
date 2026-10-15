@@ -34,7 +34,9 @@ export function Modal({
 }: ModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
+      {/* Above the dashboard's own fixed chrome (sidebar/header are z-50/z-30), so a modal
+          always sits on top of them instead of z-index ties going either way. */}
+      <Dialog as="div" className="relative z-[100]" onClose={onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -44,11 +46,12 @@ export function Modal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+          {/* Printing while a modal is open should print its content, not the dimmed backdrop */}
+          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm print:hidden" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+        <div className="fixed inset-0 overflow-y-auto print:overflow-visible">
+          <div className="flex min-h-full items-center justify-center p-4 print:p-0 print:block">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -60,12 +63,12 @@ export function Modal({
             >
               <Dialog.Panel
                 className={cn(
-                  'w-full transform overflow-hidden rounded-xl bg-white shadow-xl transition-all',
+                  'w-full transform overflow-hidden rounded-xl bg-white shadow-xl transition-all print:shadow-none print:rounded-none print:overflow-visible',
                   sizeClasses[size]
                 )}
               >
                 {(title || showClose) && (
-                  <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100 print:hidden">
                     <div>
                       {title && (
                         <Dialog.Title className="text-lg font-semibold text-gray-900">

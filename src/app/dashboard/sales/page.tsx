@@ -1,17 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   PrinterIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useCompany } from '@/contexts/company-context';
 import { formatCurrency } from '@/lib/currency';
 import { PageHeader } from '@/components/page-header';
+import { Modal } from '@/components/ui/modal';
 
 interface SaleRow {
   id: string;
@@ -75,6 +75,14 @@ export default function SalesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<SaleDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  // The id of the sale the modal is currently open for. Closing the modal clears this, so a
+  // detail request that finishes after the close doesn't reopen it with a stale result.
+  const openSaleIdRef = useRef<string | null>(null);
+  const closeDetail = () => {
+    openSaleIdRef.current = null;
+    setDetail(null);
+  };
 
   const currency = company?.currency || 'UGX';
 
@@ -113,13 +121,24 @@ export default function SalesPage() {
   useEffect(() => setPage(1), [from, to, source, status, search]);
 
   const openDetail = async (row: SaleRow) => {
+    // Show the modal immediately with what we already have (date, customer, totals); only the
+    // itemised lines, payments and returns need the extra request, so load those in afterwards
+    // instead of leaving the user looking at nothing while it's in flight.
+    openSaleIdRef.current = row.id;
+    setDetail({ ...row, customer_phone: null, notes: null, lines: [], payments: [], returns: [] });
+    setDetailLoading(true);
     try {
       const res = await fetch(`/api/sales/${row.id}`, { credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      // The user may have closed the modal (or opened a different sale) while this was in
+      // flight - only apply the result if it's still the one being viewed.
+      if (openSaleIdRef.current !== row.id) return;
       setDetail({ ...row, ...data.data });
     } catch (e: any) {
-      toast.error(e.message || 'Failed to load sale');
+      if (openSaleIdRef.current === row.id) toast.error(e.message || 'Failed to load sale');
+    } finally {
+      if (openSaleIdRef.current === row.id) setDetailLoading(false);
     }
   };
 
@@ -252,21 +271,23 @@ export default function SalesPage() {
         </div>
       )}
 
-      {detail && <SaleDetailModal sale={detail} companyName={company?.name || ''} onClose={() => setDetail(null)} />}
+      {detail && (
+        <SaleDetailModal
+          sale={detail}
+          loading={detailLoading}
+          companyName={company?.name || ''}
+          onClose={closeDetail}
+        />
+      )}
     </div>
   );
 }
 
-function SaleDetailModal({ sale, companyName, onClose }: { sale: SaleDetail; companyName: string; onClose: () => void }) {
+function SaleDetailModal({ sale, loading, companyName, onClose }: { sale: SaleDetail; loading: boolean; companyName: string; onClose: () => void }) {
   const c = sale.currency;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 print:bg-white print:p-0">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto print:shadow-none print:max-h-none">
-        <div className="flex items-center justify-between p-5 border-b print:hidden">
-          <h2 className="text-lg font-bold">{sale.invoice_number}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><XMarkIcon className="w-5 h-5 text-gray-500" /></button>
-        </div>
-
+    <Modal isOpen onClose={onClose} title={sale.invoice_number} size="md">
+      <div className="-m-6 max-h-[80vh] overflow-y-auto print:m-0 print:max-h-none print:overflow-visible">
         <div className="p-5 space-y-4 text-sm">
           <div className="hidden print:block text-center">
             <p className="font-bold text-base">{companyName}</p>
@@ -284,6 +305,9 @@ function SaleDetailModal({ sale, companyName, onClose }: { sale: SaleDetail; com
               <tr><th className="text-left py-1">Item</th><th className="text-right py-1">Qty</th><th className="text-right py-1">Amount</th></tr>
             </thead>
             <tbody>
+              {loading && sale.lines.length === 0 && (
+                <tr><td colSpan={3} className="py-3 text-center text-gray-400 text-xs">Loading items…</td></tr>
+              )}
               {sale.lines.map((l) => (
                 <tr key={l.id} className="border-b last:border-0">
                   <td className="py-1.5">
@@ -338,7 +362,7 @@ function SaleDetailModal({ sale, companyName, onClose }: { sale: SaleDetail; com
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

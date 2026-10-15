@@ -527,9 +527,21 @@ export default function TillPage() {
   };
 
   const handlePrintAndNext = () => {
-    if (lastReceipt) window.print();
-    setLastReceipt(null);
-    setTimeout(() => barcodeInputRef.current?.focus(), 100);
+    if (!lastReceipt) return;
+    // window.print() blocks until the dialog closes on most desktop browsers, but not on
+    // every device - on ones where it doesn't, clearing the receipt right away (as this used
+    // to) swapped the screen back to the cart before printing actually captured the page, so
+    // the cart printed instead of the receipt. Wait for the browser's own "done printing"
+    // event instead of assuming either behaviour.
+    window.addEventListener(
+      'afterprint',
+      () => {
+        setLastReceipt(null);
+        setTimeout(() => barcodeInputRef.current?.focus(), 100);
+      },
+      { once: true }
+    );
+    window.print();
   };
 
   const handleCloseShift = async () => {
@@ -568,8 +580,23 @@ export default function TillPage() {
   // Receipt view
   if (lastReceipt) {
     return (
-      <div className="h-screen flex items-center justify-center p-4" style={{ background: 'var(--pos-bg)' }}>
-        <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 receipt-print">
+      <>
+        {/* The till view below (rendered when lastReceipt is not set) has its own copy of this
+            style block for its own unrelated print rules; it never applies here since this is
+            a separate early return, so the receipt needs its own copy too. size: 80mm auto
+            matches the thermal roll width so a printer that isn't already configured for it
+            doesn't fall back to A4/Letter with the receipt squeezed into a corner; margin: 0
+            stops the usual page margins eating into the narrow roll. */}
+        <style jsx global>{`
+          @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .receipt-print { box-shadow: none !important; border: none !important; }
+            @page { size: 80mm auto; margin: 0; }
+          }
+        `}</style>
+        <div className="h-screen overflow-y-auto flex items-center justify-center p-4 print:block print:h-auto print:overflow-visible" style={{ background: 'var(--pos-bg)' }}>
+          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 receipt-print print:max-w-none print:w-[80mm]">
           <div className="text-center border-b pb-4">
             <h2 className="font-bold text-lg">{company?.name}</h2>
             {posSettings.receipt_header && <p className="text-xs text-gray-600 whitespace-pre-line">{posSettings.receipt_header}</p>}
@@ -650,8 +677,9 @@ export default function TillPage() {
               Skip Print
             </button>
           </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
