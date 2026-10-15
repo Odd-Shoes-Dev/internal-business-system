@@ -7,6 +7,11 @@ import Image from 'next/image';
 import { SparklesIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
+interface TenantBranding {
+  name: string;
+  logo_url: string | null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -14,6 +19,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [branding, setBranding] = useState<TenantBranding | null>(null);
 
   // Load remembered email on component mount
   useEffect(() => {
@@ -22,6 +28,22 @@ export default function LoginPage() {
       setEmail(rememberedEmail);
       setRememberMe(true);
     }
+  }, []);
+
+  // On a client's own domain, show their logo and name instead of the defaults. Looked up by
+  // hostname, not by anything in the URL, so this can't be spoofed via a query param - and it
+  // simply finds nothing (keeping the default branding) on the main app domain.
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return;
+    fetch(`/api/companies/branding?domain=${encodeURIComponent(hostname)}`)
+      .then((res) => res.json())
+      .then((payload) => {
+        if (payload?.data) setBranding(payload.data);
+      })
+      .catch(() => {
+        // Keep default branding if this fails for any reason
+      });
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -74,21 +96,21 @@ export default function LoginPage() {
         <div className="text-center space-y-6">
           <Link href="/" className="inline-block">
             <Image
-              src="/assets/logo.png"
-              alt="BlueOx"
+              src={branding?.logo_url || '/assets/logo.png'}
+              alt={branding?.name || 'BlueOx'}
               width={140}
               height={56}
-              className="mx-auto"
+              className="mx-auto object-contain"
             />
           </Link>
-          
+
           {/* System Title with Visual Hierarchy */}
           <div className="space-y-2">
             <h1 className="text-4xl lg:text-5xl font-bold text-blueox-primary">
               Welcome Back
             </h1>
             <p className="text-xl text-gray-600 font-medium">
-              Business Management System
+              {branding?.name || 'Business Management System'}
             </p>
             <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-500">
               <LockClosedIcon className="w-4 h-4 text-blueox-primary" />

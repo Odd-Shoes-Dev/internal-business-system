@@ -3,7 +3,42 @@ import type { NextRequest } from 'next/server';
 
 const SESSION_COOKIE = 'blueox_session';
 
+// Hostname this app is normally reached at - everything else (a client's own domain, added as
+// a domain alias in Vercel) is a "tenant host". This only decides routing here; which company
+// a tenant host belongs to, for branding, is looked up separately by the login page itself via
+// /api/companies/branding, not here - a plain hostname comparison needs no database call.
+function mainAppHostname(): string {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://system.blueoxgroup.eu').hostname;
+  } catch {
+    return 'system.blueoxgroup.eu';
+  }
+}
+
+function isTenantHost(host: string | null): boolean {
+  if (!host) return false;
+  const hostname = host.split(':')[0].toLowerCase();
+  return (
+    hostname !== mainAppHostname() &&
+    hostname !== 'localhost' &&
+    hostname !== '127.0.0.1' &&
+    !hostname.endsWith('.vercel.app')
+  );
+}
+
 export async function middleware(req: NextRequest) {
+  // A client's own domain is for their team, not for advertising to prospects or letting
+  // strangers sign up there - send both to the login screen instead.
+  if (isTenantHost(req.headers.get('host'))) {
+    const { pathname } = req.nextUrl;
+    if (pathname === '/') {
+      return NextResponse.rewrite(new URL('/login', req.url));
+    }
+    if (pathname.startsWith('/signup')) {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
+  }
+
   // Route handlers cannot see the HTTP method or path from their request headers, so pass
   // them along (used by the read-only-after-trial guard). Always overwritten here, so a
   // client cannot spoof them.
