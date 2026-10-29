@@ -93,14 +93,14 @@ const documentationSections: DocumentationSection[] = [
       {
         name: 'Terms of Service',
         description: 'Platform terms and conditions',
-        path: '/docs/contracts/TERMS_OF_SERVICE.md',
+        path: '/terms',
         category: 'contract',
         audience: 'all'
       },
       {
         name: 'Privacy Policy',
         description: 'Data privacy and protection policy',
-        path: '/docs/contracts/PRIVACY_POLICY.md',
+        path: '/privacy',
         category: 'contract',
         audience: 'all'
       },
