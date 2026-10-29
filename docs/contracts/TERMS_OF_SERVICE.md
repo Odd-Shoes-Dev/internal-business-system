@@ -1,8 +1,8 @@
 # TERMS OF SERVICE
 
-**Last Updated:** [Date]
+**Last Updated:** October 29, 2026
 
-Welcome to [Your Company Name]'s Business Management Platform. By accessing or using our service, you agree to be bound by these Terms of Service.
+Welcome to BlueOx's Business Management Platform. By accessing or using our service, you agree to be bound by these Terms of Service.
 
 ---
 
@@ -22,7 +22,7 @@ If you do not agree, do not use our service.
 
 - **"Service"** or **"Software"**: Our cloud-based business management platform
 - **"You"**, **"Client"**, **"Customer"**: The individual or company using our Service
-- **"We"**, **"Us"**, **"Provider"**: [Your Company Name]
+- **"We"**, **"Us"**, **"Provider"**: BlueOx
 - **"Account"**: Your registered user account
 - **"Company"**: Your business entity within our multi-tenant system
 - **"Subscription"**: Your paid service plan
@@ -232,7 +232,7 @@ You own all rights to:
 Our name and logo are our trademarks. You may not use them without written permission.
 
 ### 8.4 DMCA Compliance
-We respect intellectual property. Report infringements to [email].
+We respect intellectual property. Report infringements to support@blueoxgroup.eu.
 
 ---
 
@@ -301,7 +301,7 @@ Subscription price changes with 60 days notice:
 
 ### 12.1 Support Channels
 **Starter Plan:**
-- Email: support@[yourdomain].com
+- Email: support@blueoxgroup.eu
 - Knowledge base
 
 **Professional Plan:**
@@ -400,7 +400,7 @@ Upon termination:
 ## 17. DISPUTE RESOLUTION
 
 ### 17.1 Informal Resolution
-Contact us first to resolve disputes: support@[yourdomain].com
+Contact us first to resolve disputes: support@blueoxgroup.eu
 
 ### 17.2 Arbitration
 If informal resolution fails, disputes resolved through binding arbitration.
@@ -409,7 +409,7 @@ If informal resolution fails, disputes resolved through binding arbitration.
 You agree to individual arbitration only, not class actions.
 
 ### 17.4 Governing Law
-These Terms governed by laws of [Your Jurisdiction].
+These Terms are governed by the laws of Uganda.
 
 ---
 
@@ -442,10 +442,7 @@ You and we are independent contractors, not partners or joint venturers.
 
 **Questions about these Terms?**
 
-Email: legal@[yourdomain].com  
-Address: [Your Business Address]  
-Support: support@[yourdomain].com  
-Phone: [Your Phone Number]
+Email: support@blueoxgroup.eu
 
 ---
 

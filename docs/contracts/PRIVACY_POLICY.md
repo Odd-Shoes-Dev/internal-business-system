@@ -1,8 +1,8 @@
 # PRIVACY POLICY
 
-**Last Updated:** [Date]
+**Last Updated:** October 29, 2026
 
-[Your Company Name] ("we," "us," "our") respects your privacy and is committed to protecting your personal data. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our business management platform.
+BlueOx ("we," "us," "our") respects your privacy and is committed to protecting your personal data. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our business management platform.
 
 ---
 
@@ -256,7 +256,7 @@ You have the right to:
 - Export data in machine-readable format (CSV, JSON)
 - Download copies of invoices and reports
 
-**How:** Via account settings or by emailing support@[yourdomain].com
+**How:** Via account settings or by emailing support@blueoxgroup.eu
 
 ### 6.2 Correction and Update
 You can:
@@ -295,7 +295,7 @@ If processing based on consent, you may withdraw anytime without affecting prior
 
 ### 6.7 Lodge a Complaint
 If you believe we've violated your privacy rights, you can:
-- Contact our Data Protection Officer: dpo@[yourdomain].com
+- Contact us: support@blueoxgroup.eu
 - File a complaint with your local data protection authority
 
 ---
@@ -395,8 +395,7 @@ Opt out of sale of personal data. **Note: We do not sell personal data.**
 We will not discriminate against you for exercising your CCPA rights.
 
 ### 11.5 How to Exercise Rights
-Email: privacy@[yourdomain].com  
-Phone: [Your Phone Number]  
+Email: support@blueoxgroup.eu  
 We will respond within 45 days.
 
 ---
@@ -421,8 +420,8 @@ We process your data based on:
 - Right to object
 - Rights related to automated decision-making
 
-### 12.3 Data Protection Officer
-Contact: dpo@[yourdomain].com
+### 12.3 Privacy Contact
+Contact: support@blueoxgroup.eu
 
 ### 12.4 Supervisory Authority
 You can lodge a complaint with your local data protection authority.
@@ -450,16 +449,8 @@ Your continued use after changes constitutes acceptance of the updated policy.
 
 ## 14. CONTACT US
 
-### 14.1 General Inquiries
-Email: privacy@[yourdomain].com  
-Address: [Your Business Address]
-
-### 14.2 Data Protection Officer
-Email: dpo@[yourdomain].com
-
-### 14.3 Support
-Email: support@[yourdomain].com  
-Phone: [Your Phone Number]  
+### 14.1 General Inquiries and Support
+Email: support@blueoxgroup.eu  
 Business Hours: Monday-Friday, 8am-6pm EAT
 
 ---
@@ -476,4 +467,4 @@ Business Hours: Monday-Friday, 8am-6pm EAT
 
 **Your privacy is important to us. We are committed to protecting your personal data and handling it responsibly in accordance with applicable privacy laws.**
 
-If you have questions or concerns about this Privacy Policy or our data practices, please contact us at privacy@[yourdomain].com.
+If you have questions or concerns about this Privacy Policy or our data practices, please contact us at support@blueoxgroup.eu.

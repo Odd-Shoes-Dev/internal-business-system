@@ -237,6 +237,11 @@ export default function LoginForm({ branding }: { branding: TenantBranding | nul
           <p className="text-xs text-gray-500">
             &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
           </p>
+          <p className="text-xs text-gray-500">
+            <Link href="/privacy" className="hover:text-blueox-primary underline underline-offset-2">Privacy Policy</Link>
+            {' · '}
+            <Link href="/terms" className="hover:text-blueox-primary underline underline-offset-2">Terms of Service</Link>
+          </p>
         </div>
 
       </div>

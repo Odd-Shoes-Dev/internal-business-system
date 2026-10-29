@@ -313,8 +313,14 @@ export default function SignUpPage() {
           <p className="text-xs text-gray-500">
             &copy; {new Date().getFullYear()} BlueOx. All rights reserved.
           </p>
+          <p className="text-xs text-gray-500">
+            By signing up you agree to our{' '}
+            <Link href="/terms" className="hover:text-blueox-primary underline underline-offset-2">Terms of Service</Link>
+            {' and '}
+            <Link href="/privacy" className="hover:text-blueox-primary underline underline-offset-2">Privacy Policy</Link>
+          </p>
         </div>
-        
+
       </div>
     </div>
   );
