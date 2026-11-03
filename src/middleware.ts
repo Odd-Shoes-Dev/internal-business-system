@@ -28,11 +28,13 @@ function isTenantHost(host: string | null): boolean {
 
 export async function middleware(req: NextRequest) {
   // A client's own domain is for their team, not for advertising to prospects or letting
-  // strangers sign up there - send both to the login screen instead.
+  // strangers sign up there. "/" shows a small tenant welcome page instead of the landing
+  // page (see src/app/welcome/page.tsx) rather than going straight to a bare login form with
+  // nothing else on it; "/signup" sends straight to login.
   if (isTenantHost(req.headers.get('host'))) {
     const { pathname } = req.nextUrl;
     if (pathname === '/') {
-      return NextResponse.rewrite(new URL('/login', req.url));
+      return NextResponse.rewrite(new URL('/welcome', req.url));
     }
     if (pathname.startsWith('/signup')) {
       return NextResponse.redirect(new URL('/login', req.url));
