@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, CheckCircle, Clock, TrendingUp, Users, CreditCard, Mail } from 'lucide-react';
 import { FitNumber } from '@/components/ui/fit-number';
 import LegacyPlansSection from './legacy-plans-section';
+import ManageCompanySection from './manage-company-section';
 import { PageHeader } from '@/components/page-header';
 
 interface Stats {
@@ -110,6 +111,7 @@ export default function SubscriptionMonitorPage() {
         {/* Header */}
         <PageHeader title="Subscription Monitoring" />
 
+        <ManageCompanySection />
         <LegacyPlansSection />
 
         {/* Stats Grid */}
